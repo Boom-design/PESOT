@@ -244,7 +244,6 @@
                                                 'business_permit'             => 'CDO Business Permit',
                                                 'sec_dti'                     => 'SEC / DTI',
                                                 'company_profile'             => 'Company Profile',
-                                                'nsrp_establishment_form'     => 'NSRP Establishment Form',
                                                 'no_pending_case_certificate' => 'Certificate of No Pending Case',
                                                 'vacancy_posting'             => 'Vacancy Posting',
                                             ];
@@ -265,6 +264,17 @@
                                             @endif
                                         </div>
                                         @endforeach
+                                        <div class="d-flex justify-content-between align-items-center px-3 py-2 mb-1 rounded-3"
+                                            style="background:#f0f9f6;">
+                                            <span style="font-size:13px;color:#2d7a5f;font-weight:500;">NSRP Establishment Form</span>
+                                            <button type="button"
+                                                class="btn btn-sm fw-semibold"
+                                                style="background:linear-gradient(90deg,#90d870,#4dd9c0);
+                                                       color:#fff;border:none;border-radius:8px;font-size:11px;"
+                                                data-bs-toggle="modal" data-bs-target="#nsrpEstModal{{ $employer->id }}">
+                                                <i class="bi bi-eye-fill me-1"></i>View
+                                            </button>
+                                        </div>
 
                                         <div class="d-flex justify-content-between align-items-center px-3 py-2 mt-2 rounded-3"
                                             style="background:#fff;border:1px dashed #a8e6cf;">
@@ -277,56 +287,6 @@
                                             </span>
                                         </div>
                                     </div>
-                                    @endif
-
-                                    {{-- Hired Jobseekers (Approved tab only, LRA/SRA) --}}
-                                    @if($tab === 'approved' && in_array($staffRole, ['lra','sra']))
-                                    <h6 class="fw-bold mb-2" style="color:#2d7a5f;font-size:13px;">
-                                        <i class="bi bi-people-fill me-1" style="color:#4dd9c0;"></i>
-                                        Hired Jobseekers
-                                    </h6>
-                                    @php
-                                        $hiredApps = $employer->jobs->flatMap->applications->where('status','hired');
-                                    @endphp
-                                    @if($hiredApps->isEmpty())
-                                        <div class="text-center py-3" style="color:#888;font-size:13px;">
-                                            <i class="bi bi-inbox" style="font-size:32px;color:#c0e8dc;"></i>
-                                            <div class="mt-2">No hired jobseekers yet</div>
-                                        </div>
-                                    @else
-                                        <div class="table-responsive">
-                                            <table class="table table-hover mb-0" style="font-size:13px;">
-                                                <thead>
-                                                    <tr style="background:#f0f9f6;">
-                                                        <th style="color:#2d7a5f;font-size:11px;padding:8px 12px;">#</th>
-                                                        <th style="color:#2d7a5f;font-size:11px;padding:8px 12px;">Name</th>
-                                                        <th style="color:#2d7a5f;font-size:11px;padding:8px 12px;">Job Title</th>
-                                                        <th style="color:#2d7a5f;font-size:11px;padding:8px 12px;text-align:center;">Match %</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    @foreach($hiredApps as $idx => $app)
-                                                    <tr>
-                                                        <td style="padding:8px 12px;color:#888;">{{ $idx + 1 }}</td>
-                                                        <td style="padding:8px 12px;font-weight:600;color:#2d7a5f;">
-                                                            {{ trim(($app->jobseeker->first_name ?? '') . ' ' . ($app->jobseeker->surname ?? '')) ?: '—' }}
-                                                        </td>
-                                                        <td style="padding:8px 12px;color:#555;">
-                                                            {{ $app->job->title ?? '—' }}
-                                                        </td>
-                                                        <td style="padding:8px 12px;text-align:center;">
-                                                            @php $match = $app->match_percentage ?? 0; @endphp
-                                                            <span class="fw-semibold"
-                                                                style="color:{{ $match >= 75 ? '#2d7a5f' : ($match >= 50 ? '#f59e0b' : '#e05252') }}">
-                                                                {{ $match }}%
-                                                            </span>
-                                                        </td>
-                                                    </tr>
-                                                    @endforeach
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    @endif
                                     @endif
 
                                     {{-- Approve/Reject for pending requirements — Job Vacancy staff (local) / SRA (overseas) ra --}}
@@ -357,13 +317,12 @@
                                                     'business_permit'             => 'CDO Business Permit',
                                                     'sec_dti'                     => 'SEC / DTI',
                                                     'company_profile'             => 'Company Profile',
-                                                    'nsrp_establishment_form'     => 'NSRP Establishment Form',
                                                     'no_pending_case_certificate' => 'Certificate of No Pending Case',
                                                     'vacancy_posting'             => 'Vacancy Posting',
                                                 ];
                                             @endphp
                                             <label class="form-label fw-semibold small" style="color:#7c2d12;">
-                                                Which document(s) ang sayop/kulang?
+                                                Which document(s) are incorrect or missing?
                                             </label>
                                             <div class="p-2 mb-2 rounded-3" style="background:#fff;border:1px solid #f0c674;">
                                                 @foreach($rejectDocs as $field => $label)
@@ -407,6 +366,53 @@
                                         data-bs-dismiss="modal"
                                         style="border:1.5px solid #a8e6cf;color:#2d7a5f;
                                                background:#fff;border-radius:8px;">
+                                        Close
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
+                    {{-- NSRP ESTABLISHMENT FORM DETAILS (read-only, gikan sa registration) --}}
+                    @if($req)
+                    <div class="modal fade" id="nsrpEstModal{{ $employer->id }}" tabindex="-1">
+                        <div class="modal-dialog modal-dialog-centered modal-lg">
+                            <div class="modal-content" style="border-radius:16px;border:none;">
+                                <div class="modal-header" style="background:linear-gradient(90deg,#90d870,#4dd9c0);border-radius:16px 16px 0 0;">
+                                    <h6 class="modal-title text-white fw-bold">
+                                        <i class="bi bi-clipboard-data-fill me-2"></i>NSRP Establishment Form
+                                    </h6>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body p-4">
+                                    <div style="font-size:11px;font-weight:700;color:#2d7a5f;margin-bottom:10px;">
+                                        I. Establishment Details
+                                    </div>
+                                    <div class="row g-2 mb-3" style="font-size:13px;">
+                                        <div class="col-md-6"><span style="color:#888;">Company Name:</span> <strong style="color:#2d7a5f;">{{ $employer->employerNsrp->company_name ?? 'None' }}</strong></div>
+                                        <div class="col-md-6"><span style="color:#888;">Trade Name:</span> <strong style="color:#2d7a5f;">{{ $employer->employerNsrp->trade_name ?? 'None' }}</strong></div>
+                                        <div class="col-md-6"><span style="color:#888;">TIN:</span> <strong style="color:#2d7a5f;">{{ $employer->employerNsrp->tin ?? 'None' }} @if($employer->employerNsrp->tin)({{ $employer->employerNsrp->tin_type ?? 'None' }})@endif</strong></div>
+                                        <div class="col-md-6"><span style="color:#888;">Employer Type:</span> <strong style="color:#2d7a5f;">{{ $employer->employerNsrp->employer_type ?? 'None' }}</strong></div>
+                                        <div class="col-md-6"><span style="color:#888;">Line of Business:</span> <strong style="color:#2d7a5f;">{{ $employer->employerNsrp->line_of_business ?? 'None' }}</strong></div>
+                                        <div class="col-md-6"><span style="color:#888;">Total Workforce:</span> <strong style="color:#2d7a5f;">{{ $employer->employerNsrp->total_workforce ?? 'None' }}</strong></div>
+                                        <div class="col-12"><span style="color:#888;">Establishment Address:</span> <strong style="color:#2d7a5f;">{{ collect([$employer->employerNsrp->est_barangay ?? null, $employer->employerNsrp->est_city_municipality ?? null, $employer->employerNsrp->est_province ?? null])->filter()->implode(', ') ?: 'None' }}</strong></div>
+                                    </div>
+
+                                    <div style="font-size:11px;font-weight:700;color:#2d7a5f;margin-bottom:10px;border-top:1px dashed #a8e6cf;padding-top:12px;">
+                                        II. Establishment Contact Details
+                                    </div>
+                                    <div class="row g-2" style="font-size:13px;">
+                                        <div class="col-md-6"><span style="color:#888;">Contact Person:</span> <strong style="color:#2d7a5f;">{{ $employer->employerNsrp->contact_person ?? 'None' }}</strong></div>
+                                        <div class="col-md-6"><span style="color:#888;">Position / Title:</span> <strong style="color:#2d7a5f;">{{ $employer->employerNsrp->position_title ?? 'None' }}</strong></div>
+                                        <div class="col-md-6"><span style="color:#888;">Mobile Number:</span> <strong style="color:#2d7a5f;">{{ $employer->employerNsrp->mobile_number ?? 'None' }}</strong></div>
+                                        <div class="col-md-6"><span style="color:#888;">Telephone No.:</span> <strong style="color:#2d7a5f;">{{ $employer->employerNsrp->telephone_no ?? 'None' }}</strong></div>
+                                        <div class="col-md-6"><span style="color:#888;">Fax No.:</span> <strong style="color:#2d7a5f;">{{ $employer->employerNsrp->fax_no ?? 'None' }}</strong></div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-sm fw-semibold" data-bs-dismiss="modal"
+                                        style="border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;border-radius:8px;">
                                         Close
                                     </button>
                                 </div>

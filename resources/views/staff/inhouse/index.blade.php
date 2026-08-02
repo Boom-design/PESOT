@@ -35,40 +35,27 @@
 
 {{-- STAT CARDS --}}
 <div class="row g-3 mb-4">
-    <div class="col-md-4">
+    <div class="col-md-6">
         <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
             <div class="fs-2 fw-bold" style="color:#4dd9c0;">{{ $totalAll }}</div>
-            <div class="text-muted small">Total</div>
+            <div class="text-muted small">Total (In-house)</div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-6">
         <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
             <div class="fs-2 fw-bold" style="color:#f59e0b;">{{ $totalPending }}</div>
-            <div class="text-muted small">Pending</div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
-            <div class="fs-2 fw-bold" style="color:#2d7a5f;">{{ $totalAccepted }}</div>
-            <div class="text-muted small">Accepted</div>
+            <div class="text-muted small">Pending Review</div>
         </div>
     </div>
 </div>
 
-{{-- FILTER + SEARCH --}}
-<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-    <div class="d-flex gap-2">
-        @foreach(['pending' => 'Pending', 'accepted' => 'Accepted'] as $val => $label)
-        <a href="{{ route('staff.inhouse', array_merge(request()->query(), ['status' => $val, 'page' => 1])) }}"
-           class="btn btn-sm fw-semibold"
-           style="{{ request('status','pending') === $val
-               ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;'
-               : 'border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;' }}
-               border-radius:8px;font-size:12px;padding:5px 16px;">
-            {{ $label }}
-        </a>
-        @endforeach
-    </div>
+<div class="mb-3 p-2 px-3 rounded-3" style="background:#f0f9f6;font-size:12px;color:#2d7a5f;">
+    <i class="bi bi-info-circle-fill me-1"></i>
+    Once approved, a job posting moves to the <strong>Job Vacancies</strong> tab.
+</div>
+
+{{-- SEARCH --}}
+<div class="d-flex justify-content-end mb-3 flex-wrap gap-2">
     <div class="input-group" style="max-width:260px;">
         <span class="input-group-text" style="border-color:#a8e6cf;background:#f0fdf9;">
             <i class="bi bi-search" style="color:#4dd9c0;"></i>

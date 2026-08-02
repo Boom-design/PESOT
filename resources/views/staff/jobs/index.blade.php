@@ -4,15 +4,23 @@
 
 {{-- TABS --}}
 <div class="d-flex gap-2 mb-4" style="overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;padding-bottom:4px;">
+    @if($staffRole === 'job_vacancy')
+    <a href="{{ route('staff.jobs.all') }}"
+       class="btn btn-sm fw-semibold"
+       style="border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;border-radius:8px;font-size:12px;padding:5px 16px;white-space:nowrap;flex-shrink:0;">
+        <i class="bi bi-list-ul me-1"></i> All Job Postings
+    </a>
+    @else
     <a href="{{ route('staff.inhouse') }}"
        class="btn btn-sm fw-semibold"
        style="border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;border-radius:8px;font-size:12px;padding:5px 16px;white-space:nowrap;flex-shrink:0;">
         <i class="bi bi-calendar-check-fill me-1"></i> In-house
     </a>
+    @endif
     <a href="{{ route('staff.jobs') }}"
        class="btn btn-sm fw-semibold"
        style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;border-radius:8px;font-size:12px;padding:5px 16px;white-space:nowrap;flex-shrink:0;">
-        <i class="bi bi-briefcase-fill me-1"></i> Job Vacancies
+        <i class="bi bi-briefcase-fill me-1"></i> {{ $staffRole === 'job_vacancy' ? 'Office Based' : 'Job Vacancies' }}
     </a>
     <a href="{{ route('staff.inhouse.jobfair') }}"
        class="btn btn-sm fw-semibold"
@@ -24,16 +32,11 @@
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <div>
         <h5 class="fw-bold mb-1" style="color:#2d7a5f;">
-            <i class="bi bi-briefcase-fill me-2" style="color:#4dd9c0;"></i>List of Job Vacancies
+            <i class="bi bi-briefcase-fill me-2" style="color:#4dd9c0;"></i>
+            {{ $staffRole === 'job_vacancy' ? 'List of Office Based Job Vacancies' : 'List of Job Vacancies' }}
         </h5>
         <p class="mb-0" style="font-size:13px;color:#888;">Manage posted job vacancies</p>
     </div>
-    <a href="{{ route('staff.jobs.create') }}"
-       class="btn btn-sm fw-semibold w-100 w-md-auto"
-       style="background:linear-gradient(90deg,#90d870,#4dd9c0);
-              color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;">
-        <i class="bi bi-plus-circle-fill me-1"></i> Post Job Vacancy
-    </a>
 </div>
 
 {{-- STAT CARDS --}}
@@ -137,21 +140,22 @@
                                 {{ $badge['label'] }}
                             </span>
                         </td>
-                        <td style="padding:12px 16px;text-align:center;">
-                            <button type="button" class="btn btn-sm fw-semibold me-1"
-                                style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;border-radius:8px;font-size:12px;padding:6px 14px;"
-                                data-bs-toggle="modal" data-bs-target="#jobModal{{ $job->id }}">
-                                <i class="bi bi-eye-fill me-1"></i>View
-                            </button>
+                        <td style="padding:12px 16px;">
+                            <div class="d-flex flex-column gap-1" style="min-width:150px;">
+                                <button type="button" class="btn btn-sm fw-semibold d-flex align-items-center justify-content-center gap-1"
+                                    style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;border-radius:8px;font-size:12px;padding:6px 12px;"
+                                    data-bs-toggle="modal" data-bs-target="#jobModal{{ $job->id }}">
+                                    <i class="bi bi-eye-fill"></i> View Details
+                                </button>
 
-                            @if($job->posting_status !== 'pending')
-                                <a href="{{ route('staff.jobs.qualified', $job->id) }}"
-                                   class="btn btn-sm fw-semibold me-1"
-                                   style="background:#2d7a5f;color:#fff;border:none;border-radius:8px;font-size:12px;"
-                                   title="Qualified Applicants">
-                                    <i class="bi bi-person-check-fill"></i>
-                                </a>
-                            @endif
+                                @if($job->posting_status !== 'pending')
+                                    <a href="{{ route('staff.jobs.qualified', $job->id) }}"
+                                       class="btn btn-sm fw-semibold d-flex align-items-center justify-content-center gap-1"
+                                       style="background:#fff;color:#2d7a5f;border:1.5px solid #a8e6cf;border-radius:8px;font-size:12px;padding:6px 12px;">
+                                        <i class="bi bi-person-check-fill"></i> Applicants
+                                    </a>
+                                @endif
+                            </div>
                         </td>
                     </tr>
 
@@ -327,39 +331,40 @@
         </div>
 
         @if($jobs->hasPages())
-        <div class="d-flex justify-content-between align-items-center px-3 py-3"
-            style="border-top:1px solid #f0f9f6;">
-            <div style="font-size:12px;color:#888;">
-                Showing {{ $jobs->firstItem() }}–{{ $jobs->lastItem() }}
-                of {{ $jobs->total() }} results
+        <div class="d-flex justify-content-center px-3 py-3" style="border-top:1px solid #f0f9f6;">
+            <div class="d-inline-flex align-items-center gap-2 px-2 py-1"
+                style="background:#fff;border:1px solid #e8f5f0;border-radius:30px;box-shadow:0 4px 14px rgba(0,0,0,0.06);">
+
+                @if($jobs->onFirstPage())
+                    <span class="d-flex align-items-center justify-content-center"
+                        style="width:34px;height:34px;border-radius:50%;border:1.5px solid #e0e0e0;color:#ccc;">
+                        <i class="bi bi-chevron-left"></i>
+                    </span>
+                @else
+                    <a href="{{ $jobs->previousPageUrl() }}&status={{ request('status','all') }}&search={{ request('search') }}"
+                       class="d-flex align-items-center justify-content-center"
+                       style="width:34px;height:34px;border-radius:50%;border:1.5px solid #a8e6cf;color:#2d7a5f;text-decoration:none;">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                @endif
+
+                <span class="fw-semibold px-2" style="font-size:13px;color:#2d7a5f;white-space:nowrap;">
+                    Step {{ $jobs->currentPage() }} of {{ $jobs->lastPage() }}
+                </span>
+
+                @if($jobs->hasMorePages())
+                    <a href="{{ $jobs->nextPageUrl() }}&status={{ request('status','all') }}&search={{ request('search') }}"
+                       class="d-flex align-items-center gap-1 fw-semibold text-decoration-none"
+                       style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border-radius:20px;padding:8px 18px;font-size:13px;">
+                        Next <i class="bi bi-chevron-right"></i>
+                    </a>
+                @else
+                    <span class="d-flex align-items-center gap-1 fw-semibold"
+                        style="background:#e0e0e0;color:#aaa;border-radius:20px;padding:8px 18px;font-size:13px;">
+                        Next <i class="bi bi-chevron-right"></i>
+                    </span>
+                @endif
             </div>
-            <nav>
-                <ul class="pagination pagination-sm mb-0 gap-1">
-                    <li class="page-item {{ $jobs->onFirstPage() ? 'disabled' : '' }}">
-                        <a class="page-link rounded-2" style="border-color:#a8e6cf;color:#2d7a5f;"
-                           href="{{ $jobs->previousPageUrl() }}&status={{ request('status','all') }}&search={{ request('search') }}">
-                            <i class="bi bi-chevron-left"></i>
-                        </a>
-                    </li>
-                    @foreach($jobs->getUrlRange(1, $jobs->lastPage()) as $page => $url)
-                    <li class="page-item {{ $page == $jobs->currentPage() ? 'active' : '' }}">
-                        <a class="page-link rounded-2"
-                           style="{{ $page == $jobs->currentPage()
-                                ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);border-color:transparent;color:#fff;'
-                                : 'border-color:#a8e6cf;color:#2d7a5f;' }}"
-                           href="{{ $url }}&status={{ request('status','all') }}&search={{ request('search') }}">
-                            {{ $page }}
-                        </a>
-                    </li>
-                    @endforeach
-                    <li class="page-item {{ !$jobs->hasMorePages() ? 'disabled' : '' }}">
-                        <a class="page-link rounded-2" style="border-color:#a8e6cf;color:#2d7a5f;"
-                           href="{{ $jobs->nextPageUrl() }}&status={{ request('status','all') }}&search={{ request('search') }}">
-                            <i class="bi bi-chevron-right"></i>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
         </div>
         @endif
     </div>

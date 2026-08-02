@@ -347,6 +347,10 @@
                class="{{ request()->routeIs('staff.jobfair.events*') ? 'active' : '' }}">
                 <i class="bi bi-calendar-event-fill"></i> Job Fair Events
             </a>
+            <a href="{{ route('staff.jobfair.postings') }}"
+               class="{{ request()->routeIs('staff.jobfair.postings*') ? 'active' : '' }}">
+                <i class="bi bi-briefcase-fill"></i> Job Postings
+            </a>
             <a href="{{ route('staff.jobfair.send') }}"
                class="{{ request()->routeIs('staff.jobfair.send*') ? 'active' : '' }}">
                 <i class="bi bi-megaphone-fill"></i> Notification
@@ -367,8 +371,8 @@
                 <i class="bi bi-building"></i> Employers
             </a>
             <a href="{{ route('staff.jobs') }}"
-               class="{{ request()->is('staff/jobs') || request()->is('staff/jobs/*') ? 'active' : '' }}">
-                <i class="bi bi-briefcase-fill"></i> Job Vacancies
+               class="{{ request()->is('staff/jobs') || request()->is('staff/jobs/*') || request()->is('staff/jobfair*') ? 'active' : '' }}">
+                <i class="bi bi-briefcase-fill"></i> Manage Job Activities
             </a>
             <a href="{{ route('staff.reports.employers') }}"
                class="{{ request()->routeIs('staff.reports.employers*') ? 'active' : '' }}">
@@ -440,9 +444,11 @@
                         <li>
                             <a href="{{ 
                             $notif->reference_type === 'employer_requirement' ? route('staff.requirements.view', $notif->reference_id) :
+                            ($notif->reference_type === 'employer_registration' ? route('staff.employers', ['tab' => 'pre']) :
+                            ($notif->reference_type === 'jobseeker_registration' ? route('staff.registrations.view', $notif->reference_id) :
                             ($notif->reference_type === 'job' ? route('staff.jobs') :
                             ($notif->reference_type === 'inhouse_schedule' ? route('staff.inhouse') :
-                            ($notif->reference_type === 'job_fair' ? route('staff.jobfair.events') : '#')))
+                            ($notif->reference_type === 'job_fair' ? route('staff.jobfair.events') : route('staff.notifications.index'))))))
                            }}"
                            class="notif-item {{ !$notif->is_read ? 'unread' : '' }} text-decoration-none d-block"
                            onclick="staffMarkRead({{ $notif->id }})">

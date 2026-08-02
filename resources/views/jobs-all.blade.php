@@ -54,6 +54,17 @@
         .job-badge-deadline { background: #fff8e1; color: #f9a825; font-size: 10.5px; padding: 3px 9px; border-radius: 20px; font-weight: 600; white-space: nowrap; }
         .btn-view-more { background: linear-gradient(90deg, var(--peso-light), var(--peso-green)); border: none; color: #fff; font-weight: 600; border-radius: 10px; padding: 9px 16px; font-size: 11.5px; margin-top: auto; }
 
+        .job-type-tab-btn {
+            padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 700;
+            text-decoration: none; color: rgba(255,255,255,0.75);
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+        }
+        .job-type-tab-btn:hover { color: #fff; background: rgba(255,255,255,0.18); }
+        .job-type-tab-btn.active {
+            background: linear-gradient(90deg, var(--peso-light), var(--peso-green));
+            color: #0f2e24; border-color: transparent;
+        }
+
         .empty-box { background: rgba(255,255,255,0.9); border-radius: 16px; padding: 48px 20px; text-align: center; }
         .empty-box i { font-size: 40px; color: #c0e8dc; }
         .empty-box h6 { color: var(--peso-dark); font-weight: 700; margin-top: 12px; }
@@ -101,6 +112,12 @@
         <div class="page-header">
             <h1>All Job Postings</h1>
             <p>{{ $jobs->total() }} open position{{ $jobs->total() === 1 ? '' : 's' }} available right now.</p>
+        </div>
+
+        <div class="d-flex gap-2 mb-4" style="flex-wrap:wrap;">
+            <a href="{{ route('jobs.all', ['job_type' => 'all']) }}" class="job-type-tab-btn {{ $jobType === 'all' ? 'active' : '' }}">All</a>
+            <a href="{{ route('jobs.all', ['job_type' => 'local']) }}" class="job-type-tab-btn {{ $jobType === 'local' ? 'active' : '' }}">Local</a>
+            <a href="{{ route('jobs.all', ['job_type' => 'ofw']) }}" class="job-type-tab-btn {{ $jobType === 'ofw' ? 'active' : '' }}">OFW</a>
         </div>
 
         @if($jobs->isEmpty())

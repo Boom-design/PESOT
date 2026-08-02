@@ -13,7 +13,7 @@
 
         .bg-wrapper {
             position: fixed; inset: 0;
-            background: url('{{ asset('images/cityhall.jpg') }}') center center / cover no-repeat;
+            background: url('{{ asset('images/cityhall.png') }}') center center / cover no-repeat;
             z-index: 0;
         }
         .bg-overlay {

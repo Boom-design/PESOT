@@ -173,6 +173,34 @@
                 </div>
                 @endif
 
+                {{-- Match Breakdown ── --}}
+                @if(!empty($matchCriteria))
+                <div class="mb-2">
+                    <h6 style="font-size:13px; font-weight:700; color:#2d7a5f; margin-bottom:12px;">
+                        <i class="bi bi-list-check me-2" style="color:#4dd9c0;"></i>Match Breakdown
+                    </h6>
+                    <div class="row g-2">
+                        @foreach($matchCriteria as $c)
+                        @php
+                            $iconColor = $c['matched'] === true ? '#2d7a5f' : ($c['matched'] === 'partial' ? '#f9a825' : '#e53935');
+                            $icon      = $c['matched'] === true ? 'bi-check-circle-fill' : ($c['matched'] === 'partial' ? 'bi-dash-circle-fill' : 'bi-x-circle-fill');
+                        @endphp
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-start gap-2 p-2 rounded-2 h-100" style="background:#f0f9f6; border:1px solid #a8e6cf;">
+                                <i class="bi {{ $icon }}" style="color:{{ $iconColor }}; font-size:14px; margin-top:1px;"></i>
+                                <div>
+                                    <div style="font-size:12px; color:#2d7a5f; font-weight:600;">{{ $c['label'] }}</div>
+                                    @if($c['note'])
+                                    <div style="font-size:11px; color:#888;">{{ $c['note'] }}</div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
             </div>
         </div>
     </div>
@@ -300,4 +328,62 @@
 </div>
 @endif
 
+@endsection
+
+@section('scripts')
+@if(session('show_inhouse_prompt') || $showInhouseParticipationPrompt ?? false)
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        Swal.fire({
+            title: 'In-house Interview',
+            text: 'Are you sure you want to participate in this in-house interview?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#4dd9c0',
+            cancelButtonColor: '#e05252',
+            confirmButtonText: 'Yes, I will participate',
+            cancelButtonText: 'No, decline',
+            allowOutsideClick: false,
+        }).then((result) => {
+            const response = result.isConfirmed ? 'accepted' : 'declined';
+            fetch('{{ url("/jobseeker/applications") }}/{{ session("show_inhouse_prompt") ?? ($application->id ?? "") }}/inhouse-response', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ response: response }),
+            }).then(() => location.reload());
+        });
+    });
+</script>
+@endif
+
+@if(session('show_office_prompt'))
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        Swal.fire({
+            title: 'Office Based Job',
+            text: 'Are you sure you want to participate in {{ addslashes($job->company->company_name ?? "this company") }}, {{ addslashes(trim(($job->company->est_barangay ?? "") . ", " . ($job->company->est_city_municipality ?? "") . ", " . ($job->company->est_province ?? ""), ", ")) }}?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#4dd9c0',
+            cancelButtonColor: '#e05252',
+            confirmButtonText: 'Yes, I will participate',
+            cancelButtonText: 'No, decline',
+            allowOutsideClick: false,
+        }).then((result) => {
+            const response = result.isConfirmed ? 'accepted' : 'declined';
+            fetch('{{ url("/jobseeker/applications") }}/{{ session("show_office_prompt") }}/office-response', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ response: response }),
+            }).then(() => location.reload());
+        });
+    });
+</script>
+@endif
 @endsection

@@ -71,8 +71,39 @@
              style="background:#f0f9f6; border:1px solid #a8e6cf;">
             <i class="bi bi-info-circle-fill" style="color:#4dd9c0; font-size:18px; margin-top:1px;"></i>
             <div style="font-size:12px; color:#2d7a5f; line-height:1.6;">
-                Please upload all <strong>6 required documents</strong> to get verified by PESO staff.
+                Please upload all <strong>5 required documents</strong> to get verified by PESO staff.
                 Accepted formats: <strong>JPG, PNG, PDF</strong> (max 5MB each).
+            </div>
+        </div>
+
+        {{-- ── ESTABLISHMENT DETAILS (read-only, gikan sa registration) ── --}}
+        @php $nsrp = $company->employerNsrp; @endphp
+        <div class="mb-4 p-3 rounded-3" style="background:#fafffe; border:1.5px solid #e8f5f0;">
+            <div style="font-size:12px; font-weight:700; color:#2d7a5f; margin-bottom:12px;">
+                <i class="bi bi-clipboard-data me-1" style="color:#4dd9c0;"></i>
+                Establishment Details (from your registration)
+            </div>
+            <div class="row g-2 mb-3" style="font-size:12.5px;">
+                <div class="col-md-6"><span style="color:#888;">Company Name:</span> <strong style="color:#2d7a5f;">{{ $nsrp->company_name ?? '—' }}</strong></div>
+                <div class="col-md-6"><span style="color:#888;">Trade Name:</span> <strong style="color:#2d7a5f;">{{ $nsrp->trade_name ?? '—' }}</strong></div>
+                <div class="col-md-6"><span style="color:#888;">TIN:</span> <strong style="color:#2d7a5f;">{{ $nsrp->tin ?? '—' }} ({{ $nsrp->tin_type ?? '—' }})</strong></div>
+                <div class="col-md-6"><span style="color:#888;">Employer Type:</span> <strong style="color:#2d7a5f;">{{ $nsrp->employer_type ?? '—' }}</strong></div>
+                <div class="col-md-6"><span style="color:#888;">Line of Business:</span> <strong style="color:#2d7a5f;">{{ $nsrp->line_of_business ?? '—' }}</strong></div>
+                <div class="col-md-6"><span style="color:#888;">Total Workforce:</span> <strong style="color:#2d7a5f;">{{ $nsrp->total_workforce ?? '—' }}</strong></div>
+                <div class="col-12"><span style="color:#888;">Address:</span> <strong style="color:#2d7a5f;">{{ collect([$nsrp->est_barangay ?? null, $nsrp->est_city_municipality ?? null, $nsrp->est_province ?? null])->filter()->implode(', ') ?: '—' }}</strong></div>
+            </div>
+            <div style="font-size:11px; font-weight:700; color:#2d7a5f; margin-bottom:8px; border-top:1px dashed #a8e6cf; padding-top:10px;">
+                Contact Details
+            </div>
+            <div class="row g-2" style="font-size:12.5px;">
+                <div class="col-md-6"><span style="color:#888;">Contact Person:</span> <strong style="color:#2d7a5f;">{{ $nsrp->contact_person ?? '—' }}</strong></div>
+                <div class="col-md-6"><span style="color:#888;">Position / Title:</span> <strong style="color:#2d7a5f;">{{ $nsrp->position_title ?? '—' }}</strong></div>
+                <div class="col-md-6"><span style="color:#888;">Mobile Number:</span> <strong style="color:#2d7a5f;">{{ $nsrp->mobile_number ?? '—' }}</strong></div>
+                <div class="col-md-6"><span style="color:#888;">Telephone No.:</span> <strong style="color:#2d7a5f;">{{ $nsrp->telephone_no ?? '—' }}</strong></div>
+                <div class="col-md-6"><span style="color:#888;">Fax No.:</span> <strong style="color:#2d7a5f;">{{ $nsrp->fax_no ?? '—' }}</strong></div>
+            </div>
+            <div style="font-size:10.5px;color:#888;margin-top:10px;">
+                <i class="bi bi-info-circle me-1"></i>To update these details, please contact PESO staff.
             </div>
         </div>
 
@@ -84,7 +115,6 @@
                 ['field' => 'business_permit',             'label' => 'CDO Business Permit 2026',                    'icon' => 'bi-building',          'hint' => 'Upload a clear photo or scan of your business permit.'],
                 ['field' => 'sec_dti',                     'label' => 'SEC / DTI',                                   'icon' => 'bi-bank',              'hint' => 'SEC for Corporation, DTI for Single Proprietorship.'],
                 ['field' => 'company_profile',             'label' => 'Company Profile',                             'icon' => 'bi-file-person',       'hint' => 'Upload your company profile document.'],
-                ['field' => 'nsrp_establishment_form',     'label' => 'Filled-up NSRP Establishment Form',          'icon' => 'bi-clipboard-check',   'hint' => 'Accomplished NSRP establishment form from DOLE.'],
                 ['field' => 'no_pending_case_certificate', 'label' => 'Certificate of No Pending Case',             'icon' => 'bi-patch-check',       'hint' => 'From DOLE-CDO Field Office. Pwede to-follow.'],
                 ['field' => 'vacancy_posting',             'label' => 'Vacancy Posting',                            'icon' => 'bi-file-text',         'hint' => '2 sets, letter size in portrait format with readable fonts.'],
             ];

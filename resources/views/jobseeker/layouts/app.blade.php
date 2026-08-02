@@ -167,6 +167,24 @@
             box-shadow: 0 8px 24px rgba(0,0,0,0.08);
             min-width: 160px; padding: 8px;
         }
+        .notif-dropdown-menu {
+            min-width: 300px !important;
+            max-width: calc(100vw - 32px);
+            padding: 0 !important;
+            overflow: hidden;
+        }
+        .notif-dropdown-menu .notif-header {
+            background: linear-gradient(90deg, #90d870, #4dd9c0);
+            padding: 12px 16px;
+        }
+        .notif-dropdown-menu .notif-header span {
+            color: #fff; font-weight: 700; font-size: 13px;
+        }
+        .notif-dropdown-menu .dropdown-item {
+            white-space: normal;
+            padding: 10px 16px;
+            border-bottom: 1px solid #f0f9f6;
+        }
         .topbar .dropdown-item {
             border-radius: 8px; font-size: 13px;
             color: var(--peso-dark); padding: 8px 12px;
@@ -279,6 +297,15 @@
     @php
         $jobseekerRegistration = \App\Models\JobseekerRegistration::where('user_id', Auth::id())->first();
         $hasNsrp = $jobseekerRegistration !== null;
+
+        // ── Job Fair Attendance Confirmation — naa bay unresolved (na-notify na pero wala pa nag-respond) ──
+        $pendingAttendanceConfirmation = $jobseekerRegistration
+            ? \App\Models\JobFairRegistration::with('jobFair')
+                ->where('user_id', $jobseekerRegistration->id)
+                ->whereNull('is_attended')
+                ->whereNotNull('attendance_notified_at')
+                ->first()
+            : null;
     @endphp
     <nav class="sidebar-nav">
         <ul class="nav flex-column">
@@ -385,21 +412,30 @@
                     </span>
                 @endif
             </a>
-            <ul class="dropdown-menu dropdown-menu-end" style="min-width:300px; max-height:400px; overflow-y:auto;">
-                <li class="px-3 py-2 border-bottom">
-                    <span style="font-size:13px; font-weight:700; color:#2d7a5f;">
-                        <i class="bi bi-bell me-1"></i> Notifications
-                    </span>
+            <ul class="dropdown-menu dropdown-menu-end notif-dropdown-menu" style="max-height:400px; overflow-y:auto;">
+                <li class="notif-header">
+                    <span><i class="bi bi-bell me-1"></i> Notifications</span>
                 </li>
                 @php
                     $notifications = $jobseekerRegistration
-                        ? \App\Models\Announcement::where('jobseeker_id', $jobseekerRegistration->id)->orderBy('created_at', 'desc')->take(10)->get()
+                        ? \App\Models\Announcement::where('jobseeker_id', $jobseekerRegistration->id)->orderBy('created_at', 'desc')->take(5)->get()
                         : collect();
+
+                    $notifTargetUrl = function ($notif) {
+                        return match($notif->reference_type) {
+                            'job'                     => route('jobseeker.jobs.show', $notif->reference_id),
+                            'inhouse_schedule'        => route('jobseeker.schedules', ['type' => 'inhouse']),
+                            'job_fair'                => route('jobseeker.schedules', ['type' => 'jobfair']),
+                            'job_fair_registration'   => route('jobseeker.schedules', ['type' => 'jobfair']),
+                            'jobseeker_registration'  => route('jobseeker.nsrp'),
+                            default                   => route('jobseeker.notifications.index'),
+                        };
+                    };
                 @endphp
                 @forelse($notifications as $notif)
                     <li>
                         <a class="dropdown-item py-2 {{ !$notif->is_read ? 'bg-light' : '' }}"
-                           href="#"
+                           href="{{ $notifTargetUrl($notif) }}"
                            onclick="markRead({{ $notif->id }})">
                             <div style="font-size:12px; font-weight:{{ !$notif->is_read ? '700' : '500' }}; color:#2d7a5f;">
                                 {{ $notif->title }}
@@ -414,6 +450,13 @@
                         <p style="font-size:12px; color:#aaa; margin-top:8px;">No notifications yet</p>
                     </li>
                 @endforelse
+                <li>
+                    <a href="{{ route('jobseeker.notifications.index') }}"
+                       class="text-decoration-none d-block text-center py-2"
+                       style="font-size:12px;font-weight:700;color:#2d7a5f;border-top:1px solid #f0f9f6;">
+                        View More <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </li>
             </ul>
         </div>
 
@@ -478,7 +521,8 @@
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',
                 'Content-Type': 'application/json'
             }
-        }).then(() => location.reload());
+        });
+        // dili mag-preventDefault — tugutan ang link mo-navigate diretso sa iyang target page
     }
 
     @if(session('success'))
@@ -499,6 +543,32 @@
             confirmButtonColor: '#e05252',
             confirmButtonText: 'OK',
         });
+    @endif
+
+    @if($pendingAttendanceConfirmation)
+    document.addEventListener('DOMContentLoaded', function () {
+        Swal.fire({
+            title: 'Job Fair Attendance',
+            text: 'Did you attend/participate in {{ addslashes($pendingAttendanceConfirmation->jobFair->title ?? 'the job fair') }} today at {{ addslashes($pendingAttendanceConfirmation->jobFair->venue ?? '') }}?',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#4dd9c0',
+            cancelButtonColor: '#e05252',
+            confirmButtonText: 'Yes, I attended',
+            cancelButtonText: 'No, I did not attend',
+            allowOutsideClick: false,
+        }).then((result) => {
+            const response = result.isConfirmed ? 'yes' : 'no';
+            fetch('{{ url("/jobseeker/jobfair-registrations") }}/{{ $pendingAttendanceConfirmation->id }}/attendance-response', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ response: response }),
+            }).then(() => location.reload());
+        });
+    });
     @endif
 </script>
 @yield('scripts')

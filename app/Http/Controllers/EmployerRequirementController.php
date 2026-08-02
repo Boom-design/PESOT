@@ -173,7 +173,6 @@ if ($isOverseas) {
             'business_permit',
             'sec_dti',
             'company_profile',
-            'nsrp_establishment_form',
             'no_pending_case_certificate',
             'vacancy_posting',
         ];

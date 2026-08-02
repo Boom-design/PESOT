@@ -13,12 +13,14 @@ class JobFairRegistration extends Model
         'is_early',
         'is_attended',
         'attended_at',
+        'attendance_notified_at',
     ];
 
     protected $casts = [
-        'is_early'    => 'boolean',
-        'is_attended' => 'boolean',
-        'attended_at' => 'datetime',
+        'is_early'                => 'boolean',
+        'is_attended'             => 'boolean',
+        'attended_at'             => 'datetime',
+        'attendance_notified_at'  => 'datetime',
     ];
 
     public function jobFair()

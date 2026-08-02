@@ -78,7 +78,6 @@
                         'business_permit'          => 'CDO Business Permit 2026',
                         'sec_dti'                  => 'SEC / DTI',
                         'company_profile'          => 'Company Profile',
-                        'nsrp_establishment_form'  => 'NSRP Establishment Form',
                         'no_pending_case_certificate' => 'Certificate of No Pending Case',
                         'vacancy_posting'          => 'Vacancy Posting',
                     ];
@@ -101,6 +100,26 @@
                     @endif
                 </div>
                 @endforeach
+            </div>
+        </div>
+
+        {{-- ── ESTABLISHMENT DETAILS (read-only, gikan sa registration — NSRP Establishment Form I & II) ── --}}
+        @php $nsrp = $requirement->employer; @endphp
+        <div class="card border-0 shadow-sm rounded-3 mt-3">
+            <div class="card-body p-4">
+                <h6 class="fw-bold mb-3" style="color:#2d7a5f;">
+                    <i class="bi bi-clipboard-data-fill me-2" style="color:#4dd9c0;"></i>
+                    Establishment Details <span style="font-weight:400;color:#888;font-size:11px;">(NSRP Form I & II, from registration)</span>
+                </h6>
+                <table class="table table-borderless mb-0" style="font-size:12.5px;">
+                    <tr><td class="fw-semibold" style="color:#2d7a5f;width:45%;">Trade Name</td><td>{{ $nsrp->trade_name ?? '—' }}</td></tr>
+                    <tr><td class="fw-semibold" style="color:#2d7a5f;">TIN</td><td>{{ $nsrp->tin ?? '—' }} ({{ $nsrp->tin_type ?? '—' }})</td></tr>
+                    <tr><td class="fw-semibold" style="color:#2d7a5f;">Line of Business</td><td>{{ $nsrp->line_of_business ?? '—' }}</td></tr>
+                    <tr><td class="fw-semibold" style="color:#2d7a5f;">Total Workforce</td><td>{{ $nsrp->total_workforce ?? '—' }}</td></tr>
+                    <tr><td class="fw-semibold" style="color:#2d7a5f;">Establishment Address</td><td>{{ collect([$nsrp->est_barangay ?? null, $nsrp->est_city_municipality ?? null, $nsrp->est_province ?? null])->filter()->implode(', ') ?: '—' }}</td></tr>
+                    <tr><td class="fw-semibold" style="color:#2d7a5f;">Contact Person</td><td>{{ $nsrp->contact_person ?? '—' }} ({{ $nsrp->position_title ?? '—' }})</td></tr>
+                    <tr><td class="fw-semibold" style="color:#2d7a5f;">Mobile / Telephone</td><td>{{ $nsrp->mobile_number ?? '—' }} / {{ $nsrp->telephone_no ?? '—' }}</td></tr>
+                </table>
             </div>
         </div>
     </div>
@@ -143,14 +162,13 @@
                             'business_permit'             => 'CDO Business Permit',
                             'sec_dti'                     => 'SEC / DTI',
                             'company_profile'             => 'Company Profile',
-                            'nsrp_establishment_form'     => 'NSRP Establishment Form',
                             'no_pending_case_certificate' => 'Certificate of No Pending Case',
                             'vacancy_posting'             => 'Vacancy Posting',
                         ];
                     @endphp
                     <div class="mb-3">
                         <label class="form-label fw-semibold small" style="color:#2d7a5f;">
-                            Which document(s) ang sayop/kulang? <span class="text-danger">*</span>
+                            Which document(s) are incorrect or missing? <span class="text-danger">*</span>
                         </label>
                         <div class="p-2 rounded-3" style="background:#fff5f5;border:1px solid #ffcdd2;">
                             @foreach($rejectDocs as $field => $label)

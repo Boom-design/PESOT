@@ -60,18 +60,18 @@
                         </div>
                     </div>
 
-                    <div id="initialInhouseFields" class="row g-3 mb-4" style="display:none;">
+                    <div id="initialDateFields" class="row g-3 mb-4" style="display:flex;">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Preferred Date *</label>
                             <input type="date" name="preferred_date" id="initialPreferredDateInput" class="form-control"
                                 min="{{ now()->format('Y-m-d') }}"
                                 style="border-color:#a8e6cf;font-size:13px;border-radius:8px;">
-                            <small style="font-size:11px;color:#888;display:block;margin-top:4px;">
+                            <small id="initialPreferredDateHint" style="font-size:11px;color:#888;display:none;margin-top:4px;">
                                 Interview time will be scheduled between 8:00 AM – 5:00 PM.
                             </small>
                             <div id="initialDateAvailabilityNote" style="font-size:11px;margin-top:4px;"></div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-6" id="initialVenueFields" style="display:none;">
                             <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Venue *</label>
                             <select name="venue_type" id="initialVenueTypeSelect" class="form-select"
                                 style="border-color:#a8e6cf;font-size:13px;border-radius:8px;">
@@ -116,32 +116,6 @@
                                     </select>
                                 </div>
                                 <div class="col-12">
-                                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Major Industry Group *</label>
-                                    <select name="positions[{{ $i }}][industry_group]" class="form-select vacancy-field vacancy-locked" required
-                                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;background:#f0f9f6;pointer-events:none;" tabindex="-1">
-                                        <option value="">— Select Industry Group —</option>
-                                        @foreach([
-                                            'Agriculture, Hunting and Forestry, Fishing',
-                                            'Mining and Quarrying',
-                                            'Manufacturing',
-                                            'Construction',
-                                            'Wholesale, Retail Trade, Repair of Motor Vehicles, Motorcycles, & Personal and Household Goods',
-                                            'Hotel and Restaurants',
-                                            'Transport, Storage and Communications',
-                                            'Financial Intermediation',
-                                            'Real Estate, Renting and Business Activities',
-                                            'Public Administration and Defense, Compulsory Social Security',
-                                            'Education',
-                                            'Health and Social Work',
-                                            'Other Community, Social and Personal Activities',
-                                            'Extra-territorial Organization and Bodies',
-                                            'Overseas Manpower Services',
-                                        ] as $group)
-                                        <option value="{{ $group }}" {{ ($pos['industry_group'] ?? '') === $group ? 'selected' : '' }}>{{ $group }}</option>
-                                        @endforeach
-                                    </select>
-                                </div>
-                                <div class="col-12">
                                     <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Job Description *</label>
                                     <textarea name="positions[{{ $i }}][description]" rows="2" readonly required
                                         class="form-control vacancy-field"
@@ -165,7 +139,7 @@
                                         value="{{ $pos['slots'] ?? '' }}" readonly required min="1"
                                         style="border-color:#a8e6cf;font-size:13px;border-radius:8px;background:#f0f9f6;">
                                 </div>
-                                <div class="col-md-2">
+                                <div class="col-md-2 deadline-field-wrap">
                                     <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Deadline</label>
                                     <input type="date" name="positions[{{ $i }}][deadline]" class="form-control vacancy-field"
                                         value="{{ $pos['deadline'] ?? '' }}" readonly
@@ -331,35 +305,27 @@
                         <td>{{ $job->slots }}</td>
                         <td>{{ $job->deadline ? \Carbon\Carbon::parse($job->deadline)->format('M d, Y') : '—' }}</td>
                         <td>
-                            <span class="badge-{{ $job->status }}">
-                                {{ ucfirst($job->status) }}
-                            </span>
+                            @if($job->is_expired)
+                                <span class="badge-closed" title="Deadline has passed">Closed (Expired)</span>
+                            @else
+                                <span class="badge-{{ $job->status }}">{{ ucfirst($job->status) }}</span>
+                            @endif
                         </td>
                         <td>
                             <div class="d-flex gap-1">
-                                <a href="{{ route('company.applicants', $job->id) }}"
-                                   class="btn btn-sm btn-peso py-1 px-2" style="font-size:11px;"
-                                   title="View Applicants">
-                                    <i class="bi bi-people"></i>
-                                </a>
-                                <a href="{{ route('company.jobs.qualified', $job->id) }}"
-                                   class="btn btn-sm py-1 px-2"
-                                   style="font-size:11px;background:#2d7a5f;color:#fff;border:none;border-radius:8px;"
-                                   title="Qualified Applicants">
-                                    <i class="bi bi-person-check-fill"></i>
-                                </a>
+                                @if($job->status === 'closed')
                                 <a href="{{ route('company.jobs.edit', $job->id) }}"
                                    class="btn btn-sm btn-peso-outline py-1 px-2" style="font-size:11px;"
                                    title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                <button
-                                    class="btn btn-sm py-1 px-2"
-                                    style="font-size:11px; background:#fff5f5; color:#e53935; border:1px solid #ffcdd2; border-radius:8px;"
-                                    onclick="confirmDelete({{ $job->id }}, '{{ $job->title }}')"
-                                    title="Delete">
-                                    <i class="bi bi-trash"></i>
+                                @else
+                                <button type="button" class="btn btn-sm py-1 px-2" disabled
+                                    style="font-size:11px;background:#f5f5f5;color:#bbb;border:1px solid #e0e0e0;border-radius:8px;cursor:not-allowed;"
+                                    title="Cannot edit — already approved and open">
+                                    <i class="bi bi-pencil"></i>
                                 </button>
+                                @endif
                             </div>
                         </td>
                     </tr>
@@ -413,18 +379,18 @@
                         </div>
                     </div>
 
-                    <div id="inhouseFields" class="row g-3 mb-4" style="display:none;">
+                    <div id="dateFields" class="row g-3 mb-4" style="display:flex;">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Preferred Date *</label>
                             <input type="date" name="preferred_date" id="preferredDateInput" class="form-control"
                                 min="{{ now()->format('Y-m-d') }}"
                                 style="border-color:#a8e6cf;font-size:13px;border-radius:8px;">
-                            <small style="font-size:11px;color:#888;display:block;margin-top:4px;">
+                            <small id="preferredDateHint" style="font-size:11px;color:#888;display:none;margin-top:4px;">
                                 Interview time will be scheduled between 8:00 AM – 5:00 PM.
                             </small>
                             <div id="dateAvailabilityNote" style="font-size:11px;margin-top:4px;"></div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-6" id="venueFields" style="display:none;">
                             <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Venue *</label>
                             <select name="venue_type" id="venueTypeSelect" class="form-select"
                                 style="border-color:#a8e6cf;font-size:13px;border-radius:8px;">
@@ -467,22 +433,7 @@
                         <i class="bi bi-plus-circle-fill me-1"></i> Add Position
                     </button>
 
-                    {{-- Section V: Posting Details --}}
-                    <div class="mb-3 pb-2 mt-4" style="border-bottom:2px solid #e8f5f0;">
-                        <span class="fw-bold" style="color:#2d7a5f;font-size:13px;">
-                            <i class="bi bi-calendar me-1" style="color:#4dd9c0;"></i> V. Posting Details
-                        </span>
                     </div>
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Posting Date</label>
-                            <input type="text" class="form-control"
-                                value="{{ now()->format('m/d/Y') }}" readonly
-                                style="border-color:#a8e6cf;font-size:13px;border-radius:8px;background:#f0f9f6;">
-                        </div>
-                    </div>
-
-                </div>
                 <div class="modal-footer" style="border-top:1px solid #e8f5f0;flex-shrink:0;">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-peso btn-sm px-4">
@@ -525,6 +476,8 @@
 
 @section('scripts')
 <script>
+    const COMPANY_INDUSTRY_GROUP = @json($company->employerNsrp->industry_group ?? '');
+
     // Search
     document.getElementById('searchInput').addEventListener('input', function () {
         const q = this.value.toLowerCase();
@@ -540,22 +493,44 @@
         new bootstrap.Modal(document.getElementById('deleteModal')).show();
     }
 
-    // ── Schedule Type toggle ──
+    // ── Schedule Type toggle ── (Preferred Date: office_based + inhouse; Venue: inhouse ra; Deadline field per-position: itago kung job_fair)
+    function toggleDeadlineFieldsForScheduleType(scheduleType) {
+        document.querySelectorAll('.deadline-field-wrap').forEach(function(wrap) {
+            wrap.style.display = scheduleType === 'job_fair' ? 'none' : 'block';
+        });
+    }
+
     document.querySelectorAll('.schedule-type-radio').forEach(function(radio) {
         radio.addEventListener('change', function() {
-            const inhouseFields = document.getElementById('inhouseFields');
-            const dateInput = document.getElementById('preferredDateInput');
+            const dateFields  = document.getElementById('dateFields');
+            const dateInput   = document.getElementById('preferredDateInput');
+            const dateHint    = document.getElementById('preferredDateHint');
+            const venueFields = document.getElementById('venueFields');
             const venueSelect = document.getElementById('venueTypeSelect');
-            if (this.value === 'inhouse') {
-                inhouseFields.style.display = 'flex';
-                dateInput.setAttribute('required', 'required');
-                venueSelect.setAttribute('required', 'required');
-            } else {
-                inhouseFields.style.display = 'none';
+
+            toggleDeadlineFieldsForScheduleType(this.value);
+
+            if (this.value === 'job_fair') {
+                dateFields.style.display = 'none';
                 dateInput.removeAttribute('required');
                 venueSelect.removeAttribute('required');
                 document.getElementById('venueAddressInput').removeAttribute('required');
                 document.getElementById('venueAddressWrap').style.display = 'none';
+            } else {
+                dateFields.style.display = 'flex';
+                dateInput.setAttribute('required', 'required');
+
+                if (this.value === 'inhouse') {
+                    venueFields.style.display = 'block';
+                    dateHint.style.display = 'block';
+                    venueSelect.setAttribute('required', 'required');
+                } else {    
+                    venueFields.style.display = 'none';
+                    dateHint.style.display = 'none';
+                    venueSelect.removeAttribute('required');
+                    document.getElementById('venueAddressInput').removeAttribute('required');
+                    document.getElementById('venueAddressWrap').style.display = 'none';
+                }
             }
         });
     });
@@ -604,7 +579,8 @@
                         placeholder="Describe the job responsibilities..."
                         style="border-color:#a8e6cf;font-size:13px;border-radius:8px;"></textarea>
                 </div>
-                <div class="col-md-4">
+                <input type="hidden" name="positions[${idx}][industry_group]" value="${COMPANY_INDUSTRY_GROUP}">
+                <div class="col-md-6">
                     <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Nature of Work *</label>
                     <select name="positions[${idx}][type]" class="form-select" required
                         style="border-color:#a8e6cf;font-size:13px;border-radius:8px;">
@@ -617,44 +593,22 @@
                         <option value="work_from_home">Work from home / online job</option>
                     </select>
                 </div>
-                <div class="col-12">
-                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Major Industry Group *</label>
-                    <select name="positions[${idx}][industry_group]" class="form-select" required
-                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;">
-                        <option value="" disabled selected>Select industry group</option>
-                        <option value="Agriculture, Hunting and Forestry, Fishing">Agriculture, Hunting and Forestry, Fishing</option>
-                        <option value="Mining and Quarrying">Mining and Quarrying</option>
-                        <option value="Manufacturing">Manufacturing</option>
-                        <option value="Construction">Construction</option>
-                        <option value="Wholesale, Retail Trade, Repair of Motor Vehicles, Motorcycles, & Personal and Household Goods">Wholesale, Retail Trade, Repair of Motor Vehicles, Motorcycles, & Personal and Household Goods</option>
-                        <option value="Hotel and Restaurants">Hotel and Restaurants</option>
-                        <option value="Transport, Storage and Communications">Transport, Storage and Communications</option>
-                        <option value="Financial Intermediation">Financial Intermediation</option>
-                        <option value="Real Estate, Renting and Business Activities">Real Estate, Renting and Business Activities</option>
-                        <option value="Public Administration and Defense, Compulsory Social Security">Public Administration and Defense, Compulsory Social Security</option>
-                        <option value="Education">Education</option>
-                        <option value="Health and Social Work">Health and Social Work</option>
-                        <option value="Other Community, Social and Personal Activities">Other Community, Social and Personal Activities</option>
-                        <option value="Extra-territorial Organization and Bodies">Extra-territorial Organization and Bodies</option>
-                        <option value="Overseas Manpower Services">Overseas Manpower Services</option>
-                    </select>
-                </div>
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Place of Work *</label>
                     <input type="text" name="positions[${idx}][location]" class="form-control" required
                         placeholder="e.g. Cagayan de Oro City" style="border-color:#a8e6cf;font-size:13px;border-radius:8px;">
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Salary</label>
                     <input type="text" name="positions[${idx}][salary]" class="form-control"
                         placeholder="e.g. 15,000 / Negotiable" style="border-color:#a8e6cf;font-size:13px;border-radius:8px;">
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-6">
                     <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Vacancy Count *</label>
                     <input type="number" name="positions[${idx}][slots]" class="form-control" required min="1"
                         placeholder="e.g. 3" style="border-color:#a8e6cf;font-size:13px;border-radius:8px;">
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-12 deadline-field-wrap">
                     <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Deadline</label>
                     <input type="date" name="positions[${idx}][deadline]" class="form-control"
                         style="border-color:#a8e6cf;font-size:13px;border-radius:8px;">
@@ -662,7 +616,7 @@
 
                 <div class="col-12 mt-2 pt-2" style="border-top:1px dashed #a8e6cf;">
                     <div style="font-size:11px;font-weight:700;color:#2d7a5f;margin-bottom:8px;">IV. Qualification Requirements</div>
-                </div>
+                   </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Work Experience (months)</label>
                     <input type="number" name="positions[${idx}][experience_months]" class="form-control" min="0"
@@ -859,22 +813,38 @@
 
     let vacancyPositionCount = {{ count($employerNsrp->initial_vacancy_data ?? []) }};
 
-    // ── Initial Vacancy — Schedule Type toggle ──
+    // ── Initial Vacancy — Schedule Type toggle (Preferred Date: office_based + inhouse; Venue: inhouse ra; Deadline: itago sa job_fair) ──
     document.querySelectorAll('.initial-schedule-type-radio').forEach(function(radio) {
         radio.addEventListener('change', function() {
-            const inhouseFields = document.getElementById('initialInhouseFields');
-            const dateInput = document.getElementById('initialPreferredDateInput');
+            const dateFields  = document.getElementById('initialDateFields');
+            const dateInput   = document.getElementById('initialPreferredDateInput');
+            const dateHint    = document.getElementById('initialPreferredDateHint');
+            const venueFields = document.getElementById('initialVenueFields');
             const venueSelect = document.getElementById('initialVenueTypeSelect');
-            if (this.value === 'inhouse') {
-                inhouseFields.style.display = 'flex';
-                dateInput.setAttribute('required', 'required');
-                venueSelect.setAttribute('required', 'required');
-            } else {
-                inhouseFields.style.display = 'none';
+
+            toggleDeadlineFieldsForScheduleType(this.value);
+
+            if (this.value === 'job_fair') {
+                dateFields.style.display = 'none';
                 dateInput.removeAttribute('required');
                 venueSelect.removeAttribute('required');
                 document.getElementById('initialVenueAddressInput').removeAttribute('required');
                 document.getElementById('initialVenueAddressWrap').style.display = 'none';
+            } else {
+                dateFields.style.display = 'flex';
+                dateInput.setAttribute('required', 'required');
+
+                if (this.value === 'inhouse') {
+                    venueFields.style.display = 'block';
+                    dateHint.style.display = 'block';
+                    venueSelect.setAttribute('required', 'required');
+                } else {
+                    venueFields.style.display = 'none';
+                    dateHint.style.display = 'none';
+                    venueSelect.removeAttribute('required');
+                    document.getElementById('initialVenueAddressInput').removeAttribute('required');
+                    document.getElementById('initialVenueAddressWrap').style.display = 'none';
+                }
             }
         });
     });
@@ -973,28 +943,7 @@
                         <option value="work_from_home">Work from home / online job</option>
                     </select>
                 </div>
-                <div class="col-12">
-                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Major Industry Group *</label>
-                    <select name="positions[${idx}][industry_group]" class="form-select vacancy-field" required
-                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;">
-                        <option value="" disabled selected>Select industry group</option>
-                        <option value="Agriculture, Hunting and Forestry, Fishing">Agriculture, Hunting and Forestry, Fishing</option>
-                        <option value="Mining and Quarrying">Mining and Quarrying</option>
-                        <option value="Manufacturing">Manufacturing</option>
-                        <option value="Construction">Construction</option>
-                        <option value="Wholesale, Retail Trade, Repair of Motor Vehicles, Motorcycles, & Personal and Household Goods">Wholesale, Retail Trade, Repair of Motor Vehicles, Motorcycles, & Personal and Household Goods</option>
-                        <option value="Hotel and Restaurants">Hotel and Restaurants</option>
-                        <option value="Transport, Storage and Communications">Transport, Storage and Communications</option>
-                        <option value="Financial Intermediation">Financial Intermediation</option>
-                        <option value="Real Estate, Renting and Business Activities">Real Estate, Renting and Business Activities</option>
-                        <option value="Public Administration and Defense, Compulsory Social Security">Public Administration and Defense, Compulsory Social Security</option>
-                        <option value="Education">Education</option>
-                        <option value="Health and Social Work">Health and Social Work</option>
-                        <option value="Other Community, Social and Personal Activities">Other Community, Social and Personal Activities</option>
-                        <option value="Extra-territorial Organization and Bodies">Extra-territorial Organization and Bodies</option>
-                        <option value="Overseas Manpower Services">Overseas Manpower Services</option>
-                    </select>
-                </div>
+                <input type="hidden" name="positions[${idx}][industry_group]" value="${COMPANY_INDUSTRY_GROUP}">
                 <div class="col-12">
                     <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Job Description *</label>
                     <textarea name="positions[${idx}][description]" rows="2" required class="form-control vacancy-field"
@@ -1015,7 +964,7 @@
                     <input type="number" name="positions[${idx}][slots]" class="form-control vacancy-field" min="1" required
                         style="border-color:#a8e6cf;font-size:13px;border-radius:8px;">
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-2 deadline-field-wrap">
                     <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Deadline</label>
                     <input type="date" name="positions[${idx}][deadline]" class="form-control vacancy-field"
                         style="border-color:#a8e6cf;font-size:13px;border-radius:8px;">

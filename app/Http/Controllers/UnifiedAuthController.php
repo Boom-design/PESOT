@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB;
@@ -283,6 +285,21 @@ class UnifiedAuthController extends Controller
         ], $staffIds);
     }
 
+    // ── Dugang notify pud sa Job Vacancy staff (local employers ra, kay sila ang mag-approve sa Office Based job postings) ──
+    if (!$isOverseas) {
+        $jobVacancyStaffIds = \App\Models\Staff::where('staff_role', 'job_vacancy')->pluck('id');
+
+        if ($jobVacancyStaffIds->isNotEmpty()) {
+            \App\Models\Announcement::sendToStaff([
+                'type'           => 'employer_registered',
+                'title'          => 'New Employer Registration 🏢',
+                'message'        => $request->company_name . ' has registered as a local employer. Please review their profile.',
+                'reference_type' => 'employer_registration',
+                'reference_id'   => $user->id,
+            ], $jobVacancyStaffIds);
+        }
+    }
+
     return redirect()->route('login')
         ->with('success', 'Company account created! Please login.');
 }
@@ -388,5 +405,37 @@ class UnifiedAuthController extends Controller
         $exists = \App\Models\EmployerNsrpRegistration::whereRaw('LOWER(company_name) = ?', [strtolower($name)])->exists();
 
         return response()->json(['exists' => $exists]);
+    }
+
+    // ───────────────────────────────
+    // PH ADDRESS DATA — gikan sa hardcoded JSON files sa storage/app/ph_address
+    // ───────────────────────────────
+    public function addressProvinces()
+    {
+        $path = storage_path('app/ph_address/provinces.json');
+        if (!file_exists($path)) {
+            return response()->json(['error' => 'Address data not found'], 404);
+        }
+        return response(file_get_contents($path))->header('Content-Type', 'application/json');
+    }
+
+    public function addressCities($code)
+    {
+        $code = basename($code); // sanitize, para dili ma-abuse ang path traversal
+        $path = storage_path("app/ph_address/cities/{$code}.json");
+        if (!file_exists($path)) {
+            return response()->json([]);
+        }
+        return response(file_get_contents($path))->header('Content-Type', 'application/json');
+    }
+
+    public function addressBarangays($code)
+    {
+        $code = basename($code);
+        $path = storage_path("app/ph_address/barangays/{$code}.json");
+        if (!file_exists($path)) {
+            return response()->json([]);
+        }
+        return response(file_get_contents($path))->header('Content-Type', 'application/json');
     }
 }

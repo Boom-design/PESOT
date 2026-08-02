@@ -9,15 +9,25 @@ class LandingController extends Controller
 {
     public function index(Request $request)
     {
-        $jobs = Job::with('company')->where('status', 'open')->latest()->take(4)->get();
+        $jobType = $request->input('job_type', 'all'); // all | local | ofw
+
+        $query = Job::with('company')->where('status', 'open')
+            ->when($jobType === 'local', fn($q) => $q->whereHas('company', fn($c) => $c->where('is_overseas', false)))
+            ->when($jobType === 'ofw', fn($q) => $q->whereHas('company', fn($c) => $c->where('is_overseas', true)));
+
+        $jobs = $query->latest()->take(4)->get();
         $openJobsCount = Job::where('status', 'open')->count();
 
-        return view('landing', compact('jobs', 'openJobsCount'));
+        return view('landing', compact('jobs', 'openJobsCount', 'jobType'));
     }
 
     public function allJobs(Request $request)
     {
-        $query = Job::with('company')->where('status', 'open');
+        $jobType = $request->input('job_type', 'all'); // all | local | ofw
+
+        $query = Job::with('company')->where('status', 'open')
+            ->when($jobType === 'local', fn($q) => $q->whereHas('company', fn($c) => $c->where('is_overseas', false)))
+            ->when($jobType === 'ofw', fn($q) => $q->whereHas('company', fn($c) => $c->where('is_overseas', true)));
 
         if ($request->search) {
             $query->where(function ($q) use ($request) {
@@ -28,6 +38,6 @@ class LandingController extends Controller
 
         $jobs = $query->latest()->paginate(9)->withQueryString();
 
-        return view('jobs-all', compact('jobs'));
+        return view('jobs-all', compact('jobs', 'jobType'));
     }
-}
+}   

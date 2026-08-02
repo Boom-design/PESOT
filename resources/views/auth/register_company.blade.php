@@ -8,50 +8,169 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Segoe UI', sans-serif;
-            min-height: 100vh; overflow-y: auto;
-            background: #0d1f18;
-            display: flex; align-items: flex-start; justify-content: center;
-            padding: 40px 0;
+
+        html, body { min-height: 100vh; font-family: 'Segoe UI', sans-serif; }
+
+        .bg-wrapper {
+            position: fixed; inset: 0;
+            background: url('{{ asset('images/cityhall.png') }}') center center / cover no-repeat;
+            z-index: 0;
         }
+        .bg-overlay {
+            position: fixed; inset: 0;
+            background: linear-gradient(180deg, rgba(13,31,24,0.75) 0%, rgba(13,31,24,0.88) 100%);
+            z-index: 1;
+        }
+
+        .page {
+            position: relative; z-index: 2;
+            min-height: 100vh;
+            display: flex; align-items: flex-start; justify-content: center;
+            padding: 40px 12px;
+        }
+
         .card-register {
-            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.18);
             border-radius: 24px;
             padding: 40px 48px; width: 100%; max-width: 860px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            box-shadow: 0 24px 70px rgba(0,0,0,0.5);
             margin: auto;
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            animation: fadeInUp 0.5s ease forwards;
         }
-        .card-register [style*="color:#2d7a5f"] { color: #eafaf0 !important; }
-        .card-register [style*="background:#f8fdfc"] { background: rgba(255,255,255,0.05) !important; }
-        .card-register [style*="background:#f0f9f6"] { background: rgba(144,216,112,0.1) !important; }
+
+        @media (max-width: 767px) {
+            .page { padding: 20px 12px; }
+            .card-register { padding: 24px 20px; border-radius: 18px; }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(18px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── Override inline light-mode colours to dark theme ── */
+        .card-register [style*="color:#2d7a5f"]        { color: #eafaf0 !important; }
+        .card-register [style*="background:#f8fdfc"]   { background: rgba(255,255,255,0.06) !important; border-color: rgba(255,255,255,0.18) !important; }
+        .card-register [style*="background:#f0f9f6"]   { background: rgba(77,217,192,0.08) !important; border-color: rgba(77,217,192,0.3) !important; }
+        .card-register [style*="border:1.5px solid #a8e6cf"]  { border-color: rgba(255,255,255,0.2) !important; }
+        .card-register [style*="border:2px solid #e8f5f0"]    { border-color: rgba(255,255,255,0.12) !important; }
+        .card-register [style*="border:1px solid #a8e6cf"]    { border-color: rgba(77,217,192,0.3) !important; }
+        .card-register [style*="color:#888"]           { color: rgba(255,255,255,0.5) !important; }
+        .card-register [style*="border-top:2px solid #e8f5f0"] { border-top-color: rgba(255,255,255,0.12) !important; }
+        .card-register [style*="border-top:1px dashed #a8e6cf"] { border-top-color: rgba(77,217,192,0.3) !important; }
+
+        /* Position row override */
+        .position-row { background: rgba(255,255,255,0.04) !important; border-color: rgba(77,217,192,0.25) !important; }
+
+        /* ── Form controls ── */
         .peso-label { font-size: 12px; font-weight: 600; color: #90d870; margin-bottom: 6px; display: block; }
         .peso-input {
-            width: 100%; border: 1.5px solid rgba(255,255,255,0.25); border-radius: 10px;
+            width: 100%; border: 1.5px solid rgba(255,255,255,0.22); border-radius: 10px;
             font-size: 13px; padding: 11px 14px; color: #fff;
-            transition: border-color 0.2s; outline: none; background: rgba(255,255,255,0.07);
+            transition: border-color 0.2s, background 0.2s; outline: none;
+            background: rgba(255,255,255,0.07);
         }
-        .peso-input::placeholder { color: rgba(255,255,255,0.4); }
-        .peso-input:focus { border-color: #4dd9c0; box-shadow: 0 0 0 3px rgba(77,217,192,0.2); background: rgba(255,255,255,0.1); }
+        .peso-input::placeholder { color: rgba(255,255,255,0.38); }
+        .peso-input:focus { border-color: #4dd9c0; box-shadow: 0 0 0 3px rgba(77,217,192,0.18); background: rgba(255,255,255,0.11); }
+
+        /* ── Select / Dropdown fix ── */
+        select.peso-input { appearance: none; -webkit-appearance: none; cursor: pointer; }
+        select.peso-input option {
+            background: #0f2e24;
+            color: #e8f8f3;
+        }
+        select.peso-input option:hover,
+        select.peso-input option:focus,
+        select.peso-input option:checked {
+            background: #1a4a38;
+            color: #90d870;
+        }
+
+        /* ── Custom Address Dropdown (Province/City/Barangay) — dili native <select>, full control ── */
+        .addr-field { position: relative; }
+        .custom-dropdown-list {
+            position: absolute;
+            top: calc(100% + 4px); left: 0; right: 0;
+            z-index: 60;
+            max-height: 230px;
+            overflow-y: auto;
+            background: #12261f;
+            border: 1.5px solid rgba(77,217,192,0.45);
+            border-radius: 10px;
+            box-shadow: 0 10px 28px rgba(0,0,0,0.5);
+            display: none;
+        }
+        .custom-dropdown-list.show { display: block; }
+        .custom-dropdown-item {
+            padding: 9px 14px;
+            font-size: 13px;
+            color: #eafaf0;
+            cursor: pointer;
+        }
+        .custom-dropdown-item:hover {
+            background: rgba(77,217,192,0.2);
+            color: #90d870;
+        }
+        .custom-dropdown-empty {
+            padding: 10px 14px;
+            font-size: 12px;
+            color: rgba(255,255,255,0.4);
+        }
+
+        /* ── Checkbox / Radio labels on dark bg ── */
+        .form-check-label { color: rgba(255,255,255,0.88) !important; }
+        .form-check-input {
+            background-color: rgba(255,255,255,0.1);
+            border-color: rgba(255,255,255,0.3);
+        }
+        .form-check-input:checked {
+            background-color: #4dd9c0;
+            border-color: #4dd9c0;
+        }
+
         .input-wrap { position: relative; }
         .input-wrap .peso-input { padding-right: 40px; }
         .toggle-pw {
             position: absolute; right: 12px; top: 50%;
             transform: translateY(-50%);
-            background: none; border: none; color: #888;
+            background: none; border: none; color: rgba(255,255,255,0.5);
             cursor: pointer; font-size: 15px; padding: 0;
         }
+        .toggle-pw:hover { color: #4dd9c0; }
+
         .btn-register {
             width: 100%; background: linear-gradient(90deg, #90d870, #4dd9c0);
-            border: none; color: #fff; font-weight: 700; border-radius: 10px;
+            border: none; color: #0f2e24; font-weight: 700; border-radius: 10px;
             padding: 12px; font-size: 14px; cursor: pointer;
-            transition: opacity 0.2s; margin-top: 8px;
+            transition: opacity 0.2s, box-shadow 0.2s; margin-top: 8px;
+            box-shadow: 0 4px 16px rgba(77,217,192,0.35);
         }
-        .btn-register:hover { opacity: 0.9; }
+        .btn-register:hover { opacity: 0.9; box-shadow: 0 6px 24px rgba(77,217,192,0.5); }
+
+        /* ── Add Position button ── */
+        #addPositionBtn { border-color: rgba(77,217,192,0.5) !important; color: #4dd9c0 !important; background: rgba(77,217,192,0.1) !important; }
+        #addPositionBtn:hover { background: rgba(77,217,192,0.25) !important; }
+
+        /* ── Section heading divider ── */
+        .section-heading { font-size: 14px; font-weight: 800; color: #eafaf0; margin-bottom: 12px; }
+        .section-heading i { color: #4dd9c0; }
+
+        /* ── Error/warning boxes ── */
+        .alert-error { background: rgba(198,40,40,0.15) !important; color: #ff8080 !important; border: 1px solid rgba(198,40,40,0.3); border-radius: 10px; padding: 10px 14px; font-size: 12px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .alert-warn  { background: rgba(249,168,37,0.12) !important; color: #f9a825 !important; border-radius: 10px; padding: 10px 14px; font-size: 11px; margin-top: 4px; }
+
+        /* ── Certification box ── */
+        .cert-box { background: rgba(77,217,192,0.07) !important; border: 1px solid rgba(77,217,192,0.25) !important; border-radius: 12px; padding: 16px; }
+        .cert-box p, .cert-box strong { color: rgba(255,255,255,0.82) !important; font-size: 12px; line-height: 1.7; }
     </style>
 </head>
 <body>
+    <div class="bg-wrapper"></div>
+    <div class="bg-overlay"></div>
+    <div class="page">
     <div class="card-register">
         <div class="text-center mb-4">
             <div style="width:52px;height:52px;background:linear-gradient(135deg,#90d870,#4dd9c0);
@@ -59,13 +178,12 @@
                         margin:0 auto 10px;font-size:22px;color:#fff;">
                 <i class="bi bi-building-fill"></i>
             </div>
-            <div style="font-size:20px;font-weight:800;color:#2d7a5f;">Employer Registration</div>
-            <div style="font-size:13px;color:#888;margin-top:4px;">Create your PESO company account</div>
+            <div style="font-size:20px;font-weight:800;color:#eafaf0;">Employer Registration</div>
+            <div style="font-size:13px;color:rgba(255,255,255,0.55);margin-top:4px;">Create your PESO company account</div>
         </div>
 
         @if($errors->any())
-            <div style="background:#fff5f5;color:#c62828;border-radius:10px;padding:10px 14px;
-                        font-size:12px;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+            <div class="alert-error">
                 <i class="bi bi-exclamation-circle-fill"></i> {{ $errors->first() }}
             </div>
         @endif
@@ -77,15 +195,15 @@
             {{-- I. ESTABLISHMENT DETAILS --}}
             {{-- ══════════════════════════════════════════ --}}
             <div>
-                <div style="font-size:14px;font-weight:800;color:#2d7a5f;margin-bottom:12px;">
-                    <i class="bi bi-building me-2" style="color:#4dd9c0;"></i>I. Establishment Details
+                <div class="section-heading">
+                    <i class="bi bi-building me-2"></i>I. Establishment Details
                 </div>
                 <div class="row g-3 mb-2">
                     <div class="col-md-4">
                         <label class="peso-label">Establishment / Company Name *</label>
                         <input type="text" name="company_name" id="companyNameInput" class="peso-input"
                             placeholder="ABC Company" value="{{ old('company_name') }}" required>
-                        <div id="companyNameWarn" style="display:none;font-size:11px;color:#f9a825;margin-top:4px;">
+                        <div id="companyNameWarn" class="alert-warn" style="display:none;">
                             <i class="bi bi-exclamation-triangle-fill me-1"></i>
                             A company with this name is already registered. If this is a different branch or entity, you may proceed.
                         </div>
@@ -95,10 +213,10 @@
                         <input type="text" name="trade_name" class="peso-input" placeholder="If different from Company Name" value="{{ old('trade_name') }}">
                     </div>
                     <div class="col-12">
-                        <label class="peso-label">Employer Type * <span style="font-weight:400;color:#888;">(check only 1)</span></label>
-                        <div class="row" style="border:1.5px solid #a8e6cf;border-radius:10px;padding:12px 14px;background:#f8fdfc;">
+                        <label class="peso-label">Employer Type * <span style="font-weight:400;color:rgba(255,255,255,0.45);">(check only 1)</span></label>
+                        <div class="row" style="border:1.5px solid rgba(77,217,192,0.25);border-radius:10px;padding:12px 14px;background:rgba(255,255,255,0.05);">
                             <div class="col-md-6">
-                                <div style="font-size:12px;font-weight:700;color:#2d7a5f;margin-bottom:6px;">Public</div>
+                                <div style="font-size:12px;font-weight:700;color:#4dd9c0;margin-bottom:6px;">Public</div>
                                 @foreach([
                                     'National Government Agency',
                                     'Local Government Unit',
@@ -114,7 +232,7 @@
                                 @endforeach
                             </div>
                             <div class="col-md-6">
-                                <div style="font-size:12px;font-weight:700;color:#2d7a5f;margin-bottom:6px;">Private</div>
+                                <div style="font-size:12px;font-weight:700;color:#4dd9c0;margin-bottom:6px;">Private</div>
                                 @foreach([
                                     'Direct Hire',
                                     'Local Recruitment Agency',
@@ -146,7 +264,7 @@
                     </div>
                     <div class="col-12">
                         <label class="peso-label">Total Work Force</label>
-                        <div class="d-flex flex-wrap gap-4" style="border:1.5px solid #a8e6cf;border-radius:10px;padding:12px 14px;background:#f8fdfc;">
+                        <div class="d-flex flex-wrap gap-4" style="border:1.5px solid rgba(77,217,192,0.25);border-radius:10px;padding:12px 14px;background:rgba(255,255,255,0.05);">
                             @foreach([
                                 'micro'  => 'Micro (1-9)',
                                 'small'  => 'Small (10-99)',
@@ -166,17 +284,44 @@
                         <label class="peso-label">Line of Business/Industry <span style="font-weight:400;color:#888;">(check BIR 2303)</span></label>
                         <input type="text" name="line_of_business" class="peso-input" placeholder="e.g. BPO / Retail / Manufacturing" value="{{ old('line_of_business') }}">
                     </div>
-                    <div class="col-md-4">
-                        <label class="peso-label">Barangay</label>
-                        <input type="text" name="est_barangay" class="peso-input" value="{{ old('est_barangay') }}">
+                    <div class="col-12">
+                        <label class="peso-label">Major Industry Group *</label>
+                        <select name="industry_group" class="peso-input" required>
+                            <option value="" disabled {{ old('industry_group') ? '' : 'selected' }}>Select industry group</option>
+                            <option value="Agriculture, Hunting and Forestry, Fishing" {{ old('industry_group') === 'Agriculture, Hunting and Forestry, Fishing' ? 'selected' : '' }}>Agriculture, Hunting and Forestry, Fishing</option>
+                            <option value="Mining and Quarrying" {{ old('industry_group') === 'Mining and Quarrying' ? 'selected' : '' }}>Mining and Quarrying</option>
+                            <option value="Manufacturing" {{ old('industry_group') === 'Manufacturing' ? 'selected' : '' }}>Manufacturing</option>
+                            <option value="Construction" {{ old('industry_group') === 'Construction' ? 'selected' : '' }}>Construction</option>
+                            <option value="Wholesale, Retail Trade, Repair of Motor Vehicles, Motorcycles, & Personal and Household Goods" {{ old('industry_group') === 'Wholesale, Retail Trade, Repair of Motor Vehicles, Motorcycles, & Personal and Household Goods' ? 'selected' : '' }}>Wholesale, Retail Trade, Repair of Motor Vehicles, Motorcycles, & Personal and Household Goods</option>
+                            <option value="Hotel and Restaurants" {{ old('industry_group') === 'Hotel and Restaurants' ? 'selected' : '' }}>Hotel and Restaurants</option>
+                            <option value="Transport, Storage and Communications" {{ old('industry_group') === 'Transport, Storage and Communications' ? 'selected' : '' }}>Transport, Storage and Communications</option>
+                            <option value="Financial Intermediation" {{ old('industry_group') === 'Financial Intermediation' ? 'selected' : '' }}>Financial Intermediation</option>
+                            <option value="Real Estate, Renting and Business Activities" {{ old('industry_group') === 'Real Estate, Renting and Business Activities' ? 'selected' : '' }}>Real Estate, Renting and Business Activities</option>
+                            <option value="Public Administration and Defense, Compulsory Social Security" {{ old('industry_group') === 'Public Administration and Defense, Compulsory Social Security' ? 'selected' : '' }}>Public Administration and Defense, Compulsory Social Security</option>
+                            <option value="Education" {{ old('industry_group') === 'Education' ? 'selected' : '' }}>Education</option>
+                            <option value="Health and Social Work" {{ old('industry_group') === 'Health and Social Work' ? 'selected' : '' }}>Health and Social Work</option>
+                            <option value="Other Community, Social and Personal Activities" {{ old('industry_group') === 'Other Community, Social and Personal Activities' ? 'selected' : '' }}>Other Community, Social and Personal Activities</option>
+                            <option value="Extra-territorial Organization and Bodies" {{ old('industry_group') === 'Extra-territorial Organization and Bodies' ? 'selected' : '' }}>Extra-territorial Organization and Bodies</option>
+                            <option value="Overseas Manpower Services" {{ old('industry_group') === 'Overseas Manpower Services' ? 'selected' : '' }}>Overseas Manpower Services</option>
+                        </select>
                     </div>
-                    <div class="col-md-4">
-                        <label class="peso-label">City/Municipality</label>
-                        <input type="text" name="est_city_municipality" class="peso-input" value="{{ old('est_city_municipality') }}">
-                    </div>
-                    <div class="col-md-4">
+                    <div class="col-md-4 addr-field">
                         <label class="peso-label">Province</label>
-                        <input type="text" name="est_province" class="peso-input" value="{{ old('est_province') }}">
+                        <input type="text" id="provinceInput" class="peso-input" placeholder="Type or click to select..." autocomplete="off">
+                        <input type="hidden" name="est_province" id="provinceValue" required>
+                        <div id="provinceDropdown" class="custom-dropdown-list"></div>
+                    </div>
+                    <div class="col-md-4 addr-field">
+                        <label class="peso-label">City/Municipality</label>
+                        <input type="text" id="cityInput" class="peso-input" placeholder="Select province first" autocomplete="off" disabled>
+                        <input type="hidden" name="est_city_municipality" id="cityValue">
+                        <div id="cityDropdown" class="custom-dropdown-list"></div>
+                    </div>
+                    <div class="col-md-4 addr-field">
+                        <label class="peso-label">Barangay</label>
+                        <input type="text" id="barangayInput" class="peso-input" placeholder="Select city first" autocomplete="off" disabled>
+                        <input type="hidden" name="est_barangay" id="barangayValue">
+                        <div id="barangayDropdown" class="custom-dropdown-list"></div>
                     </div>
                 </div>
             </div>
@@ -184,9 +329,9 @@
             {{-- ══════════════════════════════════════════ --}}
             {{-- II. ESTABLISHMENT CONTACT DETAILS --}}
             {{-- ══════════════════════════════════════════ --}}
-            <div class="mt-4 pt-3" style="border-top:2px solid #e8f5f0;">
-                <div style="font-size:14px;font-weight:800;color:#2d7a5f;margin-bottom:12px;">
-                    <i class="bi bi-person-lines-fill me-2" style="color:#4dd9c0;"></i>II. Establishment Contact Details
+            <div class="mt-4 pt-3" style="border-top:1px solid rgba(255,255,255,0.12);">
+                <div class="section-heading">
+                    <i class="bi bi-person-lines-fill me-2"></i>II. Establishment Contact Details
                 </div>
                 <div class="row g-3 mb-2">
                     <div class="col-md-3">
@@ -238,12 +383,12 @@
             {{-- ══════════════════════════════════════════ --}}
             {{-- III/IV. VACANCY DETAILS (NSRP Reg Form 2) --}}
             {{-- ══════════════════════════════════════════ --}}
-            <div class="mt-4 pt-3" style="border-top:2px solid #e8f5f0;">
-                <div style="font-size:14px;font-weight:800;color:#2d7a5f;margin-bottom:4px;">
-                    <i class="bi bi-briefcase-fill me-2" style="color:#4dd9c0;"></i>Job Vacancy Details
+            <div class="mt-4 pt-3" style="border-top:1px solid rgba(255,255,255,0.12);">
+                <div class="section-heading" style="margin-bottom:4px;">
+                    <i class="bi bi-briefcase-fill me-2"></i>Job Vacancy Details
                 </div>
-                <div style="font-size:12px;color:#888;margin-bottom:16px;">
-                    List your current job openings. <strong>This section is optional</strong> — you may skip it for now and add job postings later from the Job Requests page once your requirements are approved.
+                <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:16px;">
+                    List your current job openings. <strong style="color:rgba(255,255,255,0.8);">This section is optional</strong> — you may skip it for now and add job postings later from the Job Requests page once your requirements are approved.
                 </div>
 
                 <div id="positionsContainer"></div>
@@ -259,18 +404,18 @@
             {{-- ══════════════════════════════════════════ --}}
             {{-- REQUIREMENTS NOTICE + OPTIONAL ATTACH --}}
             {{-- ══════════════════════════════════════════ --}}
-            <div class="mt-4 pt-3" style="border-top:2px solid #e8f5f0;">
-                <div style="font-size:14px;font-weight:800;color:#2d7a5f;margin-bottom:4px;">
-                    <i class="bi bi-clipboard-check me-2" style="color:#4dd9c0;"></i>Company Requirements
+            <div class="mt-4 pt-3" style="border-top:1px solid rgba(255,255,255,0.12);">
+                <div class="section-heading" style="margin-bottom:4px;">
+                    <i class="bi bi-clipboard-check me-2"></i>Company Requirements
                 </div>
                 <div class="d-flex align-items-start gap-2 p-3 mb-3 rounded-3"
-                     style="background:#f0f9f6;border:1px solid #a8e6cf;">
+                     style="background:rgba(77,217,192,0.07);border:1px solid rgba(77,217,192,0.25);">
                     <i class="bi bi-info-circle-fill" style="color:#4dd9c0;font-size:18px;margin-top:1px;"></i>
-                    <div style="font-size:12px;color:#2d7a5f;line-height:1.6;">
-                        Before your account can post job vacancies, PESO needs to verify <strong>6 required documents</strong>.
+                    <div style="font-size:12px;color:rgba(255,255,255,0.8);line-height:1.6;">
+                        Before your account can post job vacancies, PESO needs to verify <strong style="color:#4dd9c0;">5 required documents</strong>.
                         If you already have them ready, you may attach them now. Otherwise, you can skip this and
-                        submit them later from the <strong>Requirements</strong> page after your account is created.
-                    </div>
+                        submit them later from the <strong style="color:#4dd9c0;">Requirements</strong> page after your account is created.
+                    </div>  
                 </div>
 
                 <div class="row g-3">
@@ -279,7 +424,6 @@
                         ['field' => 'business_permit',             'label' => 'CDO Business Permit 2026'],
                         ['field' => 'sec_dti',                     'label' => 'SEC / DTI'],
                         ['field' => 'company_profile',             'label' => 'Company Profile'],
-                        ['field' => 'nsrp_establishment_form',     'label' => 'Filled-up NSRP Establishment Form'],
                         ['field' => 'no_pending_case_certificate', 'label' => 'Certificate of No Pending Case'],
                         ['field' => 'vacancy_posting',             'label' => 'Vacancy Posting'],
                     ];
@@ -296,9 +440,9 @@
             {{-- ══════════════════════════════════════════ --}}
             {{-- CERTIFICATION / AUTHORIZATION --}}
             {{-- ══════════════════════════════════════════ --}}
-            <div class="mt-3 p-3" style="background:#f0f9f6;border:1px solid #a8e6cf;border-radius:12px;">
-                <div style="font-size:12px;color:#2d7a5f;line-height:1.6;">
-                    <strong>Certification/Authorization:</strong> This is to certify that all data/information
+            <div class="cert-box mt-3">
+                <div style="font-size:12px;color:rgba(255,255,255,0.78);line-height:1.7;">
+                    <strong style="color:#4dd9c0;">Certification/Authorization:</strong> This is to certify that all data/information
                     that I have provided in this form are true to the best of my knowledge. This is also to
                     authorize the PESO and DOLE to include the establishment profile in the PESO Employment
                     Information System (PEIS). It is understood that the establishment profile and contact
@@ -309,13 +453,13 @@
                 <div class="row mt-3">
                     <div class="col-md-4">
                         <label class="peso-label">Date Signed</label>
-                        <input type="text" class="peso-input" value="{{ now()->format('m/d/Y') }}" readonly style="background:#f0f9f6;">
+                        <input type="text" class="peso-input" value="{{ now()->format('m/d/Y') }}" readonly style="background:rgba(77,217,192,0.08);color:rgba(255,255,255,0.6);">
                         <input type="hidden" name="certification_date" value="{{ now()->format('Y-m-d') }}">
                     </div>
                 </div>
                 <div class="form-check mt-2">
                     <input class="form-check-input" type="checkbox" name="certification_agreed" value="1" id="certAgree" required>
-                    <label class="form-check-label" for="certAgree" style="font-size:12px;color:#2d7a5f;font-weight:600;">
+                    <label class="form-check-label" for="certAgree" style="font-size:12px;font-weight:600;">
                         I agree to the certification and authorization above *
                     </label>
                 </div>
@@ -324,9 +468,9 @@
             {{-- ══════════════════════════════════════════ --}}
             {{-- ACCOUNT SECURITY --}}
             {{-- ══════════════════════════════════════════ --}}
-            <div class="mt-4 pt-3" style="border-top:2px solid #e8f5f0;">
-                <div style="font-size:14px;font-weight:800;color:#2d7a5f;margin-bottom:12px;">
-                    <i class="bi bi-shield-lock-fill me-2" style="color:#4dd9c0;"></i>Account Security
+            <div class="mt-4 pt-3" style="border-top:1px solid rgba(255,255,255,0.12);">
+                <div class="section-heading">
+                    <i class="bi bi-shield-lock-fill me-2"></i>Account Security
                 </div>
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
@@ -357,10 +501,12 @@
             </button>
         </form>
 
-        <div class="text-center mt-3" style="font-size:13px;color:#888;">
+        <div class="text-center mt-3" style="font-size:13px;color:rgba(255,255,255,0.5);">
             Already have an account?
             <a href="{{ route('login') }}" style="color:#4dd9c0;font-weight:700;">Sign in</a>
         </div>
+    </div>
+    </div>
     </div>
 
     <script>
@@ -395,11 +541,11 @@
 
         function buildPositionRow(idx) {
             return `
-            <div class="position-row mb-3 p-3" style="border:1.5px solid #a8e6cf;border-radius:12px;background:#f8fdfc;position:relative;">
+            <div class="position-row mb-3 p-3" style="border:1.5px solid rgba(77,217,192,0.25);border-radius:12px;background:rgba(255,255,255,0.04);position:relative;">
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span style="font-size:12px;font-weight:700;color:#2d7a5f;">Position #<span class="pos-num">${idx + 1}</span></span>
+                    <span style="font-size:12px;font-weight:700;color:#4dd9c0;">Position #<span class="pos-num">${idx + 1}</span></span>
                     <button type="button" class="btn btn-sm remove-position-btn"
-                        style="background:#fff5f5;color:#e05252;border:1px solid #ffcdd2;border-radius:8px;font-size:11px;padding:2px 10px;">
+                        style="background:rgba(224,82,82,0.15);color:#ff8080;border:1px solid rgba(224,82,82,0.35);border-radius:8px;font-size:11px;padding:2px 10px;">
                         <i class="bi bi-trash-fill"></i>
                     </button>
                 </div>
@@ -454,16 +600,18 @@
                         <label class="peso-label">Salary</label>
                         <input type="text" name="positions[${idx}][salary]" class="peso-input" placeholder="e.g. 15,000 / Negotiable">
                     </div>
-                    <div class="col-md-4">
-                        <label class="peso-label">Vacancy Count *</label>
-                        <input type="number" name="positions[${idx}][slots]" class="peso-input" min="1" placeholder="e.g. 3" required>
-                    </div>
+                    <div class="col-md-2">
+                    <label class="peso-label">Vacancy Count *</label>
+                    <input type="number" name="positions[${idx}][slots]" class="peso-input" min="1" placeholder="e.g. 3" required>
                 </div>
+            </div>
 
-                <div class="mt-3 pt-2" style="border-top:1px dashed #a8e6cf;">
-                    <div style="font-size:11px;font-weight:700;color:#2d7a5f;margin-bottom:8px;">
-                        IV. Qualification Requirements
-                    </div>
+            <input type="hidden" name="positions[${idx}][deadline]" value="">
+
+            <div class="mt-3 pt-2" style="border-top:1px dashed rgba(77,217,192,0.3);">
+                <div style="font-size:11px;font-weight:700;color:#4dd9c0;margin-bottom:8px;">
+                    IV. Qualification Requirements
+                </div>
                     <div class="row g-2">
                         <div class="col-md-6">
                             <label class="peso-label">Work Experience (months)</label>
@@ -561,22 +709,7 @@
                     </div>
                 </div>
 
-                <div class="mt-3 pt-2" style="border-top:1px dashed #a8e6cf;">
-                    <div style="font-size:11px;font-weight:700;color:#2d7a5f;margin-bottom:8px;">
-                        V. Posting Details
-                    </div>
-                    <div class="row g-2">
-                        <div class="col-md-6">
-                            <label class="peso-label">Posting Date</label>
-                            <input type="text" class="peso-input" value="${new Date().toLocaleDateString('en-US', {month:'2-digit', day:'2-digit', year:'numeric'})}" readonly style="background:#f0f9f6;">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="peso-label">Deadline (Valid Until)</label>
-                            <input type="date" name="positions[${idx}][deadline]" class="peso-input">
-                        </div>
-                    </div>
-                </div>
-            </div>`;
+                </div>`;
         }
             
         
@@ -652,6 +785,166 @@
                 .then(data => {
                     warnDiv.style.display = data.exists ? 'block' : 'none';
                 });
+        });
+
+        // ── CUSTOM CASCADING ADDRESS DROPDOWN (Province → City → Barangay) — dili native <select> ──
+        const provinceInput    = document.getElementById('provinceInput');
+        const provinceValue    = document.getElementById('provinceValue');
+        const provinceDropdown = document.getElementById('provinceDropdown');
+
+        const cityInput    = document.getElementById('cityInput');
+        const cityValue     = document.getElementById('cityValue');
+        const cityDropdown  = document.getElementById('cityDropdown');
+
+        const barangayInput    = document.getElementById('barangayInput');
+        const barangayValue    = document.getElementById('barangayValue');
+        const barangayDropdown = document.getElementById('barangayDropdown');
+
+        let allProvinces = [];
+        let allCities     = [];
+        let allBarangays  = [];
+        let selectedProvinceCode = null;
+        let selectedCityCode     = null;
+
+        function renderDropdown(listEl, items, onPick) {
+            listEl.innerHTML = '';
+            if (items.length === 0) {
+                listEl.innerHTML = '<div class="custom-dropdown-empty">No matches found</div>';
+            } else {
+                items.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'custom-dropdown-item';
+                    div.textContent = item.name;
+                    div.addEventListener('mousedown', function(e) {
+                        e.preventDefault(); // para dili ma-trigger ang blur sa una pa mag-click
+                        onPick(item);
+                    });
+                    listEl.appendChild(div);
+                });
+            }
+            listEl.classList.add('show');
+        }
+
+        function closeDropdown(listEl) {
+            listEl.classList.remove('show');
+        }
+
+        function filterItems(items, query) {
+            const q = query.trim().toLowerCase();
+            if (!q) return items;
+            return items.filter(i => i.name.toLowerCase().includes(q));
+        }
+
+        // ── PROVINCE ──
+        fetch(`{{ route('address.provinces') }}`)
+            .then(r => r.json())
+            .then(provinces => {
+                allProvinces = provinces;
+            })
+            .catch(() => {
+                provinceInput.placeholder = 'Failed to load — please refresh';
+            });
+
+        provinceInput.addEventListener('focus', function() {
+            renderDropdown(provinceDropdown, filterItems(allProvinces, this.value), pickProvince);
+        });
+        provinceInput.addEventListener('input', function() {
+            renderDropdown(provinceDropdown, filterItems(allProvinces, this.value), pickProvince);
+        });
+
+        function pickProvince(item) {
+            provinceInput.value = item.name;
+            provinceValue.value = item.name;
+            selectedProvinceCode = item.code;
+            closeDropdown(provinceDropdown);
+
+            // Reset City & Barangay
+            cityInput.value = '';
+            cityValue.value = '';
+            cityInput.placeholder = 'Loading cities/municipalities...';
+            cityInput.disabled = true;
+            barangayInput.value = '';
+            barangayValue.value = '';
+            barangayInput.placeholder = 'Select city first';
+            barangayInput.disabled = true;
+            allCities = [];
+            allBarangays = [];
+            selectedCityCode = null;
+
+            fetch(`/ph-address/provinces/${item.code}/cities`)
+                .then(r => r.json())
+                .then(cities => {
+                    allCities = cities;
+                    cityInput.placeholder = 'Type or click to select...';
+                    cityInput.disabled = false;
+                })
+                .catch(() => {
+                    cityInput.placeholder = 'Failed to load — please retry';
+                });
+        }
+
+        // ── CITY / MUNICIPALITY ──
+        cityInput.addEventListener('focus', function() {
+            if (this.disabled) return;
+            renderDropdown(cityDropdown, filterItems(allCities, this.value), pickCity);
+        });
+        cityInput.addEventListener('input', function() {
+            if (this.disabled) return;
+            renderDropdown(cityDropdown, filterItems(allCities, this.value), pickCity);
+        });
+
+        function pickCity(item) {
+            cityInput.value = item.name;
+            cityValue.value = item.name;
+            selectedCityCode = item.code;
+            closeDropdown(cityDropdown);
+
+            // Reset Barangay
+            barangayInput.value = '';
+            barangayValue.value = '';
+            barangayInput.placeholder = 'Loading barangays...';
+            barangayInput.disabled = true;
+            allBarangays = [];
+
+            fetch(`/ph-address/cities/${item.code}/barangays`)
+                .then(r => r.json())
+                .then(barangays => {
+                    allBarangays = barangays.map(name => ({ name }));
+                    barangayInput.placeholder = 'Type or click to select...';
+                    barangayInput.disabled = false;
+                })
+                .catch(() => {
+                    barangayInput.placeholder = 'Failed to load — please retry';
+                });
+        }
+
+        // ── BARANGAY ──
+        barangayInput.addEventListener('focus', function() {
+            if (this.disabled) return;
+            renderDropdown(barangayDropdown, filterItems(allBarangays, this.value), pickBarangay);
+        });
+        barangayInput.addEventListener('input', function() {
+            if (this.disabled) return;
+            renderDropdown(barangayDropdown, filterItems(allBarangays, this.value), pickBarangay);
+        });
+
+        function pickBarangay(item) {
+            barangayInput.value = item.name;
+            barangayValue.value = item.name;
+            closeDropdown(barangayDropdown);
+        }
+
+        // ── Close dropdowns kung mo-click sa gawas ──
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('#provinceInput') && !e.target.closest('#provinceDropdown')) {
+                closeDropdown(provinceDropdown);
+            }
+            if (!e.target.closest('#cityInput') && !e.target.closest('#cityDropdown')) {
+                closeDropdown(cityDropdown);
+            }
+            if (!e.target.closest('#barangayInput') && !e.target.closest('#barangayDropdown')) {
+                closeDropdown(barangayDropdown);
+            }
         });
     </script>
 </body>

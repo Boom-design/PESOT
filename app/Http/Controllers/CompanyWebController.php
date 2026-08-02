@@ -134,7 +134,10 @@ class CompanyWebController extends Controller
         if (!$company) return redirect()->route('company.login');
         if ($guard = $this->requireRequirements($company)) return $guard;
 
-        $jobs = Job::where('company_id', $company->employerNsrp->id)->latest()->get();
+        // ── Closed ra (pending o rejected) ang makita diri; pag-approve/pag-open, mabalhin na sa "Schedule Job Vacancy" tab ──
+        $jobs = Job::where('company_id', $company->employerNsrp->id)
+            ->where('status', 'closed')
+            ->latest()->get();
 
         // Check kung naa nay approved requirements + wala pa na-confirm ang initial vacancy gikan sa registration
         $requirement       = \App\Models\EmployerRequirement::where('user_id', $company->employerNsrp->id)->where('status', 'approved')->first();
@@ -162,14 +165,13 @@ class CompanyWebController extends Controller
 
         $request->validate([
             'schedule_type'  => 'required|in:inhouse,office_based,job_fair',
-            'preferred_date' => 'required_if:schedule_type,inhouse|nullable|date|after_or_equal:today',
+            'preferred_date' => 'required_if:schedule_type,inhouse|required_if:schedule_type,office_based|nullable|date|after_or_equal:today',
             'venue_type'     => 'required_if:schedule_type,inhouse|nullable|in:peso_office,other',
             'venue_address'  => 'required_if:venue_type,other|nullable|string|max:255',
             'positions'                          => 'required|array|min:1',
             'positions.*.title'                 => 'required|string|max:255',
             'positions.*.description'           => 'required|string',
             'positions.*.type'                  => 'required|in:permanent,contractual,project_based,internship,part_time,work_from_home',
-            'positions.*.industry_group'        => 'required|string|max:255',
             'positions.*.location'              => 'required|string|max:255',
             'positions.*.salary'                => 'nullable|string|max:100',
             'positions.*.slots'                 => 'required|integer|min:1',
@@ -221,7 +223,7 @@ class CompanyWebController extends Controller
                 'description'         => $pos['description'],
                 'location'            => $pos['location'],
                 'type'                => $pos['type'],
-                'industry_group'      => $pos['industry_group'],
+                'industry_group'      => $company->employerNsrp->industry_group,
                 'slots'               => $pos['slots'],
                 'salary'              => $pos['salary'] ?? 'Negotiable',
                 'deadline'            => $pos['deadline'] ?? null,
@@ -229,7 +231,7 @@ class CompanyWebController extends Controller
                 'posting_status'      => 'pending',
                 'posting_type'        => 'direct',
                 'schedule_type'       => $request->schedule_type,
-                'preferred_date'      => $request->schedule_type === 'inhouse' ? $request->preferred_date : null,
+                'preferred_date'      => $request->schedule_type !== 'job_fair' ? $request->preferred_date : null,
                 'venue_type'          => $request->schedule_type === 'inhouse' ? $request->venue_type : null,
                 'venue_address'       => $request->schedule_type === 'inhouse' && $request->venue_type === 'other' ? $request->venue_address : null,
                 'experience_months'   => $pos['experience_months'] ?? null,
@@ -256,6 +258,7 @@ class CompanyWebController extends Controller
         ]);
 
         // ── I-route ang notification base sa schedule_type ──
+        // ── Job Fair postings: SRA (overseas) o Job Vacancy staff (local) ang mo-approve — dili si Job Fair staff, sila ra ang mag-post/open human ma-create og event ──
         if ($request->schedule_type === 'inhouse') {
             $inhouseStaffRole = $employerNsrp->is_overseas ? 'sra' : 'lra';
             $staffIds   = \App\Models\Staff::where('staff_role', $inhouseStaffRole)->pluck('id');
@@ -263,9 +266,10 @@ class CompanyWebController extends Controller
             $title      = 'New In-house Job Posting Request 📅';
             $message    = $company->employerNsrp->company_name . ' confirmed their initial job vacancy posting(s) for an in-house interview on ' . \Carbon\Carbon::parse($request->preferred_date)->format('M d, Y') . ' at ' . $venueLabel . '. Please review and approve/reject.';
         } elseif ($request->schedule_type === 'job_fair') {
-            $staffIds = \App\Models\Staff::where('staff_role', 'job_fair')->pluck('id');
+            $jobFairApproverRole = $employerNsrp->is_overseas ? 'sra' : 'job_vacancy';
+            $staffIds = \App\Models\Staff::where('staff_role', $jobFairApproverRole)->pluck('id');
             $title    = 'New Job Fair Posting Request 🎪';
-            $message  = $company->employerNsrp->company_name . ' confirmed their initial job vacancy posting(s) for job fair use.';
+            $message  = $company->employerNsrp->company_name . ' confirmed their initial job vacancy posting(s) for job fair use. Please review and approve.';
         } else {
             $staffIds = \App\Models\Staff::where('staff_role', 'job_vacancy')->pluck('id');
             $title    = 'New Job Posting Request 💼';
@@ -425,7 +429,10 @@ class CompanyWebController extends Controller
             ->latest()
             ->get();
 
-        return view('company.applicants', compact('company', 'job', 'applicants'));
+        $qualifiedApplicants       = $applicants->filter(fn($a) => ($a->match_percentage ?? 0) >= 50 && ($a->match_percentage ?? 0) < 75)->values();
+        $highlyQualifiedApplicants = $applicants->filter(fn($a) => ($a->match_percentage ?? 0) >= 75)->values();
+
+        return view('company.applicants', compact('company', 'job', 'applicants', 'qualifiedApplicants', 'highlyQualifiedApplicants'));
     }
 
     // ───────────────────────────────
@@ -572,7 +579,6 @@ class CompanyWebController extends Controller
             'positions.*.title'                 => 'required|string|max:255',
             'positions.*.description'           => 'required|string',
             'positions.*.type'                  => 'required|in:permanent,contractual,project_based,internship,part_time,work_from_home',
-            'positions.*.industry_group'        => 'required|string|max:255',
             'positions.*.location'              => 'required|string|max:255',
             'positions.*.salary'                => 'nullable|string|max:100',
             'positions.*.slots'                 => 'required|integer|min:1',
@@ -631,7 +637,7 @@ class CompanyWebController extends Controller
                 'description'         => $pos['description'] ?? '',
                 'location'            => $pos['location'],
                 'type'                => $pos['type'],
-                'industry_group'      => $pos['industry_group'],
+                'industry_group'      => $company->employerNsrp->industry_group,
                 'slots'               => $pos['slots'],
                 'deadline'            => $pos['deadline'] ?? null,
                 'salary'              => $pos['salary'] ?? 'Negotiable',
@@ -669,6 +675,7 @@ class CompanyWebController extends Controller
             : $firstJob->title;
 
         // ── I-route ang notification base sa schedule_type ──
+        // ── Job Fair postings: SRA (overseas) o Job Vacancy staff (local) ang mo-approve — dili si Job Fair staff, sila ra ang mag-post/open human ma-create og event ──
         if ($request->schedule_type === 'inhouse') {
             $inhouseStaffRole = ($company->employerNsrp && $company->employerNsrp->is_overseas) ? 'sra' : 'lra';
             $staffIds   = \App\Models\Staff::where('staff_role', $inhouseStaffRole)->pluck('id');
@@ -676,9 +683,10 @@ class CompanyWebController extends Controller
             $title      = 'New In-house Job Posting Request 📅';
             $message    = $company->employerNsrp->company_name . ' requested an in-house interview for "' . $titleSummary . '" on ' . \Carbon\Carbon::parse($request->preferred_date)->format('M d, Y') . ' at ' . $venueLabel . '. Please review and approve/reject the job posting.';
         } elseif ($request->schedule_type === 'job_fair') {
-            $staffIds = \App\Models\Staff::where('staff_role', 'job_fair')->pluck('id');
+            $jobFairApproverRole = ($company->employerNsrp && $company->employerNsrp->is_overseas) ? 'sra' : 'job_vacancy';
+            $staffIds = \App\Models\Staff::where('staff_role', $jobFairApproverRole)->pluck('id');
             $title    = 'New Job Fair Posting Request 🎪';
-            $message  = $company->employerNsrp->company_name . ' requested to post "' . $titleSummary . '" for job fair use.';
+            $message  = $company->employerNsrp->company_name . ' requested to post "' . $titleSummary . '" for job fair use. Please review and approve.';
         } else {
             $staffIds = \App\Models\Staff::where('staff_role', 'job_vacancy')->pluck('id');
             $title    = 'New Job Posting Request 💼';
@@ -959,18 +967,39 @@ class CompanyWebController extends Controller
 
         $applicants = \App\Models\Application::with(['jobseeker', 'jobseeker.nsrp'])
             ->where('job_id', $jobId)
-            ->where('match_percentage', '>=', 50)
             ->orderByDesc('match_percentage')
-            ->paginate(10);
+            ->get();
 
-        $totalHighly    = \App\Models\Application::where('job_id', $jobId)
-            ->where('match_percentage', '>=', 75)->count();
-        $totalQualified = \App\Models\Application::where('job_id', $jobId)
-            ->whereBetween('match_percentage', [50, 74.99])->count();
+        $isInhouse = $job->schedule_type === 'inhouse';
+        $isOfficeBased = $job->schedule_type === 'office_based';
+
+        // ── Para sa In-house nga jobs, ang Qualified/Highly Qualified/Not Qualified tabs — ONLY kadtong ni-ACCEPT sa participation ──
+        // ── Para sa Office Based, parehas nga rule gamit ang office_participation — kadtong nag-DECLINE (No) magpabilin ra sa All Jobseekers tab, walay action buttons ──
+        // ── Para sa Job Fair, walay restriction — parehas ra sa daan (dayon classified base sa match%) ──
+        if ($isInhouse) {
+            $eligibleForTabs = $applicants->where('inhouse_participation', 'accepted');
+        } elseif ($isOfficeBased) {
+            $eligibleForTabs = $applicants->where('office_participation', 'accepted');
+        } else {
+            $eligibleForTabs = $applicants;
+        }
+
+        $highlyQualified = $eligibleForTabs->filter(fn($a) => ($a->match_percentage ?? 0) >= 75)->values();
+        $qualified       = $eligibleForTabs->filter(fn($a) => ($a->match_percentage ?? 0) >= 50 && ($a->match_percentage ?? 0) < 75)->values();
+        $notQualified    = $eligibleForTabs->filter(fn($a) => ($a->match_percentage ?? 0) < 50)->values();
+
+        $totalAll     = $applicants->count();
+        $totalHighly  = $highlyQualified->count();
+        $totalQualified = $qualified->count();
+        $totalNotQualified = $notQualified->count();
+
+        // ── Hire/Reject/Waiting actions naka-lock hangtod moabot ang In-house preferred_date; para sa Office Based, naka-lock hangtod mo-accept ang jobseeker ──
+        $actionsUnlocked = !$isInhouse || ($job->preferred_date && now()->toDateString() >= \Carbon\Carbon::parse($job->preferred_date)->toDateString());
 
         return view('company.jobs.qualified', compact(
-            'job', 'applicants', 'company',
-            'totalHighly', 'totalQualified'
+            'job', 'applicants', 'company', 'isInhouse', 'isOfficeBased', 'actionsUnlocked',
+            'highlyQualified', 'qualified', 'notQualified',
+            'totalAll', 'totalHighly', 'totalQualified', 'totalNotQualified'
         ));
     }
 
@@ -999,7 +1028,7 @@ class CompanyWebController extends Controller
     }
 
     // ───────────────────────────────
-    // SCHEDULE JOB VACANCY — tabs per job vacancy (latest first), qualified applicants per tab
+    // SCHEDULE JOB VACANCY — main table (Job Position / Date / Schedule Type), View → separate qualified applicants page
     // ───────────────────────────────
     public function jobseekers(Request $request)
     {
@@ -1009,27 +1038,17 @@ class CompanyWebController extends Controller
 
         $search = $request->input('search');
 
+        // ── Open ra (na-approve na sa PESO staff) ang makita diri ──
         $jobs = Job::where('company_id', $company->employerNsrp->id)
+            ->where('status', 'open')
+            ->when($search, function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%");
+            })
             ->latest()
-            ->get();
+            ->paginate(10)
+            ->withQueryString();
 
-        $jobsData = $jobs->map(function ($job) use ($search) {
-            $applicants = Application::with('jobseeker')
-                ->where('job_id', $job->id)
-                ->where('match_percentage', '>=', 50)
-                ->when($search, function ($q) use ($search) {
-                    $q->whereHas('jobseeker', function ($jq) use ($search) {
-                        $jq->where('first_name', 'like', "%{$search}%")
-                           ->orWhere('surname', 'like', "%{$search}%");
-                    });
-                })
-                ->orderByDesc('match_percentage')
-                ->get();
-
-            return ['job' => $job, 'applicants' => $applicants];
-        });
-
-        return view('company.jobseeker.index', compact('jobsData', 'search'));
+        return view('company.jobseeker.index', compact('jobs', 'search'));
     }
 
     // ───────────────────────────────

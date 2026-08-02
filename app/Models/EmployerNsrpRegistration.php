@@ -17,6 +17,7 @@ class EmployerNsrpRegistration extends Model
         'employer_type',
         'is_overseas',
         'trade_name', 'tin', 'tin_type', 'total_workforce', 'line_of_business',
+        'industry_group',
         'est_barangay', 'est_city_municipality', 'est_province',
         'contact_title', 'telephone_no', 'fax_no',
         'certification_agreed', 'certification_date',

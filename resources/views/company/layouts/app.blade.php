@@ -601,14 +601,14 @@
                 <li class="nav-item">
                     <a href="{{ route('company.jobs') }}"
                        id="jobVacancyNavLink"
-                       class="nav-link {{ request()->routeIs('company.jobs') || request()->routeIs('company.jobs.*') || request()->routeIs('company.applicants*') ? 'active' : '' }}"
+                       class="nav-link {{ (request()->routeIs('company.jobs') || request()->routeIs('company.jobs.*') || request()->routeIs('company.applicants*')) && !request()->routeIs('company.jobs.qualified') ? 'active' : '' }}"
                        @if(!$sidebarReqApproved) onclick="return openComplyModal(event)" @endif>
                         <i class="bi bi-send"></i> Job Vacancy Request
                     </a>
                 </li>
                 <li class="nav-item">
                     <a href="{{ route('company.jobseekers') }}"
-                       class="nav-link {{ request()->routeIs('company.jobseekers*') ? 'active' : '' }}">
+                       class="nav-link {{ request()->routeIs('company.jobseekers*') || request()->routeIs('company.jobs.qualified') ? 'active' : '' }}">
                         <i class="bi bi-calendar2-week-fill"></i> Schedule Job Vacancy
                     </a>
                 </li>
@@ -718,6 +718,15 @@
                         $notifications = $employerNsrp
                             ? \App\Models\Announcement::where('employer_id', $employerNsrp->id)->orderBy('created_at', 'desc')->take(10)->get()
                             : collect();
+
+                        $companyNotifTargetUrl = function ($notif) {
+                            return match($notif->reference_type) {
+                                'job'                     => route('company.jobs'),
+                                'employer_requirement'    => route('company.requirements'),
+                                'job_fair'                => route('company.jobfair'),
+                                default                   => null,
+                            };
+                        };
                     @endphp
                     <li class="px-3 py-2 border-bottom d-flex justify-content-between align-items-center">
                         <span style="font-size:13px; font-weight:700; color:#2d7a5f;">
@@ -736,8 +745,8 @@
                     @forelse($notifications as $notif)
                         <li>
                             <a class="dropdown-item py-2 {{ !$notif->is_read ? 'bg-light' : '' }}"
-                               href="#"
-                               onclick="markRead({{ $notif->id }})">
+                               href="{{ $companyNotifTargetUrl($notif) ?? '#' }}"
+                               onclick="markRead({{ $notif->id }}, {{ $companyNotifTargetUrl($notif) ? 'true' : 'false' }})">
                                 <div style="font-size:12px; font-weight:{{ !$notif->is_read ? '700' : '500' }}; color:#2d7a5f;">
                                     {{ $notif->title }}
                                 </div>
@@ -810,14 +819,19 @@
             link.addEventListener('click', closeSidebar);
         });
 
-        function markRead(id) {
+        function markRead(id, hasTarget) {
             fetch(`/company/notifications/${id}/read`, {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',
                     'Content-Type': 'application/json'
                 }
-            }).then(() => location.reload());
+            });
+            if (!hasTarget) {
+                event.preventDefault();
+                location.reload();
+            }
+            // kung naay target URL, tugutan ang link mo-navigate diretso
         }
 
         @if(session('success'))

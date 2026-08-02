@@ -4,25 +4,6 @@
 
     @section('content')
 
-    {{-- ── STATUS BANNER ── --}}
-    @if($nsrp)
-        <div class="d-flex align-items-center gap-3 p-3 mb-4 rounded-3 fade-in"
-            style="background:#e8f8f3; border:1.5px solid #4dd9c0;">
-            <i class="bi bi-check-circle-fill" style="font-size:28px; color:#2d7a5f;"></i>
-            <div>
-                <div style="font-size:14px; font-weight:700; color:#2d7a5f;">
-                    NSRP Form Submitted
-                </div>
-                <div style="font-size:12px; color:#888;">
-                    Your NSRP registration is on file with PESO. You may update this form anytime if your information changes.
-                </div>
-                <div style="font-size:11px; color:#aaa; margin-top:2px;">
-                    Submitted: {{ $nsrp->created_at->format('F d, Y') }}
-                </div>
-            </div>
-        </div>
-    @endif
-
     <div class="peso-card fade-in">
         <div class="peso-card-body">
 
@@ -56,13 +37,6 @@
                             All fields marked with <strong>*</strong> are required.
                         </div>
                     </div>
-
-                    </div>
-
-                {{-- ══════════════════════════════════════════ --}}
-                {{-- STEP 2: I. PERSONAL INFORMATION + EMPLOYMENT STATUS --}}
-                {{-- ══════════════════════════════════════════ --}}
-                <div class="nsrp-step" data-step="2" style="display:none;">
 
                     <div class="mb-4">
                         <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid #e8f5f0;">
@@ -164,7 +138,7 @@
                                 @php
                                     $disabilities = old('disabilities', $registration ? (is_array($registration->disabilities) ? $registration->disabilities : json_decode($registration->disabilities ?? '[]', true)) : []);
                                 @endphp
-                                <div class="d-flex gap-3 flex-wrap mt-1">
+                                <div class="d-flex align-items-center gap-3 flex-wrap mt-1">
                                     @foreach(['Visual', 'Speech', 'Mental', 'Hearing', 'Physical', 'Others'] as $dis)
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox"
@@ -175,10 +149,8 @@
                                             style="font-size:12px;color:#2d7a5f;">{{ $dis }}</label>
                                     </div>
                                     @endforeach
-                                </div>
-                                <div class="mt-2">
                                     <input type="text" name="disability_other" class="form-control peso-input"
-                                        style="max-width:300px;"
+                                        style="flex:1;min-width:180px;max-width:260px;"
                                         placeholder="If Others, please specify"
                                         value="{{ $registration->disability_other ?? '' }}">
                                 </div>
@@ -255,175 +227,12 @@
                         </div>
                     </div>
 
-                    <div class="mb-2">
-                        <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid #e8f5f0;">
-                            <div style="width:28px;height:28px;background:linear-gradient(135deg,#90d870,#4dd9c0);border-radius:8px;display:flex;align-items:center;justify-content:center;">
-                                <i class="bi bi-briefcase" style="color:#fff;font-size:13px;"></i>
-                            </div>
-                            <h6 style="margin:0;font-size:13px;font-weight:700;color:#2d7a5f;">Employment Status / Type</h6>
-                        </div>
-                        <div class="row g-3">
-                            <div class="col-12">
-                                <label class="peso-label">Classification *</label>
-                                <div class="d-flex gap-3 mt-1">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="classification_type"
-                                            id="type_local" value="local"
-                                            {{ ($nsrp->type ?? 'local') === 'local' ? 'checked' : '' }} required>
-                                        <label class="form-check-label" for="type_local" style="font-size:12px;color:#2d7a5f;">Local</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="classification_type"
-                                            id="type_overseas" value="overseas"
-                                            {{ ($nsrp->type ?? '') === 'overseas' ? 'checked' : '' }}>
-                                        <label class="form-check-label" for="type_overseas" style="font-size:12px;color:#2d7a5f;">Overseas</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="classification_type"
-                                            id="type_both" value="both"
-                                            {{ ($nsrp->type ?? '') === 'both' ? 'checked' : '' }}>
-                                        <label class="form-check-label" for="type_both" style="font-size:12px;color:#2d7a5f;">Both (Local & Overseas)</label>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="peso-label">Employment Type *</label>
-                                <select name="employment_type" id="employmentType" class="form-select peso-input" required
-                                        onchange="toggleEmploymentFields()">
-                                    <option value="">Select</option>
-                                    <option value="employed"   {{ ($nsrp->employment_type ?? '') === 'employed'   ? 'selected' : '' }}>Employed</option>
-                                    <option value="unemployed" {{ ($nsrp->employment_type ?? '') === 'unemployed' ? 'selected' : '' }}>Unemployed</option>
-                                </select>
-                            </div>
-
-                            <div class="col-12" id="employedFields" style="display:none;">
-                                <label class="peso-label">Type of Employment</label>
-                                <div class="d-flex gap-3 flex-wrap mt-1">
-                                    @foreach([
-                                        'wage_employed'   => 'Wage Employed',
-                                        'self_employed'   => 'Self-Employed (please specify)',
-                                    ] as $val => $label)
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio"
-                                            name="employed_sub_type" value="{{ $val }}"
-                                            id="emp_{{ $val }}"
-                                            {{ ($nsrp->employed_sub_type ?? '') === $val ? 'checked' : '' }}
-                                            onchange="toggleSelfEmployed()">
-                                        <label class="form-check-label" for="emp_{{ $val }}"
-                                            style="font-size:12px;color:#2d7a5f;">{{ $label }}</label>
-                                    </div>
-                                    @endforeach
-                                </div>
-                                <div class="mt-2" id="selfEmployedSpecify" style="display:none;">
-                                    <input type="text" name="self_employed_specify" class="form-control peso-input"
-                                        style="max-width:400px;"
-                                        placeholder="Fisherman/Fisherfolk, Vendor/Retailer, Home-based worker, etc."
-                                        value="{{ $nsrp->self_employed_specify ?? '' }}">
-                                </div>
-                            </div>
-
-                            <div class="col-12" id="unemployedFields" style="display:none;">
-                                <div class="row g-3">
-                                    <div class="col-md-4">
-                                        <label class="peso-label">How long have you been looking for work? (months)</label>
-                                        <input type="number" name="months_looking" class="form-control peso-input"
-                                            value="{{ $nsrp->months_looking ?? '' }}" min="0">
-                                    </div>
-                                    <div class="col-12">
-                                        <label class="peso-label">Reason for Unemployment</label>
-                                        <div class="d-flex gap-3 flex-wrap mt-1">
-                                            @foreach([
-                                                'new_entrant'        => 'New Entrant/Fresh Graduate',
-                                                'finished_contract'  => 'Finished Contract',
-                                                'resigned'           => 'Resigned',
-                                                'retired'            => 'Retired',
-                                                'terminated_calamity'=> 'Terminated/Laid off due to calamity',
-                                                'terminated_local'   => 'Terminated/Laid off (local)',
-                                                'terminated_abroad'  => 'Terminated/Laid off (abroad)',
-                                                'others'             => 'Others',
-                                            ] as $val => $label)
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="radio"
-                                                    name="unemployed_reason" value="{{ $val }}"
-                                                    id="unemp_{{ $val }}"
-                                                    {{ ($nsrp->unemployed_reason ?? '') === $val ? 'checked' : '' }}
-                                                    onchange="toggleUnemployedOther()">
-                                                <label class="form-check-label" for="unemp_{{ $val }}"
-                                                    style="font-size:12px;color:#2d7a5f;">{{ $label }}</label>
-                                            </div>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4" id="terminatedAbroadCountry" style="display:none;">
-                                        <label class="peso-label">Specify country (if terminated abroad)</label>
-                                        <input type="text" name="terminated_abroad_country" class="form-control peso-input"
-                                            value="{{ $nsrp->terminated_abroad_country ?? '' }}">
-                                    </div>
-                                    <div class="col-md-4" id="unemployedOtherField" style="display:none;">
-                                        <label class="peso-label">Others, please specify</label>
-                                        <input type="text" name="unemployed_other" class="form-control peso-input"
-                                            value="{{ $nsrp->unemployed_other ?? '' }}">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-md-3">
-                                <label class="peso-label">Are you an OFW?</label>
-                                <select name="is_ofw" class="form-select peso-input" onchange="toggleOfwFields()">
-                                    <option value="0" {{ !($nsrp->is_ofw ?? false) ? 'selected' : '' }}>No</option>
-                                    <option value="1" {{ ($nsrp->is_ofw  ?? false) ? 'selected' : '' }}>Yes</option>
-                                </select>
-                            </div>
-                            <div class="col-md-3" id="ofwCountryField" style="display:none;">
-                                <label class="peso-label">Specify country</label>
-                                <input type="text" name="ofw_country" class="form-control peso-input"
-                                    value="{{ $nsrp->ofw_country ?? '' }}">
-                            </div>
-
-                            <div class="col-md-3">
-                                <label class="peso-label">Are you a former OFW?</label>
-                                <select name="is_former_ofw" class="form-select peso-input" onchange="toggleFormerOfwFields()">
-                                    <option value="0" {{ !($nsrp->is_former_ofw ?? false) ? 'selected' : '' }}>No</option>
-                                    <option value="1" {{ ($nsrp->is_former_ofw ?? false) ? 'selected' : '' }}>Yes</option>
-                                </select>
-                            </div>
-                            <div class="col-12" id="formerOfwFields" style="display:none;">
-                                <div class="row g-2">
-                                    <div class="col-md-4">
-                                        <label class="peso-label">Latest country of deployment</label>
-                                        <input type="text" name="latest_deployment_country" class="form-control peso-input"
-                                            value="{{ $nsrp->latest_deployment_country ?? '' }}">
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="peso-label">Month and year of return</label>
-                                        <input type="text" name="return_month" class="form-control peso-input"
-                                            placeholder="e.g. 01/2024"
-                                            value="{{ $nsrp->return_month ?? '' }}">
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-md-3">
-                                <label class="peso-label">4Ps Beneficiary?</label>
-                                <select name="is_4ps" class="form-select peso-input">
-                                    <option value="0" {{ !($nsrp->is_4ps ?? false) ? 'selected' : '' }}>No</option>
-                                    <option value="1" {{ ($nsrp->is_4ps  ?? false) ? 'selected' : '' }}>Yes</option>
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="peso-label">Household ID (if 4Ps)</label>
-                                <input type="text" name="household_id" class="form-control peso-input"
-                                    value="{{ $nsrp->household_id ?? '' }}">
-                            </div>
-                        </div>
-                    </div>
-
                 </div>
 
                 {{-- ══════════════════════════════════════════ --}}
-                {{-- STEP 3: II. JOB PREFERENCE --}}
+                {{-- STEP 2: II. JOB PREFERENCE --}}
                 {{-- ══════════════════════════════════════════ --}}
-                <div class="nsrp-step" data-step="3" style="display:none;">
+                <div class="nsrp-step" data-step="2" style="display:none;">
                     <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid #e8f5f0;">
                         <div style="width:28px;height:28px;background:linear-gradient(135deg,#90d870,#4dd9c0);border-radius:8px;display:flex;align-items:center;justify-content:center;">
                             <i class="bi bi-search" style="color:#fff;font-size:13px;"></i>
@@ -488,9 +297,9 @@
                 </div>
 
                 {{-- ══════════════════════════════════════════ --}}
-                {{-- STEP 4: III. LANGUAGE / DIALECT PROFICIENCY --}}
+                {{-- STEP 3: III. LANGUAGE / DIALECT PROFICIENCY --}}
                 {{-- ══════════════════════════════════════════ --}}
-                <div class="nsrp-step" data-step="4" style="display:none;">
+                <div class="nsrp-step" data-step="3" style="display:none;">
                     <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid #e8f5f0;">
                         <div style="width:28px;height:28px;background:linear-gradient(135deg,#90d870,#4dd9c0);border-radius:8px;display:flex;align-items:center;justify-content:center;">
                             <i class="bi bi-translate" style="color:#fff;font-size:13px;"></i>
@@ -568,9 +377,9 @@
                 </div>
 
                 {{-- ══════════════════════════════════════════ --}}
-                {{-- STEP 5: IV. EDUCATIONAL BACKGROUND --}}
+                {{-- STEP 4: IV. EDUCATIONAL BACKGROUND --}}
                 {{-- ══════════════════════════════════════════ --}}
-                <div class="nsrp-step" data-step="5" style="display:none;">
+                <div class="nsrp-step" data-step="4" style="display:none;">
                     <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid #e8f5f0;">
                         <div style="width:28px;height:28px;background:linear-gradient(135deg,#90d870,#4dd9c0);border-radius:8px;display:flex;align-items:center;justify-content:center;">
                             <i class="bi bi-mortarboard" style="color:#fff;font-size:13px;"></i>
@@ -731,9 +540,9 @@
                 </div>
 
                 {{-- ══════════════════════════════════════════ --}}
-                {{-- STEP 6: V. TECHNICAL/VOCATIONAL TRAINING --}}
+                {{-- STEP 5: V. TECHNICAL/VOCATIONAL TRAINING --}}
                 {{-- ══════════════════════════════════════════ --}}
-                <div class="nsrp-step" data-step="6" style="display:none;">
+                <div class="nsrp-step" data-step="5" style="display:none;">
                     <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid #e8f5f0;">
                         <div style="width:28px;height:28px;background:linear-gradient(135deg,#90d870,#4dd9c0);border-radius:8px;display:flex;align-items:center;justify-content:center;">
                             <i class="bi bi-journal-bookmark" style="color:#fff;font-size:13px;"></i>
@@ -815,9 +624,9 @@
                 </div>
 
                 {{-- ══════════════════════════════════════════ --}}
-                {{-- STEP 7: VI. ELIGIBILITY / PROFESSIONAL LICENSE --}}
+                {{-- STEP 6: VI. ELIGIBILITY / PROFESSIONAL LICENSE --}}
                 {{-- ══════════════════════════════════════════ --}}
-                <div class="nsrp-step" data-step="7" style="display:none;">
+                <div class="nsrp-step" data-step="6" style="display:none;">
                     <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid #e8f5f0;">
                         <div style="width:28px;height:28px;background:linear-gradient(135deg,#90d870,#4dd9c0);border-radius:8px;display:flex;align-items:center;justify-content:center;">
                             <i class="bi bi-award" style="color:#fff;font-size:13px;"></i>
@@ -875,9 +684,173 @@
                 </div>
 
                 {{-- ══════════════════════════════════════════ --}}
-                {{-- STEP 8: VII. WORK EXPERIENCE --}}
+                {{-- STEP 7: EMPLOYMENT STATUS / TYPE + VII. WORK EXPERIENCE --}}
                 {{-- ══════════════════════════════════════════ --}}
-                <div class="nsrp-step" data-step="8" style="display:none;">
+                <div class="nsrp-step" data-step="7" style="display:none;">
+
+                    <div class="mb-4">
+                        <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid #e8f5f0;">
+                            <div style="width:28px;height:28px;background:linear-gradient(135deg,#90d870,#4dd9c0);border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                                <i class="bi bi-briefcase" style="color:#fff;font-size:13px;"></i>
+                            </div>
+                            <h6 style="margin:0;font-size:13px;font-weight:700;color:#2d7a5f;">Employment Status / Type</h6>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="peso-label">Classification *</label>
+                                <div class="d-flex gap-3 mt-1">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="classification_type"
+                                            id="type_local" value="local"
+                                            {{ ($nsrp->type ?? 'local') === 'local' ? 'checked' : '' }} required>
+                                        <label class="form-check-label" for="type_local" style="font-size:12px;color:#2d7a5f;">Local</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="classification_type"
+                                            id="type_overseas" value="overseas"
+                                            {{ ($nsrp->type ?? '') === 'overseas' ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="type_overseas" style="font-size:12px;color:#2d7a5f;">Overseas</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="classification_type"
+                                            id="type_both" value="both"
+                                            {{ ($nsrp->type ?? '') === 'both' ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="type_both" style="font-size:12px;color:#2d7a5f;">Both (Local & Overseas)</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="peso-label">Employment Type *</label>
+                                <select name="employment_type" id="employmentType" class="form-select peso-input" required
+                                        onchange="toggleEmploymentFields()">
+                                    <option value="">Select</option>
+                                    <option value="employed"   {{ ($nsrp->employment_type ?? '') === 'employed'   ? 'selected' : '' }}>Employed</option>
+                                    <option value="unemployed" {{ ($nsrp->employment_type ?? '') === 'unemployed' ? 'selected' : '' }}>Unemployed</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4" id="monthsLookingField" style="display:none;">
+                                <label class="peso-label">How long have you been looking for work? (months)</label>
+                                <input type="number" name="months_looking" class="form-control peso-input"
+                                    value="{{ $nsrp->months_looking ?? '' }}" min="0">
+                            </div>
+
+                            <div class="col-12" id="employedFields" style="display:none;">
+                                <label class="peso-label">Type of Employment</label>
+                                <div class="d-flex gap-3 flex-wrap mt-1">
+                                    @foreach([
+                                        'wage_employed'   => 'Wage Employed',
+                                        'self_employed'   => 'Self-Employed (please specify)',
+                                    ] as $val => $label)
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio"
+                                            name="employed_sub_type" value="{{ $val }}"
+                                            id="emp_{{ $val }}"
+                                            {{ ($nsrp->employed_sub_type ?? '') === $val ? 'checked' : '' }}
+                                            onchange="toggleSelfEmployed()">
+                                        <label class="form-check-label" for="emp_{{ $val }}"
+                                            style="font-size:12px;color:#2d7a5f;">{{ $label }}</label>
+                                    </div>
+                                    @endforeach
+                                </div>
+                                <div class="mt-2" id="selfEmployedSpecify" style="display:none;">
+                                    <input type="text" name="self_employed_specify" class="form-control peso-input"
+                                        style="max-width:400px;"
+                                        placeholder="Fisherman/Fisherfolk, Vendor/Retailer, Home-based worker, etc."
+                                        value="{{ $nsrp->self_employed_specify ?? '' }}">
+                                </div>
+                            </div>
+
+                            <div class="col-12" id="unemployedFields" style="display:none;">
+                                <div class="row g-3">
+                                    <div class="col-12">
+                                        <label class="peso-label">Reason for Unemployment</label>
+                                        <div class="d-flex gap-3 flex-wrap mt-1">
+                                            @foreach([
+                                                'new_entrant'        => 'New Entrant/Fresh Graduate',
+                                                'finished_contract'  => 'Finished Contract',
+                                                'resigned'           => 'Resigned',
+                                                'retired'            => 'Retired',
+                                                'terminated_calamity'=> 'Terminated/Laid off due to calamity',
+                                                'terminated_local'   => 'Terminated/Laid off (local)',
+                                                'terminated_abroad'  => 'Terminated/Laid off (abroad)',
+                                                'others'             => 'Others',
+                                            ] as $val => $label)
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio"
+                                                    name="unemployed_reason" value="{{ $val }}"
+                                                    id="unemp_{{ $val }}"
+                                                    {{ ($nsrp->unemployed_reason ?? '') === $val ? 'checked' : '' }}
+                                                    onchange="toggleUnemployedOther()">
+                                                <label class="form-check-label" for="unemp_{{ $val }}"
+                                                    style="font-size:12px;color:#2d7a5f;">{{ $label }}</label>
+                                            </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4" id="terminatedAbroadCountry" style="display:none;">
+                                        <label class="peso-label">Specify country (if terminated abroad)</label>
+                                        <input type="text" name="terminated_abroad_country" class="form-control peso-input"
+                                            value="{{ $nsrp->terminated_abroad_country ?? '' }}">
+                                    </div>
+                                    <div class="col-md-4" id="unemployedOtherField" style="display:none;">
+                                        <label class="peso-label">Others, please specify</label>
+                                        <input type="text" name="unemployed_other" class="form-control peso-input"
+                                            value="{{ $nsrp->unemployed_other ?? '' }}">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="peso-label">Are you an OFW?</label>
+                                <select name="is_ofw" class="form-select peso-input" onchange="toggleOfwFields()">
+                                    <option value="0" {{ !($nsrp->is_ofw ?? false) ? 'selected' : '' }}>No</option>
+                                    <option value="1" {{ ($nsrp->is_ofw  ?? false) ? 'selected' : '' }}>Yes</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3" id="ofwCountryField" style="display:none;">
+                                <label class="peso-label">Specify country</label>
+                                <input type="text" name="ofw_country" class="form-control peso-input"
+                                    value="{{ $nsrp->ofw_country ?? '' }}">
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="peso-label">Are you a former OFW?</label>
+                                <select name="is_former_ofw" class="form-select peso-input" onchange="toggleFormerOfwFields()">
+                                    <option value="0" {{ !($nsrp->is_former_ofw ?? false) ? 'selected' : '' }}>No</option>
+                                    <option value="1" {{ ($nsrp->is_former_ofw ?? false) ? 'selected' : '' }}>Yes</option>
+                                </select>
+                            </div>
+                            <div class="col-12" id="formerOfwFields" style="display:none;">
+                                <div class="row g-2">
+                                    <div class="col-md-4">
+                                        <label class="peso-label">Latest country of deployment</label>
+                                        <input type="text" name="latest_deployment_country" class="form-control peso-input"
+                                            value="{{ $nsrp->latest_deployment_country ?? '' }}">
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="peso-label">Month and year of return</label>
+                                        <input type="text" name="return_month" class="form-control peso-input"
+                                            placeholder="e.g. 01/2024"
+                                            value="{{ $nsrp->return_month ?? '' }}">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="peso-label">4Ps Beneficiary?</label>
+                                <select name="is_4ps" class="form-select peso-input">
+                                    <option value="0" {{ !($nsrp->is_4ps ?? false) ? 'selected' : '' }}>No</option>
+                                    <option value="1" {{ ($nsrp->is_4ps  ?? false) ? 'selected' : '' }}>Yes</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="peso-label">Household ID (if 4Ps)</label>
+                                <input type="text" name="household_id" class="form-control peso-input"
+                                    value="{{ $nsrp->household_id ?? '' }}">
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid #e8f5f0;">
                         <div style="width:28px;height:28px;background:linear-gradient(135deg,#90d870,#4dd9c0);border-radius:8px;display:flex;align-items:center;justify-content:center;">
                             <i class="bi bi-building" style="color:#fff;font-size:13px;"></i>
@@ -1033,9 +1006,9 @@
                 </div>
 
                 {{-- ══════════════════════════════════════════ --}}
-                {{-- STEP 9: VIII. OTHER SKILLS + CERTIFICATION + SUBMIT --}}
+                {{-- STEP 8: VIII. OTHER SKILLS + CERTIFICATION + SUBMIT --}}
                 {{-- ══════════════════════════════════════════ --}}
-                <div class="nsrp-step" data-step="9" style="display:none;">
+                <div class="nsrp-step" data-step="8" style="display:none;">
 
                     <div class="mb-4">
                         <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid #e8f5f0;">
@@ -1131,7 +1104,7 @@
             style="border:1.5px solid #a8e6cf;border-radius:8px;color:#2d7a5f;padding:6px 14px;">
             <i class="bi bi-chevron-left"></i>
         </button>
-        <span id="nsrpStepInfo" style="font-size:13px;color:#2d7a5f;font-weight:600;white-space:nowrap;">Step 1 of 9</span>
+        <span id="nsrpStepInfo" style="font-size:13px;color:#2d7a5f;font-weight:600;white-space:nowrap;">Step 1 of 8</span>
         <button type="button" id="nsrpStepNext" class="btn btn-sm fw-semibold"
             style="border:none;border-radius:8px;color:#fff;padding:6px 14px;background:linear-gradient(90deg,#90d870,#4dd9c0);">
             Next <i class="bi bi-chevron-right ms-1"></i>
@@ -1145,7 +1118,7 @@
     let otherLangCount = {{ count($otherLangs) }};
 
     // ── STEP NAVIGATION ──
-    const nsrpTotalSteps = 9;
+    const nsrpTotalSteps = 8;
     let nsrpCurrentStep = 1;
 
     function showNsrpStep(step) {
@@ -1268,8 +1241,9 @@
     // ── Employment Type Toggle ──
     function toggleEmploymentFields() {
         const val = document.getElementById('employmentType').value;
-        document.getElementById('employedFields').style.display   = val === 'employed'   ? 'block' : 'none';
-        document.getElementById('unemployedFields').style.display = val === 'unemployed' ? 'block' : 'none';
+        document.getElementById('employedFields').style.display     = val === 'employed'   ? 'block' : 'none';
+        document.getElementById('unemployedFields').style.display   = val === 'unemployed' ? 'block' : 'none';
+        document.getElementById('monthsLookingField').style.display = val === 'unemployed' ? 'block' : 'none';
     }
 
     function toggleSelfEmployed() {

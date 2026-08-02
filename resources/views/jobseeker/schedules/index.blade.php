@@ -24,7 +24,7 @@
         <i class="bi bi-building me-1"></i> In-house Interviews
         <span class="badge ms-1"
             style="background:rgba(255,255,255,0.3);font-size:10px;">
-            {{ $inhouseSchedules->count() }}
+            {{ $inhouseApplications->count() }}
         </span>
     </a>
     <a href="{{ route('jobseeker.schedules', ['type' => 'jobfair']) }}"
@@ -44,12 +44,12 @@
 {{-- IN-HOUSE TAB --}}
 @if(request('type', 'inhouse') === 'inhouse')
 
-    @if($inhouseSchedules->isEmpty())
+    @if($inhouseApplications->isEmpty())
         <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
             <i class="bi bi-calendar-x" style="font-size:48px;color:#c0e8dc;"></i>
             <div class="mt-3 fw-semibold" style="color:#2d7a5f;">No in-house schedules yet</div>
             <div class="text-muted small mt-1">
-                In-house interview schedules will appear here once confirmed by PESO staff
+                In-house interview schedules will appear here once you confirm participation after applying
             </div>
         </div>
     @else
@@ -60,48 +60,27 @@
                         <tr>
                             <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
                             <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Company</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Confirmed Date</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Confirmed Time</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Venue</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Job Positions</th>
+                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Job Position</th>
+                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Slots Needed</th>
+                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">In-house Date</th>
                             <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Status</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($inhouseSchedules as $i => $schedule)
+                        @foreach($inhouseApplications as $i => $app)
                         <tr style="font-size:13px;">
                             <td style="padding:12px 16px;color:#888;">{{ $i + 1 }}</td>
                             <td style="padding:12px 16px;font-weight:600;color:#2d7a5f;">
-                                {{ $schedule->employer->company_name ?? $schedule->employer->name ?? '—' }}
+                                {{ $app->job->company->company_name ?? '—' }}
                             </td>
                             <td style="padding:12px 16px;color:#555;">
-                                {{ $schedule->confirmed_date?->format('M d, Y') ?? '—' }}
+                                {{ $app->job->title ?? '—' }}
                             </td>
                             <td style="padding:12px 16px;color:#555;">
-                                {{ $schedule->confirmed_time
-                                    ? \Carbon\Carbon::parse($schedule->confirmed_time)->format('h:i A')
-                                    : '—' }}
+                                {{ $app->job->slots ?? '—' }}
                             </td>
                             <td style="padding:12px 16px;color:#555;">
-                                @if($schedule->venue_type === 'custom')
-                                    {{ $schedule->venue_address }}
-                                @else
-                                    PESO Office
-                                @endif
-                            </td>
-                            <td style="padding:12px 16px;">
-                                @if($schedule->job_positions)
-                                    @foreach($schedule->job_positions as $pos)
-                                        <span class="badge me-1"
-                                            style="background:#e8f8f3;color:#2d7a5f;
-                                                   font-size:11px;padding:3px 8px;">
-                                            {{ $pos }}
-                                        </span>
-                                    @endforeach
-                                @else
-                                    <span class="text-muted">—</span>
-                                @endif
+                                {{ $app->job->preferred_date ? \Carbon\Carbon::parse($app->job->preferred_date)->format('M d, Y') : '—' }}
                             </td>
                             <td style="padding:12px 16px;text-align:center;">
                                 <span class="badge fw-semibold"
@@ -109,24 +88,6 @@
                                            padding:4px 10px;border-radius:20px;">
                                     Confirmed ✅
                                 </span>
-                            </td>
-                            <td style="padding:12px 16px;text-align:center;">
-                                @if(in_array($schedule->id, $joinedScheduleIds))
-                                    <span class="badge fw-semibold"
-                                        style="background:#e8f8f3;color:#2d7a5f;font-size:11px;
-                                               padding:4px 10px;border-radius:20px;">
-                                        <i class="bi bi-check-circle-fill me-1"></i>Joined
-                                    </span>
-                                @else
-                                    <form action="{{ route('jobseeker.inhouse.join', $schedule->id) }}" method="POST">
-                                        @csrf
-                                        <button type="submit" class="btn btn-sm fw-semibold"
-                                            style="background:linear-gradient(90deg,#90d870,#4dd9c0);
-                                                   color:#fff;border:none;border-radius:8px;font-size:11px;padding:4px 12px;">
-                                            <i class="bi bi-hand-index-thumb-fill me-1"></i>Join
-                                        </button>
-                                    </form>
-                                @endif
                             </td>
                         </tr>
                         @endforeach

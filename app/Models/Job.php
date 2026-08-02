@@ -75,7 +75,10 @@ class Job extends Model
     {
         return $this->hasMany(Application::class);
     }
-    
 
-    
+    // ── Accessor: check kung naglapas na ang deadline (real-time, base sa server date) ──
+    public function getIsExpiredAttribute()
+    {
+        return $this->deadline && \Carbon\Carbon::parse($this->deadline)->endOfDay()->isPast();
+    }
 }

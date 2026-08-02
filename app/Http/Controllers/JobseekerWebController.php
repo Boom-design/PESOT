@@ -369,7 +369,14 @@ foreach ($workExperiences as $exp) {
         $jobseeker = $this->authJobseeker();
         if (!$jobseeker) return redirect()->route('login');
 
-        $query = Job::with('company')->where('status', 'open');
+        $jobType = $request->input('job_type', 'all'); // all | local | ofw
+
+        $query = Job::with('company')->where('status', 'open')
+            ->where(function ($q) {
+                $q->whereNull('deadline')->orWhereDate('deadline', '>=', now()->toDateString());
+            })
+            ->when($jobType === 'local', fn($q) => $q->whereHas('company', fn($c) => $c->where('is_overseas', false)))
+            ->when($jobType === 'ofw', fn($q) => $q->whereHas('company', fn($c) => $c->where('is_overseas', true)));
 
         if ($request->search) {
             $query->where(function ($q) use ($request) {
@@ -378,9 +385,9 @@ foreach ($workExperiences as $exp) {
             });
         }
 
-        $jobs = $query->latest()->paginate(10);
+        $jobs = $query->latest()->paginate(4)->withQueryString();
 
-        return view('jobseeker.jobs.index', compact('jobseeker', 'jobs'));
+        return view('jobseeker.jobs.index', compact('jobseeker', 'jobs', 'jobType'));
     }
 
     // ───────────────────────────────
@@ -398,16 +405,27 @@ foreach ($workExperiences as $exp) {
         $application    = $registration ? Application::where('jobseeker_id', $registration->id)->where('job_id', $id)->first() : null;
         $alreadyApplied = $application !== null;
 
-        // Compute match percentage
+        // Compute match percentage + breakdown
         $matchPercentage = null;
+        $matchCriteria   = [];
         if ($nsrp) {
-            $appController   = new ApplicationController();
-            $matchPercentage = $appController->computeMatchPublic($jobseeker->id, $job);
+            $appController = new ApplicationController();
+            $breakdown       = $appController->computeMatchBreakdownPublic($jobseeker->id, $job);
+            $matchPercentage = $breakdown['percentage'];
+            $matchCriteria   = $breakdown['criteria'];
+        }
+
+        // ── In-house: auto-prompt kung ≤5 days na lang ang nabilin sa preferred_date ug wala pa nagrespond ──
+        $showInhouseParticipationPrompt = false;
+        if ($application && $job->schedule_type === 'inhouse' && $application->inhouse_participation === 'pending' && $job->preferred_date) {
+            $daysUntil = now()->diffInDays(\Carbon\Carbon::parse($job->preferred_date), false);
+            $showInhouseParticipationPrompt = $daysUntil >= 0 && $daysUntil <= 5;
         }
 
         return view('jobseeker.jobs.show', compact(
             'jobseeker', 'job', 'registration', 'nsrp',
-            'alreadyApplied', 'application', 'matchPercentage'
+            'alreadyApplied', 'application', 'matchPercentage', 'matchCriteria',
+            'showInhouseParticipationPrompt'
         ));
     }
 
@@ -503,19 +521,15 @@ foreach ($workExperiences as $exp) {
 
         $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
 
-        $inhouseSchedules = \App\Models\InhouseSchedule::with('employer')
-            ->whereHas('employer.jobs.applications', function($q) use ($registration) {
-                $q->where('jobseeker_id', $registration->id ?? 0);
+        // ── In-house interviews nga na-ACCEPT sa jobseeker (gikan sa Job-based in-house postings) ──
+        $inhouseApplications = Application::with('job.company')
+            ->where('jobseeker_id', $registration->id ?? 0)
+            ->where('inhouse_participation', 'accepted')
+            ->whereHas('job', function ($q) {
+                $q->where('schedule_type', 'inhouse');
             })
-            ->where('status', 'accepted')
             ->latest()
             ->get();
-
-        // Kuhaon ang IDs sa schedules nga na-join na sa jobseeker
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
-        $joinedScheduleIds = \App\Models\InhouseParticipant::where('jobseeker_id', $registration->id ?? 0)
-            ->pluck('inhouse_schedule_id')
-            ->toArray();
 
         $jobFairSchedules = \App\Models\JobFairEvent::with('employmentRequests.job.company')
             ->where('status', '!=', 'completed')
@@ -531,7 +545,7 @@ foreach ($workExperiences as $exp) {
             ->toArray();
 
         return view('jobseeker.schedules.index', compact(
-            'inhouseSchedules', 'jobFairSchedules', 'type', 'joinedScheduleIds', 'joinedJobFairIds'
+            'inhouseApplications', 'jobFairSchedules', 'type', 'joinedJobFairIds'
         ));
     }
 
@@ -597,6 +611,30 @@ foreach ($workExperiences as $exp) {
     }
 
     // ───────────────────────────────
+    // RESPOND TO JOB FAIR ATTENDANCE CONFIRMATION (sent on event day)
+    // ───────────────────────────────
+    public function respondJobFairAttendance(Request $request, $registrationId)
+    {
+        $jobseeker = $this->authJobseeker();
+        if (!$jobseeker) return response()->json(['error' => 'Unauthorized'], 401);
+
+        $request->validate(['response' => 'required|in:yes,no']);
+
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+
+        $reg = \App\Models\JobFairRegistration::where('id', $registrationId)
+            ->where('user_id', $registration->id ?? 0)
+            ->firstOrFail();
+
+        $reg->update([
+            'is_attended' => $request->response === 'yes',
+            'attended_at' => $request->response === 'yes' ? now() : null,
+        ]);
+
+        return response()->json(['success' => true]);
+    }
+
+    // ───────────────────────────────
     // HISTORY — Hired applications only
     // ───────────────────────────────
     public function history(Request $request)
@@ -641,5 +679,34 @@ foreach ($workExperiences as $exp) {
             ->update(['is_read' => true]);
 
         return response()->json(['success' => true]);
+    }
+
+    public function markAllNotificationsRead()
+    {
+        $jobseeker = $this->authJobseeker();
+        if (!$jobseeker) return response()->json(['error' => 'Unauthorized'], 401);
+
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        if (!$registration) return response()->json(['error' => 'Not found'], 404);
+
+        \App\Models\Announcement::where('jobseeker_id', $registration->id)
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
+
+        return response()->json(['success' => true]);
+    }
+
+    public function notifications()
+    {
+        $jobseeker = $this->authJobseeker();
+        if (!$jobseeker) return redirect()->route('login');
+
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+
+        $notifications = $registration
+            ? \App\Models\Announcement::where('jobseeker_id', $registration->id)->latest()->get()
+            : collect();
+
+        return view('jobseeker.notifications.index', compact('notifications'));
     }
 }

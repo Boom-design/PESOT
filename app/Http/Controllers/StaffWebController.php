@@ -160,9 +160,34 @@ $nsrp = $registration->nsrp;
         if (!$staff) return redirect()->route('login');
         if (!in_array($staff->staff_role, ['lra', 'sra', 'job_vacancy'])) return redirect()->route('staff.dashboard');
 
-        $events = \App\Models\JobFairEvent::orderByDesc('event_date')->paginate(10);
+        $staffRole = $staff->staff_role;
+        $events = \App\Models\JobFairEvent::orderByDesc('event_date')->paginate(3, ['*'], 'event_page');
 
-        return view('staff.inhouse.jobfair', compact('events'));
+        $jobs = null;
+        $jobStatus = request('job_status', 'pending');
+        $totalPendingJobs = $totalApprovedJobs = $totalRejectedJobs = 0;
+
+        // ── LRA dili mo-approve og Job Fair postings (SRA/Job Vacancy ra) — pero pwede gihapon makakita sa events monitoring ──
+        if (in_array($staffRole, ['job_vacancy', 'sra'])) {
+            $isOverseas = $staffRole === 'sra';
+
+            $baseJobQuery = \App\Models\Job::where('schedule_type', 'job_fair')
+                ->whereHas('company', fn($n) => $n->where('is_overseas', $isOverseas));
+
+            $totalPendingJobs  = (clone $baseJobQuery)->where('posting_status', 'pending')->count();
+            $totalApprovedJobs = (clone $baseJobQuery)->where('posting_status', 'approved')->count();
+            $totalRejectedJobs = (clone $baseJobQuery)->where('posting_status', 'rejected')->count();
+
+            $jobs = (clone $baseJobQuery)->with('company')
+                ->when($jobStatus !== 'all', fn($q) => $q->where('posting_status', $jobStatus))
+                ->latest()
+                ->paginate(3, ['*'], 'job_page');
+        }
+
+        return view('staff.inhouse.jobfair', compact(
+            'events', 'staffRole', 'jobs', 'jobStatus',
+            'totalPendingJobs', 'totalApprovedJobs', 'totalRejectedJobs'
+        ));
     }
 
     // ───────────────────────────────
@@ -220,6 +245,7 @@ $nsrp = $registration->nsrp;
         $attendanceFilter    = request('attendance_filter', 'all');
         $totalRegistered     = 0;
         $totalAttended       = 0;
+        $totalAbsent         = 0;
         $totalLocal          = 0;
         $totalOverseas       = 0;
 
@@ -228,8 +254,10 @@ $nsrp = $registration->nsrp;
         $event = request('event_id') ? \App\Models\JobFairEvent::find(request('event_id')) : null;
 
         if ($view === 'attendance' && request('event_id')) {
+            // ── Dili pa gi-confirm (is_attended NULL) DILI mabutang sa listahan — mabutang lang human ma-confirm sa jobseeker sa event day ──
             $regQuery = \App\Models\JobFairRegistration::with(['jobseeker.nsrp', 'jobseeker.user'])
                 ->where('job_fair_id', request('event_id'))
+                ->whereNotNull('is_attended')
                 ->when($attendanceFilter !== 'all', function ($q) use ($attendanceFilter) {
                     $q->whereHas('jobseeker.nsrp', function ($n) use ($attendanceFilter) {
                         $n->whereIn('type', [$attendanceFilter, 'both']);
@@ -251,12 +279,13 @@ $nsrp = $registration->nsrp;
 
             $totalRegistered = (clone $baseCountQuery)->count();
             $totalAttended   = (clone $baseCountQuery)->where('is_attended', true)->count();
+            $totalAbsent     = (clone $baseCountQuery)->where('is_attended', false)->count();
 
-            $totalLocal = (clone $baseCountQuery)->whereHas('jobseeker.nsrp', fn($n) =>
+            $totalLocal = (clone $baseCountQuery)->whereNotNull('is_attended')->whereHas('jobseeker.nsrp', fn($n) =>
                 $n->whereIn('type', ['local', 'both'])
             )->count();
 
-            $totalOverseas = (clone $baseCountQuery)->whereHas('jobseeker.nsrp', fn($n) =>
+            $totalOverseas = (clone $baseCountQuery)->whereNotNull('is_attended')->whereHas('jobseeker.nsrp', fn($n) =>
                 $n->whereIn('type', ['overseas', 'both'])
             )->count();
         }
@@ -265,7 +294,7 @@ $nsrp = $registration->nsrp;
             'events', 'status', 'totalUpcoming', 'totalOngoing', 'totalCompleted',
             'allEvents', 'participants', 'confirmedCount', 'pendingCount', 'declinedCount',
             'employmentRequests', 'registrations', 'attendanceFilter', 'attendanceSearch',
-            'totalRegistered', 'totalAttended', 'totalLocal', 'totalOverseas', 'event'
+            'totalRegistered', 'totalAttended', 'totalAbsent', 'totalLocal', 'totalOverseas', 'event'
         ));
     }
 
@@ -324,8 +353,40 @@ $nsrp = $registration->nsrp;
             'reference_id'   => $event->id,
         ], $employers->map(fn($e) => $e->employerNsrp->id));
 
+        // ── AUTO-OPEN: tanan Job Fair postings nga approved na pero magpabilin CLOSED (nag-hulat sa bag-ong event) mabalhin karon nga OPEN, mapost na sa landing page ──
+        $closedJobFairJobs = \App\Models\Job::with('company')
+            ->where('schedule_type', 'job_fair')
+            ->where('posting_status', 'approved')
+            ->where('status', 'closed')
+            ->get();
+
+        foreach ($closedJobFairJobs as $job) {
+            $job->update(['status' => 'open']);
+
+            \App\Models\Announcement::sendToEmployers([
+                'type'           => 'job_fair_posting_opened',
+                'title'          => 'Job Fair Posting Now Live 🎪',
+                'message'        => 'Your job fair posting "' . $job->title . '" is now open and visible to jobseekers, following the creation of ' . $event->title . '.',
+                'reference_type' => 'job',
+                'reference_id'   => $job->id,
+            ], $job->company_id);
+        }
+
+        if ($closedJobFairJobs->isNotEmpty()) {
+            $jobseekerRegIds = \App\Models\JobseekerRegistration::whereHas('user', fn($q) => $q->where('status', 'approved'))->pluck('id');
+            foreach ($closedJobFairJobs as $job) {
+                \App\Models\Announcement::sendToJobseekers([
+                    'type'           => 'job_posted',
+                    'title'          => 'New Job Vacancy Posted 💼',
+                    'message'        => 'A new job vacancy "' . $job->title . '" from ' . ($job->company->company_name ?? 'an employer') . ' is now available!',
+                    'reference_type' => 'job',
+                    'reference_id'   => $job->id,
+                ], $jobseekerRegIds);
+            }
+        }
+
         return redirect()->route('staff.jobfair.events')
-            ->with('success', 'Job Fair event created and employers notified!');
+            ->with('success', 'Job Fair event created and employers notified!' . ($closedJobFairJobs->isNotEmpty() ? ' ' . $closedJobFairJobs->count() . ' job fair posting(s) are now live.' : ''));
     }
 
     public function editJobFairEvent($id)
@@ -541,6 +602,33 @@ $nsrp = $registration->nsrp;
     }
 
     // ───────────────────────────────
+    // JOB FAIR — APPROVED JOB POSTINGS (Closed = naghulat pa sa event; Open = na-post na)
+    // ───────────────────────────────
+    public function jobFairPostings()
+    {
+        $staff = $this->authStaff();
+        if (!$staff || $staff->staff_role !== 'job_fair') return redirect()->route('login');
+
+        $status = request('status', 'closed'); // closed | open | all
+        $search = request('search');
+
+        $query = \App\Models\Job::with('company')
+            ->where('schedule_type', 'job_fair')
+            ->where('posting_status', 'approved')
+            ->when($status !== 'all', fn($q) => $q->where('status', $status))
+            ->when($search, fn($q) => $q->where('title', 'like', "%{$search}%")
+                ->orWhereHas('company', fn($u) => $u->where('company_name', 'like', "%{$search}%"))
+            );
+
+        $totalClosed = \App\Models\Job::where('schedule_type', 'job_fair')->where('posting_status', 'approved')->where('status', 'closed')->count();
+        $totalOpen   = \App\Models\Job::where('schedule_type', 'job_fair')->where('posting_status', 'approved')->where('status', 'open')->count();
+
+        $jobs = $query->latest()->paginate(10)->withQueryString();
+
+        return view('staff.job_fair.postings', compact('jobs', 'status', 'totalClosed', 'totalOpen'));
+    }
+
+    // ───────────────────────────────
     // EMPLOYER REQUIREMENTS
     // ───────────────────────────────
     public function employerRequirements()
@@ -678,9 +766,9 @@ $nsrp = $registration->nsrp;
         $request->validate([
             'remarks'           => 'required|string|max:500',
             'rejected_fields'   => 'required|array|min:1',
-            'rejected_fields.*' => 'in:business_permit,sec_dti,company_profile,nsrp_establishment_form,no_pending_case_certificate,vacancy_posting',
+            'rejected_fields.*' => 'in:business_permit,sec_dti,company_profile,no_pending_case_certificate,vacancy_posting',
         ], [
-            'rejected_fields.required' => 'Please check at least one document nga sayop/kulang.',
+            'rejected_fields.required' => 'Please check at least one document that is incorrect or missing.',
         ]);
         $staffRecord = \App\Models\Staff::where('user_id', $staff->id)->first();
         $requirement->update([
@@ -694,7 +782,6 @@ $nsrp = $registration->nsrp;
             'business_permit'             => 'CDO Business Permit',
             'sec_dti'                     => 'SEC / DTI',
             'company_profile'             => 'Company Profile',
-            'nsrp_establishment_form'     => 'NSRP Establishment Form',
             'no_pending_case_certificate' => 'Certificate of No Pending Case',
             'vacancy_posting'             => 'Vacancy Posting',
         ];
@@ -810,18 +897,31 @@ $nsrp = $registration->nsrp;
         if (!$staff) return redirect()->route('login');
 
         $staffRole = $staff->staff_role;
-        if (!in_array($staffRole, ['lra', 'sra', 'job_vacancy'])) return redirect()->route('staff.dashboard');
+        if (!in_array($staffRole, ['lra', 'sra'])) return redirect()->route('staff.dashboard');
 
-        $status = request('status', 'all');
         $search = request('search');
         $page   = (int) request('page', 1);
 
-        $scheduleStatus = $status === 'accepted' ? 'accepted' : ($status === 'pending' ? 'pending' : null);
-        $jobStatus      = $status === 'accepted' ? 'approved' : ($status === 'pending' ? 'pending' : null);
+        $roleFilter = function ($q) use ($staffRole) {
+            if ($staffRole === 'lra') {
+                $q->whereHas('company', fn($n) => $n->where('is_overseas', false));
+            } elseif ($staffRole === 'sra') {
+                $q->whereHas('company', fn($n) => $n->where('is_overseas', true));
+            }
+        };
 
-        // ── SOURCE 1: InhouseSchedule (schedule-only requests) ──
+        $employerRoleFilter = function ($q) use ($staffRole) {
+            if ($staffRole === 'lra') {
+                $q->whereHas('employer', fn($n) => $n->where('is_overseas', false));
+            } elseif ($staffRole === 'sra') {
+                $q->whereHas('employer', fn($n) => $n->where('is_overseas', true));
+            }
+        };
+
+        // ── SOURCE 1: InhouseSchedule (schedule-only requests) — pending ra ──
         $scheduleItems = \App\Models\InhouseSchedule::with('employer')
-            ->when($scheduleStatus, fn($q) => $q->where('status', $scheduleStatus))
+            ->where('status', 'pending')
+            ->where($employerRoleFilter)
             ->when($search, fn($q) => $q->whereHas('employer', fn($u) =>
                 $u->where('company_name', 'like', "%{$search}%")
             ))
@@ -832,14 +932,11 @@ $nsrp = $registration->nsrp;
                 return $s;
             });
 
-        // ── SOURCE 2: Job (job posting + inhouse schedule combined) ──
+        // ── SOURCE 2: Job (job posting + inhouse schedule combined) — pending ra, human ma-approve mabalhin sa Job Vacancies tab ──
         $jobItems = \App\Models\Job::with('company')
             ->where('schedule_type', 'inhouse')
-            ->when(in_array($staffRole, ['lra', 'job_vacancy']), fn($q) =>
-                $q->whereHas('company', fn($n) => $n->where('is_overseas', false)))
-            ->when($staffRole === 'sra', fn($q) =>
-                $q->whereHas('company', fn($n) => $n->where('is_overseas', true)))
-            ->when($jobStatus, fn($q) => $q->where('posting_status', $jobStatus))
+            ->where('posting_status', 'pending')
+            ->where($roleFilter)
             ->when($search, fn($q) => $q->whereHas('company', fn($u) =>
                 $u->where('company_name', 'like', "%{$search}%")
             ))
@@ -861,23 +958,11 @@ $nsrp = $registration->nsrp;
         // ── MERGE + SORT (latest first) ──
         $merged = $scheduleItems->concat($jobItems)->sortByDesc('sort_date')->values();
 
-        $roleFilter = function ($q) use ($staffRole) {
-            if (in_array($staffRole, ['lra', 'job_vacancy'])) {
-                $q->whereHas('company', fn($n) => $n->where('is_overseas', false));
-            } elseif ($staffRole === 'sra') {
-                $q->whereHas('company', fn($n) => $n->where('is_overseas', true));
-            }
-        };
-
-        // ── STAT CARDS (across BOTH sources) ──
-        $totalAll = \App\Models\InhouseSchedule::count()
+        // ── STAT CARDS (Total = tanan In-house ever gikan sa duha ka sources; Pending = parehas sa Total, kay pending ra man permanente ang gipakita dinhi) ──
+        $totalAll = \App\Models\InhouseSchedule::where($employerRoleFilter)->count()
             + \App\Models\Job::where('schedule_type', 'inhouse')->where($roleFilter)->count();
 
-        $totalPending = \App\Models\InhouseSchedule::where('status', 'pending')->count()
-            + \App\Models\Job::where('schedule_type', 'inhouse')->where('posting_status', 'pending')->where($roleFilter)->count();
-
-        $totalAccepted = \App\Models\InhouseSchedule::where('status', 'accepted')->count()
-            + \App\Models\Job::where('schedule_type', 'inhouse')->where('posting_status', 'approved')->where($roleFilter)->count();
+        $totalPending = $merged->count();
 
         // ── MANUAL PAGINATION (kay gi-merge nato ang duha ka sources) ──
         $perPage   = 10;
@@ -890,8 +975,8 @@ $nsrp = $registration->nsrp;
         );
 
         return view('staff.inhouse.index', compact(
-            'schedules', 'status', 'staffRole',
-            'totalAll', 'totalPending', 'totalAccepted'
+            'schedules', 'staffRole',
+            'totalAll', 'totalPending'
         ));
     }
 
@@ -998,14 +1083,29 @@ $nsrp = $registration->nsrp;
         $status    = request('status', 'all');
 
         $query = \App\Models\Job::with('company')
-            ->where(function ($q) {
-                $q->whereNull('schedule_type')->orWhere('schedule_type', '!=', 'inhouse');
+            ->when($staffRole === 'lra', function($q) {
+                // LRA: local, In-house ra nga NA-APPROVE na (mabalhin diri gikan sa In-house tab)
+                $q->whereHas('company', fn($n) => $n->where('is_overseas', false))
+                  ->where('schedule_type', 'inhouse')
+                  ->where('posting_status', 'approved');
             })
-            ->when(in_array($staffRole, ['lra', 'job_vacancy']), function($q) {
-                $q->whereHas('company', fn($n) => $n->where('is_overseas', false));
+            ->when($staffRole === 'job_vacancy', function($q) {
+                // Job Vacancy staff: local, Office Based ra (dili In-house — LRA na ang naga-handle; dili Job Fair — naa na sa Job Fair tab)
+                $q->whereHas('company', fn($n) => $n->where('is_overseas', false))
+                  ->where(function ($q2) {
+                      $q2->whereNull('schedule_type')->orWhere('schedule_type', 'office_based');
+                  });
             })
             ->when($staffRole === 'sra', function($q) {
-                $q->whereHas('company', fn($n) => $n->where('is_overseas', true));
+                // SRA: overseas, Office Based ra + In-house nga na-approve na (dili Job Fair — naa na sa Job Fair tab)
+                $q->whereHas('company', fn($n) => $n->where('is_overseas', true))
+                  ->where(function ($q2) {
+                      $q2->where(function ($q3) {
+                          $q3->whereNull('schedule_type')->orWhere('schedule_type', 'office_based');
+                      })->orWhere(function ($q3) {
+                          $q3->where('schedule_type', 'inhouse')->where('posting_status', 'approved');
+                      });
+                  });
             })
             ->when($status !== 'all', fn($q) => $q->where('status', $status))
             ->when($search, fn($q) => $q->where('title', 'like', "%{$search}%")
@@ -1018,10 +1118,41 @@ $nsrp = $registration->nsrp;
         $totalOpen   = (clone $query)->where('status', 'open')->count();
         $totalClosed = (clone $query)->where('status', 'closed')->count();
 
-        $jobs = $query->latest()->paginate(10);
+        $jobs = $query->latest()->paginate(3);
 
         return view('staff.jobs.index', compact(
             'jobs', 'status', 'staffRole',
+            'totalAll', 'totalOpen', 'totalClosed'
+        ));
+    }
+
+    // ───────────────────────────────
+    // ALL JOB POSTINGS (In-house + Office Based, tanan status) — Job Vacancy staff ra, para makita/ma-delete ang expired
+    // ───────────────────────────────
+    public function allJobPostings()
+    {
+        $staff = $this->authStaff();
+        if (!$staff) return redirect()->route('login');
+        if ($staff->staff_role !== 'job_vacancy') return redirect()->route('staff.dashboard');
+
+        $search = request('search');
+        $status = request('status', 'all');
+
+        $query = \App\Models\Job::with('company')
+            ->whereHas('company', fn($n) => $n->where('is_overseas', false))
+            ->when($status !== 'all', fn($q) => $q->where('status', $status))
+            ->when($search, fn($q) => $q->where('title', 'like', "%{$search}%")
+                ->orWhereHas('company', fn($u) => $u->where('company_name', 'like', "%{$search}%"))
+            );
+
+        $totalAll    = (clone $query)->count();
+        $totalOpen   = (clone $query)->where('status', 'open')->count();
+        $totalClosed = (clone $query)->where('status', 'closed')->count();
+
+        $jobs = $query->latest()->paginate(3);
+
+        return view('staff.jobs.all', compact(
+            'jobs', 'status',
             'totalAll', 'totalOpen', 'totalClosed'
         ));
     }
@@ -1460,30 +1591,51 @@ $nsrp = $registration->nsrp;
         if (!$staff) return redirect()->route('login');
 
         $job = \App\Models\Job::with('company')->findOrFail($id);
+
+        $isOverseas   = $job->company->is_overseas ?? false;
+        $isJobFair    = $job->schedule_type === 'job_fair';
+        $approverRole = $isOverseas ? 'sra' : ($isJobFair ? 'job_vacancy' : 'job_vacancy');
+
+        // ── Access control: SRA ra ang mo-approve sa overseas; Job Vacancy staff ra ang mo-approve sa local (Office Based UG Job Fair) ──
+        if ($isOverseas && $staff->staff_role !== 'sra') {
+            return back()->with('error', 'Only SRA staff can approve overseas job postings.');
+        }
+        if (!$isOverseas && $staff->staff_role !== 'job_vacancy') {
+            return back()->with('error', 'Only Job Vacancy staff can approve local job postings.');
+        }
+
+        // ── Job Fair postings: magpabilin nga CLOSED human ma-approve — si Job Fair staff pa ang mo-open niini pag-create og event ──
         $job->update([
             'posting_status' => 'approved',
-            'status'         => 'open',
+            'status'         => $isJobFair ? 'closed' : 'open',
             'remarks'        => null,
         ]);
 
         \App\Models\Announcement::sendToEmployers([
             'type'           => 'job_approved',
             'title'          => 'Job Posting Approved ✅',
-            'message'        => 'Your job posting "' . $job->title . '" has been approved and is now live!',
+            'message'        => $isJobFair
+                ? 'Your job posting "' . $job->title . '" has been approved for job fair use. It will go live once PESO opens a job fair event.'
+                : 'Your job posting "' . $job->title . '" has been approved and is now live!',
             'reference_type' => 'job',
             'reference_id'   => $job->id,
         ], $job->company_id);
 
-        $jobseekerRegIds = \App\Models\JobseekerRegistration::whereHas('user', fn($q) => $q->where('status', 'approved'))->pluck('id');
-        \App\Models\Announcement::sendToJobseekers([
-            'type'           => 'job_posted',
-            'title'          => 'New Job Vacancy Posted 💼',
-            'message'        => 'A new job vacancy "' . $job->title . '" from ' . $job->company->company_name . ' is now available!',
-            'reference_type' => 'job',
-            'reference_id'   => $job->id,
-        ], $jobseekerRegIds);
+        // ── Job Fair postings dili pa i-post sa jobseekers hangtod ma-open sa Job Fair staff ──
+        if (!$isJobFair) {
+            $jobseekerRegIds = \App\Models\JobseekerRegistration::whereHas('user', fn($q) => $q->where('status', 'approved'))->pluck('id');
+            \App\Models\Announcement::sendToJobseekers([
+                'type'           => 'job_posted',
+                'title'          => 'New Job Vacancy Posted 💼',
+                'message'        => 'A new job vacancy "' . $job->title . '" from ' . $job->company->company_name . ' is now available!',
+                'reference_type' => 'job',
+                'reference_id'   => $job->id,
+            ], $jobseekerRegIds);
+        }
 
-        return back()->with('success', 'Job posting approved and is now live!');
+        return back()->with('success', $isJobFair
+            ? 'Job fair posting approved. It will be posted once a job fair event is opened.'
+            : 'Job posting approved and is now live!');
     }
 
     // ───────────────────────────────
@@ -1497,6 +1649,15 @@ $nsrp = $registration->nsrp;
         $request->validate(['remarks' => 'required|string|max:500']);
 
         $job = \App\Models\Job::with('company')->findOrFail($id);
+
+        $isOverseas = $job->company->is_overseas ?? false;
+        if ($isOverseas && $staff->staff_role !== 'sra') {
+            return back()->with('error', 'Only SRA staff can reject overseas job postings.');
+        }
+        if (!$isOverseas && $staff->staff_role !== 'job_vacancy') {
+            return back()->with('error', 'Only Job Vacancy staff can reject local job postings.');
+        }
+
         $job->update([
             'posting_status' => 'rejected',
             'status'         => 'closed',
@@ -1527,25 +1688,27 @@ $nsrp = $registration->nsrp;
             return redirect()->route('staff.dashboard');
 
         $job    = \App\Models\Job::with('company')->findOrFail($jobId);
-        $filter = request('filter', 'all');
+        $filter = request('filter', 'highly');
 
         $query = \App\Models\Application::with(['jobseeker', 'jobseeker.nsrp'])
-            ->where('job_id', $jobId)
-            ->where('match_percentage', '>=', 50);
+            ->where('job_id', $jobId);
 
         if ($filter === 'highly') {
             $query->where('match_percentage', '>=', 75);
         } elseif ($filter === 'qualified') {
             $query->whereBetween('match_percentage', [50, 74.99]);
+        } elseif ($filter === 'not_qualified') {
+            $query->where('match_percentage', '<', 50);
         }
 
-        $applicants     = $query->orderByDesc('match_percentage')->paginate(10);
-        $totalHighly    = \App\Models\Application::where('job_id', $jobId)->where('match_percentage', '>=', 75)->count();
-        $totalQualified = \App\Models\Application::where('job_id', $jobId)->whereBetween('match_percentage', [50, 74.99])->count();
+        $applicants        = $query->orderByDesc('match_percentage')->paginate(4);
+        $totalHighly       = \App\Models\Application::where('job_id', $jobId)->where('match_percentage', '>=', 75)->count();
+        $totalQualified    = \App\Models\Application::where('job_id', $jobId)->whereBetween('match_percentage', [50, 74.99])->count();
+        $totalNotQualified = \App\Models\Application::where('job_id', $jobId)->where('match_percentage', '<', 50)->count();
 
         return view('staff.jobs.qualified', compact(
             'job', 'applicants', 'staffRole', 'filter',
-            'totalHighly', 'totalQualified'
+            'totalHighly', 'totalQualified', 'totalNotQualified'
         ));
     }
 

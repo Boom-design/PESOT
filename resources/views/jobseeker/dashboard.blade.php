@@ -8,7 +8,7 @@
 <div class="d-flex align-items-center justify-content-between mb-4 fade-in">
     <div>
         <h5 class="fw-bold mb-1" style="color:#2d7a5f; font-size:18px;">
-            Welcome back, {{ $jobseeker->first_name ?? $jobseeker->name ?? 'Jobseeker' }}! 👋
+            Welcome, {{ $jobseeker->first_name ?? $jobseeker->name ?? 'Jobseeker' }}! 👋
         </h5>
         <p class="mb-0" style="font-size:13px; color:#888;">
             {{ now()->format('l, F d, Y') }}

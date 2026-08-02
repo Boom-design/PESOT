@@ -1,40 +1,42 @@
 @extends('jobseeker.layouts.app')
 
-@section('page-title', 'Job Vacancies')
+@section('page-title', '')
 
 @section('content')
 
-{{-- ── HEADER ── --}}
-<div class="d-flex align-items-center justify-content-between mb-4 fade-in">
+{{-- ── HEADER + SEARCH (same row) ── --}}
+<div class="d-flex align-items-end justify-content-between mb-3 fade-in flex-wrap gap-3">
     <div>
         <h5 class="fw-bold mb-1" style="color:#2d7a5f; font-size:18px;">
-            Job Vacancies
+            List of Job Vacancies
         </h5>
         <p class="mb-0" style="font-size:13px; color:#888;">
             Browse available job postings from verified employers.
         </p>
     </div>
+    <form method="GET" action="{{ route('jobseeker.jobs') }}" class="d-flex gap-2">
+        <input type="hidden" name="job_type" value="{{ $jobType }}">
+        <input type="text" name="search" class="form-control peso-input"
+               placeholder="Search by job title or location..."
+               style="width:260px;"
+               value="{{ request('search') }}">
+        <button type="submit" class="btn btn-peso">
+            <i class="bi bi-search me-1"></i> Search
+        </button>
+    </form>
 </div>
 
-{{-- ── SEARCH ── --}}
-<div class="peso-card mb-4 fade-in">
-    <div class="peso-card-body">
-        <form method="GET" action="{{ route('jobseeker.jobs') }}">
-            <div class="row g-2 align-items-end">
-                <div class="col-md-10">
-                    <label class="peso-label">Search Job</label>
-                    <input type="text" name="search" class="form-control peso-input"
-                           placeholder="Search by job title or location..."
-                           value="{{ request('search') }}">
-                </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-peso w-100">
-                        <i class="bi bi-search me-1"></i> Search
-                    </button>
-                </div>
-            </div>
-        </form>
-    </div>
+<div class="d-flex gap-2 mb-4 fade-in" style="flex-wrap:wrap;">
+    @foreach(['all' => 'All', 'local' => 'Local', 'ofw' => 'OFW'] as $val => $label)
+    <a href="{{ route('jobseeker.jobs', array_merge(request()->except('page'), ['job_type' => $val])) }}"
+       class="btn btn-sm fw-semibold"
+       style="{{ $jobType === $val
+           ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;'
+           : 'border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;' }}
+           border-radius:20px;font-size:12px;padding:5px 16px;">
+        {{ $label }}
+    </a>
+    @endforeach
 </div>
 
 {{-- ── JOB LIST ── --}}
@@ -122,9 +124,44 @@
     </div>
 
     {{-- Pagination --}}
-    <div class="d-flex justify-content-center mt-4">
-        {{ $jobs->appends(request()->query())->links() }}
+    {{-- spacer para dili ma-cover sa fixed nav ang katapusang content --}}
+    <div style="height:90px;"></div>
+
+    {{-- ── FIXED BOTTOM-RIGHT PAGINATION NAV ── --}}
+    @if($jobs->hasPages())
+    <div class="d-flex align-items-center gap-3"
+        style="position:fixed; bottom:24px; right:24px; z-index:500;
+                background:#fff; padding:10px 16px; border-radius:14px;
+                box-shadow:0 8px 24px rgba(0,0,0,0.15); border:1px solid #e8f5f0;">
+        @if($jobs->onFirstPage())
+            <button type="button" class="btn btn-sm" disabled
+                style="border:1.5px solid #e0e0e0;border-radius:8px;color:#ccc;padding:6px 14px;">
+                <i class="bi bi-chevron-left"></i>
+            </button>
+        @else
+            <a href="{{ $jobs->appends(request()->query())->previousPageUrl() }}" class="btn btn-sm"
+                style="border:1.5px solid #a8e6cf;border-radius:8px;color:#2d7a5f;padding:6px 14px;">
+                <i class="bi bi-chevron-left"></i>
+            </a>
+        @endif
+
+        <span style="font-size:13px;color:#2d7a5f;font-weight:600;white-space:nowrap;">
+            Page {{ $jobs->currentPage() }} of {{ $jobs->lastPage() }}
+        </span>
+
+        @if($jobs->hasMorePages())
+            <a href="{{ $jobs->appends(request()->query())->nextPageUrl() }}" class="btn btn-sm fw-semibold"
+                style="border:none;border-radius:8px;color:#fff;padding:6px 14px;background:linear-gradient(90deg,#90d870,#4dd9c0);">
+                <i class="bi bi-chevron-right"></i>
+            </a>
+        @else
+            <button type="button" class="btn btn-sm fw-semibold" disabled
+                style="border:none;border-radius:8px;color:#fff;padding:6px 14px;background:#ccc;">
+                <i class="bi bi-chevron-right"></i>
+            </button>
+        @endif
     </div>
+    @endif
 @endif
 
 @endsection

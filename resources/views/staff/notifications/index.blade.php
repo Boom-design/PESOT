@@ -25,9 +25,11 @@
         @foreach($notifications as $notif)
         <a href="{{ 
             $notif->reference_type === 'employer_requirement' ? route('staff.requirements.view', $notif->reference_id) :
+            ($notif->reference_type === 'employer_registration' ? route('staff.employers', ['tab' => 'pre']) :
+            ($notif->reference_type === 'jobseeker_registration' ? route('staff.registrations.view', $notif->reference_id) :
             ($notif->reference_type === 'job' ? route('staff.jobs') :
             ($notif->reference_type === 'inhouse_schedule' ? route('staff.inhouse') :
-            ($notif->reference_type === 'job_fair' ? route('staff.jobfair.events') : '#')))
+            ($notif->reference_type === 'job_fair' ? route('staff.jobfair.events') : '#')))))
         }}"
            class="d-block text-decoration-none px-4 py-3"
            style="border-bottom:1px solid #f0f9f6; background:{{ !$notif->is_read ? '#e8f8f3' : '#fff' }};">

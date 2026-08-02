@@ -11,6 +11,11 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    ->withSchedule(function ($schedule) {
+        $schedule->command('jobfair:send-attendance-confirmations')->dailyAt('06:00');
+        $schedule->command('inhouse:send-participation-reminders')->dailyAt('06:30');
+        $schedule->command('jobfair:update-event-statuses')->dailyAt('00:05');
+    })
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->redirectGuestsTo(fn () => route('login'));
     })
