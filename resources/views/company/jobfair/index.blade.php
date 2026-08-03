@@ -87,6 +87,15 @@
                 Mark applicants as Hired, Waiting, or Rejected during the job fair interview.
             </p>
         </div>
+</div>
+
+@if(!$actionsUnlocked)
+<div class="alert alert-info mb-3" style="font-size:12px;border-radius:10px;">
+    <i class="bi bi-info-circle-fill me-1"></i>
+    Hire, Reject, and Waiting actions will be available once the job fair event date
+    ({{ $earliestConfirmedEventDate ? \Carbon\Carbon::parse($earliestConfirmedEventDate)->format('M d, Y') : 'N/A' }}) arrives.
+</div>
+@endif
         <div class="input-group" style="max-width:260px;">
             <span class="input-group-text" style="border-color:#a8e6cf;background:#f0fdf9;">
                 <i class="bi bi-search" style="color:#4dd9c0;"></i>
@@ -186,6 +195,11 @@
                                 </span>
                             </td>
                             <td style="padding:12px 16px;text-align:center;">
+                                @if(in_array($app->status, ['hired', 'rejected']))
+                                    <span style="font-size:11px;color:#888;"><i class="bi bi-lock-fill me-1"></i>Final</span>
+                                @elseif(!$actionsUnlocked)
+                                    <span style="font-size:11px;color:#888;"><i class="bi bi-clock me-1"></i>Locked until event date</span>
+                                @else
                                 <div class="d-flex gap-1 justify-content-center">
                                     {{-- Hired --}}
                                     <form method="POST" action="{{ route('company.applicants.status', $app->id) }}">
@@ -224,6 +238,7 @@
                                         </button>
                                     </form>
                                 </div>
+                                @endif
                             </td>
                         </tr>
                         @endforeach

@@ -836,6 +836,20 @@ class CompanyWebController extends Controller
             ->where('confirmation_status', 'confirmed')
             ->exists();
 
+        // ── Actions (Hired/Waiting/Rejected) naka-lock hangtod moabot ang event date sa bisan unsang confirmed job fair ──
+        $earliestConfirmedEventDate = \App\Models\JobFairParticipant::with('jobFair')
+            ->where('employer_id', $company->employerNsrp->id)
+            ->where('confirmation_status', 'confirmed')
+            ->get()
+            ->pluck('jobFair.event_date')
+            ->filter()
+            ->sort()
+            ->first();
+
+        $actionsUnlocked = $earliestConfirmedEventDate
+            ? now()->toDateString() >= \Carbon\Carbon::parse($earliestConfirmedEventDate)->toDateString()
+            : false;
+
         $search = $request->input('search');
 
         $applicants = collect();
@@ -858,7 +872,7 @@ class CompanyWebController extends Controller
                 ->withQueryString();
         }
 
-        return view('company.jobfair.index', compact('invitations', 'applicants', 'isConfirmed', 'search'));
+        return view('company.jobfair.index', compact('invitations', 'applicants', 'isConfirmed', 'search', 'actionsUnlocked', 'earliestConfirmedEventDate'));
     }
 
     public function respondJobFair(Request $request, $id)
