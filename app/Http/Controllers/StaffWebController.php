@@ -1592,16 +1592,26 @@ $nsrp = $registration->nsrp;
 
         $job = \App\Models\Job::with('company')->findOrFail($id);
 
-        $isOverseas   = $job->company->is_overseas ?? false;
-        $isJobFair    = $job->schedule_type === 'job_fair';
-        $approverRole = $isOverseas ? 'sra' : ($isJobFair ? 'job_vacancy' : 'job_vacancy');
+        $isOverseas = $job->company->is_overseas ?? false;
+        $isJobFair  = $job->schedule_type === 'job_fair';
+        $isInhouse  = $job->schedule_type === 'inhouse';
 
-        // ── Access control: SRA ra ang mo-approve sa overseas; Job Vacancy staff ra ang mo-approve sa local (Office Based UG Job Fair) ──
-        if ($isOverseas && $staff->staff_role !== 'sra') {
-            return back()->with('error', 'Only SRA staff can approve overseas job postings.');
-        }
-        if (!$isOverseas && $staff->staff_role !== 'job_vacancy') {
-            return back()->with('error', 'Only Job Vacancy staff can approve local job postings.');
+        // ── Access control ──
+        // Overseas (bisan unsa nga schedule_type): SRA ra
+        // Local In-house: LRA ra
+        // Local Office Based / Job Fair: Job Vacancy staff ra
+        if ($isOverseas) {
+            if ($staff->staff_role !== 'sra') {
+                return back()->with('error', 'Only SRA staff can approve overseas job postings.');
+            }
+        } elseif ($isInhouse) {
+            if ($staff->staff_role !== 'lra') {
+                return back()->with('error', 'Only LRA staff can approve local in-house job postings.');
+            }
+        } else {
+            if ($staff->staff_role !== 'job_vacancy') {
+                return back()->with('error', 'Only Job Vacancy staff can approve local job postings.');
+            }
         }
 
         // ── Job Fair postings: magpabilin nga CLOSED human ma-approve — si Job Fair staff pa ang mo-open niini pag-create og event ──
@@ -1651,11 +1661,20 @@ $nsrp = $registration->nsrp;
         $job = \App\Models\Job::with('company')->findOrFail($id);
 
         $isOverseas = $job->company->is_overseas ?? false;
-        if ($isOverseas && $staff->staff_role !== 'sra') {
-            return back()->with('error', 'Only SRA staff can reject overseas job postings.');
-        }
-        if (!$isOverseas && $staff->staff_role !== 'job_vacancy') {
-            return back()->with('error', 'Only Job Vacancy staff can reject local job postings.');
+        $isInhouse  = $job->schedule_type === 'inhouse';
+
+        if ($isOverseas) {
+            if ($staff->staff_role !== 'sra') {
+                return back()->with('error', 'Only SRA staff can reject overseas job postings.');
+            }
+        } elseif ($isInhouse) {
+            if ($staff->staff_role !== 'lra') {
+                return back()->with('error', 'Only LRA staff can reject local in-house job postings.');
+            }
+        } else {
+            if ($staff->staff_role !== 'job_vacancy') {
+                return back()->with('error', 'Only Job Vacancy staff can reject local job postings.');
+            }
         }
 
         $job->update([
