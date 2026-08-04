@@ -373,15 +373,51 @@ $nsrp = $registration->nsrp;
         }
 
         if ($closedJobFairJobs->isNotEmpty()) {
-            $jobseekerRegIds = \App\Models\JobseekerRegistration::whereHas('user', fn($q) => $q->where('status', 'approved'))->pluck('id');
+            $allJobseekerRegs = \App\Models\JobseekerRegistration::whereHas('user', fn($q) => $q->where('status', 'approved'))
+                ->with('nsrp')
+                ->get();
+
             foreach ($closedJobFairJobs as $job) {
-                \App\Models\Announcement::sendToJobseekers([
-                    'type'           => 'job_posted',
-                    'title'          => 'New Job Vacancy Posted 💼',
-                    'message'        => 'A new job vacancy "' . $job->title . '" from ' . ($job->company->company_name ?? 'an employer') . ' is now available!',
-                    'reference_type' => 'job',
-                    'reference_id'   => $job->id,
-                ], $jobseekerRegIds);
+                $matchedIds = collect();
+                $unmatchedIds = collect();
+                $jobTitleLower = strtolower($job->title);
+
+                foreach ($allJobseekerRegs as $jsReg) {
+                    $nsrp = $jsReg->nsrp;
+                    $preferred = $nsrp->preferred_occupations ?? [];
+                    $isMatch = false;
+                    foreach ($preferred as $occ) {
+                        if (strtolower(trim($occ)) === $jobTitleLower) {
+                            $isMatch = true;
+                            break;
+                        }
+                    }
+                    if ($isMatch) {
+                        $matchedIds->push($jsReg->id);
+                    } else {
+                        $unmatchedIds->push($jsReg->id);
+                    }
+                }
+
+                if ($matchedIds->isNotEmpty()) {
+                    \App\Models\Announcement::sendToJobseekers([
+                        'type'           => 'job_match',
+                        'title'          => 'Matching Job Vacancy Found! 💼',
+                        'message'        => 'A job vacancy matching your preferred position "' . $job->title . '" from ' . ($job->company->company_name ?? 'an employer') . ' is now available. Would you like to apply?',
+                        'reference_type' => 'job',
+                        'reference_id'   => $job->id,
+                    ], $matchedIds);
+                }
+
+                if ($unmatchedIds->isNotEmpty()) {
+                    \App\Models\Announcement::sendToJobseekers([
+                        'type'           => 'job_posted',
+                        'title'          => 'New Job Vacancy Posted 💼',
+                        'message'        => 'A new job vacancy "' . $job->title . '" from ' . ($job->company->company_name ?? 'an employer') . ' is now available!',
+                        'reference_type' => 'job',
+                        'reference_id'   => $job->id,
+                    ], $unmatchedIds);
+                }
             }
         }
 
@@ -602,7 +638,7 @@ $nsrp = $registration->nsrp;
     }
 
     // ───────────────────────────────
-    // JOB FAIR — APPROVED JOB POSTINGS (Closed = naghulat pa sa event; Open = na-post na)
+    // JOB FAIR — JOB POSTINGS (Closed = naghulat pa sa event; Open = na-post na)
     // ───────────────────────────────
     public function jobFairPostings()
     {
@@ -614,18 +650,90 @@ $nsrp = $registration->nsrp;
 
         $query = \App\Models\Job::with('company')
             ->where('schedule_type', 'job_fair')
-            ->where('posting_status', 'approved')
+            ->whereIn('posting_status', ['pending', 'approved'])
             ->when($status !== 'all', fn($q) => $q->where('status', $status))
             ->when($search, fn($q) => $q->where('title', 'like', "%{$search}%")
                 ->orWhereHas('company', fn($u) => $u->where('company_name', 'like', "%{$search}%"))
             );
 
-        $totalClosed = \App\Models\Job::where('schedule_type', 'job_fair')->where('posting_status', 'approved')->where('status', 'closed')->count();
-        $totalOpen   = \App\Models\Job::where('schedule_type', 'job_fair')->where('posting_status', 'approved')->where('status', 'open')->count();
+        $totalClosed = \App\Models\Job::where('schedule_type', 'job_fair')
+            ->whereIn('posting_status', ['pending', 'approved'])
+            ->where('status', 'closed')->count();
+        $totalOpen = \App\Models\Job::where('schedule_type', 'job_fair')
+            ->where('posting_status', 'approved')
+            ->where('status', 'open')->count();
 
         $jobs = $query->latest()->paginate(10)->withQueryString();
 
         return view('staff.job_fair.postings', compact('jobs', 'status', 'totalClosed', 'totalOpen'));
+    }
+
+    // ───────────────────────────────
+    // JOB FAIR — APPROVE JOB POSTING
+    // ───────────────────────────────
+    public function approveJobFairJob($id)
+    {
+        $staff = $this->authStaff();
+        if (!$staff || $staff->staff_role !== 'job_fair') return redirect()->route('login');
+
+        $job = \App\Models\Job::with('company')->findOrFail($id);
+
+        if ($job->schedule_type !== 'job_fair') {
+            return back()->with('error', 'This job is not a job fair posting.');
+        }
+
+        if ($job->posting_status !== 'pending') {
+            return back()->with('error', 'Only pending job postings can be approved.');
+        }
+
+        $job->update([
+            'posting_status' => 'approved',
+            'status'         => 'closed',
+            'remarks'        => null,
+        ]);
+
+        \App\Models\Announcement::sendToEmployers([
+            'type'           => 'job_approved',
+            'title'          => 'Job Posting Approved ✅',
+            'message'        => 'Your job posting "' . $job->title . '" has been approved for job fair use. It will go live once PESO opens a job fair event.',
+            'reference_type' => 'job',
+            'reference_id'   => $job->id,
+        ], $job->company_id);
+
+        return back()->with('success', 'Job posting approved. It will go live once a job fair event is created.');
+    }
+
+    // ───────────────────────────────
+    // JOB FAIR — REJECT JOB POSTING
+    // ───────────────────────────────
+    public function rejectJobFairJob(Request $request, $id)
+    {
+        $staff = $this->authStaff();
+        if (!$staff || $staff->staff_role !== 'job_fair') return redirect()->route('login');
+
+        $request->validate(['remarks' => 'required|string|max:500']);
+
+        $job = \App\Models\Job::with('company')->findOrFail($id);
+
+        if ($job->schedule_type !== 'job_fair') {
+            return back()->with('error', 'This job is not a job fair posting.');
+        }
+
+        $job->update([
+            'posting_status' => 'rejected',
+            'status'         => 'closed',
+            'remarks'        => $request->remarks,
+        ]);
+
+        \App\Models\Announcement::sendToEmployers([
+            'type'           => 'job_rejected',
+            'title'          => 'Job Posting Rejected ❌',
+            'message'        => 'Your job posting "' . $job->title . '" was rejected for job fair use. Reason: ' . $request->remarks,
+            'reference_type' => 'job',
+            'reference_id'   => $job->id,
+        ], $job->company_id);
+
+        return back()->with('success', 'Job posting rejected.');
     }
 
     // ───────────────────────────────
@@ -1200,14 +1308,53 @@ $nsrp = $registration->nsrp;
             'status'         => 'open',
         ]);
 
-        $jobseekerRegIds = \App\Models\JobseekerRegistration::whereHas('user', fn($q) => $q->where('status', 'approved'))->pluck('id');
-        \App\Models\Announcement::sendToJobseekers([
-            'type'           => 'job_posted',
-            'title'          => 'New Job Vacancy Posted 💼',
-            'message'        => 'A new job vacancy "' . $request->title . '" is now available. Check it out!',
-            'reference_type' => 'job',
-            'reference_id'   => null,
-        ], $jobseekerRegIds);
+        // ── Find jobseekers whose preferred_occupations match the job title ──
+        $allJobseekerRegs = \App\Models\JobseekerRegistration::whereHas('user', fn($q) => $q->where('status', 'approved'))
+            ->with('nsrp')
+            ->get();
+
+        $matchedIds = collect();
+        $unmatchedIds = collect();
+        $jobTitleLower = strtolower($request->title);
+
+        foreach ($allJobseekerRegs as $jsReg) {
+            $nsrp = $jsReg->nsrp;
+            $preferred = $nsrp->preferred_occupations ?? [];
+            $isMatch = false;
+            foreach ($preferred as $occ) {
+                if (strtolower(trim($occ)) === $jobTitleLower) {
+                    $isMatch = true;
+                    break;
+                }
+            }
+            if ($isMatch) {
+                $matchedIds->push($jsReg->id);
+            } else {
+                $unmatchedIds->push($jsReg->id);
+            }
+        }
+
+        // ── Personalized notification for matched jobseekers ──
+        if ($matchedIds->isNotEmpty()) {
+            \App\Models\Announcement::sendToJobseekers([
+                'type'           => 'job_match',
+                'title'          => 'Matching Job Vacancy Found! 💼',
+                'message'        => 'A job vacancy matching your preferred position "' . $request->title . '" is now available. Would you like to apply?',
+                'reference_type' => 'job',
+                'reference_id'   => null,
+            ], $matchedIds);
+        }
+
+        // ── Generic notification for non-matched jobseekers ──
+        if ($unmatchedIds->isNotEmpty()) {
+            \App\Models\Announcement::sendToJobseekers([
+                'type'           => 'job_posted',
+                'title'          => 'New Job Vacancy Posted 💼',
+                'message'        => 'A new job vacancy "' . $request->title . '" is now available. Check it out!',
+                'reference_type' => 'job',
+                'reference_id'   => null,
+            ], $unmatchedIds);
+        }
 
         return redirect()->route('staff.jobs')->with('success', 'Job vacancy posted successfully!');
     }
@@ -1633,14 +1780,53 @@ $nsrp = $registration->nsrp;
 
         // ── Job Fair postings dili pa i-post sa jobseekers hangtod ma-open sa Job Fair staff ──
         if (!$isJobFair) {
-            $jobseekerRegIds = \App\Models\JobseekerRegistration::whereHas('user', fn($q) => $q->where('status', 'approved'))->pluck('id');
-            \App\Models\Announcement::sendToJobseekers([
-                'type'           => 'job_posted',
-                'title'          => 'New Job Vacancy Posted 💼',
-                'message'        => 'A new job vacancy "' . $job->title . '" from ' . $job->company->company_name . ' is now available!',
-                'reference_type' => 'job',
-                'reference_id'   => $job->id,
-            ], $jobseekerRegIds);
+            // ── Find jobseekers whose preferred_occupations match the job title ──
+            $allJobseekerRegs = \App\Models\JobseekerRegistration::whereHas('user', fn($q) => $q->where('status', 'approved'))
+                ->with('nsrp')
+                ->get();
+
+            $matchedIds = collect();
+            $unmatchedIds = collect();
+            $jobTitleLower = strtolower($job->title);
+
+            foreach ($allJobseekerRegs as $jsReg) {
+                $nsrp = $jsReg->nsrp;
+                $preferred = $nsrp->preferred_occupations ?? [];
+                $isMatch = false;
+                foreach ($preferred as $occ) {
+                    if (strtolower(trim($occ)) === $jobTitleLower) {
+                        $isMatch = true;
+                        break;
+                    }
+                }
+                if ($isMatch) {
+                    $matchedIds->push($jsReg->id);
+                } else {
+                    $unmatchedIds->push($jsReg->id);
+                }
+            }
+
+            // ── Personalized notification for matched jobseekers ──
+            if ($matchedIds->isNotEmpty()) {
+                \App\Models\Announcement::sendToJobseekers([
+                    'type'           => 'job_match',
+                    'title'          => 'Matching Job Vacancy Found! 💼',
+                    'message'        => 'A job vacancy matching your preferred position "' . $job->title . '" from ' . ($job->company->company_name ?? 'an employer') . ' is now available. Would you like to apply?',
+                    'reference_type' => 'job',
+                    'reference_id'   => $job->id,
+                ], $matchedIds);
+            }
+
+            // ── Generic notification for non-matched jobseekers ──
+            if ($unmatchedIds->isNotEmpty()) {
+                \App\Models\Announcement::sendToJobseekers([
+                    'type'           => 'job_posted',
+                    'title'          => 'New Job Vacancy Posted 💼',
+                    'message'        => 'A new job vacancy "' . $job->title . '" from ' . ($job->company->company_name ?? 'an employer') . ' is now available!',
+                    'reference_type' => 'job',
+                    'reference_id'   => $job->id,
+                ], $unmatchedIds);
+            }
         }
 
         return back()->with('success', $isJobFair

@@ -102,6 +102,12 @@
             text-align: center;
         }
 
+        .sidebar-nav .nav-link.disabled {
+            opacity: 0.4;
+            pointer-events: none;
+            cursor: not-allowed;
+        }
+
         .sidebar-footer {
             padding: 16px 12px;
             border-top: 1px solid rgba(255,255,255,0.3);
@@ -586,6 +592,9 @@
 
         @php
             $sidebarEmployerNsrp = \App\Models\EmployerNsrpRegistration::where('user_id', Auth::id())->first();
+            $sidebarHasRequirement = $sidebarEmployerNsrp
+                ? \App\Models\EmployerRequirement::where('user_id', $sidebarEmployerNsrp->id)->exists()
+                : false;
             $sidebarReqApproved = $sidebarEmployerNsrp
                 ? \App\Models\EmployerRequirement::where('user_id', $sidebarEmployerNsrp->id)->where('status', 'approved')->exists()
                 : false;
@@ -601,14 +610,17 @@
                 <li class="nav-item">
                     <a href="{{ route('company.jobs') }}"
                        id="jobVacancyNavLink"
-                       class="nav-link {{ (request()->routeIs('company.jobs') || request()->routeIs('company.jobs.*') || request()->routeIs('company.applicants*')) && !request()->routeIs('company.jobs.qualified') ? 'active' : '' }}"
-                       @if(!$sidebarReqApproved) onclick="return openComplyModal(event)" @endif>
+                       class="nav-link {{ (request()->routeIs('company.jobs') || request()->routeIs('company.jobs.*') || request()->routeIs('company.applicants*')) && !request()->routeIs('company.jobs.qualified') ? 'active' : '' }} {{ !$sidebarReqApproved ? 'disabled' : '' }}"
+                       @if(!$sidebarHasRequirement) onclick="return openComplyModal(event)"
+                       @elseif(!$sidebarReqApproved) onclick="return false" @endif
+                       @if(!$sidebarReqApproved) title="Requirements must be approved first" @endif>
                         <i class="bi bi-send"></i> Job Vacancy Request
                     </a>
                 </li>
                 <li class="nav-item">
                     <a href="{{ route('company.jobseekers') }}"
-                       class="nav-link {{ request()->routeIs('company.jobseekers*') || request()->routeIs('company.jobs.qualified') ? 'active' : '' }}">
+                       class="nav-link {{ request()->routeIs('company.jobseekers*') || request()->routeIs('company.jobs.qualified') ? 'active' : '' }} {{ !$sidebarReqApproved ? 'disabled' : '' }}"
+                       @if(!$sidebarReqApproved) onclick="return false" title="Requirements must be approved first" @endif>
                         <i class="bi bi-calendar2-week-fill"></i> Schedule Job Vacancy
                     </a>
                 </li>
@@ -616,20 +628,22 @@
     <a href="{{ route('company.requirements') }}"
        class="nav-link {{ request()->routeIs('company.requirements*') ? 'active' : '' }} d-flex justify-content-between align-items-center">
         <span><i class="bi bi-upload"></i> Requirements</span>
-        @if(!$sidebarReqApproved)
+        @if(!$sidebarHasRequirement)
         <span class="badge" style="background:#fff5f5;color:#e53935;font-size:9px;padding:3px 8px;border-radius:10px;font-weight:700;">Required</span>
         @endif
     </a>
 </li>
                 <li class="nav-item">
                     <a href="{{ route('company.jobfair') }}"
-                       class="nav-link {{ request()->routeIs('company.jobfair*') ? 'active' : '' }}">
+                       class="nav-link {{ request()->routeIs('company.jobfair*') ? 'active' : '' }} {{ !$sidebarReqApproved ? 'disabled' : '' }}"
+                       @if(!$sidebarReqApproved) onclick="return false" title="Requirements must be approved first" @endif>
                         <i class="bi bi-calendar-event-fill"></i> Job Fair
                     </a>
                 </li>
                 <li class="nav-item">
                     <a href="{{ route('company.reports') }}"
-                       class="nav-link {{ request()->routeIs('company.reports*') ? 'active' : '' }}">
+                       class="nav-link {{ request()->routeIs('company.reports*') ? 'active' : '' }} {{ !$sidebarReqApproved ? 'disabled' : '' }}"
+                       @if(!$sidebarReqApproved) onclick="return false" title="Requirements must be approved first" @endif>
                         <i class="bi bi-bar-chart-fill"></i> Reports
                     </a>
                 </li>

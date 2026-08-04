@@ -297,11 +297,13 @@
                         </label>
                         <div class="d-flex gap-2 flex-wrap" id="staffRoleGroup">
                             @foreach(['sra' => 'SRA', 'lra' => 'LRA', 'job_fair' => 'Job Fair', 'job_vacancy' => 'Job Vacancy'] as $val => $label)
+                            @php $isOccupied = in_array($val, $occupiedStaffRoles ?? [], true); @endphp
                             <button type="button" class="staff-role-btn fw-semibold"
                                 data-value="{{ $val }}"
+                                @if($isOccupied) disabled aria-disabled="true" @endif
                                 style="border:1.5px solid #a8e6cf;border-radius:8px;
                                        color:#2d7a5f;padding:6px 18px;font-size:13px;
-                                       background:#fff;cursor:pointer;transition:all 0.2s;">
+                                       background:#fff;cursor:pointer;transition:all 0.2s;@if($isOccupied) opacity:0.55;filter:grayscale(0.2);@endif">
                                 {{ $label }}
                             </button>
                             @endforeach
@@ -431,6 +433,10 @@
     }
     .nav-tabs .nav-link:hover { color:#4dd9c0;background:none; }
     .nav-tabs { border-bottom:1px solid #dee2e6; }
+    .staff-role-btn:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+    }
 </style>
 
 <script>
@@ -547,6 +553,8 @@
 
     document.querySelectorAll('.staff-role-btn').forEach(btn => {
         btn.addEventListener('click', function() {
+            if (this.disabled) return;
+
             document.querySelectorAll('.staff-role-btn').forEach(b => {
                 b.style.background = '#fff';
                 b.style.color = '#2d7a5f';

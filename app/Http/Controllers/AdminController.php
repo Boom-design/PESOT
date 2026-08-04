@@ -82,7 +82,15 @@ class AdminController extends Controller
                      ->latest()
                      ->get();
 
-        return view('admin.users.manage', compact('users'));
+        $occupiedStaffRoles = \App\Models\Staff::query()
+            ->whereHas('user', fn($q) => $q->where('status', '!=', 'deactivated'))
+            ->pluck('staff_role')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        return view('admin.users.manage', compact('users', 'occupiedStaffRoles'));
     }
 
     // ───────────────────────────────
@@ -435,6 +443,9 @@ if ($type === 'local') {
 
             $summaryParticipants = collect();
             $summaryTotals = ['vacancies' => 0, 'interviewed' => 0, 'male' => 0, 'female' => 0, 'qualified' => 0, 'hired' => 0];
+            $topEmployersFilter = request('top_employers_filter', 'monthly');
+            $topEmployersMonth = request('top_employers_month');
+            $topEmployersYear = request('top_employers_year');
 
             if ($tab === 'summary' && $eventId) {
                 $participants = \App\Models\JobFairParticipant::with('employer')
@@ -478,6 +489,35 @@ if ($type === 'local') {
                     ->map(fn($group) => $group->sum('slots'));
             }
 
+            $topEmployersByInhouseInterviews = collect();
+            if ($tab === 'top_employers' && $eventId) {
+                $topEmployersQuery = \App\Models\JobFairParticipant::with('employer')
+                    ->where('job_fair_id', $eventId)
+                    ->where('confirmation_status', 'confirmed');
+
+                if ($topEmployersFilter === 'yearly') {
+                    $selectedYear = $topEmployersYear ?: now()->year;
+                    $topEmployersQuery->whereYear('created_at', $selectedYear);
+                } else {
+                    $selectedMonth = $topEmployersMonth ?: now()->format('Y-m');
+                    [$year, $month] = array_pad(explode('-', $selectedMonth), 2, now()->month);
+                    $topEmployersQuery->whereYear('created_at', $year)
+                        ->whereMonth('created_at', $month);
+                }
+
+                $topEmployersByInhouseInterviews = $topEmployersQuery->get()
+                    ->groupBy('employer_id')
+                    ->map(function ($participants) {
+                        return [
+                            'employer' => $participants->first()->employer,
+                            'participation_count' => $participants->count(),
+                        ];
+                    })
+                    ->sortByDesc('participation_count')
+                    ->take(5)
+                    ->values();
+            }
+
             $placementReport = null;
             if ($tab === 'placement' && $eventId && $event) {
                 $placementReport = \App\Models\Application::with(['jobseeker', 'job.company'])
@@ -497,7 +537,8 @@ if ($type === 'local') {
                 'furtherInterview', 'hots',
                 'summaryParticipants', 'summaryTotals',
                 'industryLocal', 'industryOverseas',
-                'placementReport'
+                'placementReport', 'topEmployersByInhouseInterviews',
+                'topEmployersFilter', 'topEmployersMonth', 'topEmployersYear'
             ) + ['layout' => 'admin.layouts.app', 'reportRouteName' => 'admin.reports.staff']);
         }
 
@@ -505,6 +546,70 @@ if ($type === 'local') {
         $tab         = request('tab', 'registered');
         $jobseekerType = $staffRole === 'lra' ? ['local', 'both'] : ['overseas', 'both'];
         $isOverseas    = $staffRole === 'sra';
+        $topEmployersFilter = request('top_employers_filter', 'monthly');
+        $topEmployersMonth = request('top_employers_month');
+        $topEmployersYear = request('top_employers_year');
+
+        $topEmployersQuery = \App\Models\InhouseSchedule::with('employer')
+            ->where('status', 'accepted')
+            ->whereHas('employer', fn($q) => $q->where('is_overseas', $isOverseas));
+
+        if ($topEmployersFilter === 'yearly') {
+            if ($topEmployersYear) {
+                $topEmployersQuery->where(function ($q) use ($topEmployersYear) {
+                    $q->where(function ($inner) use ($topEmployersYear) {
+                        $inner->whereNotNull('confirmed_date')->whereYear('confirmed_date', $topEmployersYear);
+                    })->orWhere(function ($inner) use ($topEmployersYear) {
+                        $inner->whereNull('confirmed_date')->whereYear('preferred_date', $topEmployersYear);
+                    });
+                });
+            } else {
+                $topEmployersQuery->where(function ($q) {
+                    $q->where(function ($inner) {
+                        $inner->whereNotNull('confirmed_date')->whereYear('confirmed_date', now()->year);
+                    })->orWhere(function ($inner) {
+                        $inner->whereNull('confirmed_date')->whereYear('preferred_date', now()->year);
+                    });
+                });
+            }
+        } else {
+            $selectedMonth = $topEmployersMonth ?: now()->format('Y-m');
+            [$year, $month] = array_pad(explode('-', $selectedMonth), 2, now()->month);
+            $topEmployersQuery->where(function ($q) use ($year, $month) {
+                $q->where(function ($inner) use ($year, $month) {
+                    $inner->whereNotNull('confirmed_date')
+                        ->whereYear('confirmed_date', $year)
+                        ->whereMonth('confirmed_date', $month);
+                })->orWhere(function ($inner) use ($year, $month) {
+                    $inner->whereNull('confirmed_date')
+                        ->whereYear('preferred_date', $year)
+                        ->whereMonth('preferred_date', $month);
+                });
+            });
+        }
+
+        $topEmployersByInhouseInterviews = $topEmployersQuery
+            ->get()
+            ->groupBy('employer_id')
+            ->map(function ($schedules) {
+                return [
+                    'employer' => $schedules->first()->employer,
+                    'interview_count' => $schedules->count(),
+                ];
+            })
+            ->sortByDesc('interview_count')
+            ->take(5)
+            ->values();
+
+        $solicitationStats = [
+            'lra' => \App\Models\Job::where('posting_type', 'direct')
+                ->whereHas('company', fn($q) => $q->where('is_overseas', false))
+                ->count(),
+            'sra' => \App\Models\Job::where('posting_type', 'direct')
+                ->whereHas('company', fn($q) => $q->where('is_overseas', true))
+                ->count(),
+            'overall' => \App\Models\Job::where('posting_type', 'direct')->count(),
+        ];
 
         $registeredQuery = \App\Models\InhouseParticipant::with(['jobseeker', 'schedule.employer'])
             ->whereHas('schedule.employer', fn($q) =>
@@ -544,7 +649,8 @@ if ($type === 'local') {
         return view('staff.reports.index', compact(
             'staffRole', 'tab',
             'registeredParticipants', 'placedApplications', 'referredApplications',
-            'totalRegistered', 'totalPlaced', 'totalReferred'
+            'totalRegistered', 'totalPlaced', 'totalReferred', 'solicitationStats',
+            'topEmployersByInhouseInterviews', 'topEmployersFilter', 'topEmployersMonth', 'topEmployersYear'
         ) + ['layout' => 'admin.layouts.app', 'reportRouteName' => 'admin.reports.staff']);
     }
 
@@ -554,7 +660,11 @@ if ($type === 'local') {
     public function staffJobVacancyReports()
     {
         $search = request('search');
+        $tab    = request('tab', 'vacancies');
         $month  = request('month', now()->format('Y-m'));
+        $topEmployersFilter = request('top_employers_filter', 'monthly');
+        $topEmployersMonth = request('top_employers_month');
+        $topEmployersYear = request('top_employers_year');
 
         [$year, $mon] = explode('-', $month);
 
@@ -570,8 +680,39 @@ if ($type === 'local') {
         $jobs         = $query->orderBy('title')->get();
         $totalVacancies = $jobs->sum('slots');
 
+        $topEmployersByOfficeBasedInterviews = collect();
+        if ($tab === 'top_employers') {
+            $officeBasedQuery = \App\Models\Job::with('company')
+                ->where('schedule_type', 'office_based')
+                ->where('posting_status', 'approved')
+                ->whereHas('company', fn($q) => $q->where('is_overseas', false));
+
+            if ($topEmployersFilter === 'yearly') {
+                $selectedYear = $topEmployersYear ?: now()->year;
+                $officeBasedQuery->whereYear('updated_at', $selectedYear);
+            } else {
+                $selectedMonth = $topEmployersMonth ?: now()->format('Y-m');
+                [$selectedYear, $selectedMonth] = array_pad(explode('-', $selectedMonth), 2, now()->month);
+                $officeBasedQuery->whereYear('updated_at', $selectedYear)
+                    ->whereMonth('updated_at', $selectedMonth);
+            }
+
+            $topEmployersByOfficeBasedInterviews = $officeBasedQuery->get()
+                ->groupBy('company_id')
+                ->map(function ($jobs) {
+                    return [
+                        'employer' => $jobs->first()->company,
+                        'participation_count' => $jobs->count(),
+                    ];
+                })
+                ->sortByDesc('participation_count')
+                ->take(5)
+                ->values();
+        }
+
         return view('staff.job_vacancy.reports', compact(
-            'jobs', 'month', 'totalVacancies', 'search'
+            'jobs', 'month', 'totalVacancies', 'search', 'tab',
+            'topEmployersByOfficeBasedInterviews', 'topEmployersFilter', 'topEmployersMonth', 'topEmployersYear'
         ) + ['layout' => 'admin.layouts.app', 'reportRouteName' => 'admin.reports.staffJobVacancy']);
     }
 

@@ -535,6 +535,24 @@
         });
     @endif
 
+    @if(session('info'))
+        Swal.fire({
+            title: 'Matching Jobs Found!',
+            text: @json(session('info')),
+            icon: 'info',
+            showCancelButton: true,
+            confirmButtonColor: '#4dd9c0',
+            cancelButtonColor: '#888',
+            confirmButtonText: '<i class="bi bi-send me-1"></i> Apply Now',
+            cancelButtonText: 'OK',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = '{{ route("jobseeker.jobs") }}';
+            }
+        });
+        @php session()->pull('info'); @endphp
+    @endif
+
     @if($errors->any())
         Swal.fire({
             title: 'Oops!',

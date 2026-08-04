@@ -152,6 +152,8 @@
         Route::get('/staff/jobfair/events/{id}/participants', [StaffWebController::class, 'jobFairParticipants'])->name('staff.jobfair.events.participants');
         Route::post('/staff/jobfair/events/{id}/check-notify',[StaffWebController::class, 'checkAndNotifyJobFair'])->name('staff.jobfair.events.checkNotify');
         Route::get('/staff/jobfair/postings',                 [StaffWebController::class, 'jobFairPostings'])->name('staff.jobfair.postings');
+        Route::post('/staff/jobfair/postings/{id}/approve',   [StaffWebController::class, 'approveJobFairJob'])->name('staff.jobfair.postings.approve');
+        Route::post('/staff/jobfair/postings/{id}/reject',    [StaffWebController::class, 'rejectJobFairJob'])->name('staff.jobfair.postings.reject');
 
         // ── STAFF IN-HOUSE ──
         Route::get('/staff/inhouse/jobfair',                  [StaffWebController::class, 'jobFairViewOnly'])->name('staff.inhouse.jobfair');
@@ -229,6 +231,9 @@
     Route::get('/ph-address/provinces',                  [UnifiedAuthController::class, 'addressProvinces'])->name('address.provinces');
     Route::get('/ph-address/provinces/{code}/cities',     [UnifiedAuthController::class, 'addressCities'])->name('address.cities');
     Route::get('/ph-address/cities/{code}/barangays',     [UnifiedAuthController::class, 'addressBarangays'])->name('address.barangays');
+
+    // ── TEMPORARY SEED ROUTE — visit /seed-address once to populate PH address data (tangtangon ra ni human sa seeding) ──
+    Route::get('/seed-address', [UnifiedAuthController::class, 'seedAddressData'])->name('seed.address');
 
     // ── TEMPORARY TEST ROUTE — OCR (tangtangon ra ni human sa testing) ──
     Route::get('/test-ocr', function () {
