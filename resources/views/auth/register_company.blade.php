@@ -249,8 +249,8 @@
                         </div>
                     </div>
                     <div class="col-md-4">
-                        <label class="peso-label">Tax Identification Number (TIN)</label>
-                        <input type="text" name="tin" class="peso-input" placeholder="e.g. 123-456-789-000" value="{{ old('tin') }}">
+                        <label class="peso-label">Tax Identification Number (TIN) *</label>
+                        <input type="text" name="tin" class="peso-input" placeholder="e.g. 123-456-789-000" value="{{ old('tin') }}" required>
                         <div class="d-flex gap-3 mt-2">
                             <div class="form-check">
                                 <input class="form-check-input" type="radio" name="tin_type" value="main" id="tinMain" {{ old('tin_type')=='main'?'checked':'' }}>
@@ -554,6 +554,13 @@
                         <label class="peso-label">Position Title *</label>
                         <input type="text" name="positions[${idx}][title]" class="peso-input" placeholder="e.g. Sales Associate" required>
                     </div>
+                    <div class="col-12">
+                        <label class="peso-label">Job Image <span style="font-weight:400;color:#888;">(optional — photo of workplace/job)</span></label>
+                        <input type="file" name="positions[${idx}][job_image]" class="peso-input job-image-input" accept=".jpg,.jpeg,.png" style="padding:8px 14px;" data-preview="imgPreview${idx}">
+                        <div id="imgPreview${idx}" style="margin-top:6px;max-width:180px;display:none;">
+                            <img src="" alt="Preview" style="width:100%;border-radius:8px;border:1px solid rgba(77,217,192,0.3);">
+                        </div>
+                    </div>
                     <div class="col-md-8">
                         <label class="peso-label">Job Description *</label>
                         <textarea name="positions[${idx}][description]" class="peso-input" rows="4"
@@ -601,10 +608,10 @@
                         <input type="text" name="positions[${idx}][salary]" class="peso-input" placeholder="e.g. 15,000 / Negotiable">
                     </div>
                     <div class="col-md-2">
-                    <label class="peso-label">Vacancy Count *</label>
-                    <input type="number" name="positions[${idx}][slots]" class="peso-input" min="1" placeholder="e.g. 3" required>
+                        <label class="peso-label">Vacancy Count *</label>
+                        <input type="number" name="positions[${idx}][slots]" class="peso-input" min="1" placeholder="e.g. 3" required>
+                    </div>
                 </div>
-            </div>
 
             <input type="hidden" name="positions[${idx}][deadline]" value="">
 
@@ -645,11 +652,16 @@
                             <label class="peso-label">Educational Level</label>
                             <select name="positions[${idx}][education_required]" class="peso-input">
                                 <option value="">Any</option>
-                                <option value="Elementary">Elementary</option>
-                                <option value="High School">High School</option>
-                                <option value="Senior High">Senior High</option>
-                                <option value="Tertiary / College">Tertiary / College</option>
+                                <option value="Elementary Level">Elementary Level</option>
+                                <option value="Elementary Graduate">Elementary Graduate</option>
+                                <option value="Junior High Level">Junior High Level</option>
+                                <option value="Junior High Graduate">Junior High Graduate</option>
+                                <option value="Senior High Level">Senior High Level</option>
+                                <option value="Senior High Graduate">Senior High Graduate</option>
+                                <option value="College Level">College Level</option>
+                                <option value="College Graduate">College Graduate</option>
                                 <option value="Graduate Studies">Graduate Studies</option>
+                                <option value="TESDA Graduate">TESDA Graduate</option>
                             </select>
                         </div>
                         <div class="col-md-6">
@@ -733,6 +745,21 @@
                     wrap.classList.add('d-none');
                 }
             }
+            // ── Job Image preview ──
+            if (e.target.classList.contains('job-image-input')) {
+                const previewId = e.target.getAttribute('data-preview');
+                const previewDiv = document.getElementById(previewId);
+                if (e.target.files && e.target.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = function(ev) {
+                        previewDiv.querySelector('img').src = ev.target.result;
+                        previewDiv.style.display = 'block';
+                    };
+                    reader.readAsDataURL(e.target.files[0]);
+                } else {
+                    previewDiv.style.display = 'none';
+                }
+            }
         });
 
         function updateRemoveButtons() {
@@ -787,7 +814,9 @@
                 });
         });
 
-        // ── CUSTOM CASCADING ADDRESS DROPDOWN (Province → City → Barangay) — dili native <select> ──
+        // ── CUSTOM CASCADING ADDRESS DROPDOWN (Province → City → Barangay) — PSGC API direct ──
+        const PSGC = 'https://psgc.gitlab.io/api';
+
         const provinceInput    = document.getElementById('provinceInput');
         const provinceValue    = document.getElementById('provinceValue');
         const provinceDropdown = document.getElementById('provinceDropdown');
@@ -816,7 +845,7 @@
                     div.className = 'custom-dropdown-item';
                     div.textContent = item.name;
                     div.addEventListener('mousedown', function(e) {
-                        e.preventDefault(); // para dili ma-trigger ang blur sa una pa mag-click
+                        e.preventDefault();
                         onPick(item);
                     });
                     listEl.appendChild(div);
@@ -836,10 +865,10 @@
         }
 
         // ── PROVINCE ──
-        fetch(`{{ route('address.provinces') }}`)
+        fetch(`${PSGC}/provinces.json`)
             .then(r => r.json())
             .then(provinces => {
-                allProvinces = provinces;
+                allProvinces = provinces.sort((a, b) => a.name.localeCompare(b.name));
             })
             .catch(() => {
                 provinceInput.placeholder = 'Failed to load — please refresh';
@@ -858,7 +887,6 @@
             selectedProvinceCode = item.code;
             closeDropdown(provinceDropdown);
 
-            // Reset City & Barangay
             cityInput.value = '';
             cityValue.value = '';
             cityInput.placeholder = 'Loading cities/municipalities...';
@@ -871,10 +899,10 @@
             allBarangays = [];
             selectedCityCode = null;
 
-            fetch(`/ph-address/provinces/${item.code}/cities`)
+            fetch(`${PSGC}/provinces/${item.code}/cities-municipalities.json`)
                 .then(r => r.json())
                 .then(cities => {
-                    allCities = cities;
+                    allCities = cities.sort((a, b) => a.name.localeCompare(b.name));
                     cityInput.placeholder = 'Type or click to select...';
                     cityInput.disabled = false;
                 })
@@ -899,17 +927,16 @@
             selectedCityCode = item.code;
             closeDropdown(cityDropdown);
 
-            // Reset Barangay
             barangayInput.value = '';
             barangayValue.value = '';
             barangayInput.placeholder = 'Loading barangays...';
             barangayInput.disabled = true;
             allBarangays = [];
 
-            fetch(`/ph-address/cities/${item.code}/barangays`)
+            fetch(`${PSGC}/cities-municipalities/${item.code}/barangays.json`)
                 .then(r => r.json())
                 .then(barangays => {
-                    allBarangays = barangays.map(name => ({ name }));
+                    allBarangays = barangays.sort((a, b) => a.name.localeCompare(b.name));
                     barangayInput.placeholder = 'Type or click to select...';
                     barangayInput.disabled = false;
                 })

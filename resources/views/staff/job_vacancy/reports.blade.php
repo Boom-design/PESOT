@@ -49,6 +49,28 @@
 </div>
 @endif
 
+{{-- TABS --}}
+<div class="d-flex gap-2 mb-3" style="overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;padding-bottom:4px;">
+    <a href="{{ route($reportRouteName ?? 'staff.reports.staffJobVacancy', array_merge(request()->query(), ['tab' => 'vacancies'])) }}"
+       class="btn btn-sm fw-semibold"
+       style="{{ ($tab ?? 'vacancies') === 'vacancies'
+           ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;'
+           : 'border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;' }}
+           border-radius:8px;font-size:11px;padding:5px 12px;white-space:nowrap;flex-shrink:0;">
+        <i class="bi bi-briefcase-fill me-1"></i>Job Vacancies
+    </a>
+    <a href="{{ route($reportRouteName ?? 'staff.reports.staffJobVacancy', array_merge(request()->query(), ['tab' => 'top_employers'])) }}"
+       class="btn btn-sm fw-semibold"
+       style="{{ ($tab ?? 'vacancies') === 'top_employers'
+           ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;'
+           : 'border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;' }}
+           border-radius:8px;font-size:11px;padding:5px 12px;white-space:nowrap;flex-shrink:0;">
+        <i class="bi bi-building-fill me-1"></i>Top Employers
+    </a>
+</div>
+
+@if(($tab ?? 'vacancies') === 'vacancies')
+
 {{-- MONTH FILTER + SEARCH --}}
 <form method="GET" action="{{ route($reportRouteName ?? 'staff.reports.employers') }}" class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <div class="d-flex align-items-center gap-2">
@@ -151,6 +173,83 @@
             </table>
         </div>
     </div>
+
+
+{{-- TOP EMPLOYERS TAB --}}
+<div class="card border-0 shadow-sm rounded-3 p-3 mb-3">
+    <div class="fw-semibold mb-2" style="color:#2d7a5f;font-size:14px;">
+        <i class="bi bi-building-fill me-2"></i>Top 5 Employers by Office-Based Interview Participation
+    </div>
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+        <div class="btn-group btn-group-sm" role="group" aria-label="Top employers filter">
+            <a href="{{ route($reportRouteName ?? 'staff.reports.staffJobVacancy', array_merge(request()->query(), ['tab' => 'top_employers', 'top_employers_filter' => 'monthly', 'page' => 1])) }}"
+               class="btn {{ ($topEmployersFilter ?? 'monthly') === 'monthly' ? 'btn-success' : 'btn-outline-success' }}"
+               style="font-size:12px;">Monthly</a>
+            <a href="{{ route($reportRouteName ?? 'staff.reports.staffJobVacancy', array_merge(request()->query(), ['tab' => 'top_employers', 'top_employers_filter' => 'yearly', 'page' => 1])) }}"
+               class="btn {{ ($topEmployersFilter ?? 'monthly') === 'yearly' ? 'btn-success' : 'btn-outline-success' }}"
+               style="font-size:12px;">Yearly</a>
+        </div>
+        @if(($topEmployersFilter ?? 'monthly') === 'monthly')
+            <input type="month" class="form-control form-control-sm" style="max-width:220px;" value="{{ $topEmployersMonth ?: now()->format('Y-m') }}" onchange="changeTopEmployersDate(this.value)">
+        @else
+            <select class="form-select form-select-sm" style="max-width:180px;" onchange="changeTopEmployersYear(this.value)">
+                @for($year = now()->year; $year >= now()->year - 5; $year--)
+                    <option value="{{ $year }}" {{ ($topEmployersYear ?: now()->year) == $year ? 'selected' : '' }}>{{ $year }}</option>
+                @endfor
+            </select>
+        @endif
+    </div>
+    @php($topEmployers = $topEmployersByOfficeBasedInterviews ?? collect())
+    @if($topEmployers->isEmpty())
+        <div class="text-muted small">No office-based interview data found for this period.</div>
+    @else
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th style="background:#f0fdf9;color:#2d7a5f;border:none;padding:8px 10px;">#</th>
+                        <th style="background:#f0fdf9;color:#2d7a5f;border:none;padding:8px 10px;">Employer</th>
+                        <th style="background:#f0fdf9;color:#2d7a5f;border:none;padding:8px 10px;text-align:center;">Office-Based Participations</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($topEmployers as $index => $entry)
+                        <tr style="font-size:13px;">
+                            <td style="padding:8px 10px;color:#888;">{{ $index + 1 }}</td>
+                            <td style="padding:8px 10px;color:#2d7a5f;font-weight:600;">{{ $entry['employer']->company_name ?? 'Unknown Employer' }}</td>
+                            <td style="padding:8px 10px;text-align:center;color:#555;">{{ $entry['participation_count'] }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+</div>
+
+@endif
+
+@push('scripts')
+<script>
+    function changeTopEmployersDate(value) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', 'top_employers');
+        url.searchParams.set('top_employers_filter', 'monthly');
+        url.searchParams.set('top_employers_month', value);
+        url.searchParams.set('page', 1);
+        window.location.href = url.toString();
+    }
+
+    function changeTopEmployersYear(value) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', 'top_employers');
+        url.searchParams.set('top_employers_filter', 'yearly');
+        url.searchParams.set('top_employers_year', value);
+        url.searchParams.set('page', 1);
+        window.location.href = url.toString();
+    }
+</script>
+@endpush
+
 @endif
 
 @endsection

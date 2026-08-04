@@ -52,7 +52,7 @@ class EmployerRequirementController extends Controller
             && $existing->status === 'rejected'
             && !empty($existing->rejected_fields);
 
-        $fieldsToRequire = $isPartialResubmit ? $existing->rejected_fields : $fields;
+        $fieldsToRequire = $isPartialResubmit ? $existing->rejected_fields : [];
 
         $rules = [];
         foreach ($fields as $field) {
@@ -79,7 +79,7 @@ class EmployerRequirementController extends Controller
                 if ($existing && $existing->$field) {
                     Storage::disk('public')->delete($existing->$field);
                 }
-                $path = $request->file($field)->store('employer_requirements/' . $company->id, 'public');
+                $path = $request->file($field)->store('employer_requirements', 'public');
                 $data[$field] = $path;
             }
             // Kung walay bag-ong file gi-upload, ang naa nang value magpabilin (dili ma-overwrite sa null)
@@ -131,7 +131,7 @@ if ($isOverseas) {
             return response()->json(['status' => 'none']);
         }
 
-        $requirement = EmployerRequirement::where('user_id', $user->id)->first();
+        $requirement = EmployerRequirement::where('user_id', $user->employerNsrp->id)->first();
 
         if (!$requirement) {
             return response()->json(['status' => 'none']);
@@ -155,7 +155,6 @@ if ($isOverseas) {
             'business_permit'             => 'required|file|max:5120',
             'sec_dti'                     => 'required|file|max:5120',
             'company_profile'             => 'required|file|max:5120',
-            'nsrp_establishment_form'     => 'required|file|max:5120',
             'no_pending_case_certificate' => 'required|file|max:5120',
             'vacancy_posting'             => 'required|file|max:5120',
         ]);
@@ -181,7 +180,7 @@ if ($isOverseas) {
                 if ($existing && $existing->$field) {
                     Storage::disk('public')->delete($existing->$field);
                 }
-                $path = $request->file($field)->store('employer_requirements/' . $user->id, 'public');
+                $path = $request->file($field)->store('employer_requirements', 'public');
                 $data[$field] = $path;
             }
         }

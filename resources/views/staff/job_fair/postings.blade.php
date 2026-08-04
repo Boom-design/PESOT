@@ -8,7 +8,7 @@
             <i class="bi bi-briefcase-fill me-2" style="color:#4dd9c0;"></i>Job Fair Postings
         </h5>
         <p class="mb-0" style="font-size:13px;color:#888;">
-            Approved job postings for job fair use. Closed postings go live automatically once a new job fair event is created.
+            Review and manage job postings for job fair use. Approved closed postings go live once a new job fair event is created.
         </p>
     </div>
 </div>
@@ -67,7 +67,9 @@
                         <th style="color:#2d7a5f;font-size:12px;border:none;padding:12px 16px;">Job Title</th>
                         <th style="color:#2d7a5f;font-size:12px;border:none;padding:12px 16px;">Company</th>
                         <th style="color:#2d7a5f;font-size:12px;border:none;padding:12px 16px;">Slots</th>
+                        <th style="color:#2d7a5f;font-size:12px;border:none;padding:12px 16px;text-align:center;">Posting Status</th>
                         <th style="color:#2d7a5f;font-size:12px;border:none;padding:12px 16px;text-align:center;">Status</th>
+                        <th style="color:#2d7a5f;font-size:12px;border:none;padding:12px 16px;text-align:center;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -83,10 +85,48 @@
                         </td>
                         <td style="padding:12px 16px;color:#555;">{{ $job->slots }}</td>
                         <td style="padding:12px 16px;text-align:center;">
+                            @if($job->posting_status === 'pending')
+                                <span class="badge fw-semibold" style="background:#fff8e1;color:#f59e0b;font-size:11px;padding:4px 10px;border-radius:20px;">Pending</span>
+                            @elseif($job->posting_status === 'approved')
+                                <span class="badge fw-semibold" style="background:#e8f8f3;color:#2d7a5f;font-size:11px;padding:4px 10px;border-radius:20px;">Approved</span>
+                            @else
+                                <span class="badge fw-semibold" style="background:#fff5f5;color:#e53935;font-size:11px;padding:4px 10px;border-radius:20px;">Rejected</span>
+                            @endif
+                        </td>
+                        <td style="padding:12px 16px;text-align:center;">
                             @if($job->status === 'open')
                                 <span class="badge fw-semibold" style="background:#2d7a5f;font-size:11px;padding:4px 10px;border-radius:20px;">Open</span>
                             @else
                                 <span class="badge fw-semibold" style="background:#f59e0b;font-size:11px;padding:4px 10px;border-radius:20px;">Closed</span>
+                            @endif
+                        </td>
+                        <td style="padding:12px 16px;text-align:center;">
+                            @if($job->posting_status === 'pending')
+                                <div class="d-flex gap-1 justify-content-center">
+                                    <form action="{{ route('staff.jobfair.postings.approve', $job->id) }}" method="POST">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm fw-semibold"
+                                            style="background:#2d7a5f;color:#fff;border:none;border-radius:6px;font-size:11px;padding:4px 12px;"
+                                            onclick="return confirm('Approve this job posting for job fair use?')">
+                                            <i class="bi bi-check-lg me-1"></i>Approve
+                                        </button>
+                                    </form>
+                                    <button type="button" class="btn btn-sm fw-semibold"
+                                        style="background:#e53935;color:#fff;border:none;border-radius:6px;font-size:11px;padding:4px 12px;"
+                                        onclick="openRejectModal({{ $job->id }}, '{{ addslashes($job->title) }}')">
+                                        <i class="bi bi-x-lg me-1"></i>Reject
+                                    </button>
+                                </div>
+                            @elseif($job->posting_status === 'approved')
+                                <span style="font-size:11px;color:#888;">—</span>
+                            @else
+                                @if($job->remarks)
+                                    <span style="font-size:11px;color:#e53935;" title="{{ $job->remarks }}">
+                                        <i class="bi bi-exclamation-circle"></i> Rejected
+                                    </span>
+                                @else
+                                    <span style="font-size:11px;color:#888;">—</span>
+                                @endif
                             @endif
                         </td>
                     </tr>
@@ -122,6 +162,39 @@
     </div>
 @endif
 
+{{-- ── REJECT MODAL ── --}}
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:16px;border:none;box-shadow:0 8px 32px rgba(0,0,0,0.12);">
+            <div class="modal-header" style="background:linear-gradient(90deg,#e53935,#ff6b6b);border:none;">
+                <h6 class="modal-title fw-bold text-white">
+                    <i class="bi bi-x-circle me-2"></i>Reject Job Posting
+                </h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="rejectForm" method="POST">
+                @csrf
+                <div class="modal-body p-4">
+                    <p style="font-size:13px;color:#555;margin-bottom:12px;">
+                        You are about to reject <strong id="rejectJobTitle" style="color:#2d7a5f;"></strong> for job fair use.
+                    </p>
+                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Reason for Rejection *</label>
+                    <textarea name="remarks" class="form-control" rows="3" required
+                        placeholder="Enter the reason for rejecting this job posting..."
+                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;"></textarea>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid #f0f9f6;">
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm fw-semibold"
+                        style="background:#e53935;color:#fff;border:none;border-radius:8px;padding:8px 20px;">
+                        <i class="bi bi-x-circle me-1"></i> Reject
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @push('scripts')
 <script>
     let searchTimer;
@@ -134,6 +207,12 @@
             window.location.href = url.toString();
         }, 500);
     });
+
+    function openRejectModal(jobId, jobTitle) {
+        document.getElementById('rejectJobTitle').textContent = '"' + jobTitle + '"';
+        document.getElementById('rejectForm').action = '{{ url("staff/jobfair/postings") }}/' + jobId + '/reject';
+        new bootstrap.Modal(document.getElementById('rejectModal')).show();
+    }
 </script>
 @endpush
 

@@ -32,9 +32,9 @@
 
                     <div class="alert alert-info" style="font-size:13px;border-radius:10px;">
                         <i class="bi bi-info-circle-fill me-1"></i>
-                        Ang mga sumusunod nga detalye kay gikan sa imong gi-type panahon sa registration.
-                        I-review, unya i-click <strong>"Confirm"</strong> kung tarong na,
-                        o i-click <strong>"Update"</strong> kung gusto nimong usbon una.
+                        The following details were entered during your registration.
+                        Review them, then click <strong>"Confirm"</strong> if everything is correct,
+                        or click <strong>"Update"</strong> if you want to make changes first.
                     </div>
 
                     <div class="mb-4">
@@ -227,6 +227,18 @@
                                         value="{{ $pos['preferred_residence'] ?? '' }}" readonly
                                         style="border-color:#a8e6cf;font-size:13px;border-radius:8px;background:#f0f9f6;">
                                 </div>
+                                @if(!empty($pos['job_image']))
+                                <div class="col-12 mt-2 pt-2" style="border-top:1px dashed #a8e6cf;">
+                                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">
+                                        <i class="bi bi-image me-1" style="color:#4dd9c0;"></i>Hiring Poster / Image
+                                    </label>
+                                    <div class="mt-1">
+                                        <img src="{{ Storage::url($pos['job_image']) }}" alt="Job Image"
+                                             style="max-width:200px;max-height:150px;border-radius:8px;border:1.5px solid #a8e6cf;object-fit:cover;">
+                                    </div>
+                                    <input type="hidden" name="positions[{{ $i }}][job_image]" value="{{ $pos['job_image'] }}">
+                                </div>
+                                @endif
                             </div>
                         </div>
                         @endforeach
@@ -984,6 +996,26 @@
             btn.closest('.position-row').remove();
             document.querySelectorAll('.pos-num').forEach((el, i) => { el.textContent = i + 1; });
         }
+    });
+
+    // ── Confirm button SweetAlert confirmation ──
+    document.getElementById('confirmVacancyBtn').addEventListener('click', function(e) {
+        e.preventDefault();
+        const form = document.getElementById('confirmVacancyForm');
+        Swal.fire({
+            title: 'Confirm Job Vacancies?',
+            html: 'Are you sure you want to submit these job vacancy postings? Please review all details before confirming.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#4dd9c0',
+            cancelButtonColor: '#e53935',
+            confirmButtonText: '<i class="bi bi-check-circle-fill me-1"></i> Yes, Confirm',
+            cancelButtonText: '<i class="bi bi-x-circle me-1"></i> Cancel',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                form.submit();
+            }
+        });
     });
     @endif
 </script>

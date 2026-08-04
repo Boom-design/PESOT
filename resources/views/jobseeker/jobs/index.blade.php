@@ -27,7 +27,7 @@
 </div>
 
 <div class="d-flex gap-2 mb-4 fade-in" style="flex-wrap:wrap;">
-    @foreach(['all' => 'All', 'local' => 'Local', 'ofw' => 'OFW'] as $val => $label)
+    @foreach(['all' => 'All', 'local' => 'Local', 'overseas' => 'Overseas', 'job_fair' => 'Job Fair'] as $val => $label)
     <a href="{{ route('jobseeker.jobs', array_merge(request()->except('page'), ['job_type' => $val])) }}"
        class="btn btn-sm fw-semibold"
        style="{{ $jobType === $val
@@ -70,8 +70,15 @@
                             <i class="bi bi-building" style="color:#fff; font-size:22px;"></i>
                         </div>
                         <div>
-                            <div style="font-size:15px; font-weight:700; color:#2d7a5f;">
-                                {{ $job->title }}
+                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                <span style="font-size:15px; font-weight:700; color:#2d7a5f;">
+                                    {{ $job->title }}
+                                </span>
+                                @if(in_array(strtolower($job->title), array_map('strtolower', $preferredOccupations)))
+                                <span style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:10px;padding:3px 10px;border-radius:20px;font-weight:700;white-space:nowrap;">
+                                    <i class="bi bi-star-fill me-1"></i>Recommended
+                                </span>
+                                @endif
                             </div>
                             <div style="font-size:12px; color:#888;">
                                 {{ $job->company->company_name ?? 'Company' }}

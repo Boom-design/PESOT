@@ -539,7 +539,8 @@
             <div class="d-flex gap-2 mb-3" style="flex-wrap:wrap;">
                 <a href="{{ route('landing', ['job_type' => 'all']) }}#jobsSection" class="job-type-tab-btn {{ $jobType === 'all' ? 'active' : '' }}">All</a>
                 <a href="{{ route('landing', ['job_type' => 'local']) }}#jobsSection" class="job-type-tab-btn {{ $jobType === 'local' ? 'active' : '' }}">Local</a>
-                <a href="{{ route('landing', ['job_type' => 'ofw']) }}#jobsSection" class="job-type-tab-btn {{ $jobType === 'ofw' ? 'active' : '' }}">OFW</a>
+                <a href="{{ route('landing', ['job_type' => 'overseas']) }}#jobsSection" class="job-type-tab-btn {{ $jobType === 'overseas' ? 'active' : '' }}">Overseas</a>
+                <a href="{{ route('landing', ['job_type' => 'job_fair']) }}#jobsSection" class="job-type-tab-btn {{ $jobType === 'job_fair' ? 'active' : '' }}">Job Fair</a>
             </div>
 
                 @if($jobs->isEmpty())

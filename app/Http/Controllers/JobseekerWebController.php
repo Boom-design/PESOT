@@ -56,6 +56,48 @@ class JobseekerWebController extends Controller
             ->where('status', 'accepted')
             ->get();
 
+        // ── Check for matching jobs based on preferred occupations ──
+        $preferredOccupations = $nsrp->preferred_occupations ?? [];
+        if (!empty($preferredOccupations) && $regId) {
+            $openJobs = Job::with('company')->where('status', 'open')
+                ->where(function ($q) {
+                    $q->whereNull('deadline')->orWhereDate('deadline', '>=', now()->toDateString());
+                })->get();
+
+            // Get job IDs the jobseeker already applied to
+            $appliedJobIds = Application::where('jobseeker_id', $regId)->pluck('job_id')->toArray();
+
+            $matchedJobs = collect();
+            foreach ($openJobs as $job) {
+                if (in_array($job->id, $appliedJobIds)) continue;
+                foreach ($preferredOccupations as $occ) {
+                    if (strtolower(trim($occ)) === strtolower($job->title)) {
+                        $matchedJobs->push($job);
+                        break;
+                    }
+                }
+            }
+
+            if ($matchedJobs->isNotEmpty()) {
+                // Track which job IDs have been shown already this session
+                $shownJobIds = session('matching_jobs_shown', []);
+                $newMatches = $matchedJobs->filter(fn($j) => !in_array($j->id, $shownJobIds));
+
+                if ($newMatches->isNotEmpty()) {
+                    $titles = $newMatches->pluck('title')->unique()->values();
+                    $count = $titles->count();
+                    $list = implode(', ', $titles->slice(0, 3)->toArray());
+                    $extra = $count > 3 ? ' and ' . ($count - 3) . ' more' : '';
+                    session()->flash('info', 'We found ' . $count . ' job ' . ($count === 1 ? 'vacancy' : 'vacancies') . ' matching your preferred ' . ($count === 1 ? 'position' : 'positions') . ' (' . $list . $extra . '). Apply now!');
+
+                    // Mark these job IDs as shown so they don't repeat until logout
+                    $newIds = $newMatches->pluck('id')->toArray();
+                    $allShown = array_unique(array_merge($shownJobIds, $newIds));
+                    session(['matching_jobs_shown' => $allShown]);
+                }
+            }
+        }
+
         return view('jobseeker.dashboard', compact(
             'jobseeker', 'registration', 'nsrp',
             'totalApplications', 'pendingApplications', 'hiredApplications',
@@ -369,14 +411,15 @@ foreach ($workExperiences as $exp) {
         $jobseeker = $this->authJobseeker();
         if (!$jobseeker) return redirect()->route('login');
 
-        $jobType = $request->input('job_type', 'all'); // all | local | ofw
+        $jobType = $request->input('job_type', 'all'); // all | local | overseas | job_fair
 
         $query = Job::with('company')->where('status', 'open')
             ->where(function ($q) {
                 $q->whereNull('deadline')->orWhereDate('deadline', '>=', now()->toDateString());
             })
             ->when($jobType === 'local', fn($q) => $q->whereHas('company', fn($c) => $c->where('is_overseas', false)))
-            ->when($jobType === 'ofw', fn($q) => $q->whereHas('company', fn($c) => $c->where('is_overseas', true)));
+            ->when($jobType === 'overseas', fn($q) => $q->whereHas('company', fn($c) => $c->where('is_overseas', true)))
+            ->when($jobType === 'job_fair', fn($q) => $q->where('schedule_type', 'job_fair'));
 
         if ($request->search) {
             $query->where(function ($q) use ($request) {
@@ -387,7 +430,10 @@ foreach ($workExperiences as $exp) {
 
         $jobs = $query->latest()->paginate(4)->withQueryString();
 
-        return view('jobseeker.jobs.index', compact('jobseeker', 'jobs', 'jobType'));
+        $registration = \App\Models\JobseekerRegistration::with('nsrp')->where('user_id', $jobseeker->id)->first();
+        $preferredOccupations = $registration->nsrp->preferred_occupations ?? [];
+
+        return view('jobseeker.jobs.index', compact('jobseeker', 'jobs', 'jobType', 'preferredOccupations'));
     }
 
     // ───────────────────────────────

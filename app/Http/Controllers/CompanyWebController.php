@@ -34,6 +34,18 @@ class CompanyWebController extends Controller
         return null;
     }
 
+    // ── HELPER — force redirect kung requirements not yet approved ──
+    private function requireApprovedRequirements($company)
+    {
+        $nsrp = $company->employerNsrp;
+        $isApproved = $nsrp && \App\Models\EmployerRequirement::where('user_id', $nsrp->id)->where('status', 'approved')->exists();
+        if (!$isApproved) {
+            return redirect()->route('company.requirements')
+                ->with('info', 'Your requirements must be approved before accessing this feature.');
+        }
+        return null;
+    }
+
     // ───────────────────────────────
     // LOGIN
     // ───────────────────────────────
@@ -132,7 +144,7 @@ class CompanyWebController extends Controller
     {
         $company = $this->authCompany();
         if (!$company) return redirect()->route('company.login');
-        if ($guard = $this->requireRequirements($company)) return $guard;
+        if ($guard = $this->requireApprovedRequirements($company)) return $guard;
 
         // ── Closed ra (pending o rejected) ang makita diri; pag-approve/pag-open, mabalhin na sa "Schedule Job Vacancy" tab ──
         $jobs = Job::where('company_id', $company->employerNsrp->id)
@@ -191,6 +203,7 @@ class CompanyWebController extends Controller
             'positions.*.language'              => 'nullable|string|max:255',
             'positions.*.preferred_residence'   => 'nullable|string|max:255',
             'positions.*.accepts_programs'      => 'nullable|array',
+            'positions.*.job_image'             => 'nullable|string',
         ]);
 
         // ── Kung Inhouse + PESO Office, i-check kung puno na (max 3 companies) sa gipili nga petsa ──
@@ -249,6 +262,7 @@ class CompanyWebController extends Controller
                 'language'            => $pos['language'] ?? null,
                 'preferred_residence' => $pos['preferred_residence'] ?? null,
                 'accepts_programs'    => $pos['accepts_programs'] ?? null,
+                'poster_image'       => $this->resolveJobImage($pos),
             ]);
         }
 
@@ -598,6 +612,7 @@ class CompanyWebController extends Controller
             'positions.*.language'              => 'nullable|string|max:255',
             'positions.*.preferred_residence'   => 'nullable|string|max:255',
             'positions.*.accepts_programs'      => 'nullable|array',
+            'positions.*.job_image'             => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
         ]);
 
         // ── Kung Inhouse + PESO Office, i-check kung puno na (max 3 companies) sa gipili nga petsa ──
@@ -648,7 +663,7 @@ class CompanyWebController extends Controller
                 'preferred_date'      => $request->preferred_date,
                 'venue_type'          => $request->venue_type,
                 'venue_address'       => $request->venue_type === 'other' ? $request->venue_address : null,
-                'poster_image'        => $posterPath,
+                'poster_image'        => $this->resolveJobImage($pos) ?? $posterPath,
                 // Qualification fields
                 'sex_preference'      => $pos['sex_preference'] ?? 'Any',
                 'education_required'  => $pos['education_required'] ?? null,
@@ -824,7 +839,7 @@ class CompanyWebController extends Controller
     {
         $company = $this->authCompany();
         if (!$company) return redirect()->route('login');
-        if ($guard = $this->requireRequirements($company)) return $guard;
+        if ($guard = $this->requireApprovedRequirements($company)) return $guard;
 
         $invitations = \App\Models\JobFairParticipant::with('jobFair')
             ->where('employer_id', $company->employerNsrp->id)
@@ -1048,7 +1063,7 @@ class CompanyWebController extends Controller
     {
         $company = $this->authCompany();
         if (!$company) return redirect()->route('company.login');
-        if ($guard = $this->requireRequirements($company)) return $guard;
+        if ($guard = $this->requireApprovedRequirements($company)) return $guard;
 
         $search = $request->input('search');
 
@@ -1072,7 +1087,7 @@ class CompanyWebController extends Controller
     {
         $company = $this->authCompany();
         if (!$company) return redirect()->route('company.login');
-        if ($guard = $this->requireRequirements($company)) return $guard;
+        if ($guard = $this->requireApprovedRequirements($company)) return $guard;
 
         $search = $request->input('search');
 
@@ -1095,5 +1110,16 @@ class CompanyWebController extends Controller
             ->withQueryString();
 
         return view('company.reports.index', compact('hired', 'search'));
+    }
+
+    // ───────────────────────────────
+    // Resolve job image: upload if file, return path if string, null otherwise
+    // ───────────────────────────────
+    private function resolveJobImage($pos): ?string
+    {
+        if (isset($pos['job_image']) && $pos['job_image'] instanceof \Illuminate\Http\UploadedFile) {
+            return $pos['job_image']->store('job_images', 'public');
+        }
+        return $pos['poster_image'] ?? $pos['job_image'] ?? null;
     }
 }
