@@ -8,6 +8,8 @@ class JobseekerRegistration extends Model
 {
     protected $table = 'jobseeker_registrations';
 
+    protected $primaryKey = 'jobseeker_registrations_id';
+
     protected $fillable = [
         'user_id',
         'surname', 'first_name', 'middle_name', 'suffix',
@@ -28,7 +30,7 @@ class JobseekerRegistration extends Model
     // ── RELATIONSHIPS ──
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function nsrp()

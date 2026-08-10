@@ -326,7 +326,7 @@
                         <td>
                             <div class="d-flex gap-1">
                                 @if($job->status === 'closed')
-                                <a href="{{ route('company.jobs.edit', $job->id) }}"
+                                <a href="{{ route('company.jobs.edit', $job->job_qualifications_id) }}"
                                    class="btn btn-sm btn-peso-outline py-1 px-2" style="font-size:11px;"
                                    title="Edit">
                                     <i class="bi bi-pencil"></i>

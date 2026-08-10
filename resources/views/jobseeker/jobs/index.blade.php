@@ -119,7 +119,7 @@
 
                     {{-- Apply Button --}}
                     <div class="d-flex justify-content-end">
-                        <a href="{{ route('jobseeker.jobs.show', $job->id) }}"
+                        <a href="{{ route('jobseeker.jobs.show', $job->job_qualifications_id) }}"
                            class="btn btn-peso btn-sm px-3">
                             <i class="bi bi-eye me-1"></i> View & Apply
                         </a>

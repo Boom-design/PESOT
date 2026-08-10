@@ -12,6 +12,8 @@ class User extends Authenticatable
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;  // ← ADDED HasApiTokens
 
+    protected $primaryKey = 'users_id';
+
     protected $fillable = [
     'name',
     'email',
@@ -42,8 +44,8 @@ class User extends Authenticatable
             EmployerNsrpRegistration::class,
             'user_id',      // FK sa employer_nsrp_registrations nga naka-point sa users
             'company_id',   // FK sa jobs nga naka-point sa employer_nsrp_registrations
-            'id',           // local key sa users
-            'id'            // local key sa employer_nsrp_registrations
+            'users_id',                       // local key sa users
+            'employer_nsrp_registrations_id'  // local key sa employer_nsrp_registrations
         );
     }
 
@@ -55,8 +57,8 @@ class User extends Authenticatable
             JobseekerRegistration::class,
             'user_id',
             'jobseeker_id',
-            'id',
-            'id'
+            'users_id',
+            'jobseeker_registrations_id'
         );
     }
 
@@ -67,8 +69,8 @@ class User extends Authenticatable
         \App\Models\EmployerNsrpRegistration::class,
         'user_id',   // FK sa employer_nsrp_registrations → users
         'user_id',   // FK sa employer_requirements → employer_nsrp_registrations
-        'id',
-        'id'
+        'users_id',
+        'employer_nsrp_registrations_id'
     );
 }
 

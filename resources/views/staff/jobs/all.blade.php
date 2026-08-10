@@ -130,7 +130,7 @@
                         <td style="padding:12px 16px;text-align:center;">
                             <button type="button" class="btn btn-sm fw-semibold"
                                 style="font-size:11px;background:#fff5f5;color:#e53935;border:1px solid #ffcdd2;border-radius:8px;"
-                                onclick="confirmDeleteJob({{ $job->id }}, '{{ addslashes($job->title) }}')">
+                                onclick="confirmDeleteJob({{ $job->job_qualifications_id }}, '{{ addslashes($job->title) }}')">
                                 <i class="bi bi-trash"></i> Delete
                             </button>
                         </td>

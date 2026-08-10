@@ -35,12 +35,12 @@
         @if($openJobs->isEmpty())
             <div style="font-size:13px;color:#888;">No open job postings available at the moment.</div>
         @else
-            <form action="{{ route('staff.registrations.apply', $registration->id) }}" method="POST" class="d-flex gap-2 flex-wrap">
+            <form action="{{ route('staff.registrations.apply', $registration->jobseeker_registrations_id) }}" method="POST" class="d-flex gap-2 flex-wrap">
                 @csrf
                 <select name="job_id" class="form-select form-select-sm" style="max-width:400px;border-color:#a8e6cf;font-size:13px;" required>
                     <option value="">— Select a job posting —</option>
                     @foreach($openJobs as $job)
-                    <option value="{{ $job->id }}">{{ $job->title }} — {{ $job->company->company_name ?? '—' }}</option>
+                    <option value="{{ $job->job_qualifications_id }}">{{ $job->title }} — {{ $job->company->company_name ?? '—' }}</option>
                     @endforeach
                 </select>
                 <button type="submit" class="btn btn-sm fw-semibold"

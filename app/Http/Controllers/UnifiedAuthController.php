@@ -106,7 +106,7 @@ class UnifiedAuthController extends Controller
     {
         if ($role === 'jobseeker') {
             $user = Auth::user();
-            $hasNsrp = \App\Models\JobseekerRegistration::where('user_id', $user->id)->exists();
+            $hasNsrp = \App\Models\JobseekerRegistration::where('user_id', $user->users_id)->exists();
             if (!$hasNsrp) {
                 return redirect()->route('jobseeker.nsrp');
             }
@@ -166,7 +166,7 @@ class UnifiedAuthController extends Controller
 
         if ($walkIn) {
             $walkIn->update([
-                'user_id'    => $user->id,
+                'user_id'    => $user->users_id,
                 'is_walk_in' => false,
             ]);
         }
@@ -261,7 +261,7 @@ class UnifiedAuthController extends Controller
     $hasPositions = !empty($request->positions);
 
     \App\Models\EmployerNsrpRegistration::create([
-        'user_id'                   => $user->id,
+        'user_id'                   => $user->users_id,
         'company_name'              => $request->company_name,
         'contact_person'            => $request->contact_person,
         'position_title'            => $request->position_title,
@@ -301,10 +301,10 @@ class UnifiedAuthController extends Controller
     }
 
     if (!empty($uploadedDocs)) {
-        $employerNsrp = \App\Models\EmployerNsrpRegistration::where('user_id', $user->id)->first();
+        $employerNsrp = \App\Models\EmployerNsrpRegistration::where('user_id', $user->users_id)->first();
 
         \App\Models\EmployerRequirement::create(array_merge(
-            ['user_id' => $employerNsrp->id, 'status' => 'pending'],
+            ['user_id' => $employerNsrp->employer_nsrp_registrations_id, 'status' => 'pending'],
             $uploadedDocs
         ));
     }
@@ -319,7 +319,7 @@ class UnifiedAuthController extends Controller
             'title'          => 'New Employer Registration 🏢',
             'message'        => $request->company_name . ' has registered as a ' . ($isOverseas ? 'overseas' : 'local') . ' employer. Please review their profile.',
             'reference_type' => 'employer_registration',
-            'reference_id'   => $user->id,
+            'reference_id'   => $user->users_id,
         ], $staffIds);
     }
 
@@ -333,7 +333,7 @@ class UnifiedAuthController extends Controller
                 'title'          => 'New Employer Registration 🏢',
                 'message'        => $request->company_name . ' has registered as a local employer. Please review their profile.',
                 'reference_type' => 'employer_registration',
-                'reference_id'   => $user->id,
+                'reference_id'   => $user->users_id,
             ], $jobVacancyStaffIds);
         }
     }

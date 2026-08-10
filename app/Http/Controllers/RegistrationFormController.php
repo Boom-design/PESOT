@@ -37,12 +37,12 @@ class RegistrationFormController extends Controller
         }
 
         // Check if this user already has an existing registration record
-        $existing = JobseekerRegistration::where('user_id', $user->id)->first();
+        $existing = JobseekerRegistration::where('user_id', $user->users_id)->first();
 
         // Prepare the registration data by merging the request input with
         // the user_id and setting the initial status to 'submitted'
         $data = array_merge($request->all(), [
-            'user_id' => $user->id,
+            'user_id' => $user->users_id,
             'status'  => 'submitted',
         ]);
 
@@ -75,9 +75,9 @@ class RegistrationFormController extends Controller
                 'title'          => 'New Registration Form',
                 'message'        => $name . ' submitted a jobseeker registration form.',
                 'is_read'        => false,
-                'user_id'        => $user->id,
+                'user_id'        => $user->users_id,
                 'reference_type' => 'registration',
-                'reference_id'   => $registration->id,
+                'reference_id'   => $registration->jobseeker_registrations_id,
             ]);
         }
 
@@ -103,7 +103,7 @@ class RegistrationFormController extends Controller
         $user = $request->user();
 
         // Query the database for the registration record associated with this user
-        $registration = JobseekerRegistration::where('user_id', $user->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $user->users_id)->first();
 
         // If no registration record is found, return a 404 Not Found response
         if (!$registration) {

@@ -8,6 +8,8 @@ class EmployerNsrpRegistration extends Model
 {
     protected $table = 'employer_nsrp_registrations';
 
+    protected $primaryKey = 'employer_nsrp_registrations_id';
+
     protected $fillable = [
         'user_id',
         'company_name',

@@ -20,7 +20,7 @@
     <span style="font-size:11px;color:#888;"><i class="bi bi-clock me-1"></i>Locked until interview date</span>
 @else
 <div class="d-flex gap-1 justify-content-center">
-    <form method="POST" action="{{ route('company.applicants.status', $app->id) }}" class="status-form">
+    <form method="POST" action="{{ route('company.applicants.status', $app->job_matching_id) }}" class="status-form">
         @csrf
         <input type="hidden" name="status" value="hired">
         <button type="button" class="btn btn-sm fw-semibold confirm-hired"
@@ -29,7 +29,7 @@
             <i class="bi bi-check-circle-fill"></i>
         </button>
     </form>
-    <form method="POST" action="{{ route('company.applicants.status', $app->id) }}">
+    <form method="POST" action="{{ route('company.applicants.status', $app->job_matching_id) }}">
         @csrf
         <input type="hidden" name="status" value="waiting">
         <button type="submit" class="btn btn-sm fw-semibold"
@@ -41,7 +41,7 @@
             <i class="bi bi-hourglass-split"></i>
         </button>
     </form>
-    <form method="POST" action="{{ route('company.applicants.status', $app->id) }}" class="status-form">
+    <form method="POST" action="{{ route('company.applicants.status', $app->job_matching_id) }}" class="status-form">
         @csrf
         <input type="hidden" name="status" value="rejected">
         <button type="button" class="btn btn-sm fw-semibold confirm-rejected"

@@ -5,7 +5,7 @@
 @section('content')
 
 @php
-    $requirement = \App\Models\EmployerRequirement::where('user_id', $company->employerNsrp->id ?? 0)->first();
+    $requirement = \App\Models\EmployerRequirement::where('user_id', $company->employerNsrp->employer_nsrp_registrations_id ?? 0)->first();
     $reqStatus = $requirement?->status ?? 'none';
 @endphp
 

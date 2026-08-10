@@ -148,7 +148,7 @@
                             {{ $reg->created_at->format('M d, Y') }}
                         </td>
                         <td style="padding:12px 16px;vertical-align:middle;">
-                            <a href="{{ route('admin.registration.view', $reg->id) }}"
+                            <a href="{{ route('admin.registration.view', $reg->jobseeker_registrations_id) }}"
                                class="btn btn-sm fw-semibold"
                                style="background:linear-gradient(90deg,#90d870,#4dd9c0);
                                       color:#fff;border:none;border-radius:8px;font-size:12px;">

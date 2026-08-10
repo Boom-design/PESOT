@@ -301,7 +301,7 @@
         // ── Job Fair Attendance Confirmation — naa bay unresolved (na-notify na pero wala pa nag-respond) ──
         $pendingAttendanceConfirmation = $jobseekerRegistration
             ? \App\Models\JobFairRegistration::with('jobFair')
-                ->where('user_id', $jobseekerRegistration->id)
+                ->where('user_id', $jobseekerRegistration->jobseeker_registrations_id)
                 ->whereNull('is_attended')
                 ->whereNotNull('attendance_notified_at')
                 ->first()
@@ -402,7 +402,7 @@
                 <i class="bi bi-bell"></i>
                 @php
                     $unreadCount = $jobseekerRegistration
-                        ? \App\Models\Announcement::where('jobseeker_id', $jobseekerRegistration->id)->where('is_read', false)->count()
+                        ? \App\Models\Announcement::where('jobseeker_id', $jobseekerRegistration->jobseeker_registrations_id)->where('is_read', false)->count()
                         : 0;
                 @endphp
                 @if($unreadCount > 0)
@@ -418,7 +418,7 @@
                 </li>
                 @php
                     $notifications = $jobseekerRegistration
-                        ? \App\Models\Announcement::where('jobseeker_id', $jobseekerRegistration->id)->orderBy('created_at', 'desc')->take(5)->get()
+                        ? \App\Models\Announcement::where('jobseeker_id', $jobseekerRegistration->jobseeker_registrations_id)->orderBy('created_at', 'desc')->take(5)->get()
                         : collect();
 
                     $notifTargetUrl = function ($notif) {

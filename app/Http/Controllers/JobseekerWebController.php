@@ -23,7 +23,7 @@ class JobseekerWebController extends Controller
     // ── NSRP Guard — redirect to NSRP if not yet submitted ──
     private function requireNsrp($jobseeker)
     {
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
         if (!$registration || !$registration->nsrp) {
             return redirect()->route('jobseeker.nsrp')
                 ->with('info', 'Please complete your NSRP Registration Form first before accessing other features.');
@@ -39,10 +39,10 @@ class JobseekerWebController extends Controller
         $jobseeker = $this->authJobseeker();
         if (!$jobseeker) return redirect()->route('login');
 
-        $registration = JobseekerRegistration::with('nsrp')->where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::with('nsrp')->where('user_id', $jobseeker->users_id)->first();
         $nsrp = $registration->nsrp ?? null;
 
-        $regId = $registration->id ?? null;
+        $regId = $registration->jobseeker_registrations_id ?? null;
 
         $totalApplications   = $regId ? Application::where('jobseeker_id', $regId)->count() : 0;
         $pendingApplications = $regId ? Application::where('jobseeker_id', $regId)->where('status', 'pending')->count() : 0;
@@ -73,7 +73,7 @@ class JobseekerWebController extends Controller
             $bestPercentage = 0;
 
             foreach ($openJobs as $job) {
-                if (in_array($job->id, $appliedJobIds) || in_array($job->id, $shownJobIds)) continue;
+                if (in_array($job->job_qualifications_id, $appliedJobIds) || in_array($job->job_qualifications_id, $shownJobIds)) continue;
 
                 // Preferred occupation check una — dili gyud i-consider kung wala match sa preferred occupation
                 $occMatched = false;
@@ -85,7 +85,7 @@ class JobseekerWebController extends Controller
                 }
                 if (!$occMatched) continue;
 
-                $breakdown = $appController->computeMatchBreakdownPublic($jobseeker->id, $job);
+                $breakdown = $appController->computeMatchBreakdownPublic($jobseeker->users_id, $job);
                 if ($breakdown['percentage'] >= 75 && $breakdown['percentage'] > $bestPercentage) {
                     $bestPercentage = $breakdown['percentage'];
                     $bestMatch = $job;
@@ -97,7 +97,7 @@ class JobseekerWebController extends Controller
                     'job'        => $bestMatch,
                     'percentage' => $bestPercentage,
                 ];
-                session(['highly_qualified_shown' => array_unique(array_merge($shownJobIds, [$bestMatch->id]))]);
+                session(['highly_qualified_shown' => array_unique(array_merge($shownJobIds, [$bestMatch->job_qualifications_id]))]);
             }
         }
 
@@ -117,7 +117,7 @@ class JobseekerWebController extends Controller
         if (!$jobseeker) return redirect()->route('login');
 
         $registration = JobseekerRegistration::with('nsrp.workExperiences')
-    ->where('user_id', $jobseeker->id)->first();
+    ->where('user_id', $jobseeker->users_id)->first();
 $nsrp = $registration->nsrp ?? null;
 
 return view('jobseeker.nsrp.index', compact('jobseeker', 'registration', 'nsrp'));
@@ -212,7 +212,7 @@ return view('jobseeker.nsrp.index', compact('jobseeker', 'registration', 'nsrp')
         // PART 1: Personal Info → jobseeker_registrations
         // ══════════════════════════════════════════
         $registrationData = [
-            'user_id'           => $jobseeker->id,
+            'user_id'           => $jobseeker->users_id,
             'surname'           => $request->surname,
             'first_name'        => $request->first_name,
             'middle_name'       => $request->middle_name,
@@ -240,7 +240,7 @@ return view('jobseeker.nsrp.index', compact('jobseeker', 'registration', 'nsrp')
             'disability_other'  => $request->disability_other,
         ];
 
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
         if ($registration) {
             $registration->update($registrationData);
         } else {
@@ -251,7 +251,7 @@ return view('jobseeker.nsrp.index', compact('jobseeker', 'registration', 'nsrp')
         // PART 2: NSRP Form Data → jobseeker_nsrp_registrations
         // ══════════════════════════════════════════
         $nsrpData = [
-            'jobseeker_registration_id' => $registration->id,
+            'jobseeker_registration_id' => $registration->jobseeker_registrations_id,
             'type'               => $request->classification_type ?? 'local',
     'employment_type'   => $request->employment_type,
             'is_ofw'            => $request->is_ofw ?? false,
@@ -286,7 +286,7 @@ return view('jobseeker.nsrp.index', compact('jobseeker', 'registration', 'nsrp')
         ];
 
         // Handle certificate file uploads
-        $nsrp = JobseekerNsrpRegistration::where('jobseeker_registration_id', $registration->id)->first();
+        $nsrp = JobseekerNsrpRegistration::where('jobseeker_registration_id', $registration->jobseeker_registrations_id)->first();
 
         $existingCerts = [];
         if ($nsrp && $nsrp->training_certificates) {
@@ -397,7 +397,7 @@ foreach ($workExperiences as $exp) {
                     'title'          => 'New Jobseeker Registration 📋',
                     'message'        => ($jobseekerName ?: 'A jobseeker') . ' has submitted their NSRP registration form.',
                     'reference_type' => 'jobseeker_registration',
-                    'reference_id'   => $registration->id,
+                    'reference_id'   => $registration->jobseeker_registrations_id,
                 ], $staffIds);
             }
         }
@@ -433,7 +433,7 @@ foreach ($workExperiences as $exp) {
 
         $jobs = $query->latest()->paginate(4)->withQueryString();
 
-        $registration = \App\Models\JobseekerRegistration::with('nsrp')->where('user_id', $jobseeker->id)->first();
+        $registration = \App\Models\JobseekerRegistration::with('nsrp')->where('user_id', $jobseeker->users_id)->first();
         $preferredOccupations = $registration->nsrp->preferred_occupations ?? [];
 
         return view('jobseeker.jobs.index', compact('jobseeker', 'jobs', 'jobType', 'preferredOccupations'));
@@ -448,10 +448,10 @@ foreach ($workExperiences as $exp) {
         if (!$jobseeker) return redirect()->route('login');
 
         $job  = Job::with('company')->findOrFail($id);
-        $registration = JobseekerRegistration::with('nsrp')->where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::with('nsrp')->where('user_id', $jobseeker->users_id)->first();
         $nsrp = $registration->nsrp ?? null;
 
-        $application    = $registration ? Application::where('jobseeker_id', $registration->id)->where('job_id', $id)->first() : null;
+        $application    = $registration ? Application::where('jobseeker_id', $registration->jobseeker_registrations_id)->where('job_id', $id)->first() : null;
         $alreadyApplied = $application !== null;
 
         // Compute match percentage + breakdown
@@ -459,7 +459,7 @@ foreach ($workExperiences as $exp) {
         $matchCriteria   = [];
         if ($nsrp) {
             $appController = new ApplicationController();
-            $breakdown       = $appController->computeMatchBreakdownPublic($jobseeker->id, $job);
+            $breakdown       = $appController->computeMatchBreakdownPublic($jobseeker->users_id, $job);
             $matchPercentage = $breakdown['percentage'];
             $matchCriteria   = $breakdown['criteria'];
         }
@@ -487,10 +487,10 @@ foreach ($workExperiences as $exp) {
         if (!$jobseeker) return redirect()->route('login');
         if ($guard = $this->requireNsrp($jobseeker)) return $guard;
 
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
 
         $applications = Application::with('job.company')
-            ->where('jobseeker_id', $registration->id ?? 0)
+            ->where('jobseeker_id', $registration->jobseeker_registrations_id ?? 0)
             ->latest()
             ->get();
 
@@ -516,7 +516,7 @@ foreach ($workExperiences as $exp) {
         $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name'  => 'required|string|max:255',
-            'email'      => 'required|email|unique:users,email,' . $jobseeker->id,
+            'email'      => 'required|email|unique:users,email,' . $jobseeker->users_id . ',users_id',
         ]);
 
         $jobseeker->update([
@@ -525,7 +525,7 @@ foreach ($workExperiences as $exp) {
             'name'  => $request->first_name . ' ' . $request->last_name,
         ]);
 
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
         if ($registration) {
             $registration->update([
                 'first_name'    => $request->first_name,
@@ -568,11 +568,11 @@ foreach ($workExperiences as $exp) {
 
         $type = request('type', 'inhouse');
 
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
 
         // ── In-house interviews nga na-ACCEPT sa jobseeker (gikan sa Job-based in-house postings) ──
         $inhouseApplications = Application::with('job.company')
-            ->where('jobseeker_id', $registration->id ?? 0)
+            ->where('jobseeker_id', $registration->jobseeker_registrations_id ?? 0)
             ->where('inhouse_participation', 'accepted')
             ->whereHas('job', function ($q) {
                 $q->where('schedule_type', 'inhouse');
@@ -589,7 +589,7 @@ foreach ($workExperiences as $exp) {
             ->latest()
             ->get();
 
-        $joinedJobFairIds = \App\Models\JobFairRegistration::where('user_id', $registration->id ?? 0)
+        $joinedJobFairIds = \App\Models\JobFairRegistration::where('user_id', $registration->jobseeker_registrations_id ?? 0)
             ->pluck('job_fair_id')
             ->toArray();
 
@@ -610,11 +610,11 @@ foreach ($workExperiences as $exp) {
             ->where('status', 'accepted')
             ->firstOrFail();
 
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
 
         \App\Models\InhouseParticipant::firstOrCreate([
             'inhouse_schedule_id' => $schedule->id,
-            'jobseeker_id'        => $registration->id ?? 0,
+            'jobseeker_id'        => $registration->jobseeker_registrations_id ?? 0,
         ], [
             'joined_at' => now(),
         ]);
@@ -634,10 +634,10 @@ foreach ($workExperiences as $exp) {
             ->where('status', '!=', 'completed')
             ->firstOrFail();
 
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
 
         $alreadyJoined = \App\Models\JobFairRegistration::where('job_fair_id', $jobFair->id)
-            ->where('user_id', $registration->id ?? 0)
+            ->where('user_id', $registration->jobseeker_registrations_id ?? 0)
             ->exists();
 
         if ($alreadyJoined) {
@@ -651,7 +651,7 @@ foreach ($workExperiences as $exp) {
 
         \App\Models\JobFairRegistration::create([
             'job_fair_id' => $jobFair->id,
-            'user_id'     => $registration->id ?? 0,
+            'user_id'     => $registration->jobseeker_registrations_id ?? 0,
             'slip_number' => $slipNumber,
             'is_early'    => $isEarly,
         ]);
@@ -669,10 +669,10 @@ foreach ($workExperiences as $exp) {
 
         $request->validate(['response' => 'required|in:yes,no']);
 
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
 
         $reg = \App\Models\JobFairRegistration::where('id', $registrationId)
-            ->where('user_id', $registration->id ?? 0)
+            ->where('user_id', $registration->jobseeker_registrations_id ?? 0)
             ->firstOrFail();
 
         $reg->update([
@@ -694,10 +694,10 @@ foreach ($workExperiences as $exp) {
 
         $search = $request->input('search');
 
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
 
         $hired = Application::with('job.company')
-            ->where('jobseeker_id', $registration->id ?? 0)
+            ->where('jobseeker_id', $registration->jobseeker_registrations_id ?? 0)
             ->where('status', 'hired')
             ->when($search, function ($q) use ($search) {
                 $q->whereHas('job', function ($jq) use ($search) {
@@ -720,11 +720,11 @@ foreach ($workExperiences as $exp) {
         $jobseeker = $this->authJobseeker();
         if (!$jobseeker) return response()->json(['error' => 'Unauthorized'], 401);
 
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
         if (!$registration) return response()->json(['error' => 'Not found'], 404);
 
         \App\Models\Announcement::where('id', $id)
-            ->where('jobseeker_id', $registration->id)
+            ->where('jobseeker_id', $registration->jobseeker_registrations_id)
             ->update(['is_read' => true]);
 
         return response()->json(['success' => true]);
@@ -735,10 +735,10 @@ foreach ($workExperiences as $exp) {
         $jobseeker = $this->authJobseeker();
         if (!$jobseeker) return response()->json(['error' => 'Unauthorized'], 401);
 
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
         if (!$registration) return response()->json(['error' => 'Not found'], 404);
 
-        \App\Models\Announcement::where('jobseeker_id', $registration->id)
+        \App\Models\Announcement::where('jobseeker_id', $registration->jobseeker_registrations_id)
             ->where('is_read', false)
             ->update(['is_read' => true]);
 
@@ -750,10 +750,10 @@ foreach ($workExperiences as $exp) {
         $jobseeker = $this->authJobseeker();
         if (!$jobseeker) return redirect()->route('login');
 
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
 
         $notifications = $registration
-            ? \App\Models\Announcement::where('jobseeker_id', $registration->id)->latest()->get()
+            ? \App\Models\Announcement::where('jobseeker_id', $registration->jobseeker_registrations_id)->latest()->get()
             : collect();
 
         return view('jobseeker.notifications.index', compact('notifications'));

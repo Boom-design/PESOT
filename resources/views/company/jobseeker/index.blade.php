@@ -69,7 +69,7 @@
                             </span>
                         </td>
                         <td style="padding:12px 16px;text-align:center;">
-                            <a href="{{ route('company.jobs.qualified', $job->id) }}" class="btn btn-peso btn-sm px-3">
+                            <a href="{{ route('company.jobs.qualified', $job->job_qualifications_id) }}" class="btn btn-peso btn-sm px-3">
                                 <i class="bi bi-eye me-1"></i> View
                             </a>
                         </td>

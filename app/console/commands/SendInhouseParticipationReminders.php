@@ -25,7 +25,7 @@ class SendInhouseParticipationReminders extends Command
         $totalSent = 0;
 
         foreach ($jobs as $job) {
-            $applications = Application::where('job_id', $job->id)
+            $applications = Application::where('job_id', $job->job_qualifications_id)
                 ->where('inhouse_participation', 'pending')
                 ->whereNull('inhouse_participation_notified_at')
                 ->get();
@@ -36,7 +36,7 @@ class SendInhouseParticipationReminders extends Command
                     'title'          => 'Confirm Your In-house Interview 📅',
                     'message'        => 'Your in-house interview for "' . $job->title . '" is coming up on ' . \Carbon\Carbon::parse($job->preferred_date)->format('M d, Y') . '. Please confirm your participation.',
                     'reference_type' => 'job',
-                    'reference_id'   => $job->id,
+                    'reference_id'   => $job->job_qualifications_id,
                 ], $app->jobseeker_id);
 
                 $app->update(['inhouse_participation_notified_at' => now()]);

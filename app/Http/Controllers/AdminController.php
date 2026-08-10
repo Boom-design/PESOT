@@ -118,7 +118,7 @@ class AdminController extends Controller
         $nameParts = explode(' ', $request->name, 2);
 
         \App\Models\Staff::create([
-            'user_id'     => $newStaff->id,
+            'user_id'     => $newStaff->users_id,
             'staff_role'  => $request->staff_role,
             'first_name'  => $nameParts[0] ?? $request->name,
             'last_name'   => $nameParts[1] ?? '',
@@ -147,12 +147,12 @@ class AdminController extends Controller
             'update_staff_role'=> 'required|in:sra,lra,job_fair,job_vacancy',
         ]);
 
-        $staffRecord = \App\Models\Staff::where('user_id', $user->id)->first();
+        $staffRecord = \App\Models\Staff::where('user_id', $user->users_id)->first();
 
         // Check duplicate role kung lahi ang gipili gikan sa current role
         if ($staffRecord && $staffRecord->staff_role !== $request->update_staff_role) {
             $taken = \App\Models\Staff::where('staff_role', $request->update_staff_role)
-                ->where('user_id', '!=', $user->id)
+                ->where('user_id', '!=', $user->users_id)
                 ->whereHas('user', fn($q) => $q->where('status', '!=', 'deactivated'))
                 ->exists();
 
@@ -160,7 +160,7 @@ class AdminController extends Controller
                 $labels = ['sra' => 'SRA', 'lra' => 'LRA', 'job_fair' => 'Job Fair', 'job_vacancy' => 'Job Vacancy'];
                 return back()
                     ->withErrors(['update_staff_role' => 'Another active staff member is already assigned to the ' . ($labels[$request->update_staff_role] ?? $request->update_staff_role) . ' role. Please deactivate or change that staff member\'s role first.'])
-                    ->withInput(['update_user_id' => $user->id]);
+                    ->withInput(['update_user_id' => $user->users_id]);
             }
         }
 
@@ -194,7 +194,7 @@ class AdminController extends Controller
 
         $request->validate([
             'name'  => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $admin->id,
+            'email' => 'required|email|unique:users,email,' . $admin->users_id . ',users_id',
             'phone' => 'nullable|string|max:20',
         ]);
 
@@ -354,7 +354,7 @@ if ($type === 'local') {
                     $q->select('jobseeker_id')->from('job_matching')
                       ->where('status', 'hired')
                       ->whereIn('job_id', function ($jq) use ($schedule) {
-                          $jq->select('id')->from('job_qualifications')
+                          $jq->select('job_qualifications_id')->from('job_qualifications')
                              ->where('company_id', $schedule->employer_id);
                       });
                 })->count();
@@ -481,7 +481,7 @@ if ($type === 'local') {
 
                     $apps = \App\Models\Application::with('jobseeker')->whereIn('job_id', $jobIds)->get();
 
-                    $p->vacancies   = \App\Models\Job::whereIn('id', $jobIds)->sum('slots');
+                    $p->vacancies   = \App\Models\Job::whereIn('job_qualifications_id', $jobIds)->sum('slots');
                     $p->interviewed = $apps->count();
                     $p->male        = $apps->filter(fn($a) => strtolower($a->jobseeker->sex ?? '') === 'male')->count();
                     $p->female      = $apps->filter(fn($a) => strtolower($a->jobseeker->sex ?? '') === 'female')->count();
@@ -499,7 +499,7 @@ if ($type === 'local') {
             $industryOverseas = collect();
 
             if ($tab === 'industry' && $eventId) {
-                $jobs = \App\Models\Job::with('company')->whereIn('id', $eventJobIds)->get();
+                $jobs = \App\Models\Job::with('company')->whereIn('job_qualifications_id', $eventJobIds)->get();
 
                 $industryLocal = $jobs->filter(fn($j) => !($j->company->is_overseas ?? false))
                     ->groupBy('industry_group')

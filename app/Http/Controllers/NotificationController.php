@@ -9,7 +9,7 @@ class NotificationController extends Controller
 {
     public function userNotifications(Request $request)
     {
-        $notifications = Notification::where('user_id', $request->user()->id)
+        $notifications = Notification::where('user_id', $request->user()->users_id)
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -19,7 +19,7 @@ class NotificationController extends Controller
     public function markRead(Request $request, $id)
     {
         $notification = Notification::where('id', $id)
-            ->where('user_id', $request->user()->id)
+            ->where('user_id', $request->user()->users_id)
             ->first();
 
         if ($notification) {

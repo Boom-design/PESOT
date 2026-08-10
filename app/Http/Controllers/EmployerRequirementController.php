@@ -25,7 +25,7 @@ class EmployerRequirementController extends Controller
         $company = $this->authCompany();
         if (!$company) return redirect()->route('login');
 
-        $requirement = EmployerRequirement::where('user_id', $company->employerNsrp->id)->first();
+        $requirement = EmployerRequirement::where('user_id', $company->employerNsrp->employer_nsrp_registrations_id)->first();
 
         return view('company.requirements.index', compact('company', 'requirement'));
     }
@@ -36,7 +36,7 @@ class EmployerRequirementController extends Controller
         $company = $this->authCompany();
         if (!$company) return redirect()->route('login');
 
-        $existing = EmployerRequirement::where('user_id', $company->employerNsrp->id)->first();
+        $existing = EmployerRequirement::where('user_id', $company->employerNsrp->employer_nsrp_registrations_id)->first();
 
         $fields = [
             'business_permit',
@@ -67,7 +67,7 @@ class EmployerRequirementController extends Controller
 
         // Store files
         $data = [
-            'user_id'         => $company->employerNsrp->id,
+            'user_id'         => $company->employerNsrp->employer_nsrp_registrations_id,
             'status'          => 'pending',
             'remarks'         => null,
             'rejected_fields' => null, // i-clear pag mag-resubmit
@@ -102,7 +102,7 @@ if (!$isOverseas) {
                 'title'          => 'New Requirements Submitted 📋',
                 'message'        => $company->employerNsrp->company_name . ' has submitted their requirements for review.',
                 'reference_type' => 'employer_requirement',
-                'reference_id'   => $existing ? $existing->id : \App\Models\EmployerRequirement::where('user_id', $company->employerNsrp->id)->first()->id,
+                'reference_id'   => $existing ? $existing->id : \App\Models\EmployerRequirement::where('user_id', $company->employerNsrp->employer_nsrp_registrations_id)->first()->id,
             ], $staffIds);
         }
 
@@ -115,7 +115,7 @@ if ($isOverseas) {
                 'title'          => 'New Requirements Submitted 📋',
                 'message'        => $company->employerNsrp->company_name . ' has submitted their requirements for review.',
                 'reference_type' => 'employer_requirement',
-                'reference_id'   => $existing ? $existing->id : \App\Models\EmployerRequirement::where('user_id', $company->employerNsrp->id)->first()->id,
+                'reference_id'   => $existing ? $existing->id : \App\Models\EmployerRequirement::where('user_id', $company->employerNsrp->employer_nsrp_registrations_id)->first()->id,
             ], $staffIds);
         }
 
@@ -131,7 +131,7 @@ if ($isOverseas) {
             return response()->json(['status' => 'none']);
         }
 
-        $requirement = EmployerRequirement::where('user_id', $user->employerNsrp->id)->first();
+        $requirement = EmployerRequirement::where('user_id', $user->employerNsrp->employer_nsrp_registrations_id)->first();
 
         if (!$requirement) {
             return response()->json(['status' => 'none']);
@@ -159,10 +159,10 @@ if ($isOverseas) {
             'vacancy_posting'             => 'required|file|max:5120',
         ]);
 
-        $existing = EmployerRequirement::where('user_id', $user->id)->first();
+        $existing = EmployerRequirement::where('user_id', $user->users_id)->first();
 
         $data = [
-            'user_id' => $user->id,
+            'user_id' => $user->users_id,
             'status'  => 'pending',
             'remarks' => null,
         ];

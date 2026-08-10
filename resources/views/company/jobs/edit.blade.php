@@ -70,7 +70,7 @@
         </div>
         @endif
 
-        <form method="POST" action="{{ route('company.jobs.update', $job->id) }}">
+        <form method="POST" action="{{ route('company.jobs.update', $job->job_qualifications_id) }}">
             @csrf
             @method('PUT')
 

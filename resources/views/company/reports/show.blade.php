@@ -15,7 +15,7 @@
     <p class="mb-0" style="font-size:13px;color:#888;">{{ $job->location ?? 'None' }}</p>
 </div>
 
-<form method="GET" action="{{ route('company.reports.show', $job->id) }}" class="mb-3">
+<form method="GET" action="{{ route('company.reports.show', $job->job_qualifications_id) }}" class="mb-3">
     <div class="input-group" style="max-width:360px;">
         <span class="input-group-text" style="background:#fff;border:1.5px solid var(--peso-border);border-right:none;">
             <i class="bi bi-search" style="color:#888;"></i>
@@ -24,7 +24,7 @@
             placeholder="Search jobseeker name..." value="{{ $search }}">
         <button type="submit" class="btn btn-peso">Search</button>
         @if($search)
-            <a href="{{ route('company.reports.show', $job->id) }}" class="btn btn-peso-outline">Clear</a>
+            <a href="{{ route('company.reports.show', $job->job_qualifications_id) }}" class="btn btn-peso-outline">Clear</a>
         @endif
     </div>
 </form>

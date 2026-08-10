@@ -47,7 +47,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <div class="d-flex gap-2 flex-wrap">
         @foreach(['highly' => 'Highly Qualified', 'qualified' => 'Qualified', 'not_qualified' => 'Not Qualified'] as $val => $label)
-        <a href="{{ route('staff.jobs.qualified', ['id' => $job->id, 'filter' => $val]) }}"
+        <a href="{{ route('staff.jobs.qualified', ['id' => $job->job_qualifications_id, 'filter' => $val]) }}"
            class="btn btn-sm fw-semibold"
            style="{{ $filter === $val
                ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;'

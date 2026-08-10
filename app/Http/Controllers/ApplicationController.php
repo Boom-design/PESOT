@@ -24,16 +24,16 @@ class ApplicationController extends Controller
         $jobseeker = $this->authJobseeker();
         if (!$jobseeker) return redirect()->route('login');
 
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
         if (!$registration) {
             return redirect()->route('jobseeker.nsrp')
                 ->with('info', 'Please complete your NSRP Registration Form first before applying.');
         }
 
-        $job = Job::where('id', $jobId)->where('status', 'open')->firstOrFail();
+        $job = Job::where('job_qualifications_id', $jobId)->where('status', 'open')->firstOrFail();
 
         // Check if already applied
-        $existing = Application::where('jobseeker_id', $registration->id)
+        $existing = Application::where('jobseeker_id', $registration->jobseeker_registrations_id)
             ->where('job_id', $jobId)->first();
 
         if ($existing) {
@@ -42,11 +42,11 @@ class ApplicationController extends Controller
         }
 
         // Compute match percentage
-        $breakdown = $this->evaluateMatch($jobseeker->id, $job);
+        $breakdown = $this->evaluateMatch($jobseeker->users_id, $job);
         $matchPercentage = $breakdown['percentage'];
 
         $application = Application::create([
-            'jobseeker_id'           => $registration->id,
+            'jobseeker_id'           => $registration->jobseeker_registrations_id,
             'job_id'                 => $jobId,
             'status'                 => 'pending',
             'match_percentage'       => $matchPercentage,
@@ -61,7 +61,7 @@ class ApplicationController extends Controller
             'title'          => 'New Job Applicant 📨',
             'message'        => ($applicantName ?: 'A jobseeker') . ' applied for "' . $job->title . '".',
             'reference_type' => 'job',
-            'reference_id'   => $job->id,
+            'reference_id'   => $job->job_qualifications_id,
         ], $job->company_id);
 
         // ── In-house: prompt DAYON ra kung 5 days na lang o layo pa ang nabilin sa preferred_date; ──
@@ -72,7 +72,7 @@ class ApplicationController extends Controller
                 $application->update(['inhouse_participation_notified_at' => now()]);
                 return redirect()->route('jobseeker.jobs.show', $jobId)
                     ->with('success', 'Application submitted successfully!')
-                    ->with('show_inhouse_prompt', $application->id);
+                    ->with('show_inhouse_prompt', $application->job_matching_id);
             }
             return redirect()->route('jobseeker.jobs.show', $jobId)
                 ->with('success', 'Application submitted successfully!');
@@ -82,7 +82,7 @@ class ApplicationController extends Controller
         if ($job->schedule_type === 'office_based') {
             return redirect()->route('jobseeker.jobs.show', $jobId)
                 ->with('success', 'Application submitted successfully!')
-                ->with('show_office_prompt', $application->id);
+                ->with('show_office_prompt', $application->job_matching_id);
         }
 
         return redirect()->route('jobseeker.jobs.show', $jobId)
@@ -96,24 +96,24 @@ class ApplicationController extends Controller
         if (!$staffUser || $staffUser->role !== 'staff') return redirect()->route('login');
 
         $request->validate([
-            'job_id' => 'required|exists:job_qualifications,id',
+            'job_id' => 'required|exists:job_qualifications,job_qualifications_id',
         ]);
 
         $registration = JobseekerRegistration::findOrFail($registrationId);
-        $job = Job::where('id', $request->job_id)->where('status', 'open')->firstOrFail();
+        $job = Job::where('job_qualifications_id', $request->job_id)->where('status', 'open')->firstOrFail();
 
-        $existing = Application::where('jobseeker_id', $registration->id)
-            ->where('job_id', $job->id)->first();
+        $existing = Application::where('jobseeker_id', $registration->jobseeker_registrations_id)
+            ->where('job_id', $job->job_qualifications_id)->first();
 
         if ($existing) {
             return back()->with('error', 'This jobseeker has already applied for this job.');
         }
 
-        $breakdown = $this->computeMatchBreakdownByRegistrationId($registration->id, $job);
+        $breakdown = $this->computeMatchBreakdownByRegistrationId($registration->jobseeker_registrations_id, $job);
 
         Application::create([
-            'jobseeker_id'          => $registration->id,
-            'job_id'                => $job->id,
+            'jobseeker_id'          => $registration->jobseeker_registrations_id,
+            'job_id'                => $job->job_qualifications_id,
             'status'                => 'pending',
             'match_percentage'      => $breakdown['percentage'],
             // ── Walk-in jobseekers naa na mismo sa office pag-apply — auto-accepted dayon ang participation, dili na kinahanglan pa i-confirm (kay walay account/paagi sila ma-respond sa prompt) ──
@@ -127,7 +127,7 @@ class ApplicationController extends Controller
             'title'          => 'New Job Applicant 📨',
             'message'        => ($applicantName ?: 'A jobseeker') . ' applied for "' . $job->title . '".',
             'reference_type' => 'job',
-            'reference_id'   => $job->id,
+            'reference_id'   => $job->job_qualifications_id,
         ], $job->company_id);
 
         return back()->with('success', 'Application submitted for ' . ($applicantName ?: 'the jobseeker') . '!');
@@ -143,10 +143,10 @@ class ApplicationController extends Controller
             'response' => 'required|in:accepted,declined',
         ]);
 
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
 
-        $application = Application::where('id', $id)
-            ->where('jobseeker_id', $registration->id ?? 0)
+        $application = Application::where('job_matching_id', $id)
+            ->where('jobseeker_id', $registration->jobseeker_registrations_id ?? 0)
             ->firstOrFail();
 
         $application->update(['inhouse_participation' => $request->response]);
@@ -168,10 +168,10 @@ class ApplicationController extends Controller
             'response' => 'required|in:accepted,declined',
         ]);
 
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
 
-        $application = Application::where('id', $id)
-            ->where('jobseeker_id', $registration->id ?? 0)
+        $application = Application::where('job_matching_id', $id)
+            ->where('jobseeker_id', $registration->jobseeker_registrations_id ?? 0)
             ->firstOrFail();
 
         if ($request->response === 'declined') {

@@ -213,7 +213,7 @@
                                 @else
                                 <div class="d-flex gap-1 justify-content-center">
                                     {{-- Hired --}}
-                                    <form method="POST" action="{{ route('company.applicants.status', $app->id) }}">
+                                    <form method="POST" action="{{ route('company.applicants.status', $app->job_matching_id) }}">
                                         @csrf
                                         <input type="hidden" name="status" value="hired">
                                         <button type="submit" class="btn btn-sm fw-semibold"
@@ -225,7 +225,7 @@
                                         </button>
                                     </form>
                                     {{-- Waiting --}}
-                                    <form method="POST" action="{{ route('company.applicants.status', $app->id) }}">
+                                    <form method="POST" action="{{ route('company.applicants.status', $app->job_matching_id) }}">
                                         @csrf
                                         <input type="hidden" name="status" value="waiting">
                                         <button type="submit" class="btn btn-sm fw-semibold"
@@ -237,7 +237,7 @@
                                         </button>
                                     </form>
                                     {{-- Rejected --}}
-                                    <form method="POST" action="{{ route('company.applicants.status', $app->id) }}">
+                                    <form method="POST" action="{{ route('company.applicants.status', $app->job_matching_id) }}">
                                         @csrf
                                         <input type="hidden" name="status" value="rejected">
                                         <button type="submit" class="btn btn-sm fw-semibold"

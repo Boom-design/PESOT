@@ -604,10 +604,10 @@
         @php
             $sidebarEmployerNsrp = \App\Models\EmployerNsrpRegistration::where('user_id', Auth::id())->first();
             $sidebarHasRequirement = $sidebarEmployerNsrp
-                ? \App\Models\EmployerRequirement::where('user_id', $sidebarEmployerNsrp->id)->exists()
+                ? \App\Models\EmployerRequirement::where('user_id', $sidebarEmployerNsrp->employer_nsrp_registrations_id)->exists()
                 : false;
             $sidebarReqApproved = $sidebarEmployerNsrp
-                ? \App\Models\EmployerRequirement::where('user_id', $sidebarEmployerNsrp->id)->where('status', 'approved')->exists()
+                ? \App\Models\EmployerRequirement::where('user_id', $sidebarEmployerNsrp->employer_nsrp_registrations_id)->where('status', 'approved')->exists()
                 : false;
         @endphp
         <nav class="sidebar-nav">
@@ -728,7 +728,7 @@
                     @php
                         $employerNsrp = \App\Models\EmployerNsrpRegistration::where('user_id', Auth::id())->first();
                         $unreadCount = $employerNsrp
-                            ? \App\Models\Announcement::where('employer_id', $employerNsrp->id)->where('is_read', false)->count()
+                            ? \App\Models\Announcement::where('employer_id', $employerNsrp->employer_nsrp_registrations_id)->where('is_read', false)->count()
                             : 0;
                     @endphp
                     @if($unreadCount > 0)
@@ -741,7 +741,7 @@
                 <ul class="dropdown-menu dropdown-menu-end" style="min-width:300px; max-height:400px; overflow-y:auto;">
                     @php
                         $notifications = $employerNsrp
-                            ? \App\Models\Announcement::where('employer_id', $employerNsrp->id)->orderBy('created_at', 'desc')->take(5)->get()
+                            ? \App\Models\Announcement::where('employer_id', $employerNsrp->employer_nsrp_registrations_id)->orderBy('created_at', 'desc')->take(5)->get()
                             : collect();
 
                         $companyNotifTargetUrl = function ($notif) {

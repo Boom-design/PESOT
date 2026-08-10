@@ -66,7 +66,7 @@
                             {{ $job->hired_count }} / {{ $job->slots }}
                         </td>
                         <td style="padding:12px 16px;text-align:center;">
-                            <a href="{{ route('company.reports.show', $job->id) }}" class="btn btn-sm fw-semibold"
+                            <a href="{{ route('company.reports.show', $job->job_qualifications_id) }}" class="btn btn-sm fw-semibold"
                                style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;border-radius:8px;font-size:12px;padding:6px 16px;">
                                 <i class="bi bi-eye me-1"></i> View
                             </a>

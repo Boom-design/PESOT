@@ -146,7 +146,7 @@
                                     style="background:linear-gradient(90deg,#90d870,#4dd9c0);
                                            color:#fff;border:none;border-radius:8px;font-size:12px;"
                                     data-bs-toggle="modal"
-                                    data-bs-target="#employerModal{{ $employer->id }}">
+                                    data-bs-target="#employerModal{{ $employer->users_id }}">
                                     <i class="bi bi-eye-fill me-1"></i>View
                                 </button>
                             @else
@@ -157,7 +157,7 @@
 
                     {{-- MODAL --}}
                     @if(($staffRole === 'sra' && $tab === 'pre' && $req && $req->status === 'pending') || ($tab === 'pre' && $req) || $tab === 'approved')
-                    <div class="modal fade" id="employerModal{{ $employer->id }}" tabindex="-1">
+                    <div class="modal fade" id="employerModal{{ $employer->users_id }}" tabindex="-1">
                         <div class="modal-dialog modal-dialog-centered modal-lg">
                             <div class="modal-content" style="border-radius:16px;border:none;">
                                 <div class="modal-header"
@@ -273,7 +273,7 @@
                                                 class="btn btn-sm fw-semibold"
                                                 style="background:linear-gradient(90deg,#90d870,#4dd9c0);
                                                        color:#fff;border:none;border-radius:8px;font-size:11px;"
-                                                data-bs-toggle="modal" data-bs-target="#nsrpEstModal{{ $employer->id }}">
+                                                data-bs-toggle="modal" data-bs-target="#nsrpEstModal{{ $employer->users_id }}">
                                                 <i class="bi bi-eye-fill me-1"></i>View
                                             </button>
                                         </div>
@@ -378,7 +378,7 @@
 
                     {{-- NSRP ESTABLISHMENT FORM DETAILS (read-only, gikan sa registration) --}}
                     @if($req)
-                    <div class="modal fade" id="nsrpEstModal{{ $employer->id }}" tabindex="-1">
+                    <div class="modal fade" id="nsrpEstModal{{ $employer->users_id }}" tabindex="-1">
                         <div class="modal-dialog modal-dialog-centered modal-lg">
                             <div class="modal-content" style="border-radius:16px;border:none;">
                                 <div class="modal-header" style="background:linear-gradient(90deg,#90d870,#4dd9c0);border-radius:16px 16px 0 0;">

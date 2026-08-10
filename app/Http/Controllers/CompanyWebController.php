@@ -26,7 +26,7 @@ class CompanyWebController extends Controller
     private function requireRequirements($company)
     {
         $nsrp = $company->employerNsrp;
-        $hasSubmitted = $nsrp && \App\Models\EmployerRequirement::where('user_id', $nsrp->id)->exists();
+        $hasSubmitted = $nsrp && \App\Models\EmployerRequirement::where('user_id', $nsrp->employer_nsrp_registrations_id)->exists();
         if (!$hasSubmitted) {
             return redirect()->route('company.requirements')
                 ->with('info', 'Please submit your requirements first before accessing other features.');
@@ -38,7 +38,7 @@ class CompanyWebController extends Controller
     private function requireApprovedRequirements($company)
     {
         $nsrp = $company->employerNsrp;
-        $isApproved = $nsrp && \App\Models\EmployerRequirement::where('user_id', $nsrp->id)->where('status', 'approved')->exists();
+        $isApproved = $nsrp && \App\Models\EmployerRequirement::where('user_id', $nsrp->employer_nsrp_registrations_id)->where('status', 'approved')->exists();
         if (!$isApproved) {
             return redirect()->route('company.requirements')
                 ->with('info', 'Your requirements must be approved before accessing this feature.');
@@ -101,7 +101,7 @@ class CompanyWebController extends Controller
         $company = $this->authCompany();
         if (!$company) return redirect()->route('company.login');
 
-        $nsrpId = $company->employerNsrp->id;
+        $nsrpId = $company->employerNsrp->employer_nsrp_registrations_id;
 
         $totalJobs = Job::where('company_id', $nsrpId)->count();
         $totalApplicants = Application::whereHas('job', function ($q) use ($nsrpId) {
@@ -121,7 +121,7 @@ class CompanyWebController extends Controller
             ->where('status', '!=', 'completed')
             ->get();
 
-        $todayInhouse = \App\Models\InhouseSchedule::where('employer_id', $company->employerNsrp->id)
+        $todayInhouse = \App\Models\InhouseSchedule::where('employer_id', $company->employerNsrp->employer_nsrp_registrations_id)
             ->whereDate('confirmed_date', today())
             ->where('status', 'accepted')
             ->get();
@@ -147,12 +147,12 @@ class CompanyWebController extends Controller
         if ($guard = $this->requireApprovedRequirements($company)) return $guard;
 
         // ── Closed ra (pending o rejected) ang makita diri; pag-approve/pag-open, mabalhin na sa "Schedule Job Vacancy" tab ──
-        $jobs = Job::where('company_id', $company->employerNsrp->id)
+        $jobs = Job::where('company_id', $company->employerNsrp->employer_nsrp_registrations_id)
             ->where('status', 'closed')
             ->latest()->get();
 
         // Check kung naa nay approved requirements + wala pa na-confirm ang initial vacancy gikan sa registration
-        $requirement       = \App\Models\EmployerRequirement::where('user_id', $company->employerNsrp->id)->where('status', 'approved')->first();
+        $requirement       = \App\Models\EmployerRequirement::where('user_id', $company->employerNsrp->employer_nsrp_registrations_id)->where('status', 'approved')->first();
         $employerNsrp      = $company->employerNsrp;
         $showInitialVacancy = $requirement
             && $employerNsrp
@@ -227,7 +227,7 @@ class CompanyWebController extends Controller
             }
         }
 
-        $nsrpId = $company->employerNsrp->id;
+        $nsrpId = $company->employerNsrp->employer_nsrp_registrations_id;
 
         foreach ($request->positions as $pos) {
             Job::create([
@@ -333,7 +333,7 @@ class CompanyWebController extends Controller
         ]);
 
         Job::create([
-            'company_id'     => $company->employerNsrp->id,
+            'company_id'     => $company->employerNsrp->employer_nsrp_registrations_id,
             'title'          => $request->title,
             'description'    => $request->description,
             'location'       => $request->location,
@@ -356,7 +356,7 @@ class CompanyWebController extends Controller
         $company = $this->authCompany();
         if (!$company) return redirect()->route('company.login');
 
-        $job = Job::where('id', $id)->where('company_id', $company->employerNsrp->id)->firstOrFail();
+        $job = Job::where('job_qualifications_id', $id)->where('company_id', $company->employerNsrp->employer_nsrp_registrations_id)->firstOrFail();
 
         return view('company.jobs.edit', compact('company', 'job'));
     }
@@ -366,7 +366,7 @@ class CompanyWebController extends Controller
         $company = $this->authCompany();
         if (!$company) return redirect()->route('company.login');
 
-        $job = Job::where('id', $id)->where('company_id', $company->employerNsrp->id)->firstOrFail();
+        $job = Job::where('job_qualifications_id', $id)->where('company_id', $company->employerNsrp->employer_nsrp_registrations_id)->firstOrFail();
 
         $request->validate([
             'title'                => 'required|string|max:255',
@@ -426,7 +426,7 @@ class CompanyWebController extends Controller
         $company = $this->authCompany();
         if (!$company) return redirect()->route('company.login');
 
-        $job = Job::where('id', $id)->where('company_id', $company->employerNsrp->id)->firstOrFail();
+        $job = Job::where('job_qualifications_id', $id)->where('company_id', $company->employerNsrp->employer_nsrp_registrations_id)->firstOrFail();
         $job->delete();
 
         return back()->with('success', 'Job post deleted.');
@@ -440,7 +440,7 @@ class CompanyWebController extends Controller
         $company = $this->authCompany();
         if (!$company) return redirect()->route('company.login');
 
-        $job = Job::where('id', $jobId)->where('company_id', $company->employerNsrp->id)->firstOrFail();
+        $job = Job::where('job_qualifications_id', $jobId)->where('company_id', $company->employerNsrp->employer_nsrp_registrations_id)->firstOrFail();
         $applicants = Application::with('jobseeker')
             ->where('job_id', $jobId)
             ->latest()
@@ -465,7 +465,7 @@ class CompanyWebController extends Controller
         ]);
 
         $application = Application::with('job')->whereHas('job', function ($q) use ($company) {
-            $q->where('company_id', $company->employerNsrp->id);
+            $q->where('company_id', $company->employerNsrp->employer_nsrp_registrations_id);
         })->findOrFail($applicationId);
 
         // Lock — dili na mausab ang final decision
@@ -516,7 +516,7 @@ class CompanyWebController extends Controller
             'contact_person' => 'required|string|max:255',
             'position_title' => 'required|string|max:255',
             'mobile_number'  => 'required|string|max:20',
-            'email'          => 'required|email|unique:users,email,' . $company->id,
+            'email'          => 'required|email|unique:users,email,' . $company->users_id . ',users_id',
         ]);
 
         $company->update([
@@ -611,7 +611,7 @@ class CompanyWebController extends Controller
         if (!$company) return redirect()->route('login');
 
         // Check kung approved ang requirements
-        $requirement = \App\Models\EmployerRequirement::where('user_id', $company->employerNsrp->id)
+        $requirement = \App\Models\EmployerRequirement::where('user_id', $company->employerNsrp->employer_nsrp_registrations_id)
             ->where('status', 'approved')
             ->first();
 
@@ -680,7 +680,7 @@ class CompanyWebController extends Controller
             $posterPath = $request->file('poster_image')->store('job_posters', 'public');
         }
 
-        $companyId = $company->employerNsrp->id;
+        $companyId = $company->employerNsrp->employer_nsrp_registrations_id;
         $createdJobs = [];
 
         foreach ($request->positions as $pos) {
@@ -754,7 +754,7 @@ class CompanyWebController extends Controller
             'title'          => $title,
             'message'        => $message,
             'reference_type' => 'job',
-            'reference_id'   => $firstJob->id,
+            'reference_id'   => $firstJob->job_qualifications_id,
         ], $staffIds);
 
         return redirect()->route('company.dashboard')
@@ -771,7 +771,7 @@ class CompanyWebController extends Controller
         $company = $this->authCompany();
         if (!$company) return redirect()->route('login');
 
-        \App\Models\Announcement::where('employer_id', $company->employerNsrp->id)->delete();
+        \App\Models\Announcement::where('employer_id', $company->employerNsrp->employer_nsrp_registrations_id)->delete();
 
         return back()->with('success', 'All notifications cleared.');
     }
@@ -785,7 +785,7 @@ class CompanyWebController extends Controller
         if (!$company) return response()->json(['error' => 'Unauthorized'], 401);
 
         \App\Models\Announcement::where('id', $id)
-            ->where('employer_id', $company->employerNsrp->id)
+            ->where('employer_id', $company->employerNsrp->employer_nsrp_registrations_id)
             ->update(['is_read' => true]);
 
         return response()->json(['success' => true]);
@@ -801,7 +801,7 @@ class CompanyWebController extends Controller
 
         $employerNsrp   = $company->employerNsrp;
         $notifications  = $employerNsrp
-            ? \App\Models\Announcement::where('employer_id', $employerNsrp->id)->latest()->get()
+            ? \App\Models\Announcement::where('employer_id', $employerNsrp->employer_nsrp_registrations_id)->latest()->get()
             : collect();
 
         return view('company.notifications.index', compact('notifications'));
@@ -817,7 +817,7 @@ class CompanyWebController extends Controller
         if ($guard = $this->requireRequirements($company)) return $guard;
 
         $schedules = \App\Models\InhouseSchedule::with('reviewer')
-            ->where('employer_id', $company->employerNsrp->id)
+            ->where('employer_id', $company->employerNsrp->employer_nsrp_registrations_id)
             ->latest()
             ->paginate(10);
 
@@ -830,7 +830,7 @@ class CompanyWebController extends Controller
         if (!$company) return redirect()->route('login');
 
         // Check kung approved ang requirements
-        $requirement = \App\Models\EmployerRequirement::where('user_id', $company->employerNsrp->id)
+        $requirement = \App\Models\EmployerRequirement::where('user_id', $company->employerNsrp->employer_nsrp_registrations_id)
             ->where('status', 'approved')
             ->first();
 
@@ -857,7 +857,7 @@ class CompanyWebController extends Controller
         ]);
 
         $schedule = \App\Models\InhouseSchedule::create([
-            'employer_id'    => $company->employerNsrp->id,
+            'employer_id'    => $company->employerNsrp->employer_nsrp_registrations_id,
             'preferred_date' => $request->preferred_date,
             'preferred_time' => $request->preferred_time,
             'num_applicants' => $request->num_applicants,
@@ -899,7 +899,7 @@ class CompanyWebController extends Controller
         if ($guard = $this->requireApprovedRequirements($company)) return $guard;
 
         $invitations = \App\Models\JobFairParticipant::with('jobFair')
-            ->where('employer_id', $company->employerNsrp->id)
+            ->where('employer_id', $company->employerNsrp->employer_nsrp_registrations_id)
             ->latest()
             ->get();
 
@@ -911,13 +911,13 @@ class CompanyWebController extends Controller
             ->pluck('cnt', 'job_fair_id');
 
         // Get applicants kung confirmed ang employer sa bisan unsang job fair
-        $isConfirmed = \App\Models\JobFairParticipant::where('employer_id', $company->employerNsrp->id)
+        $isConfirmed = \App\Models\JobFairParticipant::where('employer_id', $company->employerNsrp->employer_nsrp_registrations_id)
             ->where('confirmation_status', 'confirmed')
             ->exists();
 
         // ── Actions (Hired/Waiting/Rejected) naka-lock hangtod moabot ang event date sa bisan unsang confirmed job fair ──
         $earliestConfirmedEventDate = \App\Models\JobFairParticipant::with('jobFair')
-            ->where('employer_id', $company->employerNsrp->id)
+            ->where('employer_id', $company->employerNsrp->employer_nsrp_registrations_id)
             ->where('confirmation_status', 'confirmed')
             ->get()
             ->pluck('jobFair.event_date')
@@ -934,10 +934,10 @@ class CompanyWebController extends Controller
         $applicants = collect();
         if ($isConfirmed) {
             // ── Job ids nga tinuod nga gi-submit sa "Select Jobs to Bring" para sa mga event nga confirmed ang company ──
-            $confirmedEventIds = \App\Models\JobFairParticipant::where('employer_id', $company->employerNsrp->id)
+            $confirmedEventIds = \App\Models\JobFairParticipant::where('employer_id', $company->employerNsrp->employer_nsrp_registrations_id)
                 ->where('confirmation_status', 'confirmed')
                 ->pluck('job_fair_id');
-            $bringableJobIds = \App\Models\JobFairEmploymentRequest::where('employer_id', $company->employerNsrp->id)
+            $bringableJobIds = \App\Models\JobFairEmploymentRequest::where('employer_id', $company->employerNsrp->employer_nsrp_registrations_id)
                 ->whereIn('job_fair_id', $confirmedEventIds)
                 ->pluck('job_id');
 
@@ -972,12 +972,12 @@ class CompanyWebController extends Controller
         ]);
 
         $participant = \App\Models\JobFairParticipant::with('jobFair')->where('id', $id)
-            ->where('employer_id', $company->employerNsrp->id)
+            ->where('employer_id', $company->employerNsrp->employer_nsrp_registrations_id)
             ->firstOrFail();
 
         // ── Kung mo-confirm, kinahanglan naay bisan usa ka OPEN job posting una — walay pulos mag-confirm kung walay i-offer sa event ──
         if ($request->response === 'confirmed') {
-            $hasAnyOpenJob = \App\Models\Job::where('company_id', $company->employerNsrp->id)
+            $hasAnyOpenJob = \App\Models\Job::where('company_id', $company->employerNsrp->employer_nsrp_registrations_id)
                 ->where('status', 'open')
                 ->exists();
 
@@ -1002,7 +1002,7 @@ class CompanyWebController extends Controller
 
         if ($request->response === 'confirmed') {
             $userIds = \App\Models\Application::whereHas('job', fn($q) =>
-                $q->where('company_id', $company->employerNsrp->id)
+                $q->where('company_id', $company->employerNsrp->employer_nsrp_registrations_id)
             )->pluck('jobseeker_id')->unique();
 
             \App\Models\Announcement::sendToJobseekers([
@@ -1036,12 +1036,12 @@ class CompanyWebController extends Controller
 
         $jobFair = \App\Models\JobFairEvent::findOrFail($jobFairId);
 
-        $myJobs = \App\Models\Job::where('company_id', $company->employerNsrp->id)
+        $myJobs = \App\Models\Job::where('company_id', $company->employerNsrp->employer_nsrp_registrations_id)
             ->where('status', 'open')
             ->get();
 
         $selectedJobIds = \App\Models\JobFairEmploymentRequest::where('job_fair_id', $jobFairId)
-            ->where('employer_id', $company->employerNsrp->id)
+            ->where('employer_id', $company->employerNsrp->employer_nsrp_registrations_id)
             ->pluck('job_id')
             ->toArray();
 
@@ -1055,10 +1055,10 @@ class CompanyWebController extends Controller
 
         $request->validate([
             'job_ids'   => 'nullable|array',
-            'job_ids.*' => 'exists:job_qualifications,id',
+            'job_ids.*' => 'exists:job_qualifications,job_qualifications_id',
         ]);
 
-        $employerId = $company->employerNsrp->id;
+        $employerId = $company->employerNsrp->employer_nsrp_registrations_id;
 
         \App\Models\JobFairEmploymentRequest::where('job_fair_id', $jobFairId)
             ->where('employer_id', $employerId)
@@ -1085,8 +1085,8 @@ class CompanyWebController extends Controller
         $company = $this->authCompany();
         if (!$company) return redirect()->route('login');
 
-        $job = \App\Models\Job::where('id', $jobId)
-            ->where('company_id', $company->employerNsrp->id)
+        $job = \App\Models\Job::where('job_qualifications_id', $jobId)
+            ->where('company_id', $company->employerNsrp->employer_nsrp_registrations_id)
             ->firstOrFail();
 
         $applicants = \App\Models\Application::with(['jobseeker', 'jobseeker.nsrp'])
@@ -1163,14 +1163,14 @@ class CompanyWebController extends Controller
         $search = $request->input('search');
 
         // ── Open ra (na-approve na sa PESO staff) ang makita diri — itago ang Job Fair jobs (naay separate hiring flow sa Job Fair Invitations page), itago kung "homana" na (schedule date milabay na UG naay hired), naa na sa Reports ──
-        $jobs = Job::where('company_id', $company->employerNsrp->id)
+        $jobs = Job::where('company_id', $company->employerNsrp->employer_nsrp_registrations_id)
             ->where('status', 'open')
             ->where('schedule_type', '!=', 'job_fair')
             ->withCount(['applications as hired_count' => fn($q) => $q->where('status', 'hired')])
             ->where(function ($q) {
                 $q->whereNull('deadline')
                   ->orWhereDate('deadline', '>=', now()->toDateString())
-                  ->orWhereRaw('(select count(*) from `job_matching` where `job_matching`.`job_id` = `job_qualifications`.`id` and `status` = ?) = 0', ['hired']);
+                  ->orWhereRaw('(select count(*) from `job_matching` where `job_matching`.`job_id` = `job_qualifications`.`job_qualifications_id` and `status` = ?) = 0', ['hired']);
             })
             ->when($search, function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%");
@@ -1193,7 +1193,7 @@ class CompanyWebController extends Controller
 
         $search = $request->input('search');
 
-        $jobs = Job::where('company_id', $company->employerNsrp->id)
+        $jobs = Job::where('company_id', $company->employerNsrp->employer_nsrp_registrations_id)
             ->whereHas('applications', fn($q) => $q->where('status', 'hired'))
             ->withCount(['applications as hired_count' => fn($q) => $q->where('status', 'hired')])
             ->when($search, function ($q) use ($search) {
@@ -1214,8 +1214,8 @@ class CompanyWebController extends Controller
         $company = $this->authCompany();
         if (!$company) return redirect()->route('company.login');
 
-        $job = Job::where('id', $jobId)
-            ->where('company_id', $company->employerNsrp->id)
+        $job = Job::where('job_qualifications_id', $jobId)
+            ->where('company_id', $company->employerNsrp->employer_nsrp_registrations_id)
             ->firstOrFail();
 
         $search = $request->input('search');

@@ -143,12 +143,12 @@ $nsrp = $registration->nsrp;
         $staffRole    = $staff->staff_role;
 
         $isOverseas = $staffRole === 'sra';
-        $existingAppliedJobIds = \App\Models\Application::where('jobseeker_id', $registration->id)->pluck('job_id')->toArray();
+        $existingAppliedJobIds = \App\Models\Application::where('jobseeker_id', $registration->jobseeker_registrations_id)->pluck('job_id')->toArray();
 
         $openJobs = \App\Models\Job::with('company')
             ->where('status', 'open')
             ->whereHas('company', fn($q) => $q->where('is_overseas', $isOverseas))
-            ->whereNotIn('id', $existingAppliedJobIds)
+            ->whereNotIn('job_qualifications_id', $existingAppliedJobIds)
             ->where(function ($q) {
                 $q->whereNull('deadline')->orWhereDate('deadline', '>=', now()->toDateString());
             })
@@ -338,7 +338,7 @@ $nsrp = $registration->nsrp;
             'cater.required'            => 'Please check at least one employer type (Local or Overseas) to invite.',
         ]);
 
-        $staffRecord = \App\Models\Staff::where('user_id', $staff->id)->first();
+        $staffRecord = \App\Models\Staff::where('user_id', $staff->users_id)->first();
 
         $event = \App\Models\JobFairEvent::create([
             'created_by'        => $staffRecord->id,
@@ -370,7 +370,7 @@ $nsrp = $registration->nsrp;
         foreach ($employers as $employer) {
             \App\Models\JobFairParticipant::create([
                 'job_fair_id'         => $event->id,
-                'employer_id'         => $employer->employerNsrp->id,
+                'employer_id'         => $employer->employerNsrp->employer_nsrp_registrations_id,
                 'confirmation_status' => 'pending',
             ]);
         }
@@ -381,7 +381,7 @@ $nsrp = $registration->nsrp;
             'message'        => 'You are invited to join ' . $event->title . ' on ' . $event->event_date->format('M d, Y') . ' at ' . $event->venue . '. Please respond to confirm your participation.',
             'reference_type' => 'job_fair',
             'reference_id'   => $event->id,
-        ], $employers->map(fn($e) => $e->employerNsrp->id));
+        ], $employers->map(fn($e) => $e->employerNsrp->employer_nsrp_registrations_id));
 
         // ── AUTO-OPEN: tanan Job Fair postings nga approved na pero magpabilin CLOSED (nag-hulat sa bag-ong event) mabalhin karon nga OPEN, mapost na sa landing page ──
         $closedJobFairJobs = \App\Models\Job::with('company')
@@ -398,7 +398,7 @@ $nsrp = $registration->nsrp;
                 'title'          => 'Job Fair Posting Now Live 🎪',
                 'message'        => 'Your job fair posting "' . $job->title . '" is now open and visible to jobseekers, following the creation of ' . $event->title . '.',
                 'reference_type' => 'job',
-                'reference_id'   => $job->id,
+                'reference_id'   => $job->job_qualifications_id,
             ], $job->company_id);
         }
 
@@ -423,9 +423,9 @@ $nsrp = $registration->nsrp;
                         }
                     }
                     if ($isMatch) {
-                        $matchedIds->push($jsReg->id);
+                        $matchedIds->push($jsReg->jobseeker_registrations_id);
                     } else {
-                        $unmatchedIds->push($jsReg->id);
+                        $unmatchedIds->push($jsReg->jobseeker_registrations_id);
                     }
                 }
 
@@ -435,7 +435,7 @@ $nsrp = $registration->nsrp;
                         'title'          => 'Matching Job Vacancy Found! 💼',
                         'message'        => 'A job vacancy matching your preferred position "' . $job->title . '" from ' . ($job->company->company_name ?? 'an employer') . ' is now available. Would you like to apply?',
                         'reference_type' => 'job',
-                        'reference_id'   => $job->id,
+                        'reference_id'   => $job->job_qualifications_id,
                     ], $matchedIds);
                 }
 
@@ -445,7 +445,7 @@ $nsrp = $registration->nsrp;
                         'title'          => 'New Job Vacancy Posted 💼',
                         'message'        => 'A new job vacancy "' . $job->title . '" from ' . ($job->company->company_name ?? 'an employer') . ' is now available!',
                         'reference_type' => 'job',
-                        'reference_id'   => $job->id,
+                        'reference_id'   => $job->job_qualifications_id,
                     ], $unmatchedIds);
                 }
             }
@@ -522,9 +522,9 @@ $nsrp = $registration->nsrp;
                   ->where('type', 'job_fair_open');
             })->pluck('jobseeker_id');
 
-            $regIds = \App\Models\JobseekerRegistration::whereIn('user_id', $jobseekers->pluck('id'))
-                ->whereNotIn('id', $alreadyNotifiedIds)
-                ->pluck('id');
+            $regIds = \App\Models\JobseekerRegistration::whereIn('user_id', $jobseekers->pluck('users_id'))
+                ->whereNotIn('jobseeker_registrations_id', $alreadyNotifiedIds)
+                ->pluck('jobseeker_registrations_id');
 
             if ($regIds->isNotEmpty()) {
                 \App\Models\Announcement::sendToJobseekers([
@@ -574,17 +574,17 @@ $nsrp = $registration->nsrp;
         $newEmployerIds = collect();
         foreach ($employers as $employer) {
             $exists = \App\Models\JobFairParticipant::where('job_fair_id', $event->id)
-                ->where('employer_id', $employer->employerNsrp->id)
+                ->where('employer_id', $employer->employerNsrp->employer_nsrp_registrations_id)
                 ->exists();
 
             if (!$exists) {
                 \App\Models\JobFairParticipant::create([
                     'job_fair_id'         => $event->id,
-                    'employer_id'         => $employer->employerNsrp->id,
+                    'employer_id'         => $employer->employerNsrp->employer_nsrp_registrations_id,
                     'confirmation_status' => 'pending',
                 ]);
 
-                $newEmployerIds->push($employer->employerNsrp->id);
+                $newEmployerIds->push($employer->employerNsrp->employer_nsrp_registrations_id);
                 $sent++;
             }
         }
@@ -645,7 +645,7 @@ $nsrp = $registration->nsrp;
             'message' => 'required|string',
         ]);
 
-        $jobseekerRegIds = \App\Models\JobseekerRegistration::whereHas('user', fn($q) => $q->where('status', 'approved'))->pluck('id');
+        $jobseekerRegIds = \App\Models\JobseekerRegistration::whereHas('user', fn($q) => $q->where('status', 'approved'))->pluck('jobseeker_registrations_id');
         \App\Models\Announcement::sendToJobseekers([
             'type'           => 'job_fair',
             'title'          => $request->title,
@@ -654,7 +654,7 @@ $nsrp = $registration->nsrp;
             'reference_id'   => null,
         ], $jobseekerRegIds);
 
-        $employerIds = \App\Models\EmployerNsrpRegistration::whereHas('user', fn($q) => $q->where('status', 'approved'))->pluck('id');
+        $employerIds = \App\Models\EmployerNsrpRegistration::whereHas('user', fn($q) => $q->where('status', 'approved'))->pluck('employer_nsrp_registrations_id');
         \App\Models\Announcement::sendToEmployers([
             'type'           => 'job_fair',
             'title'          => $request->title,
@@ -727,7 +727,7 @@ $nsrp = $registration->nsrp;
             'title'          => 'Job Posting Approved ✅',
             'message'        => 'Your job posting "' . $job->title . '" has been approved for job fair use. It will go live once PESO opens a job fair event.',
             'reference_type' => 'job',
-            'reference_id'   => $job->id,
+            'reference_id'   => $job->job_qualifications_id,
         ], $job->company_id);
 
         return back()->with('success', 'Job posting approved. It will go live once a job fair event is created.');
@@ -760,7 +760,7 @@ $nsrp = $registration->nsrp;
             'title'          => 'Job Posting Rejected ❌',
             'message'        => 'Your job posting "' . $job->title . '" was rejected for job fair use. Reason: ' . $request->remarks,
             'reference_type' => 'job',
-            'reference_id'   => $job->id,
+            'reference_id'   => $job->job_qualifications_id,
         ], $job->company_id);
 
         return back()->with('success', 'Job posting rejected.');
@@ -845,7 +845,7 @@ $nsrp = $registration->nsrp;
         if (!$isOverseas && $staff->staff_role !== 'job_vacancy') {
             return back()->with('error', 'Only Job Vacancy staff can approve local employer requirements.');
         }
-        $staffRecord = \App\Models\Staff::where('user_id', $staff->id)->first();
+        $staffRecord = \App\Models\Staff::where('user_id', $staff->users_id)->first();
         $requirement->update([
             'status'      => 'approved',
             'reviewed_by' => $staffRecord->id ?? null,
@@ -882,7 +882,7 @@ $nsrp = $registration->nsrp;
         // ── SRA rejection: simple reason ra, walay per-document checklist ──
         if ($isOverseas) {
             $request->validate(['remarks' => 'required|string|max:500']);
-            $staffRecord = \App\Models\Staff::where('user_id', $staff->id)->first();
+            $staffRecord = \App\Models\Staff::where('user_id', $staff->users_id)->first();
             $requirement->update([
                 'status'      => 'rejected',
                 'reviewed_by' => $staffRecord->id ?? null,
@@ -908,7 +908,7 @@ $nsrp = $registration->nsrp;
         ], [
             'rejected_fields.required' => 'Please check at least one document that is incorrect or missing.',
         ]);
-        $staffRecord = \App\Models\Staff::where('user_id', $staff->id)->first();
+        $staffRecord = \App\Models\Staff::where('user_id', $staff->users_id)->first();
         $requirement->update([
             'status'          => 'rejected',
             'reviewed_by'     => $staffRecord->id ?? null,
@@ -1087,7 +1087,7 @@ $nsrp = $registration->nsrp;
                         ->where('venue_type', 'peso_office')
                         ->whereDate('preferred_date', $j->preferred_date)
                         ->where('posting_status', 'approved')
-                        ->where('id', '!=', $j->id)
+                        ->where('job_qualifications_id', '!=', $j->job_qualifications_id)
                         ->distinct('company_id')->count('company_id')
                     : 0;
                 return $j;
@@ -1181,7 +1181,7 @@ $nsrp = $registration->nsrp;
         ]);
 
         $schedule = \App\Models\InhouseSchedule::with('employer')->findOrFail($id);
-        $staffRecord = \App\Models\Staff::where('user_id', $staff->id)->first();
+        $staffRecord = \App\Models\Staff::where('user_id', $staff->users_id)->first();
         $schedule->update([
             'status'           => 'accepted',
             'reviewed_by'      => $staffRecord->id ?? null,
@@ -1230,7 +1230,7 @@ $nsrp = $registration->nsrp;
         $request->validate(['rejection_reason' => 'required|string|max:500']);
 
         $schedule = \App\Models\InhouseSchedule::with('employer')->findOrFail($id);
-        $staffRecord = \App\Models\Staff::where('user_id', $staff->id)->first();
+        $staffRecord = \App\Models\Staff::where('user_id', $staff->users_id)->first();
         $schedule->update([
             'status'           => 'rejected',
             'reviewed_by'      => $staffRecord->id ?? null,
@@ -1358,7 +1358,7 @@ $nsrp = $registration->nsrp;
         if (!$staff) return redirect()->route('login');
 
         $request->validate([
-            'company_id'     => 'required|exists:users,id',
+            'company_id'     => 'required|exists:users,users_id',
             'title'          => 'required|string|max:255',
             'description'    => 'required|string',
             'location'       => 'required|string|max:255',
@@ -1371,7 +1371,7 @@ $nsrp = $registration->nsrp;
         $employerNsrp = \App\Models\EmployerNsrpRegistration::where('user_id', $request->company_id)->firstOrFail();
 
         \App\Models\Job::create([
-            'company_id'     => $employerNsrp->id,
+            'company_id'     => $employerNsrp->employer_nsrp_registrations_id,
             'title'          => $request->title,
             'description'    => $request->description,
             'location'       => $request->location,
@@ -1402,9 +1402,9 @@ $nsrp = $registration->nsrp;
                 }
             }
             if ($isMatch) {
-                $matchedIds->push($jsReg->id);
+                $matchedIds->push($jsReg->jobseeker_registrations_id);
             } else {
-                $unmatchedIds->push($jsReg->id);
+                $unmatchedIds->push($jsReg->jobseeker_registrations_id);
             }
         }
 
@@ -1453,7 +1453,7 @@ $nsrp = $registration->nsrp;
         if (!$staff) return redirect()->route('login');
 
         $request->validate([
-            'company_id'  => 'required|exists:users,id',
+            'company_id'  => 'required|exists:users,users_id',
             'title'       => 'required|string|max:255',
             'description' => 'required|string',
             'location'    => 'required|string|max:255',
@@ -1466,7 +1466,7 @@ $nsrp = $registration->nsrp;
         $job = \App\Models\Job::findOrFail($id);
         $employerNsrp = \App\Models\EmployerNsrpRegistration::where('user_id', $request->company_id)->firstOrFail();
         $job->update([
-            'company_id'  => $employerNsrp->id,
+            'company_id'  => $employerNsrp->employer_nsrp_registrations_id,
             'title'       => $request->title,
             'description' => $request->description,
             'location'    => $request->location,
@@ -1699,7 +1699,7 @@ $nsrp = $registration->nsrp;
         // PART 2: NSRP Form Data → jobseeker_nsrp_registrations
         // ══════════════════════════════════════════
         $nsrpData = [
-            'jobseeker_registration_id' => $registration->id,
+            'jobseeker_registration_id' => $registration->jobseeker_registrations_id,
             'type'               => $staff->staff_role === 'sra' ? 'overseas' : 'local',
             'employment_type'   => $request->employment_type,
             'is_ofw'            => $request->is_ofw ?? false,
@@ -1849,7 +1849,7 @@ $nsrp = $registration->nsrp;
                 ? 'Your job posting "' . $job->title . '" has been approved for job fair use. It will go live once PESO opens a job fair event.'
                 : 'Your job posting "' . $job->title . '" has been approved and is now live!',
             'reference_type' => 'job',
-            'reference_id'   => $job->id,
+            'reference_id'   => $job->job_qualifications_id,
         ], $job->company_id);
 
         // ── Job Fair postings dili pa i-post sa jobseekers hangtod ma-open sa Job Fair staff ──
@@ -1874,9 +1874,9 @@ $nsrp = $registration->nsrp;
                     }
                 }
                 if ($isMatch) {
-                    $matchedIds->push($jsReg->id);
+                    $matchedIds->push($jsReg->jobseeker_registrations_id);
                 } else {
-                    $unmatchedIds->push($jsReg->id);
+                    $unmatchedIds->push($jsReg->jobseeker_registrations_id);
                 }
             }
 
@@ -1887,7 +1887,7 @@ $nsrp = $registration->nsrp;
                     'title'          => 'Matching Job Vacancy Found! 💼',
                     'message'        => 'A job vacancy matching your preferred position "' . $job->title . '" from ' . ($job->company->company_name ?? 'an employer') . ' is now available. Would you like to apply?',
                     'reference_type' => 'job',
-                    'reference_id'   => $job->id,
+                    'reference_id'   => $job->job_qualifications_id,
                 ], $matchedIds);
             }
 
@@ -1898,7 +1898,7 @@ $nsrp = $registration->nsrp;
                     'title'          => 'New Job Vacancy Posted 💼',
                     'message'        => 'A new job vacancy "' . $job->title . '" from ' . ($job->company->company_name ?? 'an employer') . ' is now available!',
                     'reference_type' => 'job',
-                    'reference_id'   => $job->id,
+                    'reference_id'   => $job->job_qualifications_id,
                 ], $unmatchedIds);
             }
         }
@@ -1948,7 +1948,7 @@ $nsrp = $registration->nsrp;
             'title'          => 'Job Posting Rejected ❌',
             'message'        => 'Your job posting "' . $job->title . '" was rejected. Reason: ' . $request->remarks,
             'reference_type' => 'job',
-            'reference_id'   => $job->id,
+            'reference_id'   => $job->job_qualifications_id,
         ], $job->company_id);
 
         return back()->with('success', 'Job posting rejected.');
@@ -2156,7 +2156,7 @@ $nsrp = $registration->nsrp;
 
                     $apps = \App\Models\Application::with('jobseeker')->whereIn('job_id', $jobIds)->get();
 
-                    $p->vacancies   = \App\Models\Job::whereIn('id', $jobIds)->sum('slots');
+                    $p->vacancies   = \App\Models\Job::whereIn('job_qualifications_id', $jobIds)->sum('slots');
                     $p->interviewed = $apps->count();
                     $p->male        = $apps->filter(fn($a) => strtolower($a->jobseeker->sex ?? '') === 'male')->count();
                     $p->female      = $apps->filter(fn($a) => strtolower($a->jobseeker->sex ?? '') === 'female')->count();
@@ -2175,7 +2175,7 @@ $nsrp = $registration->nsrp;
             $industryOverseas = collect();
 
             if ($tab === 'industry' && $eventId) {
-                $jobs = \App\Models\Job::with('company')->whereIn('id', $eventJobIds)->get();
+                $jobs = \App\Models\Job::with('company')->whereIn('job_qualifications_id', $eventJobIds)->get();
 
                 $industryLocal = $jobs->filter(fn($j) => !($j->company->is_overseas ?? false))
                     ->groupBy('industry_group')
@@ -2431,7 +2431,7 @@ $nsrp = $registration->nsrp;
 
         $request->validate([
             'name'  => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $staff->id,
+            'email' => 'required|email|unique:users,email,' . $staff->users_id . ',users_id',
             'phone' => 'nullable|string|max:20',
         ]);
 
@@ -2492,7 +2492,7 @@ $nsrp = $registration->nsrp;
         $staff = $this->authStaff();
         if (!$staff) return redirect()->route('login');
 
-        $staffRecord = \App\Models\Staff::where('user_id', $staff->id)->first();
+        $staffRecord = \App\Models\Staff::where('user_id', $staff->users_id)->first();
         $notifications = $staffRecord
             ? \App\Models\Announcement::where('staff_id', $staffRecord->id)->latest()->get()
             : collect();

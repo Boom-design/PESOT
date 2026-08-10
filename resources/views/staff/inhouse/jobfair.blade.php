@@ -142,13 +142,13 @@
                             <td style="padding:12px 16px;text-align:center;">
                                 <button type="button" class="btn btn-sm fw-semibold"
                                     style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;border-radius:8px;font-size:12px;padding:6px 12px;"
-                                    data-bs-toggle="modal" data-bs-target="#jfJobModal{{ $job->id }}">
+                                    data-bs-toggle="modal" data-bs-target="#jfJobModal{{ $job->job_qualifications_id }}">
                                     <i class="bi bi-eye-fill me-1"></i>View Details
                                 </button>
                             </td>
                         </tr>
 
-                        <div class="modal fade" id="jfJobModal{{ $job->id }}" tabindex="-1">
+                        <div class="modal fade" id="jfJobModal{{ $job->job_qualifications_id }}" tabindex="-1">
                             <div class="modal-dialog modal-lg" style="max-height:90vh;margin-top:5vh;margin-bottom:5vh;">
                                 <div class="modal-content" style="border-radius:16px;border:none;max-height:90vh;display:flex;flex-direction:column;">
                                     <div class="modal-header" style="background:linear-gradient(90deg,#90d870,#4dd9c0);flex-shrink:0;">
@@ -187,14 +187,14 @@
                                                 <i class="bi bi-exclamation-circle me-1"></i>
                                                 Job posting pending — review and approve or reject
                                             </div>
-                                            <form action="{{ route('staff.jobs.approve', $job->id) }}" method="POST" class="mb-3">
+                                            <form action="{{ route('staff.jobs.approve', $job->job_qualifications_id) }}" method="POST" class="mb-3">
                                                 @csrf
                                                 <button type="submit" class="btn btn-sm w-100 fw-semibold"
                                                     style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;border-radius:8px;font-size:13px;padding:8px;">
                                                     <i class="bi bi-check-circle-fill me-1"></i> Approve Job Posting
                                                 </button>
                                             </form>
-                                            <form action="{{ route('staff.jobs.reject', $job->id) }}" method="POST">
+                                            <form action="{{ route('staff.jobs.reject', $job->job_qualifications_id) }}" method="POST">
                                                 @csrf
                                                 <label class="form-label fw-semibold small" style="color:#7c2d12;">Reason for Rejection</label>
                                                 <textarea name="remarks" rows="2" required class="form-control mb-2"

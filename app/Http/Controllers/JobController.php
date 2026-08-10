@@ -31,7 +31,7 @@ class JobController extends Controller
 
         $jobs = $query->get()->map(function ($job) {
             return [
-                'id'           => $job->id,
+                'id'           => $job->job_qualifications_id,
                 'title'        => $job->title,
                 'description'  => $job->description,
                 'location'     => $job->location,
@@ -60,7 +60,7 @@ class JobController extends Controller
 
         return response()->json([
             'job' => [
-                'id'           => $job->id,
+                'id'           => $job->job_qualifications_id,
                 'title'        => $job->title,
                 'description'  => $job->description,
                 'location'     => $job->location,
@@ -85,7 +85,7 @@ class JobController extends Controller
             ->get()
             ->map(function ($job) {
                 return [
-                    'id'           => $job->id,
+                    'id'           => $job->job_qualifications_id,
                     'title'        => $job->title,
                     'location'     => $job->location,
                     'type'         => $job->type,

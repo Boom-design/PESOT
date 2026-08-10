@@ -11,6 +11,8 @@ class Job extends Model
 
     protected $table = 'job_qualifications';
 
+    protected $primaryKey = 'job_qualifications_id';
+
     protected $fillable = [
     'company_id',
     'title',
@@ -73,7 +75,7 @@ class Job extends Model
     // Relationship: Job has many Applications
     public function applications()
     {
-        return $this->hasMany(Application::class);
+        return $this->hasMany(Application::class, 'job_id');
     }
 
     // ── Accessor: check kung naglapas na ang deadline (real-time, base sa server date) ──

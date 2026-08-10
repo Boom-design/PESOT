@@ -171,12 +171,12 @@
                             <div class="d-flex flex-column gap-1" style="min-width:150px;">
                                 <button type="button" class="btn btn-sm fw-semibold d-flex align-items-center justify-content-center gap-1"
                                     style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;border-radius:8px;font-size:12px;padding:6px 12px;"
-                                    data-bs-toggle="modal" data-bs-target="#jobModal{{ $job->id }}">
+                                    data-bs-toggle="modal" data-bs-target="#jobModal{{ $job->job_qualifications_id }}">
                                     <i class="bi bi-eye-fill"></i> View Details
                                 </button>
 
                                 @if($job->posting_status !== 'pending')
-                                    <a href="{{ route('staff.jobs.qualified', $job->id) }}"
+                                    <a href="{{ route('staff.jobs.qualified', $job->job_qualifications_id) }}"
                                        class="btn btn-sm fw-semibold d-flex align-items-center justify-content-center gap-1"
                                        style="background:#fff;color:#2d7a5f;border:1.5px solid #a8e6cf;border-radius:8px;font-size:12px;padding:6px 12px;">
                                         <i class="bi bi-person-check-fill"></i> Applicants
@@ -187,7 +187,7 @@
                     </tr>
 
                     {{-- JOB DETAIL MODAL --}}
-                    <div class="modal fade" id="jobModal{{ $job->id }}" tabindex="-1">
+                    <div class="modal fade" id="jobModal{{ $job->job_qualifications_id }}" tabindex="-1">
                         <div class="modal-dialog modal-lg" style="max-height:90vh;margin-top:5vh;margin-bottom:5vh;">
                             <div class="modal-content" style="border-radius:16px;border:none;max-height:90vh;display:flex;flex-direction:column;">
                                 <div class="modal-header" style="background:linear-gradient(90deg,#90d870,#4dd9c0);flex-shrink:0;">
@@ -314,7 +314,7 @@
                                             Job posting pending — review and approve or reject
                                         </div>
 
-                                        <form action="{{ route('staff.jobs.approve', $job->id) }}" method="POST" class="mb-3">
+                                        <form action="{{ route('staff.jobs.approve', $job->job_qualifications_id) }}" method="POST" class="mb-3">
                                             @csrf
                                             <button type="submit" class="btn btn-sm w-100 fw-semibold"
                                                 style="background:linear-gradient(90deg,#90d870,#4dd9c0);
@@ -323,7 +323,7 @@
                                             </button>
                                         </form>
 
-                                        <form action="{{ route('staff.jobs.reject', $job->id) }}" method="POST">
+                                        <form action="{{ route('staff.jobs.reject', $job->job_qualifications_id) }}" method="POST">
                                             @csrf
                                             <label class="form-label fw-semibold small" style="color:#7c2d12;">
                                                 Reason for Rejection

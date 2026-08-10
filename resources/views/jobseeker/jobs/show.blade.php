@@ -276,7 +276,7 @@
                         </a>
                     </div>
                 @else
-                    <form action="{{ route('jobseeker.jobs.apply', $job->id) }}" method="POST">
+                    <form action="{{ route('jobseeker.jobs.apply', $job->job_qualifications_id) }}" method="POST">
                         @csrf
                         <button type="submit" class="btn btn-peso w-100 py-3"
                                 style="font-size:15px; font-weight:700;">
@@ -346,7 +346,7 @@
             allowOutsideClick: false,
         }).then((result) => {
             const response = result.isConfirmed ? 'accepted' : 'declined';
-            fetch('{{ url("/jobseeker/applications") }}/{{ session("show_inhouse_prompt") ?? ($application->id ?? "") }}/inhouse-response', {
+            fetch('{{ url("/jobseeker/applications") }}/{{ session("show_inhouse_prompt") ?? ($application->job_matching_id ?? "") }}/inhouse-response', {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',

@@ -11,7 +11,7 @@
 
 <div class="card border-0 shadow-sm rounded-3" style="max-width:650px;">
     <div class="card-body p-4">
-        <form action="{{ route('staff.jobs.update', $job->id) }}" method="POST">
+        <form action="{{ route('staff.jobs.update', $job->job_qualifications_id) }}" method="POST">
             @csrf
             @method('PUT')
 
@@ -23,8 +23,8 @@
                     style="border:1.5px solid #a8e6cf;border-radius:10px;font-size:13px;" required>
                     <option value="">— Select Employer —</option>
                     @foreach($employers as $employer)
-                    <option value="{{ $employer->id }}"
-                        {{ old('company_id', $job->company_id) == $employer->id ? 'selected' : '' }}>
+                    <option value="{{ $employer->users_id }}"
+                        {{ old('company_id', $job->company_id) == $employer->users_id ? 'selected' : '' }}>
                         {{ $employer->company_name ?? $employer->name }}
                     </option>
                     @endforeach

@@ -103,7 +103,7 @@
                         <td style="padding:12px 16px;text-align:center;">
                             @if($job->posting_status === 'pending')
                                 <div class="d-flex gap-1 justify-content-center">
-                                    <form action="{{ route('staff.jobfair.postings.approve', $job->id) }}" method="POST">
+                                    <form action="{{ route('staff.jobfair.postings.approve', $job->job_qualifications_id) }}" method="POST">
                                         @csrf
                                         <button type="submit" class="btn btn-sm fw-semibold"
                                             style="background:#2d7a5f;color:#fff;border:none;border-radius:6px;font-size:11px;padding:4px 12px;"
@@ -113,7 +113,7 @@
                                     </form>
                                     <button type="button" class="btn btn-sm fw-semibold"
                                         style="background:#e53935;color:#fff;border:none;border-radius:6px;font-size:11px;padding:4px 12px;"
-                                        onclick="openRejectModal({{ $job->id }}, '{{ addslashes($job->title) }}')">
+                                        onclick="openRejectModal({{ $job->job_qualifications_id }}, '{{ addslashes($job->title) }}')">
                                         <i class="bi bi-x-lg me-1"></i>Reject
                                     </button>
                                 </div>

@@ -89,7 +89,7 @@
                         } elseif ($user->role === 'company') {
                             $placement = ($user->employerNsrp?->is_overseas ?? false) ? 'Overseas' : 'Local';
 
-                            $requirement = \App\Models\EmployerRequirement::where('user_id', $user->id)->first();
+                            $requirement = \App\Models\EmployerRequirement::where('user_id', $user->users_id)->first();
 
                             $reqFieldLabels = [
                                 'business_permit'             => 'Business Permit',
@@ -134,7 +134,7 @@
                         </td>
                         <td style="padding:12px 16px;">
                             @if($user->role === 'jobseeker' && $user->registration)
-                                <a href="{{ route('admin.registration.view', $user->registration->id) }}"
+                                <a href="{{ route('admin.registration.view', $user->registration->jobseeker_registrations_id) }}"
                                    class="btn btn-sm fw-semibold"
                                    style="background:linear-gradient(90deg,#90d870,#4dd9c0);
                                           color:#fff;border:none;border-radius:8px;font-size:12px;text-decoration:none;">
@@ -145,7 +145,7 @@
                                     style="background:linear-gradient(90deg,#90d870,#4dd9c0);
                                            color:#fff;border:none;border-radius:8px;font-size:12px;"
                                     data-bs-toggle="modal" data-bs-target="#updateUserModal"
-                                    data-id="{{ $user->id }}"
+                                    data-id="{{ $user->users_id }}"
                                     data-name="{{ $user->name }}"
                                     data-status="{{ $user->status }}"
                                     data-role="{{ $user->staff_role }}">
