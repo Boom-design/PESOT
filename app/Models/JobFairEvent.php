@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class JobFairEvent extends Model
 {
+    protected $primaryKey = 'job_fair_events_id';
+
     protected $fillable = [
         'created_by',
         'title',

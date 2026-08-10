@@ -63,7 +63,7 @@
                         <td style="padding:12px 16px;text-align:center;">
                             @if($inv->confirmation_status === 'pending')
                             <div class="d-flex gap-1 justify-content-center">
-                                <form action="{{ route('company.jobfair.respond', $inv->id) }}" method="POST">
+                                <form action="{{ route('company.jobfair.respond', $inv->job_fair_participants_id) }}" method="POST">
                                     @csrf
                                     <input type="hidden" name="response" value="confirmed">
                                     <button type="submit" class="btn btn-sm fw-semibold"
@@ -72,7 +72,7 @@
                                         <i class="bi bi-check-circle me-1"></i>Accept
                                     </button>
                                 </form>
-                                <form action="{{ route('company.jobfair.respond', $inv->id) }}" method="POST">
+                                <form action="{{ route('company.jobfair.respond', $inv->job_fair_participants_id) }}" method="POST">
                                     @csrf
                                     <input type="hidden" name="response" value="declined">
                                     <button type="submit" class="btn btn-sm btn-danger fw-semibold"

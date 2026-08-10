@@ -49,8 +49,8 @@
             onchange="filterByEvent(this.value)">
             <option value="">— Select Event —</option>
             @foreach($allEvents as $ev)
-            <option value="{{ $ev->id }}"
-                {{ request('event_id') == $ev->id ? 'selected' : '' }}>
+            <option value="{{ $ev->job_fair_events_id }}"
+                {{ request('event_id') == $ev->job_fair_events_id ? 'selected' : '' }}>
                 {{ $ev->title }} ({{ $ev->event_date->format('M d, Y') }})
             </option>
             @endforeach
@@ -233,8 +233,8 @@
             onchange="filterAttendanceByEvent(this.value)">
             <option value="">— Select Event —</option>
             @foreach($allEvents as $ev)
-            <option value="{{ $ev->id }}"
-                {{ request('event_id') == $ev->id ? 'selected' : '' }}>
+            <option value="{{ $ev->job_fair_events_id }}"
+                {{ request('event_id') == $ev->job_fair_events_id ? 'selected' : '' }}>
                 {{ $ev->title }} ({{ $ev->event_date->format('M d, Y') }})
             </option>
             @endforeach
@@ -340,7 +340,7 @@
                             <td style="padding:12px 16px;text-align:center;">
                                 @if($r->is_attended)
                                     @if(($event->status ?? null) !== 'completed')
-                                    <form action="{{ route('staff.jobfair.attendance.unmark', $r->id) }}" method="POST">
+                                    <form action="{{ route('staff.jobfair.attendance.unmark', $r->job_fair_registrations_id) }}" method="POST">
                                         @csrf
                                         <button type="submit" class="btn btn-sm fw-semibold"
                                             style="border:1.5px solid #e05252;color:#e05252;background:#fff;
@@ -350,7 +350,7 @@
                                     </form>
                                     @endif
                                 @else
-                                    <form action="{{ route('staff.jobfair.attendance.mark', $r->id) }}" method="POST">
+                                    <form action="{{ route('staff.jobfair.attendance.mark', $r->job_fair_registrations_id) }}" method="POST">
                                         @csrf
                                         <button type="submit" class="btn btn-sm fw-semibold"
                                             style="background:linear-gradient(90deg,#90d870,#4dd9c0);
@@ -533,20 +533,20 @@
                                 </span>
                             </td>
                             <td style="padding:12px 16px;text-align:center;">
-                                <a href="{{ route('staff.jobfair.events', ['view' => 'participants', 'event_id' => $event->id]) }}"
+                                <a href="{{ route('staff.jobfair.events', ['view' => 'participants', 'event_id' => $event->job_fair_events_id]) }}"
                                    class="btn btn-sm fw-semibold me-1"
                                    style="border:1.5px solid #a8e6cf;color:#2d7a5f;
                                           background:#fff;border-radius:8px;font-size:12px;"
                                    title="View Participants">
                                     <i class="bi bi-people-fill"></i>
                                 </a>
-                                <a href="{{ route('staff.jobfair.events.edit', $event->id) }}"
+                                <a href="{{ route('staff.jobfair.events.edit', $event->job_fair_events_id) }}"
                                    class="btn btn-sm fw-semibold me-1"
                                    style="border:1.5px solid #a8e6cf;color:#2d7a5f;
                                           background:#fff;border-radius:8px;font-size:12px;">
                                     <i class="bi bi-pencil-fill"></i>
                                 </a>
-                                <form action="{{ route('staff.jobfair.events.delete', $event->id) }}"
+                                <form action="{{ route('staff.jobfair.events.delete', $event->job_fair_events_id) }}"
                                       method="POST" class="d-inline"
                                       onsubmit="return confirm('Delete this event?')">
                                     @csrf

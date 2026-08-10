@@ -25,7 +25,7 @@
             <div class="text-muted small">Post a job vacancy first before selecting jobs for this job fair.</div>
         </div>
     @else
-        <form action="{{ route('company.jobfair.storeJobSelect', $jobFair->id) }}" method="POST">
+        <form action="{{ route('company.jobfair.storeJobSelect', $jobFair->job_fair_events_id) }}" method="POST">
             @csrf
             @foreach($myJobs as $job)
             @php

@@ -971,7 +971,7 @@ class CompanyWebController extends Controller
             'response' => 'required|in:confirmed,declined',
         ]);
 
-        $participant = \App\Models\JobFairParticipant::with('jobFair')->where('id', $id)
+        $participant = \App\Models\JobFairParticipant::with('jobFair')->where('job_fair_participants_id', $id)
             ->where('employer_id', $company->employerNsrp->employer_nsrp_registrations_id)
             ->firstOrFail();
 

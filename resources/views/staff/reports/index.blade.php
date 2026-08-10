@@ -119,7 +119,7 @@ if ($staffRole !== 'sra') {
         onchange="changeEvent(this.value)">
         <option value="">— Select Job Fair Event —</option>
         @foreach($allEvents as $ev)
-        <option value="{{ $ev->id }}" {{ $eventId == $ev->id ? 'selected' : '' }}>
+        <option value="{{ $ev->job_fair_events_id }}" {{ $eventId == $ev->job_fair_events_id ? 'selected' : '' }}>
             {{ $ev->title }} ({{ $ev->event_date->format('M d, Y') }})
         </option>
         @endforeach

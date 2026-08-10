@@ -11,7 +11,7 @@
 
 <div class="card border-0 shadow-sm rounded-3" style="max-width:600px;">
     <div class="card-body p-4">
-        <form action="{{ route('staff.jobfair.events.update', $event->id) }}" method="POST">
+        <form action="{{ route('staff.jobfair.events.update', $event->job_fair_events_id) }}" method="POST">
             @csrf
             @method('PUT')
 

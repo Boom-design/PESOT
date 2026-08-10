@@ -369,7 +369,7 @@ $nsrp = $registration->nsrp;
 
         foreach ($employers as $employer) {
             \App\Models\JobFairParticipant::create([
-                'job_fair_id'         => $event->id,
+                'job_fair_id'         => $event->job_fair_events_id,
                 'employer_id'         => $employer->employerNsrp->employer_nsrp_registrations_id,
                 'confirmation_status' => 'pending',
             ]);
@@ -380,7 +380,7 @@ $nsrp = $registration->nsrp;
             'title'          => 'Job Fair Invitation 🎉',
             'message'        => 'You are invited to join ' . $event->title . ' on ' . $event->event_date->format('M d, Y') . ' at ' . $event->venue . '. Please respond to confirm your participation.',
             'reference_type' => 'job_fair',
-            'reference_id'   => $event->id,
+            'reference_id'   => $event->job_fair_events_id,
         ], $employers->map(fn($e) => $e->employerNsrp->employer_nsrp_registrations_id));
 
         // ── AUTO-OPEN: tanan Job Fair postings nga approved na pero magpabilin CLOSED (nag-hulat sa bag-ong event) mabalhin karon nga OPEN, mapost na sa landing page ──
@@ -518,7 +518,7 @@ $nsrp = $registration->nsrp;
 
             $alreadyNotifiedIds = \App\Models\AnnouncementJobseeker::whereHas('announcement', function ($q) use ($event) {
                 $q->where('reference_type', 'job_fair')
-                  ->where('reference_id', $event->id)
+                  ->where('reference_id', $event->job_fair_events_id)
                   ->where('type', 'job_fair_open');
             })->pluck('jobseeker_id');
 
@@ -532,7 +532,7 @@ $nsrp = $registration->nsrp;
                     'title'          => 'Job Fair Event Available! 🎉',
                     'message'        => $event->title . ' on ' . $event->event_date->format('M d, Y') . ' at ' . $event->venue . ' is now open!',
                     'reference_type' => 'job_fair',
-                    'reference_id'   => $event->id,
+                    'reference_id'   => $event->job_fair_events_id,
                 ], $regIds);
             }
             return back()->with('success', 'Jobseekers notified successfully!');
@@ -550,7 +550,7 @@ $nsrp = $registration->nsrp;
                 'title'          => 'Job Fair Reminder ⏰',
                 'message'        => 'Only ' . $daysRemaining . ' days left! Please confirm your participation for ' . $event->title . ' on ' . $event->event_date->format('M d, Y') . '.',
                 'reference_type' => 'job_fair',
-                'reference_id'   => $event->id,
+                'reference_id'   => $event->job_fair_events_id,
             ], $pendingEmployers->pluck('employer_id'));
             return back()->with('success', 'Reminder sent to pending employers!');
         }
@@ -573,13 +573,13 @@ $nsrp = $registration->nsrp;
         $sent = 0;
         $newEmployerIds = collect();
         foreach ($employers as $employer) {
-            $exists = \App\Models\JobFairParticipant::where('job_fair_id', $event->id)
+            $exists = \App\Models\JobFairParticipant::where('job_fair_id', $event->job_fair_events_id)
                 ->where('employer_id', $employer->employerNsrp->employer_nsrp_registrations_id)
                 ->exists();
 
             if (!$exists) {
                 \App\Models\JobFairParticipant::create([
-                    'job_fair_id'         => $event->id,
+                    'job_fair_id'         => $event->job_fair_events_id,
                     'employer_id'         => $employer->employerNsrp->employer_nsrp_registrations_id,
                     'confirmation_status' => 'pending',
                 ]);
@@ -595,7 +595,7 @@ $nsrp = $registration->nsrp;
                 'title'          => 'Job Fair Invitation 🎉',
                 'message'        => 'You are invited to join ' . $event->title . ' on ' . $event->event_date->format('M d, Y') . ' at ' . $event->venue . '. Please respond to confirm your participation.',
                 'reference_type' => 'job_fair',
-                'reference_id'   => $event->id,
+                'reference_id'   => $event->job_fair_events_id,
             ], $newEmployerIds);
         }
 

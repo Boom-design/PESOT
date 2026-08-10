@@ -630,13 +630,13 @@ foreach ($workExperiences as $exp) {
         $jobseeker = $this->authJobseeker();
         if (!$jobseeker) return redirect()->route('login');
 
-        $jobFair = \App\Models\JobFairEvent::where('id', $id)
+        $jobFair = \App\Models\JobFairEvent::where('job_fair_events_id', $id)
             ->where('status', '!=', 'completed')
             ->firstOrFail();
 
         $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
 
-        $alreadyJoined = \App\Models\JobFairRegistration::where('job_fair_id', $jobFair->id)
+        $alreadyJoined = \App\Models\JobFairRegistration::where('job_fair_id', $jobFair->job_fair_events_id)
             ->where('user_id', $registration->jobseeker_registrations_id ?? 0)
             ->exists();
 
@@ -644,13 +644,13 @@ foreach ($workExperiences as $exp) {
             return back()->with('info', 'You have already joined this job fair.');
         }
 
-        $totalRegistered = \App\Models\JobFairRegistration::where('job_fair_id', $jobFair->id)->count();
-        $slipNumber = 'JF' . $jobFair->id . '-' . str_pad($totalRegistered + 1, 4, '0', STR_PAD_LEFT);
+        $totalRegistered = \App\Models\JobFairRegistration::where('job_fair_id', $jobFair->job_fair_events_id)->count();
+        $slipNumber = 'JF' . $jobFair->job_fair_events_id . '-' . str_pad($totalRegistered + 1, 4, '0', STR_PAD_LEFT);
 
         $isEarly = now()->diffInDays($jobFair->event_date, false) >= 3;
 
         \App\Models\JobFairRegistration::create([
-            'job_fair_id' => $jobFair->id,
+            'job_fair_id' => $jobFair->job_fair_events_id,
             'user_id'     => $registration->jobseeker_registrations_id ?? 0,
             'slip_number' => $slipNumber,
             'is_early'    => $isEarly,
@@ -671,7 +671,7 @@ foreach ($workExperiences as $exp) {
 
         $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
 
-        $reg = \App\Models\JobFairRegistration::where('id', $registrationId)
+        $reg = \App\Models\JobFairRegistration::where('job_fair_registrations_id', $registrationId)
             ->where('user_id', $registration->jobseeker_registrations_id ?? 0)
             ->firstOrFail();
 

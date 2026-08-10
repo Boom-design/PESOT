@@ -577,7 +577,7 @@
             allowOutsideClick: false,
         }).then((result) => {
             const response = result.isConfirmed ? 'yes' : 'no';
-            fetch('{{ url("/jobseeker/jobfair-registrations") }}/{{ $pendingAttendanceConfirmation->id }}/attendance-response', {
+            fetch('{{ url("/jobseeker/jobfair-registrations") }}/{{ $pendingAttendanceConfirmation->job_fair_registrations_id }}/attendance-response', {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',

@@ -52,20 +52,20 @@
                                 <i class="bi bi-exclamation-circle-fill me-1"></i>Job Fair Full ({{ $eventConfirmedCount }}/{{ $eventCapacity }})
                             </span>
                         @else
-                        <form action="{{ route('company.jobfair.respond', $invitation->id) }}"
-                              method="POST" class="d-inline" id="confirmForm{{ $invitation->id }}">
+                        <form action="{{ route('company.jobfair.respond', $invitation->job_fair_participants_id) }}"
+                              method="POST" class="d-inline" id="confirmForm{{ $invitation->job_fair_participants_id }}">
                             @csrf
-                            <input type="hidden" name="response" id="responseInput{{ $invitation->id }}">
+                            <input type="hidden" name="response" id="responseInput{{ $invitation->job_fair_participants_id }}">
                             <button type="button"
                                 class="btn btn-sm fw-semibold me-1"
                                 style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;border-radius:8px;font-size:11px;"
-                                onclick="confirmResponse({{ $invitation->id }}, 'confirmed')">
+                                onclick="confirmResponse({{ $invitation->job_fair_participants_id }}, 'confirmed')">
                                 <i class="bi bi-check-lg me-1"></i>Confirm
                             </button>
                             <button type="button"
                                 class="btn btn-sm fw-semibold"
                                 style="background:#e05252;color:#fff;border:none;border-radius:8px;font-size:11px;"
-                                onclick="confirmResponse({{ $invitation->id }}, 'declined')">
+                                onclick="confirmResponse({{ $invitation->job_fair_participants_id }}, 'declined')">
                                 <i class="bi bi-x-lg me-1"></i>Decline
                             </button>
                         </form>

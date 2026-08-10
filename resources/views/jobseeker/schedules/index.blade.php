@@ -150,14 +150,14 @@
                                 </span>
                             </td>
                             <td style="padding:12px 16px;text-align:center;">
-                                @if(in_array($event->id, $joinedJobFairIds))
+                                @if(in_array($event->job_fair_events_id, $joinedJobFairIds))
                                     <span class="badge fw-semibold"
                                         style="background:#e8f8f3;color:#2d7a5f;font-size:11px;
                                                padding:4px 10px;border-radius:20px;">
                                         <i class="bi bi-check-circle-fill me-1"></i>Joined
                                     </span>
                                 @else
-                                    <form action="{{ route('jobseeker.jobfair.join', $event->id) }}" method="POST">
+                                    <form action="{{ route('jobseeker.jobfair.join', $event->job_fair_events_id) }}" method="POST">
                                         @csrf
                                         <button type="submit" class="btn btn-sm fw-semibold"
                                             style="background:linear-gradient(90deg,#90d870,#4dd9c0);
