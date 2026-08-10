@@ -126,6 +126,11 @@ class CompanyWebController extends Controller
             ->where('status', 'accepted')
             ->get();
 
+        // Job vacancies are no longer collected at registration, so prompt the
+        // employer to post one as soon as they log in — even while their
+        // requirements are still pending. Stops once they have posted any job.
+        $showJobPostingPrompt = $totalJobs === 0;
+
         return view('company.dashboard', compact(
             'company',
             'totalJobs',
@@ -133,7 +138,8 @@ class CompanyWebController extends Controller
             'hired',
             'recentJobs',
             'todayJobFairs',
-            'todayInhouse'
+            'todayInhouse',
+            'showJobPostingPrompt'
         ));
     }
 
@@ -144,7 +150,10 @@ class CompanyWebController extends Controller
     {
         $company = $this->authCompany();
         if (!$company) return redirect()->route('company.login');
-        if ($guard = $this->requireApprovedRequirements($company)) return $guard;
+
+        // No approved-requirements guard here: an employer may submit a job
+        // posting while their requirements are still under review, so they also
+        // need to see the pending requests they submitted.
 
         // ── Closed ra (pending o rejected) ang makita diri; pag-approve/pag-open, mabalhin na sa "Schedule Job Vacancy" tab ──
         $jobs = Job::where('company_id', $company->employerNsrp->employer_nsrp_registrations_id)
@@ -610,15 +619,9 @@ class CompanyWebController extends Controller
         $company = $this->authCompany();
         if (!$company) return redirect()->route('login');
 
-        // Check kung approved ang requirements
-        $requirement = \App\Models\EmployerRequirement::where('user_id', $company->employerNsrp->employer_nsrp_registrations_id)
-            ->where('status', 'approved')
-            ->first();
-
-        if (!$requirement) {
-            return redirect()->route('company.dashboard')
-                ->with('error', 'Your requirements must be approved before requesting a job posting.');
-        }
+        // Requirements do not need to be approved to submit a posting. The job is
+        // created closed/pending either way, so PESO staff still gate what goes
+        // public — this only lets the employer get in the queue sooner.
 
         $request->validate([
             'schedule_type'  => 'required|in:inhouse,office_based,job_fair',
@@ -757,10 +760,16 @@ class CompanyWebController extends Controller
             'reference_id'   => $firstJob->job_qualifications_id,
         ], $staffIds);
 
+        $requirementApproved = \App\Models\EmployerRequirement::where('user_id', $company->employerNsrp->employer_nsrp_registrations_id)
+            ->where('status', 'approved')
+            ->exists();
+
+        $noun = $positionCount > 1 ? $positionCount . ' job postings' : 'Job posting';
+
         return redirect()->route('company.dashboard')
-            ->with('success', $positionCount > 1
-                ? $positionCount . ' job postings request submitted! Waiting for PESO staff approval.'
-                : 'Job posting request submitted! Waiting for PESO staff approval.');
+            ->with('success', $requirementApproved
+                ? $noun . ' request submitted! Waiting for PESO staff approval.'
+                : $noun . ' submitted. It will be published once your requirements and this posting are approved by PESO staff.');
     }
 
     // ───────────────────────────────

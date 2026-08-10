@@ -619,12 +619,11 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    {{-- Stays enabled while requirements are pending: an employer may
+                         submit a job posting before approval and needs to see it. --}}
                     <a href="{{ route('company.jobs') }}"
                        id="jobVacancyNavLink"
-                       class="nav-link {{ (request()->routeIs('company.jobs') || request()->routeIs('company.jobs.*') || request()->routeIs('company.applicants*')) && !request()->routeIs('company.jobs.qualified') ? 'active' : '' }} {{ !$sidebarReqApproved ? 'disabled' : '' }}"
-                       @if(!$sidebarHasRequirement) onclick="return openComplyModal(event)"
-                       @elseif(!$sidebarReqApproved) onclick="return false" @endif
-                       @if(!$sidebarReqApproved) title="Requirements must be approved first" @endif>
+                       class="nav-link {{ (request()->routeIs('company.jobs') || request()->routeIs('company.jobs.*') || request()->routeIs('company.applicants*')) && !request()->routeIs('company.jobs.qualified') ? 'active' : '' }}">
                         <i class="bi bi-send"></i> Job Vacancy Request
                     </a>
                 </li>

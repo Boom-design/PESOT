@@ -216,32 +216,6 @@ class UnifiedAuthController extends Controller
         'nsrp_establishment_form'     => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
         'no_pending_case_certificate' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
         'vacancy_posting'             => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
-        // ── III/IV. Vacancy Details + Qualification Requirements (OPTIONAL) ──
-        'positions'                          => 'nullable|array',
-        'positions.*.title'                 => 'required|string|max:255',
-        'positions.*.description'           => 'required|string',
-        'positions.*.type'                  => 'required|in:permanent,contractual,project_based,internship,part_time,work_from_home',
-        'positions.*.industry_group'        => 'required|string|max:255',
-        'positions.*.location'              => 'required|string|max:255',
-        'positions.*.salary'                => 'nullable|string|max:100',
-        'positions.*.slots'                 => 'required|integer|min:1',
-        'positions.*.deadline'              => 'nullable|date',
-        'positions.*.experience_months'     => 'nullable|integer|min:0',
-        'positions.*.religion'              => 'nullable|string|max:100',
-        'positions.*.sex_preference'        => 'nullable|in:Male,Female,Any',
-        'positions.*.civil_status'          => 'nullable|in:Single,Married,Any',
-        'positions.*.other_qualifications'  => 'nullable|string',
-        'positions.*.accepts_disability'    => 'nullable|in:yes,no',
-        'positions.*.disability_types'      => 'nullable|array',
-        'positions.*.education_required'    => 'nullable|string|max:100',
-        'positions.*.course_major'          => 'nullable|string|max:255',
-        'positions.*.license'               => 'nullable|string|max:255',
-        'positions.*.eligibility'           => 'nullable|string|max:255',
-        'positions.*.certification'         => 'nullable|string|max:255',
-        'positions.*.language'              => 'nullable|string|max:255',
-        'positions.*.preferred_residence'   => 'nullable|string|max:255',
-        'positions.*.accepts_programs'      => 'nullable|array',
-        'positions.*.job_image'             => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
     ], [
         'email.unique' => 'This email address is already registered. Please use a different email or sign in instead.',
         'certification_agreed.accepted' => 'You must agree to the certification and authorization.',
@@ -257,8 +231,6 @@ class UnifiedAuthController extends Controller
         'role'           => 'company',
         'status'         => 'approved',
     ]);
-
-    $hasPositions = !empty($request->positions);
 
     \App\Models\EmployerNsrpRegistration::create([
         'user_id'                   => $user->users_id,
@@ -281,10 +253,11 @@ class UnifiedAuthController extends Controller
         'fax_no'                    => $request->fax_no,
         'certification_agreed'      => true,
         'certification_date'        => $request->certification_date,
-        // Kung walay gi-fill up nga positions, i-set nga "confirmed" na dayon
-        // (walay laing gikinahanglan i-confirm), aron dili mo-gawas ang modal
-        'initial_vacancy_data'      => $hasPositions ? $this->processPositionImages($request->positions) : [],
-        'initial_vacancy_confirmed' => !$hasPositions,
+        // Job vacancies are no longer collected during registration — the employer
+        // posts them from the dashboard modal after logging in. Marking this
+        // confirmed keeps the legacy "confirm initial vacancy" modal from firing.
+        'initial_vacancy_data'      => [],
+        'initial_vacancy_confirmed' => true,
     ]);
 
     // ── OPTIONAL — 6 Requirements attach na dayon panahon sa registration ──
