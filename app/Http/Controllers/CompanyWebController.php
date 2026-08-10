@@ -276,19 +276,19 @@ class CompanyWebController extends Controller
         // ── Job Fair postings: SRA (overseas) o Job Vacancy staff (local) ang mo-approve — dili si Job Fair staff, sila ra ang mag-post/open human ma-create og event ──
         if ($request->schedule_type === 'inhouse') {
             $inhouseStaffRole = $employerNsrp->is_overseas ? 'sra' : 'lra';
-            $staffIds   = \App\Models\Staff::where('staff_role', $inhouseStaffRole)->pluck('id');
+            $staffIds   = \App\Models\Staff::where('staff_role', $inhouseStaffRole)->pluck('staff_id');
             $venueLabel = $request->venue_type === 'other' ? $request->venue_address : 'PESO Office';
             $title      = 'New In-house Job Posting Request 📅';
             $message    = $company->employerNsrp->company_name . ' confirmed their initial job vacancy posting(s) for an in-house interview on ' . \Carbon\Carbon::parse($request->preferred_date)->format('M d, Y') . ' at ' . $venueLabel . '. Please review and approve/reject.';
         } elseif ($request->schedule_type === 'job_fair') {
             $jobFairApproverRole = $employerNsrp->is_overseas ? 'sra' : 'job_vacancy';
-            $staffIds = \App\Models\Staff::where('staff_role', $jobFairApproverRole)->pluck('id');
+            $staffIds = \App\Models\Staff::where('staff_role', $jobFairApproverRole)->pluck('staff_id');
             $title    = 'New Job Fair Posting Request 🎪';
             $message  = $company->employerNsrp->company_name . ' confirmed their initial job vacancy posting(s) for job fair use. Please review and approve.';
         } else {
             // ── Office Based: SRA (overseas) o Job Vacancy staff (local) ──
             $officeBasedApproverRole = $employerNsrp->is_overseas ? 'sra' : 'job_vacancy';
-            $staffIds = \App\Models\Staff::where('staff_role', $officeBasedApproverRole)->pluck('id');
+            $staffIds = \App\Models\Staff::where('staff_role', $officeBasedApproverRole)->pluck('staff_id');
             $title    = 'New Job Posting Request 💼';
             $message  = $company->employerNsrp->company_name . ' confirmed their initial job vacancy posting(s). Please review and approve.';
         }
@@ -732,19 +732,19 @@ class CompanyWebController extends Controller
         // ── Job Fair postings: SRA (overseas) o Job Vacancy staff (local) ang mo-approve — dili si Job Fair staff, sila ra ang mag-post/open human ma-create og event ──
         if ($request->schedule_type === 'inhouse') {
             $inhouseStaffRole = ($company->employerNsrp && $company->employerNsrp->is_overseas) ? 'sra' : 'lra';
-            $staffIds   = \App\Models\Staff::where('staff_role', $inhouseStaffRole)->pluck('id');
+            $staffIds   = \App\Models\Staff::where('staff_role', $inhouseStaffRole)->pluck('staff_id');
             $venueLabel = $request->venue_type === 'other' ? $request->venue_address : 'PESO Office';
             $title      = 'New In-house Job Posting Request 📅';
             $message    = $company->employerNsrp->company_name . ' requested an in-house interview for "' . $titleSummary . '" on ' . \Carbon\Carbon::parse($request->preferred_date)->format('M d, Y') . ' at ' . $venueLabel . '. Please review and approve/reject the job posting.';
         } elseif ($request->schedule_type === 'job_fair') {
             $jobFairApproverRole = ($company->employerNsrp && $company->employerNsrp->is_overseas) ? 'sra' : 'job_vacancy';
-            $staffIds = \App\Models\Staff::where('staff_role', $jobFairApproverRole)->pluck('id');
+            $staffIds = \App\Models\Staff::where('staff_role', $jobFairApproverRole)->pluck('staff_id');
             $title    = 'New Job Fair Posting Request 🎪';
             $message  = $company->employerNsrp->company_name . ' requested to post "' . $titleSummary . '" for job fair use. Please review and approve.';
         } else {
             // ── Office Based: SRA (overseas) o Job Vacancy staff (local) ──
             $officeBasedApproverRole = ($company->employerNsrp && $company->employerNsrp->is_overseas) ? 'sra' : 'job_vacancy';
-            $staffIds = \App\Models\Staff::where('staff_role', $officeBasedApproverRole)->pluck('id');
+            $staffIds = \App\Models\Staff::where('staff_role', $officeBasedApproverRole)->pluck('staff_id');
             $title    = 'New Job Posting Request 💼';
             $message  = $company->employerNsrp->company_name . ' requested to post "' . $titleSummary . '". Please review and approve.';
         }
@@ -875,14 +875,14 @@ class CompanyWebController extends Controller
         };
 
         $staffRole = ($company->employerNsrp && $company->employerNsrp->is_overseas) ? 'sra' : 'lra';
-        $staffIds = \App\Models\Staff::where('staff_role', $staffRole)->pluck('id');
+        $staffIds = \App\Models\Staff::where('staff_role', $staffRole)->pluck('staff_id');
 
         \App\Models\Announcement::sendToStaff([
             'type'           => 'inhouse_request',
             'title'          => 'New In-house Interview Request 📅',
             'message'        => $company->employerNsrp->company_name . ' has requested an in-house interview on ' . \Carbon\Carbon::parse($request->preferred_date)->format('M d, Y') . ' at ' . \Carbon\Carbon::parse($request->preferred_time)->format('h:i A') . ' (' . $venueLabel . ').',
             'reference_type' => 'inhouse_schedule',
-            'reference_id'   => $schedule->id,
+            'reference_id'   => $schedule->inhouse_schedules_id,
         ], $staffIds);
 
         return redirect()->route('company.inhouse')

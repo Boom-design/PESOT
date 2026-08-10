@@ -95,27 +95,27 @@ class EmployerRequirementController extends Controller
 
 // Notify Vacancy Staff (local company)
 if (!$isOverseas) {
-            $staffIds = \App\Models\Staff::where('staff_role', 'job_vacancy')->pluck('id');
+            $staffIds = \App\Models\Staff::where('staff_role', 'job_vacancy')->pluck('staff_id');
 
             \App\Models\Announcement::sendToStaff([
                 'type'           => 'requirements_submitted',
                 'title'          => 'New Requirements Submitted 📋',
                 'message'        => $company->employerNsrp->company_name . ' has submitted their requirements for review.',
                 'reference_type' => 'employer_requirement',
-                'reference_id'   => $existing ? $existing->id : \App\Models\EmployerRequirement::where('user_id', $company->employerNsrp->employer_nsrp_registrations_id)->first()->id,
+                'reference_id'   => $existing ? $existing->employer_requirements_id : \App\Models\EmployerRequirement::where('user_id', $company->employerNsrp->employer_nsrp_registrations_id)->first()->employer_requirements_id,
             ], $staffIds);
         }
 
         // Notify SRA Staff (overseas company)
 if ($isOverseas) {
-            $staffIds = \App\Models\Staff::where('staff_role', 'sra')->pluck('id');
+            $staffIds = \App\Models\Staff::where('staff_role', 'sra')->pluck('staff_id');
 
             \App\Models\Announcement::sendToStaff([
                 'type'           => 'requirements_submitted',
                 'title'          => 'New Requirements Submitted 📋',
                 'message'        => $company->employerNsrp->company_name . ' has submitted their requirements for review.',
                 'reference_type' => 'employer_requirement',
-                'reference_id'   => $existing ? $existing->id : \App\Models\EmployerRequirement::where('user_id', $company->employerNsrp->employer_nsrp_registrations_id)->first()->id,
+                'reference_id'   => $existing ? $existing->employer_requirements_id : \App\Models\EmployerRequirement::where('user_id', $company->employerNsrp->employer_nsrp_registrations_id)->first()->employer_requirements_id,
             ], $staffIds);
         }
 

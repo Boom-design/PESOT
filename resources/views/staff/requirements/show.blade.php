@@ -136,7 +136,7 @@
                 <p style="font-size:13px;color:#888;">
                     Approving will allow this employer to request in-house interviews and post job vacancies.
                 </p>
-                <form id="approveForm" action="{{ route('staff.requirements.approve', $requirement->id) }}" method="POST">
+                <form id="approveForm" action="{{ route('staff.requirements.approve', $requirement->employer_requirements_id) }}" method="POST">
                     @csrf
                     <button type="button" class="btn w-100 fw-semibold"
                         style="background:linear-gradient(90deg,#90d870,#4dd9c0);
@@ -155,7 +155,7 @@
                 <h6 class="fw-bold mb-3" style="color:#e05252;">
                     <i class="bi bi-x-circle-fill me-2"></i>Reject Requirements
                 </h6>
-                <form action="{{ route('staff.requirements.reject', $requirement->id) }}" method="POST" id="rejectDocsForm">
+                <form action="{{ route('staff.requirements.reject', $requirement->employer_requirements_id) }}" method="POST" id="rejectDocsForm">
                     @csrf
                     @php
                         $rejectDocs = [

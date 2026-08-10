@@ -349,7 +349,7 @@ if ($type === 'local') {
 
         foreach ($inhouseSchedules as $schedule) {
             $schedule->job_offers = \Illuminate\Support\Facades\DB::table('inhouse_participants')
-                ->where('inhouse_schedule_id', $schedule->id)
+                ->where('inhouse_schedule_id', $schedule->inhouse_schedules_id)
                 ->whereIn('jobseeker_id', function ($q) use ($schedule) {
                     $q->select('jobseeker_id')->from('job_matching')
                       ->where('status', 'hired')

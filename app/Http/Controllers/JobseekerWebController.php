@@ -321,14 +321,14 @@ return view('jobseeker.nsrp.index', compact('jobseeker', 'registration', 'nsrp')
 // PART 3: Work Experiences → jobseeker_work_experiences (naka-link na sa NSRP Form)
 // ══════════════════════════════════════════
 \App\Models\JobseekerWorkExperience::where(
-    'jobseeker_nsrp_registration_id', $nsrp->id
+    'jobseeker_nsrp_registration_id', $nsrp->jobseeker_nsrp_registrations_id
 )->delete();
 
 $workExperiences = $request->work_experiences ?? [];
 foreach ($workExperiences as $exp) {
     if (!empty($exp['company_name']) && !empty($exp['position'])) {
         \App\Models\JobseekerWorkExperience::create([
-            'jobseeker_nsrp_registration_id' => $nsrp->id,
+            'jobseeker_nsrp_registration_id' => $nsrp->jobseeker_nsrp_registrations_id,
             'company_name'      => $exp['company_name'],
             'position'          => $exp['position'],
             'industry'          => $exp['industry'] ?? null,
@@ -344,7 +344,7 @@ foreach ($workExperiences as $exp) {
         // PART 4: Certifications → jobseeker_certifications
         // ══════════════════════════════════════════
         \App\Models\JobseekerCertification::where(
-            'jobseeker_nsrp_registration_id', $nsrp->id
+            'jobseeker_nsrp_registration_id', $nsrp->jobseeker_nsrp_registrations_id
         )->delete();
 
         // ── Helper: safely parse a date string, return null kung dili valid ──
@@ -361,7 +361,7 @@ foreach ($workExperiences as $exp) {
         foreach ($eligibilities as $e) {
             if (!empty($e['name'])) {
                 \App\Models\JobseekerCertification::create([
-                    'jobseeker_nsrp_registration_id' => $nsrp->id,
+                    'jobseeker_nsrp_registration_id' => $nsrp->jobseeker_nsrp_registrations_id,
                     'category'    => 'eligibility',
                     'name'        => $e['name'],
                     'date_taken'  => $safeParseDate($e['date_taken'] ?? null),
@@ -373,7 +373,7 @@ foreach ($workExperiences as $exp) {
         foreach ($licenses as $l) {
             if (!empty($l['name'])) {
                 \App\Models\JobseekerCertification::create([
-                    'jobseeker_nsrp_registration_id' => $nsrp->id,
+                    'jobseeker_nsrp_registration_id' => $nsrp->jobseeker_nsrp_registrations_id,
                     'category'     => 'license',
                     'name'         => $l['name'],
                     'valid_until'  => $safeParseDate($l['valid_until'] ?? null),
@@ -388,7 +388,7 @@ foreach ($workExperiences as $exp) {
             if (in_array($nsrp->type, ['overseas', 'both'])) $rolesToNotify[] = 'sra';
 
             if (!empty($rolesToNotify)) {
-                $staffIds = \App\Models\Staff::whereIn('staff_role', $rolesToNotify)->pluck('id');
+                $staffIds = \App\Models\Staff::whereIn('staff_role', $rolesToNotify)->pluck('staff_id');
 
                 $jobseekerName = trim(($registration->first_name ?? '') . ' ' . ($registration->surname ?? ''));
 
@@ -606,14 +606,14 @@ foreach ($workExperiences as $exp) {
         $jobseeker = $this->authJobseeker();
         if (!$jobseeker) return redirect()->route('login');
 
-        $schedule = \App\Models\InhouseSchedule::where('id', $id)
+        $schedule = \App\Models\InhouseSchedule::where('inhouse_schedules_id', $id)
             ->where('status', 'accepted')
             ->firstOrFail();
 
         $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
 
         \App\Models\InhouseParticipant::firstOrCreate([
-            'inhouse_schedule_id' => $schedule->id,
+            'inhouse_schedule_id' => $schedule->inhouse_schedules_id,
             'jobseeker_id'        => $registration->jobseeker_registrations_id ?? 0,
         ], [
             'joined_at' => now(),

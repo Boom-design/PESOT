@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class EmployerRequirement extends Model
 {
+    protected $primaryKey = 'employer_requirements_id';
+
     protected $fillable = [
         'user_id',
         'reviewed_by',

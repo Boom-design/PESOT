@@ -399,10 +399,10 @@
         @php
             $staffRecordForNotif = \App\Models\Staff::where('user_id', Auth::id())->first();
             $staffUnreadCount = $staffRecordForNotif
-                ? \App\Models\Announcement::where('staff_id', $staffRecordForNotif->id)->where('is_read', false)->count()
+                ? \App\Models\Announcement::where('staff_id', $staffRecordForNotif->staff_id)->where('is_read', false)->count()
                 : 0;
             $staffNotifications = $staffRecordForNotif
-                ? \App\Models\Announcement::where('staff_id', $staffRecordForNotif->id)->latest()->take(5)->get()
+                ? \App\Models\Announcement::where('staff_id', $staffRecordForNotif->staff_id)->latest()->take(5)->get()
                 : collect();
         @endphp
 

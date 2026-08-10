@@ -148,7 +148,7 @@
                             </span>
                         </td>
                         <td style="padding:12px 16px;text-align:center;">
-                            <a href="{{ route('staff.inhouse.view', $item->id) }}"
+                            <a href="{{ route('staff.inhouse.view', $item->inhouse_schedules_id) }}"
                                class="btn btn-sm fw-semibold"
                                style="background:linear-gradient(90deg,#90d870,#4dd9c0);
                                       color:#fff;border:none;border-radius:8px;font-size:12px;">

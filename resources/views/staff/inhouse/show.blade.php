@@ -123,7 +123,7 @@
                 <h6 class="fw-bold mb-3" style="color:#2d7a5f;">
                     <i class="bi bi-check-circle-fill me-2" style="color:#4dd9c0;"></i>Accept Request
                 </h6>
-                <form action="{{ route('staff.inhouse.accept', $schedule->id) }}" method="POST">
+                <form action="{{ route('staff.inhouse.accept', $schedule->inhouse_schedules_id) }}" method="POST">
                     @csrf
                     <div class="mb-3">
                         <label class="form-label fw-semibold small" style="color:#2d7a5f;">
@@ -161,7 +161,7 @@
                 <h6 class="fw-bold mb-3" style="color:#e05252;">
                     <i class="bi bi-x-circle-fill me-2"></i>Reject Request
                 </h6>
-                <form action="{{ route('staff.inhouse.reject', $schedule->id) }}" method="POST">
+                <form action="{{ route('staff.inhouse.reject', $schedule->inhouse_schedules_id) }}" method="POST">
                     @csrf
                     <div class="mb-3">
                         <label class="form-label fw-semibold small" style="color:#2d7a5f;">

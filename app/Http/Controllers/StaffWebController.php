@@ -341,7 +341,7 @@ $nsrp = $registration->nsrp;
         $staffRecord = \App\Models\Staff::where('user_id', $staff->users_id)->first();
 
         $event = \App\Models\JobFairEvent::create([
-            'created_by'        => $staffRecord->id,
+            'created_by'        => $staffRecord->staff_id,
             'title'             => $request->title,
             'event_date'        => $request->event_date,
             'event_time'        => $request->event_time,
@@ -848,7 +848,7 @@ $nsrp = $registration->nsrp;
         $staffRecord = \App\Models\Staff::where('user_id', $staff->users_id)->first();
         $requirement->update([
             'status'      => 'approved',
-            'reviewed_by' => $staffRecord->id ?? null,
+            'reviewed_by' => $staffRecord->staff_id ?? null,
             'remarks'     => null,
         ]);
 
@@ -857,7 +857,7 @@ $nsrp = $registration->nsrp;
             'title'          => 'Requirements Approved ✅',
             'message'        => 'Your submitted requirements have been approved by PESO staff. You can now request in-house interviews and post job vacancies.',
             'reference_type' => 'employer_requirement',
-            'reference_id'   => $requirement->id,
+            'reference_id'   => $requirement->employer_requirements_id,
         ], $requirement->user_id);
 
         return redirect()->route('staff.requirements')
@@ -885,7 +885,7 @@ $nsrp = $registration->nsrp;
             $staffRecord = \App\Models\Staff::where('user_id', $staff->users_id)->first();
             $requirement->update([
                 'status'      => 'rejected',
-                'reviewed_by' => $staffRecord->id ?? null,
+                'reviewed_by' => $staffRecord->staff_id ?? null,
                 'remarks'     => $request->remarks,
             ]);
 
@@ -894,7 +894,7 @@ $nsrp = $registration->nsrp;
                 'title'          => 'Requirements Rejected ❌',
                 'message'        => 'Please resubmit your requirements. Reason: ' . $request->remarks,
                 'reference_type' => 'employer_requirement',
-                'reference_id'   => $requirement->id,
+                'reference_id'   => $requirement->employer_requirements_id,
             ], $requirement->user_id);
 
             return redirect()->route('staff.requirements')  
@@ -911,7 +911,7 @@ $nsrp = $registration->nsrp;
         $staffRecord = \App\Models\Staff::where('user_id', $staff->users_id)->first();
         $requirement->update([
             'status'          => 'rejected',
-            'reviewed_by'     => $staffRecord->id ?? null,
+            'reviewed_by'     => $staffRecord->staff_id ?? null,
             'remarks'         => $request->remarks,
             'rejected_fields' => $request->rejected_fields,
         ]);
@@ -930,7 +930,7 @@ $nsrp = $registration->nsrp;
             'title'          => 'Requirements Rejected ❌',
             'message'        => 'Please resubmit the following document(s): ' . $rejectedLabels . '. Reason: ' . $request->remarks,
             'reference_type' => 'employer_requirement',
-            'reference_id'   => $requirement->id,
+            'reference_id'   => $requirement->employer_requirements_id,
         ], $requirement->user_id);
 
         return redirect()->route('staff.requirements')
@@ -1184,7 +1184,7 @@ $nsrp = $registration->nsrp;
         $staffRecord = \App\Models\Staff::where('user_id', $staff->users_id)->first();
         $schedule->update([
             'status'           => 'accepted',
-            'reviewed_by'      => $staffRecord->id ?? null,
+            'reviewed_by'      => $staffRecord->staff_id ?? null,
             'confirmed_date'   => $request->confirmed_date,
             'confirmed_time'   => $request->confirmed_time,
             'rejection_reason' => null,
@@ -1195,7 +1195,7 @@ $nsrp = $registration->nsrp;
             'title'          => 'In-house Schedule Accepted ✅',
             'message'        => 'Your in-house interview request has been accepted. Confirmed date: ' . \Carbon\Carbon::parse($request->confirmed_date)->format('M d, Y') . ' at ' . \Carbon\Carbon::parse($request->confirmed_time)->format('h:i A') . ' (' . ($schedule->venue_type === 'custom' ? $schedule->venue_address : 'PESO Office') . ').',
             'reference_type' => 'inhouse_schedule',
-            'reference_id'   => $schedule->id,
+            'reference_id'   => $schedule->inhouse_schedules_id,
         ], $schedule->employer_id);
 
         // Notify ang tanan jobseekers nga naka-apply sa maong employer
@@ -1215,7 +1215,7 @@ $nsrp = $registration->nsrp;
             'title'          => 'In-house Interview Schedule 📅',
             'message'        => ($schedule->employer->company_name ?? 'The employer') . ' has scheduled an in-house interview on ' . \Carbon\Carbon::parse($request->confirmed_date)->format('M d, Y') . ' at ' . \Carbon\Carbon::parse($request->confirmed_time)->format('h:i A') . ' (' . $venueLabel . '). Check your Schedules for details.',
             'reference_type' => 'inhouse_schedule',
-            'reference_id'   => $schedule->id,
+            'reference_id'   => $schedule->inhouse_schedules_id,
         ], $userIds);
 
         return redirect()->route('staff.inhouse')
@@ -1233,7 +1233,7 @@ $nsrp = $registration->nsrp;
         $staffRecord = \App\Models\Staff::where('user_id', $staff->users_id)->first();
         $schedule->update([
             'status'           => 'rejected',
-            'reviewed_by'      => $staffRecord->id ?? null,
+            'reviewed_by'      => $staffRecord->staff_id ?? null,
             'rejection_reason' => $request->rejection_reason,
         ]);
 
@@ -1242,7 +1242,7 @@ $nsrp = $registration->nsrp;
             'title'          => 'In-house Schedule Rejected ❌',
             'message'        => 'Your in-house interview request was rejected. Reason: ' . $request->rejection_reason,
             'reference_type' => 'inhouse_schedule',
-            'reference_id'   => $schedule->id,
+            'reference_id'   => $schedule->inhouse_schedules_id,
         ], $schedule->employer_id);
 
         return redirect()->route('staff.inhouse')
@@ -1753,7 +1753,7 @@ $nsrp = $registration->nsrp;
         foreach ($workExperiences as $exp) {
             if (!empty($exp['company_name']) && !empty($exp['position'])) {
                 \App\Models\JobseekerWorkExperience::create([
-                    'jobseeker_nsrp_registration_id' => $nsrp->id,
+                    'jobseeker_nsrp_registration_id' => $nsrp->jobseeker_nsrp_registrations_id,
                     'company_name'      => $exp['company_name'],
                     'position'          => $exp['position'],
                     'industry'          => $exp['industry'] ?? null,
@@ -1780,7 +1780,7 @@ $nsrp = $registration->nsrp;
         foreach ($request->eligibilities ?? [] as $e) {
             if (!empty($e['name'])) {
                 \App\Models\JobseekerCertification::create([
-                    'jobseeker_nsrp_registration_id' => $nsrp->id,
+                    'jobseeker_nsrp_registration_id' => $nsrp->jobseeker_nsrp_registrations_id,
                     'category'    => 'eligibility',
                     'name'        => $e['name'],
                     'date_taken'  => $safeParseDate($e['date_taken'] ?? null),
@@ -1791,7 +1791,7 @@ $nsrp = $registration->nsrp;
         foreach ($request->licenses ?? [] as $l) {
             if (!empty($l['name'])) {
                 \App\Models\JobseekerCertification::create([
-                    'jobseeker_nsrp_registration_id' => $nsrp->id,
+                    'jobseeker_nsrp_registration_id' => $nsrp->jobseeker_nsrp_registrations_id,
                     'category'     => 'license',
                     'name'         => $l['name'],
                     'valid_until'  => $safeParseDate($l['valid_until'] ?? null),
@@ -2471,7 +2471,7 @@ $nsrp = $registration->nsrp;
         if (!$staffRecord) return response()->json(['error' => 'Unauthorized'], 401);
 
         \App\Models\Announcement::where('id', $id)
-            ->where('staff_id', $staffRecord->id)
+            ->where('staff_id', $staffRecord->staff_id)
             ->update(['is_read' => true]);
         return response()->json(['success' => true]);
     }
@@ -2481,7 +2481,7 @@ $nsrp = $registration->nsrp;
         $staffRecord = \App\Models\Staff::where('user_id', Auth::id())->first();
         if (!$staffRecord) return back();
 
-        \App\Models\Announcement::where('staff_id', $staffRecord->id)
+        \App\Models\Announcement::where('staff_id', $staffRecord->staff_id)
             ->where('is_read', false)
             ->update(['is_read' => true]);
         return back()->with('success', 'All notifications marked as read.');
@@ -2494,7 +2494,7 @@ $nsrp = $registration->nsrp;
 
         $staffRecord = \App\Models\Staff::where('user_id', $staff->users_id)->first();
         $notifications = $staffRecord
-            ? \App\Models\Announcement::where('staff_id', $staffRecord->id)->latest()->get()
+            ? \App\Models\Announcement::where('staff_id', $staffRecord->staff_id)->latest()->get()
             : collect();
 
         return view('staff.notifications.index', compact('notifications'));

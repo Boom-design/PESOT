@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class InhouseSchedule extends Model
 {
+    protected $primaryKey = 'inhouse_schedules_id';
+
     protected $fillable = [
         'employer_id',
         'reviewed_by',

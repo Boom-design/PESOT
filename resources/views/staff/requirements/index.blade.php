@@ -137,11 +137,11 @@
                                 style="background:linear-gradient(90deg,#90d870,#4dd9c0);
                                        color:#fff;border:none;border-radius:8px;font-size:12px;"
                                 data-bs-toggle="modal"
-                                data-bs-target="#employerModal{{ $req->id }}">
+                                data-bs-target="#employerModal{{ $req->employer_requirements_id }}">
                                 <i class="bi bi-eye-fill me-1"></i>View
                             </button>
                             @else
-                            <a href="{{ route('staff.requirements.view', $req->id) }}"
+                            <a href="{{ route('staff.requirements.view', $req->employer_requirements_id) }}"
                                class="btn btn-sm fw-semibold"
                                style="background:linear-gradient(90deg,#90d870,#4dd9c0);
                                       color:#fff;border:none;border-radius:8px;font-size:12px;">
@@ -153,7 +153,7 @@
 
                     {{-- MODAL per employer (LRA + SRA) --}}
                     @if(isset($staffRole) && in_array($staffRole, ['lra','sra']))
-                    <div class="modal fade" id="employerModal{{ $req->id }}" tabindex="-1">
+                    <div class="modal fade" id="employerModal{{ $req->employer_requirements_id }}" tabindex="-1">
                         <div class="modal-dialog modal-dialog-centered modal-lg">
                             <div class="modal-content" style="border-radius:16px;border:none;">
                                 <div class="modal-header" style="background:linear-gradient(90deg,#90d870,#4dd9c0);border-radius:16px 16px 0 0;">
@@ -235,7 +235,7 @@
                                 </div>
                                 <div class="modal-footer">
                                     @if(isset($staffRole) && $staffRole === 'sra' && $req->status === 'pending')
-                                    <form action="{{ route('staff.requirements.approve', $req->id) }}" method="POST" class="d-inline">
+                                    <form action="{{ route('staff.requirements.approve', $req->employer_requirements_id) }}" method="POST" class="d-inline">
                                         @csrf
                                         <button type="submit" class="btn btn-sm fw-semibold"
                                             style="background:#2d7a5f;color:#fff;border:none;border-radius:8px;">
@@ -244,7 +244,7 @@
                                     </form>
                                     <button class="btn btn-sm fw-semibold"
                                         style="background:#e05252;color:#fff;border:none;border-radius:8px;"
-                                        onclick="openSraRejectModal({{ $req->id }})">
+                                        onclick="openSraRejectModal({{ $req->employer_requirements_id }})">
                                         <i class="bi bi-x-lg me-1"></i>Reject
                                     </button>
                                     @endif

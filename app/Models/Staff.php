@@ -8,6 +8,8 @@ class Staff extends Model
 {
     protected $table = 'staff';
 
+    protected $primaryKey = 'staff_id';
+
     protected $fillable = [
         'user_id',
         'staff_role',

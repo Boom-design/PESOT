@@ -300,7 +300,7 @@
                                         </div>
 
                                         {{-- Approve --}}
-                                        <form action="{{ route('staff.requirements.approve', $req->id) }}"
+                                        <form action="{{ route('staff.requirements.approve', $req->employer_requirements_id) }}"
                                               method="POST" class="mb-3">
                                             @csrf
                                             <button type="submit" class="btn btn-sm w-100 fw-semibold"
@@ -312,7 +312,7 @@
                                         </form>
 
                                         {{-- Reject --}}
-                                        <form action="{{ route('staff.requirements.reject', $req->id) }}" method="POST" id="rejectForm{{ $req->id }}">
+                                        <form action="{{ route('staff.requirements.reject', $req->employer_requirements_id) }}" method="POST" id="rejectForm{{ $req->employer_requirements_id }}">
                                             @csrf
                                             @php
                                                 $rejectDocs = [
@@ -330,8 +330,8 @@
                                                 @foreach($rejectDocs as $field => $label)
                                                 <div class="form-check">
                                                     <input class="form-check-input" type="checkbox"
-                                                        name="rejected_fields[]" value="{{ $field }}" id="rej_{{ $field }}_{{ $req->id }}">
-                                                    <label class="form-check-label" for="rej_{{ $field }}_{{ $req->id }}" style="font-size:12px;color:#7c2d12;">
+                                                        name="rejected_fields[]" value="{{ $field }}" id="rej_{{ $field }}_{{ $req->employer_requirements_id }}">
+                                                    <label class="form-check-label" for="rej_{{ $field }}_{{ $req->employer_requirements_id }}" style="font-size:12px;color:#7c2d12;">
                                                         {{ $label }}
                                                     </label>
                                                 </div>

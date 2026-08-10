@@ -311,7 +311,7 @@ class UnifiedAuthController extends Controller
 
     // ── Notify LRA (local) o SRA (overseas) staff — Admin automatic na makakita (walay filter ang admin's notification query) ──
     $staffRoleToNotify = $isOverseas ? 'sra' : 'lra';
-    $staffIds = \App\Models\Staff::where('staff_role', $staffRoleToNotify)->pluck('id');
+    $staffIds = \App\Models\Staff::where('staff_role', $staffRoleToNotify)->pluck('staff_id');
 
     if ($staffIds->isNotEmpty()) {
         \App\Models\Announcement::sendToStaff([
@@ -325,7 +325,7 @@ class UnifiedAuthController extends Controller
 
     // ── Dugang notify pud sa Job Vacancy staff (local employers ra, kay sila ang mag-approve sa Office Based job postings) ──
     if (!$isOverseas) {
-        $jobVacancyStaffIds = \App\Models\Staff::where('staff_role', 'job_vacancy')->pluck('id');
+        $jobVacancyStaffIds = \App\Models\Staff::where('staff_role', 'job_vacancy')->pluck('staff_id');
 
         if ($jobVacancyStaffIds->isNotEmpty()) {
             \App\Models\Announcement::sendToStaff([
