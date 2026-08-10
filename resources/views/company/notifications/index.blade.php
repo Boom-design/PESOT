@@ -31,7 +31,7 @@
         <a href="{{ $companyNotifTargetUrl($notif) ?? '#' }}"
            class="d-block text-decoration-none"
            style="padding:14px 20px;border-bottom:1px solid #f0f9f6;{{ !$notif->is_read ? 'background:#f0f9f6;' : '' }}"
-           onclick="markRead({{ $notif->id }}, {{ $companyNotifTargetUrl($notif) ? 'true' : 'false' }})">
+           onclick="markRead({{ $notif->announcements_id }}, {{ $companyNotifTargetUrl($notif) ? 'true' : 'false' }})">
             <div style="font-size:13px;font-weight:{{ !$notif->is_read ? '700' : '600' }};color:#2d7a5f;">
                 <i class="bi bi-bell-fill me-1" style="color:#4dd9c0;"></i>
                 {{ $notif->title }}

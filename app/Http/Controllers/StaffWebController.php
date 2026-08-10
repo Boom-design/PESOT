@@ -2470,7 +2470,7 @@ $nsrp = $registration->nsrp;
         $staffRecord = \App\Models\Staff::where('user_id', Auth::id())->first();
         if (!$staffRecord) return response()->json(['error' => 'Unauthorized'], 401);
 
-        \App\Models\Announcement::where('id', $id)
+        \App\Models\Announcement::where('announcements_id', $id)
             ->where('staff_id', $staffRecord->staff_id)
             ->update(['is_read' => true]);
         return response()->json(['success' => true]);

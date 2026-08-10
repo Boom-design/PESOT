@@ -723,7 +723,7 @@ foreach ($workExperiences as $exp) {
         $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
         if (!$registration) return response()->json(['error' => 'Not found'], 404);
 
-        \App\Models\Announcement::where('id', $id)
+        \App\Models\Announcement::where('announcements_id', $id)
             ->where('jobseeker_id', $registration->jobseeker_registrations_id)
             ->update(['is_read' => true]);
 

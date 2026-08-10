@@ -775,7 +775,7 @@
                         <li>
                             <a class="dropdown-item py-2 {{ !$notif->is_read ? 'bg-light' : '' }}"
                                href="{{ $companyNotifTargetUrl($notif) ?? '#' }}"
-                               onclick="markRead({{ $notif->id }}, {{ $companyNotifTargetUrl($notif) ? 'true' : 'false' }})">
+                               onclick="markRead({{ $notif->announcements_id }}, {{ $companyNotifTargetUrl($notif) ? 'true' : 'false' }})">
                                 <div style="font-size:12px; font-weight:{{ !$notif->is_read ? '700' : '500' }}; color:#2d7a5f;">
                                     {{ $notif->title }}
                                 </div>

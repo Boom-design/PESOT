@@ -460,7 +460,7 @@
                             ($notif->reference_type === 'job_fair' ? route('staff.jobfair.events') : route('staff.notifications.index'))))))
                            }}"
                            class="notif-item {{ !$notif->is_read ? 'unread' : '' }} text-decoration-none d-block"
-                           onclick="staffMarkRead({{ $notif->id }})">
+                           onclick="staffMarkRead({{ $notif->announcements_id }})">
                                 <div class="notif-title">
                                     <i class="bi bi-bell-fill me-1" style="color:#4dd9c0;"></i>
                                     {{ $notif->title }}

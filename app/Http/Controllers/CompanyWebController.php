@@ -784,7 +784,7 @@ class CompanyWebController extends Controller
         $company = $this->authCompany();
         if (!$company) return response()->json(['error' => 'Unauthorized'], 401);
 
-        \App\Models\Announcement::where('id', $id)
+        \App\Models\Announcement::where('announcements_id', $id)
             ->where('employer_id', $company->employerNsrp->employer_nsrp_registrations_id)
             ->update(['is_read' => true]);
 

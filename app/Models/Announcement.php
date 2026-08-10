@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Announcement extends Model
 {
+    protected $primaryKey = 'announcements_id';
+
     protected $fillable = [
         'jobseeker_id', 'employer_id', 'staff_id',
         'type', 'title', 'message', 'is_read',

@@ -339,7 +339,7 @@
                         <li>
                             <a href="{{ $notif->reference_type === 'registration' ? route('admin.registration.view', $notif->reference_id) : route('admin.dashboard') }}"
                                class="notif-item {{ !$notif->is_read ? 'unread' : '' }} text-decoration-none d-block"
-                               onclick="markRead({{ $notif->id }})">
+                               onclick="markRead({{ $notif->announcements_id }})">
                                 <div class="notif-title">
                                     <i class="bi bi-person-fill-check me-1" style="color:#4dd9c0;"></i>
                                     {{ $notif->title }}
