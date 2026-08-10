@@ -56,7 +56,8 @@ class JobseekerWebController extends Controller
             ->where('status', 'accepted')
             ->get();
 
-        // ── Check for matching jobs based on preferred occupations ──
+        // ── HIGHLY QUALIFIED MATCH — preferred occupation MATCHED + overall match score ≥75% ──
+        $highlyQualifiedMatch = null;
         $preferredOccupations = $nsrp->preferred_occupations ?? [];
         if (!empty($preferredOccupations) && $regId) {
             $openJobs = Job::with('company')->where('status', 'open')
@@ -64,44 +65,46 @@ class JobseekerWebController extends Controller
                     $q->whereNull('deadline')->orWhereDate('deadline', '>=', now()->toDateString());
                 })->get();
 
-            // Get job IDs the jobseeker already applied to
             $appliedJobIds = Application::where('jobseeker_id', $regId)->pluck('job_id')->toArray();
+            $shownJobIds   = session('highly_qualified_shown', []);
 
-            $matchedJobs = collect();
+            $appController = new ApplicationController();
+            $bestMatch = null;
+            $bestPercentage = 0;
+
             foreach ($openJobs as $job) {
-                if (in_array($job->id, $appliedJobIds)) continue;
+                if (in_array($job->id, $appliedJobIds) || in_array($job->id, $shownJobIds)) continue;
+
+                // Preferred occupation check una — dili gyud i-consider kung wala match sa preferred occupation
+                $occMatched = false;
                 foreach ($preferredOccupations as $occ) {
-                    if (strtolower(trim($occ)) === strtolower($job->title)) {
-                        $matchedJobs->push($job);
+                    if (strtolower(trim($occ)) === strtolower(trim($job->title))) {
+                        $occMatched = true;
                         break;
                     }
                 }
+                if (!$occMatched) continue;
+
+                $breakdown = $appController->computeMatchBreakdownPublic($jobseeker->id, $job);
+                if ($breakdown['percentage'] >= 75 && $breakdown['percentage'] > $bestPercentage) {
+                    $bestPercentage = $breakdown['percentage'];
+                    $bestMatch = $job;
+                }
             }
 
-            if ($matchedJobs->isNotEmpty()) {
-                // Track which job IDs have been shown already this session
-                $shownJobIds = session('matching_jobs_shown', []);
-                $newMatches = $matchedJobs->filter(fn($j) => !in_array($j->id, $shownJobIds));
-
-                if ($newMatches->isNotEmpty()) {
-                    $titles = $newMatches->pluck('title')->unique()->values();
-                    $count = $titles->count();
-                    $list = implode(', ', $titles->slice(0, 3)->toArray());
-                    $extra = $count > 3 ? ' and ' . ($count - 3) . ' more' : '';
-                    session()->flash('info', 'We found ' . $count . ' job ' . ($count === 1 ? 'vacancy' : 'vacancies') . ' matching your preferred ' . ($count === 1 ? 'position' : 'positions') . ' (' . $list . $extra . '). Apply now!');
-
-                    // Mark these job IDs as shown so they don't repeat until logout
-                    $newIds = $newMatches->pluck('id')->toArray();
-                    $allShown = array_unique(array_merge($shownJobIds, $newIds));
-                    session(['matching_jobs_shown' => $allShown]);
-                }
+            if ($bestMatch) {
+                $highlyQualifiedMatch = [
+                    'job'        => $bestMatch,
+                    'percentage' => $bestPercentage,
+                ];
+                session(['highly_qualified_shown' => array_unique(array_merge($shownJobIds, [$bestMatch->id]))]);
             }
         }
 
         return view('jobseeker.dashboard', compact(
             'jobseeker', 'registration', 'nsrp',
             'totalApplications', 'pendingApplications', 'hiredApplications',
-            'todayJobFairs', 'todayInhouse'
+            'todayJobFairs', 'todayInhouse', 'highlyQualifiedMatch'
         ));
     }
 

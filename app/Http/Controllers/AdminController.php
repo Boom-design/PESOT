@@ -259,6 +259,26 @@ class AdminController extends Controller
         $q->where('type', 'both');
     })->count();
 
+    // ── MONTHLY/YEARLY BREAKDOWN — Local/Overseas/Both counts para sa gipili nga period ──
+    $periodFilter = request('period_filter', 'monthly');
+    $periodMonth  = request('period_month');
+    $periodYear   = request('period_year');
+
+    $periodQuery = JobseekerRegistration::query();
+
+    if ($periodFilter === 'yearly') {
+        $selectedYear = $periodYear ?: now()->year;
+        $periodQuery->whereYear('created_at', $selectedYear);
+    } else {
+        $selectedMonth = $periodMonth ?: now()->format('Y-m');
+        [$py, $pm] = array_pad(explode('-', $selectedMonth), 2, now()->month);
+        $periodQuery->whereYear('created_at', $py)->whereMonth('created_at', $pm);
+    }
+
+    $periodLocal    = (clone $periodQuery)->whereHas('nsrp', fn($q) => $q->where('type', 'local'))->count();
+    $periodOverseas = (clone $periodQuery)->whereHas('nsrp', fn($q) => $q->where('type', 'overseas'))->count();
+    $periodBoth     = (clone $periodQuery)->whereHas('nsrp', fn($q) => $q->where('type', 'both'))->count();
+
 if ($type === 'local') {
     $baseQuery->whereHas('nsrp', function($q) {
         $q->where('type', 'local');
@@ -275,7 +295,8 @@ if ($type === 'local') {
     $registrations = $baseQuery->latest()->paginate(10);
 
     return view('admin.registrations.index', compact(
-        'registrations', 'totalLocal', 'totalOverseas', 'totalBoth'
+        'registrations', 'totalLocal', 'totalOverseas', 'totalBoth',
+        'periodFilter', 'periodMonth', 'periodYear', 'periodLocal', 'periodOverseas', 'periodBoth'
     ));
 }
 
@@ -546,6 +567,7 @@ if ($type === 'local') {
         $tab         = request('tab', 'registered');
         $jobseekerType = $staffRole === 'lra' ? ['local', 'both'] : ['overseas', 'both'];
         $isOverseas    = $staffRole === 'sra';
+        $registeredView = request('registered_view', 'all');
         $topEmployersFilter = request('top_employers_filter', 'monthly');
         $topEmployersMonth = request('top_employers_month');
         $topEmployersYear = request('top_employers_year');
@@ -611,13 +633,24 @@ if ($type === 'local') {
             'overall' => \App\Models\Job::where('posting_type', 'direct')->count(),
         ];
 
-        $registeredQuery = \App\Models\InhouseParticipant::with(['jobseeker', 'schedule.employer'])
-            ->whereHas('schedule.employer', fn($q) =>
-                $q->where('is_overseas', $isOverseas)
-            )
+        $registeredAllQuery = \App\Models\JobseekerRegistration::with(['user', 'nsrp'])
+            ->whereHas('nsrp', fn($q) => $q->whereIn('type', $jobseekerType))
+            ->when($search, fn($q) => $q->where(function ($sub) use ($search) {
+                $sub->where('first_name', 'like', "%{$search}%")
+                    ->orWhere('surname', 'like', "%{$search}%")
+                    ->orWhereHas('user', fn($u) => $u->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%"));
+            }));
+
+        $totalRegisteredAll = (clone $registeredAllQuery)->count();
+
+        $registeredQuery = \App\Models\Application::with(['jobseeker', 'job.company'])
+            ->where('inhouse_participation', 'accepted')
+            ->whereHas('job', fn($q) => $q->where('schedule_type', 'inhouse'))
+            ->whereHas('job.company', fn($q) => $q->where('is_overseas', $isOverseas))
             ->when($search, fn($q) => $q->whereHas('jobseeker', fn($u) =>
-                $u->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
+                $u->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('surname', 'like', "%{$search}%")
             ));
 
         $totalRegistered = (clone $registeredQuery)->count();
@@ -642,14 +675,15 @@ if ($type === 'local') {
 
         $totalReferred = (clone $referredQuery)->count();
 
-        $registeredParticipants = $tab === 'registered' ? $registeredQuery->latest()->paginate(10) : null;
+        $registeredParticipants = ($tab === 'registered' && $registeredView === 'inhouse') ? $registeredQuery->latest()->paginate(10) : null;
+        $registeredAll          = ($tab === 'registered' && $registeredView === 'all') ? $registeredAllQuery->latest()->paginate(10) : null;
         $placedApplications     = $tab === 'placed'     ? $placedQuery->latest()->paginate(10)     : null;
         $referredApplications   = $tab === 'referred'   ? $referredQuery->latest()->paginate(10)   : null;
 
         return view('staff.reports.index', compact(
-            'staffRole', 'tab',
-            'registeredParticipants', 'placedApplications', 'referredApplications',
-            'totalRegistered', 'totalPlaced', 'totalReferred', 'solicitationStats',
+            'staffRole', 'tab', 'registeredView',
+            'registeredParticipants', 'registeredAll', 'placedApplications', 'referredApplications',
+            'totalRegistered', 'totalRegisteredAll', 'totalPlaced', 'totalReferred', 'solicitationStats',
             'topEmployersByInhouseInterviews', 'topEmployersFilter', 'topEmployersMonth', 'topEmployersYear'
         ) + ['layout' => 'admin.layouts.app', 'reportRouteName' => 'admin.reports.staff']);
     }

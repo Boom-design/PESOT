@@ -6,6 +6,17 @@
     <title>PESO — Company Portal</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+    <style>
+        .flatpickr-day.fp-date-booked {
+            background: #fff5f5 !important;
+            color: #e05252 !important;
+            text-decoration: line-through;
+            cursor: not-allowed !important;
+            position: relative;
+        }
+        .flatpickr-day.fp-date-booked:hover { background: #fff5f5 !important; }
+    </style>
     <style>
         :root {
             --peso-green:  #4dd9c0;
@@ -730,10 +741,14 @@
                 <ul class="dropdown-menu dropdown-menu-end" style="min-width:300px; max-height:400px; overflow-y:auto;">
                     @php
                         $notifications = $employerNsrp
-                            ? \App\Models\Announcement::where('employer_id', $employerNsrp->id)->orderBy('created_at', 'desc')->take(10)->get()
+                            ? \App\Models\Announcement::where('employer_id', $employerNsrp->id)->orderBy('created_at', 'desc')->take(5)->get()
                             : collect();
 
                         $companyNotifTargetUrl = function ($notif) {
+                            // ── "New Job Applicant" kay dapat mo-adto sa Qualified Applicants page sa maong job, dili sa Job Vacancy Request listing ──
+                            if ($notif->type === 'new_applicant' && $notif->reference_id) {
+                                return route('company.jobs.qualified', $notif->reference_id);
+                            }
                             return match($notif->reference_type) {
                                 'job'                     => route('company.jobs'),
                                 'employer_requirement'    => route('company.requirements'),
@@ -774,6 +789,13 @@
                             <p style="font-size:12px; color:#aaa; margin-top:8px;">No notifications yet</p>
                         </li>
                     @endforelse
+                    <li>
+                        <a href="{{ route('company.notifications.index') }}"
+                           class="text-decoration-none d-block text-center py-2"
+                           style="font-size:12px;font-weight:700;color:#2d7a5f;border-top:1px solid #f0f9f6;">
+                            View More <i class="bi bi-arrow-right ms-1"></i>
+                        </a>
+                    </li>
                 </ul>
             </div>
 
@@ -814,6 +836,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script>
         function openComplyModal(event) {
             event.preventDefault();

@@ -14,26 +14,53 @@
     <a href="{{ route('staff.inhouse') }}"
        class="btn btn-sm fw-semibold"
        style="border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;border-radius:8px;font-size:12px;padding:5px 16px;white-space:nowrap;flex-shrink:0;">
-        <i class="bi bi-calendar-check-fill me-1"></i> In-house
+        <i class="bi bi-calendar-check-fill me-1"></i> In-house Schedule
     </a>
     @endif
+    @if($staffRole === 'sra')
+    <a href="{{ route('staff.jobs', ['type' => 'inhouse']) }}"
+       class="btn btn-sm fw-semibold"
+       style="{{ request('type','inhouse') === 'inhouse'
+           ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;'
+           : 'border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;' }}
+           border-radius:8px;font-size:12px;padding:5px 16px;white-space:nowrap;flex-shrink:0;">
+        <i class="bi bi-briefcase-fill me-1"></i> In-house Job Vacancy
+    </a>
+    <a href="{{ route('staff.jobs', ['type' => 'office_based']) }}"
+       class="btn btn-sm fw-semibold"
+       style="{{ request('type') === 'office_based'
+           ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;'
+           : 'border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;' }}
+           border-radius:8px;font-size:12px;padding:5px 16px;white-space:nowrap;flex-shrink:0;">
+        <i class="bi bi-briefcase-fill me-1"></i> Office Based
+    </a>
+    @else
     <a href="{{ route('staff.jobs') }}"
        class="btn btn-sm fw-semibold"
        style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;border-radius:8px;font-size:12px;padding:5px 16px;white-space:nowrap;flex-shrink:0;">
-        <i class="bi bi-briefcase-fill me-1"></i> {{ $staffRole === 'job_vacancy' ? 'Office Based' : 'Job Vacancies' }}
+        <i class="bi bi-briefcase-fill me-1"></i> {{ $staffRole === 'job_vacancy' ? 'Office Based' : 'In-house Job Vacancy' }}
     </a>
+    @endif
+    @if($staffRole !== 'lra')
     <a href="{{ route('staff.inhouse.jobfair') }}"
        class="btn btn-sm fw-semibold"
        style="border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;border-radius:8px;font-size:12px;padding:5px 16px;white-space:nowrap;flex-shrink:0;">
         <i class="bi bi-calendar-event-fill me-1"></i> Job Fair
     </a>
+    @endif
 </div>
 
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <div>
         <h5 class="fw-bold mb-1" style="color:#2d7a5f;">
             <i class="bi bi-briefcase-fill me-2" style="color:#4dd9c0;"></i>
-            {{ $staffRole === 'job_vacancy' ? 'List of Office Based Job Vacancies' : 'List of Job Vacancies' }}
+            @if($staffRole === 'job_vacancy')
+                List of Office Based Job Vacancies
+            @elseif($staffRole === 'sra')
+                List of {{ request('type') === 'inhouse' ? 'In-house' : 'Office Based' }} Job Vacancies
+            @else
+                List of Job Vacancies
+            @endif
         </h5>
         <p class="mb-0" style="font-size:13px;color:#888;">Manage posted job vacancies</p>
     </div>

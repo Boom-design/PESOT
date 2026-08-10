@@ -12,6 +12,7 @@ class JobFairEvent extends Model
         'event_date',
         'event_time',
         'venue',
+        'employer_capacity',
         'status',
     ];
 

@@ -51,7 +51,7 @@
 
 {{-- TABS --}}
 <div class="d-flex gap-2 mb-3" style="overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;padding-bottom:4px;">
-    <a href="{{ route($reportRouteName ?? 'staff.reports.staffJobVacancy', array_merge(request()->query(), ['tab' => 'vacancies'])) }}"
+    <a href="{{ route($reportRouteName ?? 'staff.reports.employers', array_merge(request()->query(), ['tab' => 'vacancies'])) }}"
        class="btn btn-sm fw-semibold"
        style="{{ ($tab ?? 'vacancies') === 'vacancies'
            ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;'
@@ -59,7 +59,7 @@
            border-radius:8px;font-size:11px;padding:5px 12px;white-space:nowrap;flex-shrink:0;">
         <i class="bi bi-briefcase-fill me-1"></i>Job Vacancies
     </a>
-    <a href="{{ route($reportRouteName ?? 'staff.reports.staffJobVacancy', array_merge(request()->query(), ['tab' => 'top_employers'])) }}"
+    <a href="{{ route($reportRouteName ?? 'staff.reports.employers', array_merge(request()->query(), ['tab' => 'top_employers'])) }}"
        class="btn btn-sm fw-semibold"
        style="{{ ($tab ?? 'vacancies') === 'top_employers'
            ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;'
@@ -173,7 +173,9 @@
             </table>
         </div>
     </div>
+@endif
 
+@elseif(($tab ?? 'vacancies') === 'top_employers')
 
 {{-- TOP EMPLOYERS TAB --}}
 <div class="card border-0 shadow-sm rounded-3 p-3 mb-3">
@@ -182,10 +184,10 @@
     </div>
     <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
         <div class="btn-group btn-group-sm" role="group" aria-label="Top employers filter">
-            <a href="{{ route($reportRouteName ?? 'staff.reports.staffJobVacancy', array_merge(request()->query(), ['tab' => 'top_employers', 'top_employers_filter' => 'monthly', 'page' => 1])) }}"
+            <a href="{{ route($reportRouteName ?? 'staff.reports.employers', array_merge(request()->query(), ['tab' => 'top_employers', 'top_employers_filter' => 'monthly', 'page' => 1])) }}"
                class="btn {{ ($topEmployersFilter ?? 'monthly') === 'monthly' ? 'btn-success' : 'btn-outline-success' }}"
                style="font-size:12px;">Monthly</a>
-            <a href="{{ route($reportRouteName ?? 'staff.reports.staffJobVacancy', array_merge(request()->query(), ['tab' => 'top_employers', 'top_employers_filter' => 'yearly', 'page' => 1])) }}"
+            <a href="{{ route($reportRouteName ?? 'staff.reports.employers', array_merge(request()->query(), ['tab' => 'top_employers', 'top_employers_filter' => 'yearly', 'page' => 1])) }}"
                class="btn {{ ($topEmployersFilter ?? 'monthly') === 'yearly' ? 'btn-success' : 'btn-outline-success' }}"
                style="font-size:12px;">Yearly</a>
         </div>
@@ -200,6 +202,9 @@
         @endif
     </div>
     @php($topEmployers = $topEmployersByOfficeBasedInterviews ?? collect())
+    @if(($topEmployersMonth ?? '') === '' && ($topEmployersYear ?? '') === '')
+        @php($topEmployersMonth = now()->format('Y-m'))
+    @endif
     @if($topEmployers->isEmpty())
         <div class="text-muted small">No office-based interview data found for this period.</div>
     @else
@@ -249,7 +254,5 @@
     }
 </script>
 @endpush
-
-@endif
 
 @endsection

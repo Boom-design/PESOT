@@ -193,4 +193,26 @@
     </div>
 </div>
 
+@if($highlyQualifiedMatch)
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    Swal.fire({
+        title: 'You\'re Highly Qualified! 🎉',
+        html: 'You matched <strong>{{ $highlyQualifiedMatch["percentage"] }}%</strong> with <strong>{{ $highlyQualifiedMatch["job"]->title }}</strong> at {{ $highlyQualifiedMatch["job"]->company->company_name ?? "an employer" }} — matching your preferred occupation and other requirements!',
+        icon: 'success',
+        confirmButtonText: 'View & Apply',
+        confirmButtonColor: '#4dd9c0',
+        showCancelButton: true,
+        cancelButtonText: 'Maybe Later',
+        cancelButtonColor: '#888',
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = "{{ route('jobseeker.jobs.show', $highlyQualifiedMatch['job']->id) }}";
+        }
+    });
+});
+</script>
+@endif
+
 @endsection

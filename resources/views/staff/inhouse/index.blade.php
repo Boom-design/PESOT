@@ -3,22 +3,38 @@
 @section('content')
 
 {{-- TABS --}}
+@php $staffRoleForTabs = optional(Auth::user()->staff)->staff_role ?? 'staff'; @endphp
 <div class="d-flex gap-2 mb-4 flex-wrap">
     <a href="{{ route('staff.inhouse') }}"
        class="btn btn-sm fw-semibold"
        style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;border-radius:8px;font-size:12px;padding:5px 16px;">
-        <i class="bi bi-calendar-check-fill me-1"></i> In-house
+        <i class="bi bi-calendar-check-fill me-1"></i> In-house Schedule
     </a>
+    @if($staffRoleForTabs === 'sra')
+    <a href="{{ route('staff.jobs', ['type' => 'inhouse']) }}"
+       class="btn btn-sm fw-semibold"
+       style="border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;border-radius:8px;font-size:12px;padding:5px 16px;">
+        <i class="bi bi-briefcase-fill me-1"></i> In-house Job Vacancy
+    </a>
+    <a href="{{ route('staff.jobs', ['type' => 'office_based']) }}"
+       class="btn btn-sm fw-semibold"
+       style="border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;border-radius:8px;font-size:12px;padding:5px 16px;">
+        <i class="bi bi-briefcase-fill me-1"></i> Office Based
+    </a>
+    @else
     <a href="{{ route('staff.jobs') }}"
        class="btn btn-sm fw-semibold"
        style="border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;border-radius:8px;font-size:12px;padding:5px 16px;">
-        <i class="bi bi-briefcase-fill me-1"></i> Job Vacancies
+        <i class="bi bi-briefcase-fill me-1"></i> In-house Job Vacancy
     </a>
+    @endif
+    @if($staffRoleForTabs !== 'lra')
     <a href="{{ route('staff.inhouse.jobfair') }}"
        class="btn btn-sm fw-semibold"
        style="border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;border-radius:8px;font-size:12px;padding:5px 16px;">
         <i class="bi bi-calendar-event-fill me-1"></i> Job Fair
     </a>
+    @endif
 </div>
 
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
@@ -51,7 +67,7 @@
 
 <div class="mb-3 p-2 px-3 rounded-3" style="background:#f0f9f6;font-size:12px;color:#2d7a5f;">
     <i class="bi bi-info-circle-fill me-1"></i>
-    Once approved, a job posting moves to the <strong>Job Vacancies</strong> tab.
+    Once approved, a job posting moves to the <strong>In-house Job Vacancy</strong> tab.
 </div>
 
 {{-- SEARCH --}}

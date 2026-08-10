@@ -41,7 +41,17 @@
                     </div>
                 </div>
                 <div>
+                    @php
+                        $eventCapacity = $invitation->jobFair->employer_capacity ?? null;
+                        $eventConfirmedCount = $confirmedCountsPerEvent[$invitation->job_fair_id] ?? 0;
+                        $isEventFull = $eventCapacity && $eventConfirmedCount >= $eventCapacity;
+                    @endphp
                     @if($invitation->confirmation_status === 'pending')
+                        @if($isEventFull)
+                            <span class="badge fw-semibold" style="background:#fff5f5;color:#e05252;font-size:11px;padding:6px 12px;border-radius:20px;">
+                                <i class="bi bi-exclamation-circle-fill me-1"></i>Job Fair Full ({{ $eventConfirmedCount }}/{{ $eventCapacity }})
+                            </span>
+                        @else
                         <form action="{{ route('company.jobfair.respond', $invitation->id) }}"
                               method="POST" class="d-inline" id="confirmForm{{ $invitation->id }}">
                             @csrf
@@ -59,6 +69,7 @@
                                 <i class="bi bi-x-lg me-1"></i>Decline
                             </button>
                         </form>
+                        @endif
                     @elseif($invitation->confirmation_status === 'confirmed')
                         <span class="badge fw-semibold" style="background:#e8f8f3;color:#2d7a5f;font-size:11px;padding:6px 12px;border-radius:20px;">
                             <i class="bi bi-check-circle-fill me-1"></i>Confirmed

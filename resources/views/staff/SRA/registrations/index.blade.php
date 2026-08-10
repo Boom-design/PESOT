@@ -49,17 +49,17 @@
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead>
-                    <tr style="background:linear-gradient(90deg,#90d870,#4dd9c0);">
-                        <th style="color:#fff;font-size:12px;padding:12px 16px;">#</th>
-                        <th style="color:#fff;font-size:12px;padding:12px 16px;">Name</th>
-                        <th style="color:#fff;font-size:12px;padding:12px 16px;">Email</th>
-                        <th style="color:#fff;font-size:12px;padding:12px 16px;">Phone Number</th>
-                        <th style="color:#fff;font-size:12px;padding:12px 16px;">
+                    <tr>
+                        <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;font-weight:700;border:none;padding:12px 16px;">#</th>
+                        <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;font-weight:700;border:none;padding:12px 16px;">Name</th>
+                        <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;font-weight:700;border:none;padding:12px 16px;">Email</th>
+                        <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;font-weight:700;border:none;padding:12px 16px;">Phone Number</th>
+                        <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;font-weight:700;border:none;padding:12px 16px;">
                             Date Registered<br>
                             <span style="font-size:10px;font-weight:400;opacity:0.85;">(Account)</span>
                         </th>
-                        <th style="color:#fff;font-size:12px;padding:12px 16px;">Status</th>
-                        <th style="color:#fff;font-size:12px;padding:12px 16px;">View Form</th>
+                        <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;font-weight:700;border:none;padding:12px 16px;">Status</th>
+                        <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;font-weight:700;border:none;padding:12px 16px;">View Form</th>
                     </tr>
                 </thead>
                 <tbody>

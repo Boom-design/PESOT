@@ -90,6 +90,7 @@
         Route::post('/company/applications/{id}/status',     [CompanyWebController::class, 'updateApplicationStatus'])->name('company.applications.status');
         Route::post('/company/notifications/{id}/read',      [CompanyWebController::class, 'markNotificationRead'])->name('company.notifications.markRead');
         Route::post('/company/notifications/mark-all-read',  [CompanyWebController::class, 'markAllNotificationsRead'])->name('company.notifications.markAllRead');
+        Route::get('/company/notifications',                  [CompanyWebController::class, 'notifications'])->name('company.notifications.index');
 
         // ── COMPANY REQUIREMENTS ──
         Route::get('/company/requirements',                  [EmployerRequirementController::class, 'index'])->name('company.requirements');
@@ -105,6 +106,7 @@
         // ── COMPANY IN-HOUSE ──
         Route::get('/company/inhouse',                       [CompanyWebController::class, 'inhouseSchedules'])->name('company.inhouse');
         Route::get('/company/inhouse/check-date',             [CompanyWebController::class, 'checkInhouseDateAvailability'])->name('company.inhouse.checkDate');
+        Route::get('/company/inhouse/booked-dates',            [CompanyWebController::class, 'getBookedDates'])->name('company.inhouse.bookedDates');
         Route::get('/company/inhouse/create',                [CompanyWebController::class, 'createInhouse'])->name('company.inhouse.create');
         Route::post('/company/inhouse',                      [CompanyWebController::class, 'storeInhouse'])->name('company.inhouse.store');
 
@@ -113,6 +115,7 @@
 
         // ── COMPANY REPORTS ──
         Route::get('/company/reports',                       [CompanyWebController::class, 'reports'])->name('company.reports');
+        Route::get('/company/reports/{jobId}',                [CompanyWebController::class, 'reportsByJob'])->name('company.reports.show');
     });
 
     // ───────────────────────────────
@@ -158,6 +161,7 @@
         // ── STAFF IN-HOUSE ──
         Route::get('/staff/inhouse/jobfair',                  [StaffWebController::class, 'jobFairViewOnly'])->name('staff.inhouse.jobfair');
         Route::get('/staff/inhouse',                          [StaffWebController::class, 'inhouseSchedules'])->name('staff.inhouse');
+        Route::get('/staff/inhouse/calendar-data',             [StaffWebController::class, 'inhouseCalendarData'])->name('staff.inhouse.calendarData');
         Route::get('/staff/inhouse/{id}',                     [StaffWebController::class, 'viewInhouseSchedule'])->name('staff.inhouse.view');
         Route::post('/staff/inhouse/{id}/accept',             [StaffWebController::class, 'acceptInhouse'])->name('staff.inhouse.accept');
         Route::post('/staff/inhouse/{id}/reject',             [StaffWebController::class, 'rejectInhouse'])->name('staff.inhouse.reject');
@@ -177,6 +181,7 @@
 
         // ── STAFF JOBSEEKERS ──
         Route::get('/staff/jobseekers',                       [StaffWebController::class, 'jobseekers'])->name('staff.jobseekers');
+        Route::post('/staff/registrations/{id}/apply',        [ApplicationController::class, 'applyByStaff'])->name('staff.registrations.apply');
 
         // ── STAFF WALK-IN NSRP (LRA/SRA) ──
         Route::get('/staff/nsrp',                              [StaffWebController::class, 'walkinNsrp'])->name('staff.nsrp');

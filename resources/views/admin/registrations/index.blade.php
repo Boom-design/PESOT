@@ -24,6 +24,53 @@
     </div>
 </div>
 
+{{-- MONTHLY/YEARLY BREAKDOWN --}}
+<div class="card border-0 shadow-sm rounded-3 p-3 mb-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <h6 class="fw-bold mb-0" style="color:#2d7a5f;font-size:13px;">
+            <i class="bi bi-graph-up me-2" style="color:#4dd9c0;"></i>
+            Registration Totals — {{ $periodFilter === 'yearly' ? ($periodYear ?: now()->year) : \Carbon\Carbon::parse(($periodMonth ?: now()->format('Y-m')) . '-01')->format('F Y') }}
+        </h6>
+        <form method="GET" class="d-flex align-items-center gap-2 flex-wrap">
+            <input type="hidden" name="search" value="{{ request('search') }}">
+            <input type="hidden" name="type" value="{{ request('type','local') }}">
+            <select name="period_filter" onchange="this.form.submit()" class="form-select form-select-sm" style="font-size:12px;border-color:#a8e6cf;width:auto;">
+                <option value="monthly" {{ $periodFilter === 'monthly' ? 'selected' : '' }}>Monthly</option>
+                <option value="yearly" {{ $periodFilter === 'yearly' ? 'selected' : '' }}>Yearly</option>
+            </select>
+            @if($periodFilter === 'yearly')
+                <select name="period_year" onchange="this.form.submit()" class="form-select form-select-sm" style="font-size:12px;border-color:#a8e6cf;width:auto;">
+                    @for($y = now()->year; $y >= now()->year - 5; $y--)
+                        <option value="{{ $y }}" {{ ($periodYear ?: now()->year) == $y ? 'selected' : '' }}>{{ $y }}</option>
+                    @endfor
+                </select>
+            @else
+                <input type="month" name="period_month" value="{{ $periodMonth ?: now()->format('Y-m') }}" onchange="this.form.submit()" class="form-control form-control-sm" style="font-size:12px;border-color:#a8e6cf;width:auto;">
+            @endif
+        </form>
+    </div>
+    <div class="row g-2">
+        <div class="col-4">
+            <div class="p-2 rounded-3 text-center" style="background:#f0f9f6;border:1px solid #a8e6cf;">
+                <div style="font-size:20px;font-weight:700;color:#2d7a5f;">{{ $periodLocal }}</div>
+                <div style="font-size:11px;color:#888;">Local (LRA)</div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="p-2 rounded-3 text-center" style="background:#f0f9f6;border:1px solid #a8e6cf;">
+                <div style="font-size:20px;font-weight:700;color:#2d7a5f;">{{ $periodOverseas }}</div>
+                <div style="font-size:11px;color:#888;">Overseas (SRA)</div>
+            </div>
+        </div>
+        <div class="col-4">
+            <div class="p-2 rounded-3 text-center" style="background:#f0f9f6;border:1px solid #a8e6cf;">
+                <div style="font-size:20px;font-weight:700;color:#2d7a5f;">{{ $periodBoth }}</div>
+                <div style="font-size:11px;color:#888;">Both</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {{-- LOCAL / OVERSEAS / BOTH TABS --}}
 <ul class="nav nav-tabs mb-3" id="regTabs" style="flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;">
     <li class="nav-item" style="flex-shrink:0;">

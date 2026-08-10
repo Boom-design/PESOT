@@ -63,8 +63,8 @@
                     <div id="initialDateFields" class="row g-3 mb-4" style="display:flex;">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Preferred Date *</label>
-                            <input type="date" name="preferred_date" id="initialPreferredDateInput" class="form-control"
-                                min="{{ now()->format('Y-m-d') }}"
+                            <input type="text" name="preferred_date" id="initialPreferredDateInput" class="form-control" autocomplete="off"
+                                placeholder="Select a date"
                                 style="border-color:#a8e6cf;font-size:13px;border-radius:8px;">
                             <small id="initialPreferredDateHint" style="font-size:11px;color:#888;display:none;margin-top:4px;">
                                 Interview time will be scheduled between 8:00 AM – 5:00 PM.
@@ -394,8 +394,8 @@
                     <div id="dateFields" class="row g-3 mb-4" style="display:flex;">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Preferred Date *</label>
-                            <input type="date" name="preferred_date" id="preferredDateInput" class="form-control"
-                                min="{{ now()->format('Y-m-d') }}"
+                            <input type="text" name="preferred_date" id="preferredDateInput" class="form-control" autocomplete="off"
+                                placeholder="Select a date"
                                 style="border-color:#a8e6cf;font-size:13px;border-radius:8px;">
                             <small id="preferredDateHint" style="font-size:11px;color:#888;display:none;margin-top:4px;">
                                 Interview time will be scheduled between 8:00 AM – 5:00 PM.
@@ -489,6 +489,49 @@
 @section('scripts')
 <script>
     const COMPANY_INDUSTRY_GROUP = @json($company->employerNsrp->industry_group ?? '');
+
+    // ── Fetch booked (fully 3/3) PESO Office dates, i-disable+i-style sa calendar ──
+    let bookedDatesList = [];
+    fetch(`{{ route('company.inhouse.bookedDates') }}`)
+        .then(res => res.json())
+        .then(data => { bookedDatesList = data.booked_dates || []; initFlatpickrs(); })
+        .catch(() => { initFlatpickrs(); });
+
+    function fpDayCreate(dObj, dStr, fp, dayElem) {
+        const y = dayElem.dateObj.getFullYear();
+        const m = String(dayElem.dateObj.getMonth() + 1).padStart(2, '0');
+        const d = String(dayElem.dateObj.getDate()).padStart(2, '0');
+        const iso = `${y}-${m}-${d}`;
+        if (bookedDatesList.includes(iso)) {
+            dayElem.classList.add('fp-date-booked');
+            dayElem.title = 'Fully booked (3/3 companies)';
+        }
+    }
+
+    function initFlatpickrs() {
+        ['preferredDateInput', 'initialPreferredDateInput'].forEach(function(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            flatpickr(el, {
+                minDate: 'today',
+                dateFormat: 'Y-m-d',
+                disable: [function(date) {
+                    const y = date.getFullYear();
+                    const m = String(date.getMonth() + 1).padStart(2, '0');
+                    const d = String(date.getDate()).padStart(2, '0');
+                    const venueSelId = id === 'initialPreferredDateInput' ? 'initialVenueTypeSelect' : 'venueTypeSelect';
+                    const venueEl = document.getElementById(venueSelId);
+                    const venueVal = venueEl ? venueEl.value : 'peso_office';
+                    if (venueVal !== 'peso_office') return false;
+                    return bookedDatesList.includes(`${y}-${m}-${d}`);
+                }],
+                onDayCreate: fpDayCreate,
+                onChange: function(selectedDates, dateStr) {
+                    el.dispatchEvent(new Event('change'));
+                }
+            });
+        });
+    }
 
     // Search
     document.getElementById('searchInput').addEventListener('input', function () {
@@ -667,6 +710,8 @@
                         <option value="Elementary">Elementary</option>
                         <option value="High School">High School</option>
                         <option value="Senior High">Senior High</option>
+                        <option value="Undergraduate">Undergraduate</option>
+                        <option value="College Level">College Level</option>
                         <option value="Tertiary / College">Tertiary / College</option>
                         <option value="Graduate Studies">Graduate Studies</option>
                     </select>

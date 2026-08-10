@@ -15,16 +15,32 @@
            style="border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;border-radius:8px;font-size:12px;padding:5px 16px;white-space:nowrap;flex-shrink:0;">
             <i class="bi bi-briefcase-fill me-1"></i> Office Based
         </a>
+    @elseif($staffRole === 'sra')
+        <a href="{{ route('staff.inhouse') }}"
+           class="btn btn-sm fw-semibold"
+           style="border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;border-radius:8px;font-size:12px;padding:5px 16px;white-space:nowrap;flex-shrink:0;">
+            <i class="bi bi-calendar-check-fill me-1"></i> In-house Schedule
+        </a>
+        <a href="{{ route('staff.jobs', ['type' => 'inhouse']) }}"
+           class="btn btn-sm fw-semibold"
+           style="border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;border-radius:8px;font-size:12px;padding:5px 16px;white-space:nowrap;flex-shrink:0;">
+            <i class="bi bi-briefcase-fill me-1"></i> In-house Job Vacancy
+        </a>
+        <a href="{{ route('staff.jobs', ['type' => 'office_based']) }}"
+           class="btn btn-sm fw-semibold"
+           style="border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;border-radius:8px;font-size:12px;padding:5px 16px;white-space:nowrap;flex-shrink:0;">
+            <i class="bi bi-briefcase-fill me-1"></i> Office Based
+        </a>
     @else
         <a href="{{ route('staff.inhouse') }}"
            class="btn btn-sm fw-semibold"
            style="border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;border-radius:8px;font-size:12px;padding:5px 16px;white-space:nowrap;flex-shrink:0;">
-            <i class="bi bi-calendar-check-fill me-1"></i> In-house
+            <i class="bi bi-calendar-check-fill me-1"></i> In-house Schedule
         </a>
         <a href="{{ route('staff.jobs') }}"
            class="btn btn-sm fw-semibold"
            style="border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;border-radius:8px;font-size:12px;padding:5px 16px;white-space:nowrap;flex-shrink:0;">
-            <i class="bi bi-briefcase-fill me-1"></i> Job Vacancies
+            <i class="bi bi-briefcase-fill me-1"></i> In-house Job Vacancy
         </a>
     @endif
     <a href="{{ route('staff.inhouse.jobfair') }}"
@@ -70,7 +86,7 @@
     </div>
 
     <div class="d-flex gap-2 mb-3">
-        @foreach(['pending' => 'Pending', 'approved' => 'Approved', 'rejected' => 'Rejected', 'all' => 'All'] as $val => $label)
+        @foreach(['pending' => 'Pending', 'approved' => 'Approved'] as $val => $label)
         <a href="{{ route('staff.inhouse.jobfair', ['job_status' => $val, 'job_page' => 1]) }}"
            class="btn btn-sm fw-semibold"
            style="{{ $jobStatus === $val
@@ -230,6 +246,7 @@
 <div style="height:1px;background:linear-gradient(90deg,transparent,#e8f5f0,transparent);margin:32px 0;"></div>
 @endif
 
+@if($staffRole === 'lra')
 <div class="mb-3">
     <h5 class="fw-bold mb-1" style="color:#2d7a5f;">
         <i class="bi bi-calendar-event-fill me-2" style="color:#4dd9c0;"></i>
@@ -333,6 +350,7 @@
         </div>
         @endif
     </div>
+@endif
 @endif
 
 @endsection

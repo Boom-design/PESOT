@@ -28,12 +28,24 @@
         <form action="{{ route('company.jobfair.storeJobSelect', $jobFair->id) }}" method="POST">
             @csrf
             @foreach($myJobs as $job)
+            @php
+                $typeLabel = match($job->schedule_type) {
+                    'job_fair' => ['Job Fair', '#2d7a5f', '#e8f8f3'],
+                    'inhouse'  => ['In-house', '#e6a817', '#fff8e1'],
+                    default    => ['Office Based', '#0ea5e9', '#e0f2fe'],
+                };
+            @endphp
             <div class="form-check p-3 mb-2 rounded-3" style="background:#f0f9f6;">
                 <input class="form-check-input" type="checkbox" name="job_ids[]" value="{{ $job->id }}"
                     id="job_{{ $job->id }}"
                     {{ in_array($job->id, $selectedJobIds) ? 'checked' : '' }}>
                 <label class="form-check-label w-100" for="job_{{ $job->id }}">
-                    <div class="fw-semibold" style="color:#2d7a5f;">{{ $job->title }}</div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="fw-semibold" style="color:#2d7a5f;">{{ $job->title }}</span>
+                        <span class="badge fw-semibold" style="background:{{ $typeLabel[2] }};color:{{ $typeLabel[1] }};font-size:10px;padding:3px 9px;border-radius:20px;">
+                            {{ $typeLabel[0] }}
+                        </span>
+                    </div>
                     <div style="font-size:12px;color:#888;">{{ $job->location }} · {{ $job->slots }} slot(s)</div>
                 </label>
             </div>

@@ -50,8 +50,25 @@
                 </label>
                 <input type="time" name="event_time" class="form-control"
                     style="border:1.5px solid #a8e6cf;border-radius:10px;font-size:13px;"
-                    value="{{ old('event_time') }}" required>
+                    value="{{ old('event_time') }}" min="09:00" max="17:00" required>
+                <div class="mt-1" style="font-size:11px;color:#888;">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Must be between 9:00 AM and 5:00 PM.
+                </div>
                 @error('event_time')
+                    <div class="text-danger small mt-1">{{ $message }}</div>
+                @enderror
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold small" style="color:#2d7a5f;">
+                    Number of Employers Needed <span class="text-danger">*</span>
+                </label>
+                <input type="number" name="employer_capacity" class="form-control" min="1"
+                    style="border:1.5px solid #a8e6cf;border-radius:10px;font-size:13px;"
+                    placeholder="e.g. 20"
+                    value="{{ old('employer_capacity') }}" required>
+                @error('employer_capacity')
                     <div class="text-danger small mt-1">{{ $message }}</div>
                 @enderror
             </div>
@@ -69,15 +86,36 @@
                 @enderror
             </div>
 
-            <div class="mb-4">
+            <div class="mb-3">
                 <label class="form-label fw-semibold small" style="color:#2d7a5f;">
-                    Status <span class="text-danger">*</span>
+                    Employers to Invite <span class="text-danger">*</span>
                 </label>
-                <select name="status" class="form-select"
-                    style="border:1.5px solid #a8e6cf;border-radius:10px;font-size:13px;">
-                    <option value="upcoming" selected>Upcoming</option>
-                </select>
+                <div class="d-flex gap-3 p-3 rounded-3" style="background:#f0f9f6;">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="cater[]" value="local"
+                            id="caterLocal" {{ in_array('local', old('cater', ['local', 'overseas'])) ? 'checked' : '' }}>
+                        <label class="form-check-label" for="caterLocal" style="font-size:13px;color:#2d7a5f;font-weight:600;">
+                            Local Employers
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="cater[]" value="overseas"
+                            id="caterOverseas" {{ in_array('overseas', old('cater', ['local', 'overseas'])) ? 'checked' : '' }}>
+                        <label class="form-check-label" for="caterOverseas" style="font-size:13px;color:#2d7a5f;font-weight:600;">
+                            Overseas Employers
+                        </label>
+                    </div>
+                </div>
+                <div class="mt-1" style="font-size:11px;color:#888;">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Check at least one — only checked employer type(s) will receive the invitation.
+                </div>
+                @error('cater')
+                    <div class="text-danger small mt-1">{{ $message }}</div>
+                @enderror
             </div>
+
+            
 
             <div class="d-flex gap-2">
                 <button type="submit" class="btn fw-semibold"

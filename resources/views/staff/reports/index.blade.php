@@ -22,13 +22,15 @@
 @php
 $tabs = [
     'attendance'         => ['icon' => 'bi-clipboard-check-fill', 'label' => 'Attendance'],
-    'companies'          => ['icon' => 'bi-building-fill', 'label' => 'Local Companies'],
+    'companies'          => ['icon' => 'bi-building-fill', 'label' => $staffRole === 'sra' ? 'Overseas Companies' : 'Local Companies'],
     'further_interview'  => ['icon' => 'bi-person-lines-fill', 'label' => 'Further Interview'],
     'hots'               => ['icon' => 'bi-lightning-charge-fill', 'label' => 'Hired on the Spot'],
     'summary'            => ['icon' => 'bi-clipboard-data-fill', 'label' => 'Post Job Fair Summary'],
     'industry'           => ['icon' => 'bi-diagram-3-fill', 'label' => 'Companies w/ Vacancies'],
-    'placement'          => ['icon' => 'bi-briefcase-fill', 'label' => 'Company Placement'],
 ];
+if ($staffRole !== 'sra') {
+    $tabs['placement'] = ['icon' => 'bi-briefcase-fill', 'label' => 'Company Placement'];
+}
 @endphp
 
 @if(($layout ?? '') === 'admin.layouts.app')
@@ -98,8 +100,17 @@ $tabs = [
 </div>
 @endif
 
-{{-- JOB FAIR STAFF — 7 TABS --}}
-@if($staffRole === 'job_fair')
+@if($staffRole === 'sra')
+<div class="mb-3">
+    <select id="reportViewSelector" class="form-select form-select-sm" style="max-width:260px;border-color:#a8e6cf;font-size:13px;" onchange="changeReportView(this.value)">
+        <option value="staff" {{ ($reportView ?? 'staff') === 'staff' ? 'selected' : '' }}>Overseas Reports</option>
+        <option value="jobfair" {{ ($reportView ?? 'staff') === 'jobfair' ? 'selected' : '' }}>Job Fair Reports (Overseas)</option>
+    </select>
+</div>
+@endif
+
+{{-- JOB FAIR STAFF — 7 TABS (SRA: overseas-filtered, walay Placement tab) --}}
+@if($staffRole === 'job_fair' || ($staffRole === 'sra' && ($reportView ?? 'staff') === 'jobfair'))
 
 {{-- EVENT SELECTOR --}}
 <div class="mb-3">
@@ -116,7 +127,7 @@ $tabs = [
 </div>
 
 {{-- TABS NAV --}}
-<div class="d-flex gap-2 mb-4" style="overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;padding-bottom:4px;">
+<div class="d-flex gap-2 mb-4" style="flex-wrap:wrap;">
     @foreach($tabs as $key => $t)
     <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->query(), ['tab' => $key, 'event_id' => $eventId])) }}"
        class="btn btn-sm fw-semibold"
@@ -148,6 +159,7 @@ $tabs = [
     {{-- ── TAB 1: ATTENDANCE ── --}}
     @if($tab === 'attendance')
 
+        @if($staffRole !== 'sra')
         <div class="d-flex flex-wrap gap-2 mb-3">
             <select id="attFilter" class="form-select form-select-sm"
                 style="max-width:180px;border-color:#a8e6cf;font-size:13px;"
@@ -157,6 +169,7 @@ $tabs = [
                 <option value="overseas" {{ $attendanceFilter === 'overseas' ? 'selected' : '' }}>Overseas Only</option>
             </select>
         </div>
+        @endif
 
         <div class="row g-3 mb-4">
             <div class="col-6 col-md-3">
@@ -224,10 +237,11 @@ $tabs = [
             </div>
         </div>
 
-    {{-- ── TAB 2: LOCAL COMPANIES ── --}}
+    {{-- ── TAB 2: LOCAL/OVERSEAS COMPANIES ── --}}
     @elseif($tab === 'companies')
 
         <div class="row g-2 mb-3">
+            @if($staffRole !== 'sra')
             <div class="col-12 col-md-6">
                 <h6 class="fw-bold" style="color:#2d7a5f;font-size:13px;">Local Companies</h6>
                 <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
@@ -255,6 +269,7 @@ $tabs = [
                     </div>
                 </div>
             </div>
+            @endif
             <div class="col-12 col-md-6">
                 <h6 class="fw-bold" style="color:#2d7a5f;font-size:13px;">Overseas Companies</h6>
                 <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
@@ -489,6 +504,7 @@ $tabs = [
     @elseif($tab === 'industry')
 
         <div class="row g-2 mb-3">
+            @if($staffRole !== 'sra')
             <div class="col-12 col-md-6">
                 <h6 class="fw-bold" style="color:#2d7a5f;font-size:13px;">Local — by Industry Group</h6>
                 <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
@@ -514,6 +530,7 @@ $tabs = [
                     </div>
                 </div>
             </div>
+            @endif
             <div class="col-12 col-md-6">
                 <h6 class="fw-bold" style="color:#2d7a5f;font-size:13px;">Overseas — by Industry Group</h6>
                 <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
@@ -567,7 +584,7 @@ $tabs = [
                     </select>
                 @endif
             </div>
-            @php($topEmployers = $topEmployersByInhouseInterviews ?? collect())
+            @php($topEmployers = $topEmployersByOfficeBasedInterviews ?? collect())
             @if($topEmployers->isEmpty())
                 <div class="text-muted small">No job fair participation data found for this period.</div>
             @else
@@ -685,6 +702,16 @@ $tabs = [
                border-radius:8px;font-size:12px;padding:5px 16px;">
             <i class="bi bi-people-fill me-1"></i> Job Applicants Referred ({{ $totalReferred }})
         </a>
+        @if($staffRole === 'sra')
+        <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->query(), ['tab' => 'vacancies', 'page' => 1])) }}"
+           class="btn btn-sm fw-semibold"
+           style="{{ request('tab') === 'vacancies'
+               ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;'
+               : 'border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;' }}
+               border-radius:8px;font-size:12px;padding:5px 16px;">
+            <i class="bi bi-briefcase-fill me-1"></i> Job Vacancies Solicited ({{ $totalVacanciesSolicited ?? 0 }})
+        </a>
+        @endif
         <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->query(), ['tab' => 'top_employers', 'page' => 1])) }}"
            class="btn btn-sm fw-semibold"
            style="{{ request('tab') === 'top_employers'
@@ -708,11 +735,89 @@ $tabs = [
 {{-- ── TAB 1: JOB APPLICANT REGISTERED ── --}}
 @if(request('tab', 'registered') === 'registered')
 
-    @if($registeredParticipants->isEmpty())
+    {{-- FILTER DROPDOWN: All Local Jobseekers vs In-house Participants --}}
+    <div class="mb-3">
+        <select id="registeredViewFilter" class="form-select form-select-sm"
+            style="max-width:280px;width:100%;border-color:#a8e6cf;font-size:13px;"
+            onchange="changeRegisteredView(this.value)">
+            <option value="all" {{ ($registeredView ?? 'all') === 'all' ? 'selected' : '' }}>
+                All {{ $staffRole === 'lra' ? 'Local' : 'Overseas' }} Jobseekers ({{ $totalRegisteredAll ?? 0 }})
+            </option>
+            <option value="inhouse" {{ ($registeredView ?? 'all') === 'inhouse' ? 'selected' : '' }}>
+                Joined In-house ({{ $totalRegistered ?? 0 }})
+            </option>
+        </select>
+    </div>
+
+    @if(($registeredView ?? 'all') === 'all')
+
+        @if(($registeredAll ?? collect())->isEmpty())
+            <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
+                <i class="bi bi-inbox" style="font-size:48px;color:#c0e8dc;"></i>
+                <div class="mt-3 fw-semibold" style="color:#2d7a5f;">No registered jobseekers found</div>
+            </div>
+        @else
+            <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
+                                <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Jobseeker</th>
+                                <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Email</th>
+                                <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Date Registered</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($registeredAll as $i => $reg)
+                            <tr style="font-size:13px;">
+                                <td style="padding:12px 16px;color:#888;">{{ $registeredAll->firstItem() + $i }}</td>
+                                <td style="padding:12px 16px;font-weight:600;color:#2d7a5f;">
+                                    {{ trim(($reg->first_name ?? '') . ' ' . ($reg->surname ?? '')) ?: ($reg->user->name ?? 'None') }}
+                                </td>
+                                <td style="padding:12px 16px;color:#555;">
+                                    {{ $reg->reg_email ?? $reg->user->email ?? 'None' }}
+                                </td>
+                                <td style="padding:12px 16px;text-align:center;color:#888;">
+                                    {{ $reg->created_at->format('M d, Y') }}
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                @if($registeredAll->hasPages())
+                <div class="d-flex justify-content-between align-items-center px-3 py-3" style="border-top:1px solid #f0f9f6;">
+                    <div style="font-size:12px;color:#888;">
+                        Showing {{ $registeredAll->firstItem() }}–{{ $registeredAll->lastItem() }} of {{ $registeredAll->total() }} results
+                    </div>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0 gap-1">
+                            <li class="page-item {{ $registeredAll->onFirstPage() ? 'disabled' : '' }}">
+                                <a class="page-link rounded-2" style="border-color:#a8e6cf;color:#2d7a5f;" href="{{ $registeredAll->previousPageUrl() }}"><i class="bi bi-chevron-left"></i></a>
+                            </li>
+                            @foreach($registeredAll->getUrlRange(1, $registeredAll->lastPage()) as $page => $url)
+                            <li class="page-item {{ $page == $registeredAll->currentPage() ? 'active' : '' }}">
+                                <a class="page-link rounded-2"
+                                   style="{{ $page == $registeredAll->currentPage() ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);border-color:transparent;color:#fff;' : 'border-color:#a8e6cf;color:#2d7a5f;' }}"
+                                   href="{{ $url }}">{{ $page }}</a>
+                            </li>
+                            @endforeach
+                            <li class="page-item {{ !$registeredAll->hasMorePages() ? 'disabled' : '' }}">
+                                <a class="page-link rounded-2" style="border-color:#a8e6cf;color:#2d7a5f;" href="{{ $registeredAll->nextPageUrl() }}"><i class="bi bi-chevron-right"></i></a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+                @endif
+            </div>
+        @endif
+
+    @elseif($registeredParticipants->isEmpty())
         <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
             <i class="bi bi-inbox" style="font-size:48px;color:#c0e8dc;"></i>
             <div class="mt-3 fw-semibold" style="color:#2d7a5f;">No registered applicants found</div>
-            <div class="text-muted small mt-1">Jobseekers who join a confirmed in-house interview will appear here.</div>
+            <div class="text-muted small mt-1">Jobseekers who accepted a confirmed in-house interview will appear here.</div>
         </div>
     @else
         <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
@@ -723,8 +828,8 @@ $tabs = [
                             <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
                             <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Jobseeker</th>
                             <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Employer</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Confirmed Date</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Joined On</th>
+                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Interview Date</th>
+                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Accepted On</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -733,16 +838,16 @@ $tabs = [
                             <td style="padding:12px 16px;color:#888;">{{ $registeredParticipants->firstItem() + $i }}</td>
                             <td style="padding:12px 16px;">
                                 <div class="fw-semibold" style="color:#2d7a5f;">{{ trim(($p->jobseeker->first_name ?? '') . ' ' . ($p->jobseeker->surname ?? '')) ?: 'None' }}</div>
-                                <div style="font-size:11px;color:#888;">{{ $p->jobseeker->user->email ?? 'None' }}</div>
+                                <div style="font-size:11px;color:#888;">{{ $p->jobseeker->reg_email ?? $p->jobseeker->user->email ?? 'None' }}</div>
                             </td>
                             <td style="padding:12px 16px;color:#555;">
-                                {{ $p->schedule->employer->company_name ?? 'None' }}
+                                {{ $p->job->company->company_name ?? 'None' }}
                             </td>
                             <td style="padding:12px 16px;color:#555;">
-                                {{ $p->schedule->confirmed_date?->format('M d, Y') ?? 'None' }}
+                                {{ $p->job->preferred_date ? \Carbon\Carbon::parse($p->job->preferred_date)->format('M d, Y') : 'None' }}
                             </td>
                             <td style="padding:12px 16px;text-align:center;color:#888;">
-                                {{ $p->joined_at?->format('M d, Y h:i A') ?? 'None' }}
+                                {{ $p->updated_at?->format('M d, Y h:i A') ?? 'None' }}
                             </td>
                         </tr>
                         @endforeach
@@ -874,7 +979,7 @@ $tabs = [
                 </select>
             @endif
         </div>
-        @php($topEmployers = $topEmployersByInhouseInterviews ?? collect())
+        @php($topEmployers = $topEmployersByOfficeBasedInterviews ?? collect())
         @if($topEmployers->isEmpty())
             <div class="text-muted small">No in-house interview data found for this period.</div>
         @else
@@ -901,10 +1006,75 @@ $tabs = [
         @endif
     </div>
 
-{{-- ── TAB 4: JOB APPLICANTS REFERRED ── --}}
-@else
+{{-- ── TAB: JOB VACANCIES SOLICITED (SRA ra) ── --}}
+@elseif(request('tab') === 'vacancies' && $staffRole === 'sra')
 
-    @if($referredApplications->isEmpty())
+    <div class="mb-3">
+        <input type="month" class="form-control form-control-sm" style="max-width:220px;" value="{{ $vacancyMonth }}" onchange="changeVacancyMonth(this.value)">
+    </div>
+
+    @if($solicitedJobs->isEmpty())
+        <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
+            <i class="bi bi-inbox" style="font-size:48px;color:#c0e8dc;"></i>
+            <div class="mt-3 fw-semibold" style="color:#2d7a5f;">No job vacancies solicited this month</div>
+        </div>
+    @else
+        <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
+                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Job Title</th>
+                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Company</th>
+                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Slots</th>
+                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Requirements</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($solicitedJobs as $i => $job)
+                        <tr style="font-size:13px;">
+                            <td style="padding:12px 16px;color:#888;">{{ $solicitedJobs->firstItem() + $i }}</td>
+                            <td style="padding:12px 16px;font-weight:600;color:#2d7a5f;">{{ $job->title }}</td>
+                            <td style="padding:12px 16px;color:#555;">{{ $job->company->company_name ?? 'None' }}</td>
+                            <td style="padding:12px 16px;text-align:center;color:#555;">{{ $job->slots }}</td>
+                            <td style="padding:12px 16px;color:#555;">{{ $job->education_required ?? 'Any' }}, {{ $job->experience_months ?? 0 }} mo. exp.</td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @if($solicitedJobs->hasPages())
+            <div class="d-flex justify-content-between align-items-center px-3 py-3" style="border-top:1px solid #f0f9f6;">
+                <div style="font-size:12px;color:#888;">
+                    Showing {{ $solicitedJobs->firstItem() }}–{{ $solicitedJobs->lastItem() }} of {{ $solicitedJobs->total() }} results
+                </div>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0 gap-1">
+                        <li class="page-item {{ $solicitedJobs->onFirstPage() ? 'disabled' : '' }}">
+                            <a class="page-link rounded-2" style="border-color:#a8e6cf;color:#2d7a5f;" href="{{ $solicitedJobs->previousPageUrl() }}"><i class="bi bi-chevron-left"></i></a>
+                        </li>
+                        @foreach($solicitedJobs->getUrlRange(1, $solicitedJobs->lastPage()) as $page => $url)
+                        <li class="page-item {{ $page == $solicitedJobs->currentPage() ? 'active' : '' }}">
+                            <a class="page-link rounded-2"
+                               style="{{ $page == $solicitedJobs->currentPage() ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);border-color:transparent;color:#fff;' : 'border-color:#a8e6cf;color:#2d7a5f;' }}"
+                               href="{{ $url }}">{{ $page }}</a>
+                        </li>
+                        @endforeach
+                        <li class="page-item {{ !$solicitedJobs->hasMorePages() ? 'disabled' : '' }}">
+                            <a class="page-link rounded-2" style="border-color:#a8e6cf;color:#2d7a5f;" href="{{ $solicitedJobs->nextPageUrl() }}"><i class="bi bi-chevron-right"></i></a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+            @endif
+        </div>
+    @endif
+
+{{-- ── TAB 4: JOB APPLICANTS REFERRED ── --}}
+@elseif(request('tab') === 'referred')
+
+    @if(($referredApplications ?? collect())->isEmpty())
         <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
             <i class="bi bi-inbox" style="font-size:48px;color:#c0e8dc;"></i>
             <div class="mt-3 fw-semibold" style="color:#2d7a5f;">No referred applicants found</div>
@@ -924,9 +1094,9 @@ $tabs = [
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($referredApplications as $i => $app)
+                        @foreach($referredApplications ?? collect() as $i => $app)
                         <tr style="font-size:13px;">
-                            <td style="padding:12px 16px;color:#888;">{{ $referredApplications->firstItem() + $i }}</td>
+                            <td style="padding:12px 16px;color:#888;">{{ ($referredApplications ?? collect())->firstItem() + $i }}</td>
                             <td style="padding:12px 16px;">
                                 <div class="fw-semibold" style="color:#2d7a5f;">{{ trim(($app->jobseeker->first_name ?? '') . ' ' . ($app->jobseeker->surname ?? '')) ?: 'None' }}</div>
                                 <div style="font-size:11px;color:#888;">{{ $app->jobseeker->user->email ?? 'None' }}</div>
@@ -946,17 +1116,17 @@ $tabs = [
                     </tbody>
                 </table>
             </div>
-            @if($referredApplications->hasPages())
+            @if(($referredApplications ?? collect())->hasPages())
             <div class="d-flex justify-content-between align-items-center px-3 py-3" style="border-top:1px solid #f0f9f6;">
                 <div style="font-size:12px;color:#888;">
-                    Showing {{ $referredApplications->firstItem() }}–{{ $referredApplications->lastItem() }} of {{ $referredApplications->total() }} results
+                    Showing {{ ($referredApplications ?? collect())->firstItem() }}–{{ ($referredApplications ?? collect())->lastItem() }} of {{ ($referredApplications ?? collect())->total() }} results
                 </div>
                 <nav>
                     <ul class="pagination pagination-sm mb-0 gap-1">
-                        <li class="page-item {{ $referredApplications->onFirstPage() ? 'disabled' : '' }}">
-                            <a class="page-link rounded-2" style="border-color:#a8e6cf;color:#2d7a5f;" href="{{ $referredApplications->previousPageUrl() }}"><i class="bi bi-chevron-left"></i></a>
+                        <li class="page-item {{ ($referredApplications ?? collect())->onFirstPage() ? 'disabled' : '' }}">
+                            <a class="page-link rounded-2" style="border-color:#a8e6cf;color:#2d7a5f;" href="{{ ($referredApplications ?? collect())->previousPageUrl() }}"><i class="bi bi-chevron-left"></i></a>
                         </li>
-                        @foreach($referredApplications->getUrlRange(1, $referredApplications->lastPage()) as $page => $url)
+                        @foreach(($referredApplications ?? collect())->getUrlRange(1, ($referredApplications ?? collect())->lastPage()) as $page => $url)
                         <li class="page-item {{ $page == $referredApplications->currentPage() ? 'active' : '' }}">
                             <a class="page-link rounded-2"
                                style="{{ $page == $referredApplications->currentPage() ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);border-color:transparent;color:#fff;' : 'border-color:#a8e6cf;color:#2d7a5f;' }}"
@@ -997,6 +1167,19 @@ $tabs = [
         window.location.href = url.toString();
     }
 
+    function changeVacancyMonth(value) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('vacancy_month', value);
+        window.location.href = url.toString();
+    }
+
+    function changeReportView(value) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('report_view', value);
+        url.searchParams.set('tab', value === 'jobfair' ? 'summary' : 'registered');
+        window.location.href = url.toString();
+    }
+
     document.getElementById('searchInput')?.addEventListener('input', function() {
         clearTimeout(searchTimer);
         searchTimer = setTimeout(() => {
@@ -1016,6 +1199,13 @@ $tabs = [
     function changeAttendanceFilter(type) {
         const url = new URL(window.location.href);
         url.searchParams.set('attendance_filter', type);
+        window.location.href = url.toString();
+    }
+
+    function changeRegisteredView(val) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('registered_view', val);
+        url.searchParams.set('page', 1);
         window.location.href = url.toString();
     }
 </script>

@@ -22,6 +22,7 @@
 
 {{-- TABS --}}
 <div class="d-flex gap-2 mb-4" style="overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;padding-bottom:4px;">
+    @if($staffRole !== 'lra')
     <a href="{{ route('staff.employers', ['tab' => 'pre']) }}"
        class="btn btn-sm fw-semibold"
        style="{{ $tab === 'pre'
@@ -32,6 +33,7 @@
         Pre-Employer
         <span class="ms-1 fw-bold">({{ $totalPre }})</span>
     </a>
+    @endif
     <a href="{{ route('staff.employers', ['tab' => 'approved']) }}"
        class="btn btn-sm fw-semibold"
        style="{{ $tab === 'approved'
@@ -39,7 +41,7 @@
            : 'border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;' }}
            border-radius:8px;font-size:12px;padding:5px 16px;white-space:nowrap;flex-shrink:0;">
         <i class="bi bi-building-check me-1"></i>
-        Approved Employers
+        {{ $staffRole === 'lra' ? 'List of Employers' : 'Approved Employers' }}
         <span class="ms-1 fw-bold">({{ $totalApproved }})</span>
     </a>
 </div>

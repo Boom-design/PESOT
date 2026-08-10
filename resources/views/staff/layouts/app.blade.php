@@ -7,6 +7,15 @@
     <title>PESO — Staff Portal</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+    <style>
+        .flatpickr-day.fp-date-has-schedule {
+            background: #e8f8f3 !important;
+            color: #2d7a5f !important;
+            font-weight: 700;
+            border: 1.5px solid #4dd9c0 !important;
+        }
+    </style>
     <style>
         body { background-color: #f4f6f9; margin: 0; }
 
@@ -302,7 +311,7 @@
                 <i class="bi bi-building"></i> Employers
             </a>
             <a href="{{ route('staff.inhouse') }}"
-               class="{{ request()->is('staff/inhouse*') || request()->is('staff/jobs*') || request()->is('staff/jobfair*') ? 'active' : '' }}">
+               class="{{ request()->is('staff/inhouse*') || request()->is('staff/jobs') || request()->is('staff/jobs/*') || request()->is('staff/jobfair*') ? 'active' : '' }}">
                 <i class="bi bi-briefcase-fill"></i> Manage Job Activities
             </a>
             <a href="{{ route('staff.reports') }}"
@@ -329,7 +338,7 @@
                 <i class="bi bi-building"></i> Employers
             </a>
             <a href="{{ route('staff.inhouse') }}"
-               class="{{ request()->is('staff/inhouse*') || request()->is('staff/jobs*') || request()->is('staff/jobfair*') ? 'active' : '' }}">
+               class="{{ request()->is('staff/inhouse*') || request()->is('staff/jobs') || request()->is('staff/jobs/*') || request()->is('staff/jobfair*') ? 'active' : '' }}">
                 <i class="bi bi-briefcase-fill"></i> Manage Job Activities
             </a>
             <a href="{{ route('staff.reports') }}"
@@ -515,6 +524,7 @@
 @stack('scripts')
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
 <script>
 function toggleSidebar() {

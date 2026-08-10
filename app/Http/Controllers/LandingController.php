@@ -12,12 +12,19 @@ class LandingController extends Controller
         $jobType = $request->input('job_type', 'all'); // all | local | overseas | job_fair
 
         $query = Job::with('company')->where('status', 'open')
+            ->where(function ($q) {
+                $q->whereNull('deadline')->orWhereDate('deadline', '>=', now()->toDateString());
+            })
             ->when($jobType === 'local', fn($q) => $q->whereHas('company', fn($c) => $c->where('is_overseas', false)))
             ->when($jobType === 'overseas', fn($q) => $q->whereHas('company', fn($c) => $c->where('is_overseas', true)))
             ->when($jobType === 'job_fair', fn($q) => $q->where('schedule_type', 'job_fair'));
 
         $jobs = $query->latest()->take(4)->get();
-        $openJobsCount = Job::where('status', 'open')->count();
+        $openJobsCount = Job::where('status', 'open')
+            ->where(function ($q) {
+                $q->whereNull('deadline')->orWhereDate('deadline', '>=', now()->toDateString());
+            })
+            ->count();
 
         return view('landing', compact('jobs', 'openJobsCount', 'jobType'));
     }
@@ -27,6 +34,9 @@ class LandingController extends Controller
         $jobType = $request->input('job_type', 'all'); // all | local | overseas | job_fair
 
         $query = Job::with('company')->where('status', 'open')
+            ->where(function ($q) {
+                $q->whereNull('deadline')->orWhereDate('deadline', '>=', now()->toDateString());
+            })
             ->when($jobType === 'local', fn($q) => $q->whereHas('company', fn($c) => $c->where('is_overseas', false)))
             ->when($jobType === 'overseas', fn($q) => $q->whereHas('company', fn($c) => $c->where('is_overseas', true)))
             ->when($jobType === 'job_fair', fn($q) => $q->where('schedule_type', 'job_fair'));

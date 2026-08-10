@@ -142,10 +142,23 @@ class StaffWebController extends Controller
 $nsrp = $registration->nsrp;
         $staffRole    = $staff->staff_role;
 
+        $isOverseas = $staffRole === 'sra';
+        $existingAppliedJobIds = \App\Models\Application::where('jobseeker_id', $registration->id)->pluck('job_id')->toArray();
+
+        $openJobs = \App\Models\Job::with('company')
+            ->where('status', 'open')
+            ->whereHas('company', fn($q) => $q->where('is_overseas', $isOverseas))
+            ->whereNotIn('id', $existingAppliedJobIds)
+            ->where(function ($q) {
+                $q->whereNull('deadline')->orWhereDate('deadline', '>=', now()->toDateString());
+            })
+            ->latest()
+            ->get();
+
         if ($staffRole === 'sra') {
-    return view('staff.sra.registrations.show', compact('registration', 'nsrp'));
+    return view('staff.sra.registrations.show', compact('registration', 'nsrp', 'openJobs'));
 } elseif ($staffRole === 'lra') {
-    return view('staff.lra.registrations.show', compact('registration', 'nsrp'));
+    return view('staff.lra.registrations.show', compact('registration', 'nsrp', 'openJobs'));
 }
 
         return redirect()->route('staff.dashboard');
@@ -311,30 +324,47 @@ $nsrp = $registration->nsrp;
         if (!$staff || $staff->staff_role !== 'job_fair') return redirect()->route('login');
 
         $request->validate([
-            'title'      => 'required|string|max:255',
-            'event_date' => 'required|date|after_or_equal:' . now()->addDays(10)->format('Y-m-d'),
-            'event_time' => 'required',
-            'venue'      => 'required|string|max:255',
-            'status'     => 'required|in:upcoming,ongoing,completed',
+            'title'             => 'required|string|max:255',
+            'event_date'        => 'required|date|after_or_equal:' . now()->addDays(10)->format('Y-m-d'),
+            'event_time'        => 'required|date_format:H:i|after_or_equal:09:00|before_or_equal:17:00',
+            'venue'             => 'required|string|max:255',
+            'employer_capacity' => 'required|integer|min:1',
+            'cater'             => 'required|array|min:1',
+            'cater.*'           => 'in:local,overseas',
         ], [
             'event_date.after_or_equal' => 'Event date must be at least 10 days from today (earliest: ' . now()->addDays(10)->format('M d, Y') . ').',
+            'event_time.after_or_equal' => 'Event time must be between 9:00 AM and 5:00 PM.',
+            'event_time.before_or_equal' => 'Event time must be between 9:00 AM and 5:00 PM.',
+            'cater.required'            => 'Please check at least one employer type (Local or Overseas) to invite.',
         ]);
 
         $staffRecord = \App\Models\Staff::where('user_id', $staff->id)->first();
 
         $event = \App\Models\JobFairEvent::create([
-            'created_by' => $staffRecord->id,
-            'title'      => $request->title,
-            'event_date' => $request->event_date,
-            'event_time' => $request->event_time,
-            'venue'      => $request->venue,
-            'status'     => $request->status,
+            'created_by'        => $staffRecord->id,
+            'title'             => $request->title,
+            'event_date'        => $request->event_date,
+            'event_time'        => $request->event_time,
+            'venue'             => $request->venue,
+            'employer_capacity' => $request->employer_capacity,
+            'status'            => 'upcoming',
         ]);
 
-        // Auto-notify all approved employers
+        // ── Auto-notify approved employers, na-filter base sa gi-check nga Local/Overseas ──
+        $caterTo = $request->cater;
         $employers = User::where('role', 'company')
             ->where('status', 'approved')
             ->whereHas('employerRequirement', fn($q) => $q->where('status', 'approved'))
+            ->whereHas('employerNsrp', function ($q) use ($caterTo) {
+                $q->where(function ($q2) use ($caterTo) {
+                    if (in_array('local', $caterTo)) {
+                        $q2->orWhere('is_overseas', false);
+                    }
+                    if (in_array('overseas', $caterTo)) {
+                        $q2->orWhere('is_overseas', true);
+                    }
+                });
+            })
             ->get();
 
         foreach ($employers as $employer) {
@@ -916,7 +946,7 @@ $nsrp = $registration->nsrp;
         if (!$staff) return redirect()->route('login');
 
         $staffRole = $staff->staff_role;
-        $tab       = request('tab', 'pre');
+        $tab       = $staffRole === 'lra' ? 'approved' : request('tab', 'pre');
         $search    = request('search');
 
         $baseQuery = User::where('role', 'company')
@@ -1088,6 +1118,49 @@ $nsrp = $registration->nsrp;
         ));
     }
 
+    // ───────────────────────────────
+    // IN-HOUSE CALENDAR DATA — employers naka-schedule per date (LRA/SRA dashboard calendar)
+    // ───────────────────────────────
+    public function inhouseCalendarData()
+    {
+        $staff = $this->authStaff();
+        if (!$staff) return response()->json(['error' => 'Unauthorized'], 401);
+
+        $staffRole = $staff->staff_role;
+        if (!in_array($staffRole, ['lra', 'sra'])) return response()->json(['error' => 'Unauthorized'], 401);
+
+        $isOverseas = $staffRole === 'sra';
+
+        $scheduleItems = \App\Models\InhouseSchedule::with('employer')
+            ->where('status', 'accepted')
+            ->whereHas('employer', fn($n) => $n->where('is_overseas', $isOverseas))
+            ->get()
+            ->map(fn($s) => [
+                'date'    => optional($s->confirmed_date)->format('Y-m-d'),
+                'company' => $s->employer->company_name ?? '—',
+                'time'    => $s->confirmed_time ? \Carbon\Carbon::parse($s->confirmed_time)->format('h:i A') : null,
+            ])
+            ->filter(fn($s) => $s['date']);
+
+        $jobItems = \App\Models\Job::with('company')
+            ->where('schedule_type', 'inhouse')
+            ->where('posting_status', 'approved')
+            ->whereHas('company', fn($n) => $n->where('is_overseas', $isOverseas))
+            ->get()
+            ->map(fn($j) => [
+                'date'    => optional($j->preferred_date)->format('Y-m-d'),
+                'company' => $j->company->company_name ?? '—',
+                'time'    => null,
+            ])
+            ->filter(fn($j) => $j['date']);
+
+        $grouped = $scheduleItems->concat($jobItems)->groupBy('date');
+
+        $result = $grouped->map(fn($items) => $items->values())->toArray();
+
+        return response()->json(['dates' => $result]);
+    }
+
     public function viewInhouseSchedule($id)
     {
         $staff = $this->authStaff();
@@ -1205,15 +1278,16 @@ $nsrp = $registration->nsrp;
                   });
             })
             ->when($staffRole === 'sra', function($q) {
-                // SRA: overseas, Office Based ra + In-house nga na-approve na (dili Job Fair — naa na sa Job Fair tab)
-                $q->whereHas('company', fn($n) => $n->where('is_overseas', true))
-                  ->where(function ($q2) {
-                      $q2->where(function ($q3) {
-                          $q3->whereNull('schedule_type')->orWhere('schedule_type', 'office_based');
-                      })->orWhere(function ($q3) {
-                          $q3->where('schedule_type', 'inhouse')->where('posting_status', 'approved');
-                      });
-                  });
+                // SRA: separate nga tab para sa Office Based ug In-house (query param 'type')
+                $sraType = request('type', 'inhouse');
+                $q->whereHas('company', fn($n) => $n->where('is_overseas', true));
+                if ($sraType === 'inhouse') {
+                    $q->where('schedule_type', 'inhouse')->where('posting_status', 'approved');
+                } else {
+                    $q->where(function ($q2) {
+                        $q2->whereNull('schedule_type')->orWhere('schedule_type', 'office_based');
+                    });
+                }
             })
             ->when($status !== 'all', fn($q) => $q->where('status', $status))
             ->when($search, fn($q) => $q->where('title', 'like', "%{$search}%")
@@ -1927,7 +2001,11 @@ $nsrp = $registration->nsrp;
         if ($staff->staff_role !== 'job_vacancy') return redirect()->route('staff.dashboard');
 
         $search = request('search');
+        $tab    = request('tab', 'vacancies');
         $month  = request('month', now()->format('Y-m')); // format: YYYY-MM
+        $topEmployersFilter = request('top_employers_filter', 'monthly');
+        $topEmployersMonth = request('top_employers_month');
+        $topEmployersYear = request('top_employers_year');
 
         [$year, $mon] = explode('-', $month);
 
@@ -1943,8 +2021,39 @@ $nsrp = $registration->nsrp;
         $jobs         = $query->orderBy('title')->get();
         $totalVacancies = $jobs->sum('slots');
 
+        $topEmployersByOfficeBasedInterviews = collect();
+        if ($tab === 'top_employers') {
+            $officeBasedQuery = \App\Models\Job::with('company')
+                ->where('schedule_type', 'office_based')
+                ->where('posting_status', 'approved')
+                ->whereHas('company', fn($q) => $q->where('is_overseas', false));
+
+            if ($topEmployersFilter === 'yearly') {
+                $selectedYear = $topEmployersYear ?: now()->year;
+                $officeBasedQuery->whereYear('updated_at', $selectedYear);
+            } else {
+                $selectedMonth = $topEmployersMonth ?: now()->format('Y-m');
+                [$selectedYear, $selectedMonth] = array_pad(explode('-', $selectedMonth), 2, now()->month);
+                $officeBasedQuery->whereYear('updated_at', $selectedYear)
+                    ->whereMonth('updated_at', $selectedMonth);
+            }
+
+            $topEmployersByOfficeBasedInterviews = $officeBasedQuery->get()
+                ->groupBy('company_id')
+                ->map(function ($jobs) {
+                    return [
+                        'employer' => $jobs->first()->company,
+                        'participation_count' => $jobs->count(),
+                    ];
+                })
+                ->sortByDesc('participation_count')
+                ->take(5)
+                ->values();
+        }
+
         return view('staff.job_vacancy.reports', compact(
-            'jobs', 'month', 'totalVacancies', 'search'
+            'jobs', 'month', 'totalVacancies', 'search', 'tab',
+            'topEmployersByOfficeBasedInterviews', 'topEmployersFilter', 'topEmployersMonth', 'topEmployersYear'
         ));
     }
 
@@ -1957,9 +2066,12 @@ $nsrp = $registration->nsrp;
         if (!$staff) return redirect()->route('login');
 
         $staffRole = $staff->staff_role;
+        $reportView = $staffRole === 'sra' ? request('report_view', 'staff') : 'staff';
 
-        if ($staffRole === 'job_fair') {
+        if ($staffRole === 'job_fair' || ($staffRole === 'sra' && $reportView === 'jobfair')) {
+            $isSraJobFairView = $staffRole === 'sra';
             $tab      = request('tab', 'summary');
+            if ($isSraJobFairView && $tab === 'placement') $tab = 'summary';
             $eventId  = request('event_id');
             $allEvents = \App\Models\JobFairEvent::orderByDesc('event_date')->get();
             $event     = $eventId ? \App\Models\JobFairEvent::find($eventId) : null;
@@ -1975,11 +2087,12 @@ $nsrp = $registration->nsrp;
             $totalRegistered = $totalAttended = $totalLocalAttendance = $totalOverseasAttendance = 0;
 
             if ($tab === 'attendance' && $eventId) {
+                if ($isSraJobFairView) $attendanceFilter = 'overseas';
                 $regQuery = \App\Models\JobFairRegistration::with(['jobseeker.nsrp', 'jobseeker.user'])
                     ->where('job_fair_id', $eventId)
-                    ->when($attendanceFilter !== 'all', fn($q) =>
-                        $q->whereHas('jobseeker.nsrp', fn($n) => $n->whereIn('type', [$attendanceFilter, 'both']))
-                    );
+                    ->when($attendanceFilter !== 'all', function ($q) use ($attendanceFilter) {
+                        return $q->whereHas('jobseeker.nsrp', fn($n) => $n->whereIn('type', [$attendanceFilter, 'both']));
+                    });
                 $registrations = $regQuery->latest()->paginate(10);
 
                 $baseQ = \App\Models\JobFairRegistration::where('job_fair_id', $eventId);
@@ -2009,17 +2122,18 @@ $nsrp = $registration->nsrp;
                 $furtherInterview = \App\Models\Application::with(['jobseeker.nsrp', 'job.company'])
                     ->whereIn('job_id', $eventJobIds)
                     ->where('status', 'waiting')
+                    ->when($isSraJobFairView, fn($q) => $q->whereHas('job.company', fn($c) => $c->where('is_overseas', true)))
                     ->latest()
                     ->paginate(10);
             }
 
-            // ── TAB 4: HOTS — hired same date as the event ──
+            // ── TAB 4: HOTS — hired for a job brought to this event (dili na i-match ang eksaktong petsa, kay ang job mismo naka-scope na sa event via eventJobIds) ──
             $hots = null;
             if ($tab === 'hots' && $eventId && $event) {
                 $hots = \App\Models\Application::with(['jobseeker', 'job.company'])
                     ->whereIn('job_id', $eventJobIds)
                     ->where('status', 'hired')
-                    ->whereDate('updated_at', $event->event_date)
+                    ->when($isSraJobFairView, fn($q) => $q->whereHas('job.company', fn($c) => $c->where('is_overseas', true)))
                     ->latest()
                     ->paginate(10);
             }
@@ -2032,6 +2146,7 @@ $nsrp = $registration->nsrp;
                 $participants = \App\Models\JobFairParticipant::with('employer')
                     ->where('job_fair_id', $eventId)
                     ->where('confirmation_status', 'confirmed')
+                    ->when($isSraJobFairView, fn($q) => $q->whereHas('employer', fn($e) => $e->where('is_overseas', true)))
                     ->get();
 
                 $summaryParticipants = $participants->map(function ($p) use ($eventId) {
@@ -2071,6 +2186,37 @@ $nsrp = $registration->nsrp;
                     ->map(fn($group) => $group->sum('slots'));
             }
 
+            // ── TAB: TOP EMPLOYERS (job fair participation count, per employer) — placeholder logic, i-refine pa sa ulahi ──
+            $topEmployersFilter = request('top_employers_filter', 'monthly');
+            $topEmployersMonth  = request('top_employers_month');
+            $topEmployersYear   = request('top_employers_year');
+            $topEmployersByOfficeBasedInterviews = collect();
+
+            if ($tab === 'top_employers') {
+                $participantQuery = \App\Models\JobFairParticipant::with('employer')
+                    ->where('confirmation_status', 'confirmed')
+                    ->when($isSraJobFairView, fn($q) => $q->whereHas('employer', fn($e) => $e->where('is_overseas', true)));
+
+                if ($topEmployersFilter === 'yearly') {
+                    $selectedYear = $topEmployersYear ?: now()->year;
+                    $participantQuery->whereYear('created_at', $selectedYear);
+                } else {
+                    $selectedMonth = $topEmployersMonth ?: now()->format('Y-m');
+                    [$selYear, $selMon] = array_pad(explode('-', $selectedMonth), 2, now()->month);
+                    $participantQuery->whereYear('created_at', $selYear)->whereMonth('created_at', $selMon);
+                }
+
+                $topEmployersByOfficeBasedInterviews = $participantQuery->get()
+                    ->groupBy('employer_id')
+                    ->map(fn($group) => [
+                        'employer'             => $group->first()->employer,
+                        'participation_count'  => $group->count(),
+                    ])
+                    ->sortByDesc('participation_count')
+                    ->take(5)
+                    ->values();
+            }
+
             // ── TAB 7: COMPANY PLACEMENT REPORT (local only, hired AFTER event date) ──
             $placementReport = null;
             if ($tab === 'placement' && $eventId && $event) {
@@ -2091,7 +2237,8 @@ $nsrp = $registration->nsrp;
                 'furtherInterview', 'hots',
                 'summaryParticipants', 'summaryTotals',
                 'industryLocal', 'industryOverseas',
-                'placementReport'
+                'placementReport', 'isSraJobFairView', 'reportView',
+                'topEmployersFilter', 'topEmployersMonth', 'topEmployersYear', 'topEmployersByOfficeBasedInterviews'
             ));
         }
 
@@ -2101,15 +2248,28 @@ $nsrp = $registration->nsrp;
         $tab         = request('tab', 'registered');
         $jobseekerType = $staffRole === 'lra' ? ['local', 'both'] : ['overseas', 'both'];
         $isOverseas    = $staffRole === 'sra'; // employer classification: true = overseas (SRA), false = local (LRA)
+        $registeredView = request('registered_view', 'all'); // 'all' = tanang registered jobseekers; 'inhouse' = ni-Join sa in-house
 
-        // ── TAB 1: JOB APPLICANT REGISTERED — jobseekers nga ni-Join sa in-house schedule ──
-        $registeredQuery = \App\Models\InhouseParticipant::with(['jobseeker', 'schedule.employer'])
-            ->whereHas('schedule.employer', fn($q) =>
-                $q->where('is_overseas', $isOverseas)
-            )
+        // ── TAB 1a: ALL registered jobseekers (local/overseas base sa role) ──
+        $registeredAllQuery = JobseekerRegistration::with(['user', 'nsrp'])
+            ->whereHas('nsrp', fn($q) => $q->whereIn('type', $jobseekerType))
+            ->when($search, fn($q) => $q->where(function ($sub) use ($search) {
+                $sub->where('first_name', 'like', "%{$search}%")
+                    ->orWhere('surname', 'like', "%{$search}%")
+                    ->orWhereHas('user', fn($u) => $u->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%"));
+            }));
+
+        $totalRegisteredAll = (clone $registeredAllQuery)->count();
+
+        // ── TAB 1b: jobseekers nga ni-Accept/Join sa in-house interview (Application.inhouse_participation) ──
+        $registeredQuery = \App\Models\Application::with(['jobseeker', 'job.company'])
+            ->where('inhouse_participation', 'accepted')
+            ->whereHas('job', fn($q) => $q->where('schedule_type', 'inhouse'))
+            ->whereHas('job.company', fn($q) => $q->where('is_overseas', $isOverseas))
             ->when($search, fn($q) => $q->whereHas('jobseeker', fn($u) =>
-                $u->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
+                $u->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('surname', 'like', "%{$search}%")
             ));
 
         $totalRegistered = (clone $registeredQuery)->count();
@@ -2136,15 +2296,80 @@ $nsrp = $registration->nsrp;
 
         $totalReferred = (clone $referredQuery)->count();
 
-        // I-paginate lang ang active tab para dili mabug-atan
-        $registeredParticipants = $tab === 'registered' ? $registeredQuery->latest()->paginate(10) : null;
+        $vacancyMonth = request('vacancy_month', now()->format('Y-m'));
+        if (!preg_match('/^\d{4}-\d{2}$/', $vacancyMonth)) {
+            $vacancyMonth = now()->format('Y-m');
+        }
+        [$vacancyYear, $vacancyMonthNumber] = array_pad(explode('-', $vacancyMonth), 2, now()->format('m'));
+
+        $solicitedJobs = collect();
+        $totalVacanciesSolicited = 0;
+        if ($staffRole === 'sra') {
+            $vacancyQuery = \App\Models\Job::with('company')
+                ->whereHas('company', fn($q) => $q->where('is_overseas', true))
+                ->where('posting_status', 'approved')
+                ->whereYear('updated_at', $vacancyYear)
+                ->whereMonth('updated_at', $vacancyMonthNumber)
+                ->where(function ($q) {
+                    $q->whereNull('schedule_type')
+                      ->orWhere('schedule_type', 'office_based')
+                      ->orWhere(function ($q2) {
+                          $q2->where('schedule_type', 'inhouse')
+                             ->where('posting_status', 'approved');
+                      });
+                })
+                ->when($search, fn($q) => $q->where('title', 'like', "%{$search}%")
+                    ->orWhereHas('company', fn($u) => $u->where('company_name', 'like', "%{$search}%"))
+                );
+
+            $totalVacanciesSolicited = (clone $vacancyQuery)->count();
+            $solicitedJobs = $tab === 'vacancies' ? $vacancyQuery->latest()->paginate(10) : collect();
+        }
+
+        // I-paginate lang ang active tab/sub-view para dili mabug-atan
+        $registeredParticipants = ($tab === 'registered' && $registeredView === 'inhouse') ? $registeredQuery->latest()->paginate(10) : null;
+        $registeredAll          = ($tab === 'registered' && $registeredView === 'all')     ? $registeredAllQuery->latest()->paginate(10) : null;
         $placedApplications     = $tab === 'placed'     ? $placedQuery->latest()->paginate(10)     : null;
         $referredApplications   = $tab === 'referred'   ? $referredQuery->latest()->paginate(10)   : null;
 
+        // ── TAB: TOP EMPLOYERS (in-house interview participation count, per employer) — placeholder logic, i-refine pa sa ulahi ──
+        $topEmployersFilter = request('top_employers_filter', 'monthly');
+        $topEmployersMonth  = request('top_employers_month');
+        $topEmployersYear   = request('top_employers_year');
+        $topEmployersByOfficeBasedInterviews = collect();
+
+        if ($tab === 'top_employers') {
+            $inhouseQuery = \App\Models\Job::with('company')
+                ->where('schedule_type', 'inhouse')
+                ->where('posting_status', 'approved')
+                ->whereHas('company', fn($q) => $q->where('is_overseas', $staffRole === 'sra'));
+
+            if ($topEmployersFilter === 'yearly') {
+                $selectedYear = $topEmployersYear ?: now()->year;
+                $inhouseQuery->whereYear('updated_at', $selectedYear);
+            } else {
+                $selectedMonth = $topEmployersMonth ?: now()->format('Y-m');
+                [$selYear, $selMon] = array_pad(explode('-', $selectedMonth), 2, now()->month);
+                $inhouseQuery->whereYear('updated_at', $selYear)->whereMonth('updated_at', $selMon);
+            }
+
+            $topEmployersByOfficeBasedInterviews = $inhouseQuery->get()
+                ->groupBy('company_id')
+                ->map(fn($group) => [
+                    'employer'        => $group->first()->company,
+                    'interview_count' => $group->count(),
+                ])
+                ->sortByDesc('interview_count')
+                ->take(5)
+                ->values();
+        }
+
         return view('staff.reports.index', compact(
-            'staffRole', 'tab',
-            'registeredParticipants', 'placedApplications', 'referredApplications',
-            'totalRegistered', 'totalPlaced', 'totalReferred'
+            'staffRole', 'tab', 'registeredView', 'reportView',
+            'registeredParticipants', 'registeredAll', 'placedApplications', 'referredApplications',
+            'totalRegistered', 'totalRegisteredAll', 'totalPlaced', 'totalReferred',
+            'vacancyMonth', 'solicitedJobs', 'totalVacanciesSolicited',
+            'topEmployersFilter', 'topEmployersMonth', 'topEmployersYear', 'topEmployersByOfficeBasedInterviews'
         ));
     }
 

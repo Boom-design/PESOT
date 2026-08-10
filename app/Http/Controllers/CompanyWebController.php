@@ -239,7 +239,8 @@ class CompanyWebController extends Controller
                 'industry_group'      => $company->employerNsrp->industry_group,
                 'slots'               => $pos['slots'],
                 'salary'              => $pos['salary'] ?? 'Negotiable',
-                'deadline'            => $pos['deadline'] ?? null,
+                // ── Deadline = preferred_date sa schedule (In-house/Office Based), auto-fill dili na separate input ──
+                'deadline'            => in_array($request->schedule_type, ['inhouse', 'office_based']) ? $request->preferred_date : ($pos['deadline'] ?? null),
                 'status'              => 'closed',
                 'posting_status'      => 'pending',
                 'posting_type'        => 'direct',
@@ -247,14 +248,14 @@ class CompanyWebController extends Controller
                 'preferred_date'      => $request->schedule_type !== 'job_fair' ? $request->preferred_date : null,
                 'venue_type'          => $request->schedule_type === 'inhouse' ? $request->venue_type : null,
                 'venue_address'       => $request->schedule_type === 'inhouse' && $request->venue_type === 'other' ? $request->venue_address : null,
-                'experience_months'   => $pos['experience_months'] ?? null,
-                'religion'            => $pos['religion'] ?? null,
-                'sex_preference'      => $pos['sex_preference'] ?? 'Any',
-                'civil_status'        => $pos['civil_status'] ?? 'Any',
+                'experience_months'   => $pos['experience_months'] ?: 0,
+                'religion'            => $pos['religion'] ?: 'Any',
+                'sex_preference'      => $pos['sex_preference'] ?: 'Any',
+                'civil_status'        => $pos['civil_status'] ?: 'Any',
                 'other_qualifications'=> $pos['other_qualifications'] ?? null,
                 'accepts_disability'  => $pos['accepts_disability'] ?? 'no',
                 'disability_types'    => $pos['disability_types'] ?? null,
-                'education_required'  => $pos['education_required'] ?? null,
+                'education_required'  => $pos['education_required'] ?: 'Any',
                 'course_major'        => $pos['course_major'] ?? null,
                 'license'             => $pos['license'] ?? null,
                 'eligibility'         => $pos['eligibility'] ?? null,
@@ -285,7 +286,9 @@ class CompanyWebController extends Controller
             $title    = 'New Job Fair Posting Request 🎪';
             $message  = $company->employerNsrp->company_name . ' confirmed their initial job vacancy posting(s) for job fair use. Please review and approve.';
         } else {
-            $staffIds = \App\Models\Staff::where('staff_role', 'job_vacancy')->pluck('id');
+            // ── Office Based: SRA (overseas) o Job Vacancy staff (local) ──
+            $officeBasedApproverRole = $employerNsrp->is_overseas ? 'sra' : 'job_vacancy';
+            $staffIds = \App\Models\Staff::where('staff_role', $officeBasedApproverRole)->pluck('id');
             $title    = 'New Job Posting Request 💼';
             $message  = $company->employerNsrp->company_name . ' confirmed their initial job vacancy posting(s). Please review and approve.';
         }
@@ -565,6 +568,41 @@ class CompanyWebController extends Controller
     }
 
     // ───────────────────────────────
+    // GET BOOKED DATES (PESO Office, fully-booked/3-3) — para sa calendar picker
+    // ───────────────────────────────
+    public function getBookedDates()
+    {
+        $company = $this->authCompany();
+        if (!$company) return response()->json(['error' => 'Unauthorized'], 401);
+
+        $startDate = now()->startOfDay();
+        $endDate   = now()->addMonths(6)->endOfDay();
+
+        $scheduleDates = \App\Models\InhouseSchedule::where('venue_type', 'peso_office')
+            ->whereBetween('preferred_date', [$startDate, $endDate])
+            ->whereIn('status', ['pending', 'accepted'])
+            ->select('preferred_date', 'employer_id')
+            ->get();
+
+        $jobDates = \App\Models\Job::where('schedule_type', 'inhouse')
+            ->where('venue_type', 'peso_office')
+            ->whereBetween('preferred_date', [$startDate, $endDate])
+            ->whereIn('posting_status', ['pending', 'approved'])
+            ->select('preferred_date', 'company_id as employer_id')
+            ->get();
+
+        $combined = $scheduleDates->concat($jobDates);
+
+        $bookedDates = $combined
+            ->groupBy(fn($row) => \Carbon\Carbon::parse($row->preferred_date)->format('Y-m-d'))
+            ->filter(fn($rows) => $rows->pluck('employer_id')->unique()->count() >= 3)
+            ->keys()
+            ->values();
+
+        return response()->json(['booked_dates' => $bookedDates]);
+    }
+
+    // ───────────────────────────────
     // REQUEST JOB POSTING (multi-position, usa ka poster image per request)
     // ───────────────────────────────
     public function requestJob(Request $request)
@@ -654,7 +692,8 @@ class CompanyWebController extends Controller
                 'type'                => $pos['type'],
                 'industry_group'      => $company->employerNsrp->industry_group,
                 'slots'               => $pos['slots'],
-                'deadline'            => $pos['deadline'] ?? null,
+                // ── Deadline = preferred_date sa schedule (In-house/Office Based), auto-fill dili na separate input ──
+                'deadline'            => in_array($request->schedule_type, ['inhouse', 'office_based']) ? $request->preferred_date : ($pos['deadline'] ?? null),
                 'salary'              => $pos['salary'] ?? 'Negotiable',
                 'status'              => 'closed',
                 'posting_status'      => 'pending',
@@ -664,11 +703,11 @@ class CompanyWebController extends Controller
                 'venue_type'          => $request->venue_type,
                 'venue_address'       => $request->venue_type === 'other' ? $request->venue_address : null,
                 'poster_image'        => $this->resolveJobImage($pos) ?? $posterPath,
-                // Qualification fields
-                'sex_preference'      => $pos['sex_preference'] ?? 'Any',
-                'education_required'  => $pos['education_required'] ?? null,
-                'religion'            => $pos['religion'] ?? null,
-                'civil_status'        => $pos['civil_status'] ?? 'Any',
+                // Qualification fields — kung blangko ang gi-submit, automatic "Any" (dili null/blank display)
+                'sex_preference'      => $pos['sex_preference'] ?: 'Any',
+                'education_required'  => $pos['education_required'] ?: 'Any',
+                'religion'            => $pos['religion'] ?: 'Any',
+                'civil_status'        => $pos['civil_status'] ?: 'Any',
                 'other_qualifications'=> $pos['other_qualifications'] ?? null,
                 'accepts_disability'  => $pos['accepts_disability'] ?? 'no',
                 'disability_types'    => $pos['disability_types'] ?? null,
@@ -679,7 +718,7 @@ class CompanyWebController extends Controller
                 'certification'       => $pos['certification'] ?? null,
                 'language'            => $pos['language'] ?? null,
                 'preferred_residence' => $pos['preferred_residence'] ?? null,
-                'experience_months'   => $pos['experience_months'] ?? null,
+                'experience_months'   => $pos['experience_months'] ?: 0,
             ]);
         }
 
@@ -703,7 +742,9 @@ class CompanyWebController extends Controller
             $title    = 'New Job Fair Posting Request 🎪';
             $message  = $company->employerNsrp->company_name . ' requested to post "' . $titleSummary . '" for job fair use. Please review and approve.';
         } else {
-            $staffIds = \App\Models\Staff::where('staff_role', 'job_vacancy')->pluck('id');
+            // ── Office Based: SRA (overseas) o Job Vacancy staff (local) ──
+            $officeBasedApproverRole = ($company->employerNsrp && $company->employerNsrp->is_overseas) ? 'sra' : 'job_vacancy';
+            $staffIds = \App\Models\Staff::where('staff_role', $officeBasedApproverRole)->pluck('id');
             $title    = 'New Job Posting Request 💼';
             $message  = $company->employerNsrp->company_name . ' requested to post "' . $titleSummary . '". Please review and approve.';
         }
@@ -748,6 +789,22 @@ class CompanyWebController extends Controller
             ->update(['is_read' => true]);
 
         return response()->json(['success' => true]);
+    }
+
+    // ───────────────────────────────
+    // ALL NOTIFICATIONS (full history page)
+    // ───────────────────────────────
+    public function notifications()
+    {
+        $company = $this->authCompany();
+        if (!$company) return redirect()->route('company.login');
+
+        $employerNsrp   = $company->employerNsrp;
+        $notifications  = $employerNsrp
+            ? \App\Models\Announcement::where('employer_id', $employerNsrp->id)->latest()->get()
+            : collect();
+
+        return view('company.notifications.index', compact('notifications'));
     }
 
     // ───────────────────────────────
@@ -846,6 +903,13 @@ class CompanyWebController extends Controller
             ->latest()
             ->get();
 
+        // ── Confirmed count per event, para ma-lock ang Accept button kung full na ──
+        $confirmedCountsPerEvent = \App\Models\JobFairParticipant::where('confirmation_status', 'confirmed')
+            ->whereIn('job_fair_id', $invitations->pluck('job_fair_id'))
+            ->selectRaw('job_fair_id, count(*) as cnt')
+            ->groupBy('job_fair_id')
+            ->pluck('cnt', 'job_fair_id');
+
         // Get applicants kung confirmed ang employer sa bisan unsang job fair
         $isConfirmed = \App\Models\JobFairParticipant::where('employer_id', $company->employerNsrp->id)
             ->where('confirmation_status', 'confirmed')
@@ -869,8 +933,16 @@ class CompanyWebController extends Controller
 
         $applicants = collect();
         if ($isConfirmed) {
+            // ── Job ids nga tinuod nga gi-submit sa "Select Jobs to Bring" para sa mga event nga confirmed ang company ──
+            $confirmedEventIds = \App\Models\JobFairParticipant::where('employer_id', $company->employerNsrp->id)
+                ->where('confirmation_status', 'confirmed')
+                ->pluck('job_fair_id');
+            $bringableJobIds = \App\Models\JobFairEmploymentRequest::where('employer_id', $company->employerNsrp->id)
+                ->whereIn('job_fair_id', $confirmedEventIds)
+                ->pluck('job_id');
+
             $applicants = \App\Models\Application::with(['jobseeker', 'jobseeker.nsrp', 'jobseeker.user', 'job'])
-                ->whereHas('job', fn($q) => $q->where('company_id', $company->employerNsrp->id))
+                ->whereIn('job_id', $bringableJobIds)
                 ->whereIn('status', ['pending', 'reviewed', 'qualified', 'waiting', 'hired', 'rejected'])
                 ->when($search, function ($q) use ($search) {
                     $q->where(function ($sub) use ($search) {
@@ -887,7 +959,7 @@ class CompanyWebController extends Controller
                 ->withQueryString();
         }
 
-        return view('company.jobfair.index', compact('invitations', 'applicants', 'isConfirmed', 'search', 'actionsUnlocked', 'earliestConfirmedEventDate'));
+        return view('company.jobfair.index', compact('invitations', 'applicants', 'isConfirmed', 'search', 'actionsUnlocked', 'earliestConfirmedEventDate', 'confirmedCountsPerEvent'));
     }
 
     public function respondJobFair(Request $request, $id)
@@ -899,9 +971,32 @@ class CompanyWebController extends Controller
             'response' => 'required|in:confirmed,declined',
         ]);
 
-        $participant = \App\Models\JobFairParticipant::where('id', $id)
+        $participant = \App\Models\JobFairParticipant::with('jobFair')->where('id', $id)
             ->where('employer_id', $company->employerNsrp->id)
             ->firstOrFail();
+
+        // ── Kung mo-confirm, kinahanglan naay bisan usa ka OPEN job posting una — walay pulos mag-confirm kung walay i-offer sa event ──
+        if ($request->response === 'confirmed') {
+            $hasAnyOpenJob = \App\Models\Job::where('company_id', $company->employerNsrp->id)
+                ->where('status', 'open')
+                ->exists();
+
+            if (!$hasAnyOpenJob) {
+                return redirect()->route('company.jobs')
+                    ->with('error', 'You need at least one approved job posting before confirming a job fair invitation. Please request a job posting first, then come back to confirm.');
+            }
+        }
+
+        // ── I-block ang Confirm kung na-abot na ang employer_capacity sa event ──
+        if ($request->response === 'confirmed' && $participant->jobFair && $participant->jobFair->employer_capacity) {
+            $confirmedCount = \App\Models\JobFairParticipant::where('job_fair_id', $participant->job_fair_id)
+                ->where('confirmation_status', 'confirmed')
+                ->count();
+
+            if ($confirmedCount >= $participant->jobFair->employer_capacity) {
+                return back()->with('error', 'This job fair is already full (' . $confirmedCount . '/' . $participant->jobFair->employer_capacity . ' employers confirmed).');
+            }
+        }
 
         $participant->update(['confirmation_status' => $request->response]);
 
@@ -1067,9 +1162,16 @@ class CompanyWebController extends Controller
 
         $search = $request->input('search');
 
-        // ── Open ra (na-approve na sa PESO staff) ang makita diri ──
+        // ── Open ra (na-approve na sa PESO staff) ang makita diri — itago ang Job Fair jobs (naay separate hiring flow sa Job Fair Invitations page), itago kung "homana" na (schedule date milabay na UG naay hired), naa na sa Reports ──
         $jobs = Job::where('company_id', $company->employerNsrp->id)
             ->where('status', 'open')
+            ->where('schedule_type', '!=', 'job_fair')
+            ->withCount(['applications as hired_count' => fn($q) => $q->where('status', 'hired')])
+            ->where(function ($q) {
+                $q->whereNull('deadline')
+                  ->orWhereDate('deadline', '>=', now()->toDateString())
+                  ->orWhereRaw('(select count(*) from `job_matching` where `job_matching`.`job_id` = `job_qualifications`.`id` and `status` = ?) = 0', ['hired']);
+            })
             ->when($search, function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%");
             })
@@ -1081,7 +1183,7 @@ class CompanyWebController extends Controller
     }
 
     // ───────────────────────────────
-    // REPORTS — Hired applicants only
+    // REPORTS — job list nga naay bisan usa ka hired applicant
     // ───────────────────────────────
     public function reports(Request $request)
     {
@@ -1091,25 +1193,47 @@ class CompanyWebController extends Controller
 
         $search = $request->input('search');
 
-        $hired = Application::with(['jobseeker.user', 'job'])
-            ->whereHas('job', fn($q) => $q->where('company_id', $company->employerNsrp->id))
-            ->where('status', 'hired')
+        $jobs = Job::where('company_id', $company->employerNsrp->id)
+            ->whereHas('applications', fn($q) => $q->where('status', 'hired'))
+            ->withCount(['applications as hired_count' => fn($q) => $q->where('status', 'hired')])
             ->when($search, function ($q) use ($search) {
-                $q->where(function ($sub) use ($search) {
-                    $sub->whereHas('jobseeker', function ($jq) use ($search) {
-                        $jq->where('first_name', 'like', "%{$search}%")
-                           ->orWhere('surname', 'like', "%{$search}%")
-                           ->orWhereHas('user', fn($uq) => $uq->where('email', 'like', "%{$search}%"));
-                    })->orWhereHas('job', function ($jq) use ($search) {
-                        $jq->where('title', 'like', "%{$search}%");
-                    });
-                });
+                $q->where('title', 'like', "%{$search}%");
             })
             ->latest()
             ->paginate(10)
             ->withQueryString();
 
-        return view('company.reports.index', compact('hired', 'search'));
+        return view('company.reports.index', compact('jobs', 'search'));
+    }
+
+    // ───────────────────────────────
+    // REPORTS — hired jobseekers per specific job
+    // ───────────────────────────────
+    public function reportsByJob(Request $request, $jobId)
+    {
+        $company = $this->authCompany();
+        if (!$company) return redirect()->route('company.login');
+
+        $job = Job::where('id', $jobId)
+            ->where('company_id', $company->employerNsrp->id)
+            ->firstOrFail();
+
+        $search = $request->input('search');
+
+        $hired = Application::with(['jobseeker.user'])
+            ->where('job_id', $jobId)
+            ->where('status', 'hired')
+            ->when($search, function ($q) use ($search) {
+                $q->whereHas('jobseeker', function ($jq) use ($search) {
+                    $jq->where('first_name', 'like', "%{$search}%")
+                       ->orWhere('surname', 'like', "%{$search}%");
+                });
+            })
+            ->latest('updated_at')
+            ->paginate(10)
+            ->withQueryString();
+
+        return view('company.reports.show', compact('job', 'hired', 'search'));
     }
 
     // ───────────────────────────────

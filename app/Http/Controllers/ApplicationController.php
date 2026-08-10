@@ -89,6 +89,50 @@ class ApplicationController extends Controller
             ->with('success', 'Application submitted successfully!');
     }
 
+    // ── STAFF: APPLY FOR JOB ON BEHALF OF A WALK-IN JOBSEEKER (walay account/email) ──
+    public function applyByStaff(Request $request, $registrationId)
+    {
+        $staffUser = Auth::user();
+        if (!$staffUser || $staffUser->role !== 'staff') return redirect()->route('login');
+
+        $request->validate([
+            'job_id' => 'required|exists:job_qualifications,id',
+        ]);
+
+        $registration = JobseekerRegistration::findOrFail($registrationId);
+        $job = Job::where('id', $request->job_id)->where('status', 'open')->firstOrFail();
+
+        $existing = Application::where('jobseeker_id', $registration->id)
+            ->where('job_id', $job->id)->first();
+
+        if ($existing) {
+            return back()->with('error', 'This jobseeker has already applied for this job.');
+        }
+
+        $breakdown = $this->computeMatchBreakdownByRegistrationId($registration->id, $job);
+
+        Application::create([
+            'jobseeker_id'          => $registration->id,
+            'job_id'                => $job->id,
+            'status'                => 'pending',
+            'match_percentage'      => $breakdown['percentage'],
+            // ── Walk-in jobseekers naa na mismo sa office pag-apply — auto-accepted dayon ang participation, dili na kinahanglan pa i-confirm (kay walay account/paagi sila ma-respond sa prompt) ──
+            'inhouse_participation' => $job->schedule_type === 'inhouse' ? 'accepted' : null,
+            'office_participation'  => $job->schedule_type === 'office_based' ? 'accepted' : null,
+        ]);
+
+        $applicantName = trim(($registration->first_name ?? '') . ' ' . ($registration->surname ?? ''));
+        \App\Models\Announcement::sendToEmployers([
+            'type'           => 'new_applicant',
+            'title'          => 'New Job Applicant 📨',
+            'message'        => ($applicantName ?: 'A jobseeker') . ' applied for "' . $job->title . '".',
+            'reference_type' => 'job',
+            'reference_id'   => $job->id,
+        ], $job->company_id);
+
+        return back()->with('success', 'Application submitted for ' . ($applicantName ?: 'the jobseeker') . '!');
+    }
+
     // ── RESPOND SA IN-HOUSE INTERVIEW PARTICIPATION PROMPT ──
     public function respondInhouseParticipation(Request $request, $id)
     {
@@ -162,7 +206,26 @@ class ApplicationController extends Controller
         $registration = JobseekerRegistration::with('nsrp.workExperiences', 'nsrp.certifications')
             ->where('user_id', $jobseekerId)->first();
 
-        if (!$registration || !$registration->nsrp) {
+        if (!$registration) {
+            return ['percentage' => 0, 'criteria' => []];
+        }
+
+        return $this->evaluateMatchForRegistration($registration, $job);
+    }
+
+    // ── PUBLIC wrapper — para sa walk-in jobseekers (walay user_id), gamit registration id diretso ──
+    public function computeMatchBreakdownByRegistrationId($registrationId, Job $job): array
+    {
+        $registration = JobseekerRegistration::with('nsrp.workExperiences', 'nsrp.certifications')->find($registrationId);
+        if (!$registration) {
+            return ['percentage' => 0, 'criteria' => []];
+        }
+        return $this->evaluateMatchForRegistration($registration, $job);
+    }
+
+    private function evaluateMatchForRegistration(JobseekerRegistration $registration, Job $job): array
+    {
+        if (!$registration->nsrp) {
             return ['percentage' => 0, 'criteria' => []];
         }
 
@@ -181,6 +244,20 @@ class ApplicationController extends Controller
                 'note'    => $note,
             ];
         };
+
+        // ── Preferred Occupation — importante nga criterion, dako ang weight ──
+        $preferredOccupations = $nsrp->preferred_occupations ?? [];
+        if (!empty($preferredOccupations)) {
+            $matched = false;
+            foreach ($preferredOccupations as $occ) {
+                if (strtolower(trim($occ)) === strtolower(trim($job->title))) {
+                    $matched = true;
+                    break;
+                }
+            }
+            $addCriterion('Preferred Occupation: ' . $job->title, 25, $matched,
+                $matched ? null : 'Not listed in your preferred occupations');
+        }
 
         // ── Sex Preference ──
         if ($job->sex_preference && $job->sex_preference !== 'Any') {
