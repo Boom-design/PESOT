@@ -3,592 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PESO — Company Portal</title>
+    @include('partials.head-brand')
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/bold/style.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    {{-- Design tokens and shared components. Loaded after Bootstrap so it wins. --}}
+    <link rel="stylesheet" href="{{ asset('css/peso.css') }}">
+
     <style>
+        /* Flatpickr: dates already booked for this employer. */
         .flatpickr-day.fp-date-booked {
-            background: #fff5f5 !important;
-            color: #e05252 !important;
+            background: var(--danger-bg) !important;
+            color: var(--danger) !important;
             text-decoration: line-through;
             cursor: not-allowed !important;
             position: relative;
         }
-        .flatpickr-day.fp-date-booked:hover { background: #fff5f5 !important; }
-    </style>
-    <style>
-        :root {
-            --peso-green:  #4dd9c0;
-            --peso-light:  #90d870;
-            --peso-dark:   #2d7a5f;
-            --peso-border: #a8e6cf;
-            --peso-bg:     #f0f9f6;
+        .flatpickr-day.fp-date-booked:hover { background: var(--danger-bg) !important; }
+
+        /* Holidays: PESO is closed, so these are never selectable. Kept visually
+           distinct from a fully-booked date — a booked date can be solved by
+           changing the venue, a holiday cannot. */
+        .flatpickr-day.fp-date-holiday,
+        .flatpickr-day.fp-date-holiday:hover {
+            background: var(--warn-bg) !important;
+            color: var(--warn) !important;
+            cursor: not-allowed !important;
         }
-
-        * { box-sizing: border-box; }
-
-        body {
-            background: var(--peso-bg);
-            font-family: 'Segoe UI', sans-serif;
-            margin: 0;
-        }
-
-        /* ── SIDEBAR ── */
-        .sidebar {
-            width: 240px;
-            min-height: 100vh;
-            background: linear-gradient(180deg, #1a5c45, #0d1f18);
-            position: fixed;
-            top: 0; left: 0;
-            display: flex;
-            flex-direction: column;
-            z-index: 100;
-            box-shadow: 2px 0 12px rgba(0,0,0,0.08);
-        }
-
-        .sidebar-brand {
-            padding: 28px 20px 20px;
-            text-align: center;
-            border-bottom: 1px solid rgba(255,255,255,0.3);
-        }
-
-        .sidebar-brand img {
-            width: 64px;
-            height: 64px;
-            object-fit: contain;
-            margin-bottom: 8px;
-        }
-
-        .sidebar-brand .brand-title {
-            font-size: 12px;
-            font-weight: 700;
-            color: #fff;
-            line-height: 1.4;
-        }
-
-        .sidebar-brand .brand-sub {
-            display: inline-block;
-            margin-top: 18px;
-            padding: 3px 12px;
-            border-radius: 20px;
-            background: rgba(255,255,255,0.15);
-            font-size: 10px; font-weight: 700;
-            color: #fff;
-            letter-spacing: 0.5px;
-        }
-
-        .sidebar-nav {
-            padding: 16px 12px;
-            flex: 1;
-        }
-
-        .sidebar-nav .nav-item {
-            margin-bottom: 4px;
-        }
-
-        .sidebar-nav .nav-link {
-            color: rgba(255,255,255,0.85);
-            font-size: 13px;
-            font-weight: 500;
-            padding: 10px 14px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            transition: all 0.2s;
-            text-decoration: none;
-        }
-
-        .sidebar-nav .nav-link:hover,
-        .sidebar-nav .nav-link.active {
-            background: rgba(255,255,255,0.25);
-            color: #fff;
-            transform: translateX(4px);
-        }
-
-        .sidebar-nav .nav-link i {
-            font-size: 16px;
-            width: 20px;
-            text-align: center;
-        }
-
-        .sidebar-nav .nav-link.disabled {
-            opacity: 0.4;
-            pointer-events: none;
-            cursor: not-allowed;
-        }
-
-        .sidebar-footer {
-            padding: 16px 12px;
-            border-top: 1px solid rgba(255,255,255,0.3);
-        }
-
-        .sidebar-footer .company-badge {
-            background: rgba(255,255,255,0.2);
-            border-radius: 10px;
-            padding: 10px 12px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            overflow: hidden;
-        }
-
-        .sidebar-footer .company-badge > div:last-child {
-            min-width: 0;
-            flex: 1;
-        }
-
-        .sidebar-footer .company-avatar {
-            width: 32px;
-            height: 32px;
-            background: rgba(255,255,255,0.3);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #fff;
-            font-size: 14px;
-            flex-shrink: 0;
-        }
-
-        .sidebar-footer .company-name {
-            font-size: 12px;
-            font-weight: 600;
-            color: #fff;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .sidebar-footer .company-role {
-            font-size: 10px;
-            color: rgba(255,255,255,0.75);
-        }
-
-        /* ── RESPONSIVE SIDEBAR (mobile off-canvas) ── */
-        @media (max-width: 767.98px) {
-            .sidebar {
-                transform: translateX(-100%);
-                transition: transform 0.3s ease;
-            }
-            .sidebar.sidebar-open { transform: translateX(0); }
-        }
-        .sidebar-overlay { display: none; }
-        @media (max-width: 767.98px) {
-            .sidebar-overlay {
-                position: fixed; inset: 0;
-                background: rgba(0,0,0,0.5);
-                z-index: 90;
-            }
-            .sidebar-overlay.show { display: block; }
-        }
-        .hamburger-btn {
-            display: none;
-            background: none; border: none;
-            font-size: 22px; color: var(--peso-dark);
-            cursor: pointer; padding: 4px 8px;
-        }
-        @media (max-width: 767.98px) {
-            .hamburger-btn { display: inline-flex; }
-        }
-
-        /* ── TOPBAR ── */
-        .topbar {
-            position: fixed;
-            top: 0;
-            left: 240px;
-            right: 0;
-            height: 60px;
-            background: #fff;
-            border-bottom: 1px solid #e8f5f0;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 24px;
-            z-index: 99;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        }
-        @media (max-width: 767.98px) {
-            .topbar { left: 0; padding: 0 14px; }
-        }
-
-        .topbar .page-title {
-            font-size: 15px;
-            font-weight: 700;
-            color: var(--peso-dark);
-        }
-
-        .topbar .topbar-right {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .topbar .btn-notif {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: var(--peso-bg);
-            border: 1px solid var(--peso-border);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--peso-dark);
-            font-size: 16px;
-            cursor: pointer;
-            transition: all 0.2s;
-            text-decoration: none;
-        }
-
-        .topbar .btn-notif:hover {
-            background: var(--peso-border);
-        }
-
-        .topbar .dropdown-toggle {
-            background: none;
-            border: none;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            padding: 6px 10px;
-            border-radius: 10px;
-            transition: background 0.2s;
-        }
-
-        .topbar .dropdown-toggle::after {
-            display: none;
-        }
-
-        .topbar .dropdown-toggle:hover {
-            background: var(--peso-bg);
-        }
-
-        .topbar .dropdown-toggle span {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--peso-dark);
-        }
-
-        .topbar .dropdown-menu {
-            border: 1px solid var(--peso-border);
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-            min-width: 160px;
-            max-width: calc(100vw - 24px) !important;
-            padding: 8px;
-        }
-
-        .topbar .dropdown-item {
-            border-radius: 8px;
-            font-size: 13px;
-            color: var(--peso-dark);
-            padding: 8px 12px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .topbar .dropdown-item:hover {
-            background: var(--peso-bg);
-            color: var(--peso-dark);
-        }
-
-        .topbar .dropdown-item.text-danger:hover {
-            background: #fff5f5;
-        }
-
-        /* ── MAIN CONTENT ── */
-        .main-content {
-            margin-left: 240px;
-            padding-top: 60px;
-            min-height: 100vh;
-        }
-
-        .content-inner {
-            padding: 24px;
-        }
-
-        @media (max-width: 767.98px) {
-            .main-content { margin-left: 0; }
-            .content-inner { padding: 14px; }
-        }
-
-        /* ── CARDS ── */
-        .stat-card {
-            background: #fff;
-            border-radius: 16px;
-            padding: 20px;
-            border: 1px solid #e8f5f0;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
-            transition: transform 0.2s, box-shadow 0.2s;
-            animation: fadeInUp 0.5s ease forwards;
-        }
-
-        .stat-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 24px rgba(77,217,192,0.15);
-        }
-
-        .stat-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
-            background: linear-gradient(135deg, #90d870, #4dd9c0);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #fff;
-            font-size: 22px;
-            margin-bottom: 12px;
-        }
-
-        .stat-value {
-            font-size: 28px;
-            font-weight: 700;
-            color: var(--peso-dark);
-            line-height: 1;
-        }
-
-        .stat-label {
-            font-size: 12px;
-            color: #888;
-            margin-top: 4px;
-        }
-
-        /* ── BUTTONS ── */
-        .btn-peso {
-            background: linear-gradient(90deg, #90d870, #4dd9c0);
-            border: none;
-            color: #fff;
-            font-weight: 600;
-            border-radius: 10px;
-            padding: 9px 20px;
-            font-size: 13px;
-            transition: opacity 0.2s, transform 0.2s;
-            box-shadow: 0 4px 12px rgba(77,217,192,0.3);
-        }
-
-        .btn-peso:hover {
-            opacity: 0.9;
-            color: #fff;
-            transform: translateY(-1px);
-        }
-
-        .btn-peso-outline {
-            background: transparent;
-            border: 1.5px solid var(--peso-green);
-            color: var(--peso-dark);
-            font-weight: 600;
-            border-radius: 10px;
-            padding: 8px 20px;
-            font-size: 13px;
-            transition: all 0.2s;
-        }
-
-        .btn-peso-outline:hover {
-            background: var(--peso-bg);
-            color: var(--peso-dark);
-        }
-
-        /* ── TABLE ── */
-        .peso-table {
-            background: #fff;
-            border-radius: 16px;
-            overflow: hidden;
-            border: 1px solid #e8f5f0;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
-        }
-
-        .peso-table thead th {
-            background: linear-gradient(90deg, #90d870, #4dd9c0);
-            color: #fff;
-            font-size: 12px;
-            font-weight: 600;
-            padding: 12px 16px;
-            border: none;
-        }
-
-        .peso-table tbody td {
-            font-size: 13px;
-            color: var(--peso-dark);
-            padding: 12px 16px;
-            vertical-align: middle;
-            border-color: #f0f9f6;
-        }
-
-        .peso-table tbody tr:hover {
-            background: var(--peso-bg);
-        }
-
-        /* ── BADGES ── */
-        .badge-open {
-            background: #e8f8f3;
-            color: var(--peso-dark);
-            font-size: 11px;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-weight: 600;
-        }
-
-        .badge-closed {
-            background: #f5f5f5;
-            color: #888;
-            font-size: 11px;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-weight: 600;
-        }
-
-        .badge-pending {
-            background: #fff8e1;
-            color: #e6a817;
-            font-size: 11px;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-weight: 600;
-        }
-
-        .badge-hired {
-            background: #e8f8f3;
-            color: var(--peso-dark);
-            font-size: 11px;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-weight: 600;
-        }
-
-        .badge-rejected {
-            background: #fff5f5;
-            color: #e53935;
-            font-size: 11px;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-weight: 600;
-        }
-
-        /* ── FORM ── */
-        .peso-input {
-            border: 1.5px solid var(--peso-border);
-            border-radius: 10px;
-            font-size: 13px;
-            padding: 10px 14px;
-            color: var(--peso-dark);
-            transition: border-color 0.2s;
-        }
-
-        .peso-input:focus {
-            border-color: var(--peso-green);
-            box-shadow: 0 0 0 3px rgba(77,217,192,0.15);
-            outline: none;
-        }
-
-        .peso-label {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--peso-dark);
-            margin-bottom: 6px;
-        }
-
-        /* ── CARD PANEL ── */
-        .peso-card {
-            background: #fff;
-            border-radius: 16px;
-            border: 1px solid #e8f5f0;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
-            overflow: hidden;
-        }
-
-        .peso-card-header {
-            padding: 16px 20px;
-            border-bottom: 1px solid #f0f9f6;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .peso-card-header h6 {
-            font-size: 14px;
-            font-weight: 700;
-            color: var(--peso-dark);
-            margin: 0;
-        }
-
-        .peso-card-body {
-            padding: 20px;
-        }
-
-        /* ── EMPTY STATE ── */
-        .empty-state {
-            text-align: center;
-            padding: 48px 20px;
-        }
-
-        .empty-icon {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #90d870, #4dd9c0);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 16px;
-            font-size: 36px;
-            color: #fff;
-            animation: pulse 2s infinite;
-        }
-
-        .empty-state h6 {
-            font-size: 15px;
-            font-weight: 700;
-            color: var(--peso-dark);
-            margin-bottom: 6px;
-        }
-
-        .empty-state p {
-            font-size: 13px;
-            color: #888;
-            margin: 0;
-        }
-
-        /* ── ALERTS ── */
-        .alert-peso {
-            border-radius: 10px;
-            border: none;
-            font-size: 13px;
-            padding: 12px 16px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            animation: fadeInUp 0.3s ease;
-        }
-
-        .alert-success {
-            background: #e8f8f3;
-            color: var(--peso-dark);
-        }
-
-        .alert-danger {
-            background: #fff5f5;
-            color: #c62828;
-        }
-
-        /* ── ANIMATIONS ── */
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(16px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50%       { transform: scale(1.06); }
-        }
-
-        .fade-in { animation: fadeInUp 0.5s ease forwards; }
-        .fade-in-1 { animation: fadeInUp 0.5s ease 0.1s forwards; opacity: 0; }
-        .fade-in-2 { animation: fadeInUp 0.5s ease 0.2s forwards; opacity: 0; }
-        .fade-in-3 { animation: fadeInUp 0.5s ease 0.3s forwards; opacity: 0; }
     </style>
 </head>
 <body>
@@ -597,78 +46,151 @@
     <div class="sidebar">
         <div class="sidebar-brand">
             <img src="{{ asset('images/peso_logo.png') }}" alt="PESO Logo">
-            <div class="brand-title">A Web-based Job Management System for PESO CDO</div>
-            <div class="brand-sub">Company Portal</div>
+            <div class="brand-title">PUBLIC EMPLOYMENT SERVICE OFFICE</div>
+            <div class="brand-sub">A Web-based Job Management System</div>
         </div>
 
         @php
-            $sidebarEmployerNsrp = \App\Models\EmployerNsrpRegistration::where('user_id', Auth::id())->first();
+            // Ang kompanya nga gitrabahoan karon, dili ang una nga nakit-an sa
+            // database: usa ka HR mahimong maghawid ug duha, ug ang requirements
+            // nga gipangita sa sidebar iya sa gitan-aw niya karon.
+            $sidebarEmployerNsrp = Auth::user()->activeCompany();
             $sidebarHasRequirement = $sidebarEmployerNsrp
                 ? \App\Models\EmployerRequirement::where('user_id', $sidebarEmployerNsrp->employer_nsrp_registrations_id)->exists()
                 : false;
             $sidebarReqApproved = $sidebarEmployerNsrp
                 ? \App\Models\EmployerRequirement::where('user_id', $sidebarEmployerNsrp->employer_nsrp_registrations_id)->where('status', 'approved')->exists()
                 : false;
-        @endphp
-        <nav class="sidebar-nav">
-            <ul class="nav flex-column">
-                <li class="nav-item">
-                    <a href="{{ route('company.dashboard') }}"
-                       class="nav-link {{ request()->routeIs('company.dashboard') ? 'active' : '' }}">
-                        <i class="bi bi-grid"></i> Dashboard
-                    </a>
-                </li>
-                <li class="nav-item">
-                    {{-- Stays enabled while requirements are pending: an employer may
-                         submit a job posting before approval and needs to see it. --}}
-                    <a href="{{ route('company.jobs') }}"
-                       id="jobVacancyNavLink"
-                       class="nav-link {{ (request()->routeIs('company.jobs') || request()->routeIs('company.jobs.*') || request()->routeIs('company.applicants*')) && !request()->routeIs('company.jobs.qualified') ? 'active' : '' }}">
-                        <i class="bi bi-send"></i> Job Vacancy Request
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('company.jobseekers') }}"
-                       class="nav-link {{ request()->routeIs('company.jobseekers*') || request()->routeIs('company.jobs.qualified') ? 'active' : '' }} {{ !$sidebarReqApproved ? 'disabled' : '' }}"
-                       @if(!$sidebarReqApproved) onclick="return false" title="Requirements must be approved first" @endif>
-                        <i class="bi bi-calendar2-week-fill"></i> Schedule Job Vacancy
-                    </a>
-                </li>
-                <li class="nav-item">
-    <a href="{{ route('company.requirements') }}"
-       class="nav-link {{ request()->routeIs('company.requirements*') ? 'active' : '' }} d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-upload"></i> Requirements</span>
-        @if(!$sidebarHasRequirement)
-        <span class="badge" style="background:#fff5f5;color:#e53935;font-size:9px;padding:3px 8px;border-radius:10px;font-weight:700;">Required</span>
-        @endif
-    </a>
-</li>
-                <li class="nav-item">
-                    <a href="{{ route('company.jobfair') }}"
-                       class="nav-link {{ request()->routeIs('company.jobfair*') ? 'active' : '' }} {{ !$sidebarReqApproved ? 'disabled' : '' }}"
-                       @if(!$sidebarReqApproved) onclick="return false" title="Requirements must be approved first" @endif>
-                        <i class="bi bi-calendar-event-fill"></i> Job Fair
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('company.reports') }}"
-                       class="nav-link {{ request()->routeIs('company.reports*') ? 'active' : '' }} {{ !$sidebarReqApproved ? 'disabled' : '' }}"
-                       @if(!$sidebarReqApproved) onclick="return false" title="Requirements must be approved first" @endif>
-                        <i class="bi bi-bar-chart-fill"></i> Reports
-                    </a>
-                </li>
 
+            // Red dot per nav item — see App\Support\NavAlerts for what counts.
+            $navAlerts = \App\Support\NavAlerts::forCompany(
+                $sidebarEmployerNsrp?->employer_nsrp_registrations_id
+            );
+        @endphp
+
+        <nav class="sidebar-nav">
+            <div class="nav-section">Main</div>
+            <ul>
+                <li>
+                    @php $isDashboard = request()->routeIs('company.dashboard'); @endphp
+                    <a href="{{ route('company.dashboard') }}" class="nav-link {{ $isDashboard ? 'active' : '' }}">
+                        <i class="{{ $isDashboard ? 'ph-fill' : 'ph' }} ph-squares-four"></i> Dashboard
+                    </a>
+                </li>
+                <li>
+                    {{-- Ang "Post a Job" nga buton naa na sa Active Job Postings —
+                         didto man siya makita human ma-post, mao nga didto pud
+                         siya sugdan. Usa na lang ka lugar nga adtoan sa employer. --}}
+                    @php $isSchedule = request()->routeIs('company.jobseekers*') || request()->routeIs('company.jobs.qualified'); @endphp
+                    <a href="{{ route('company.jobseekers') }}"
+                       class="nav-link {{ $isSchedule ? 'active' : '' }} {{ !$sidebarReqApproved ? 'disabled' : '' }}"
+                       @if(!$sidebarReqApproved) onclick="return false" title="Requirements must be approved first" @endif>
+                        <i class="{{ $isSchedule ? 'ph-fill' : 'ph' }} ph-briefcase"></i> Active Job Postings
+                        @include('partials.nav-dot', ['navKey' => 'active_job_vacancy', 'navLocked' => !$sidebarReqApproved])
+                        @if(!$sidebarReqApproved)<i class="ph ph-lock-simple ms-auto" style="font-size:13px;width:auto;"></i>@endif
+                    </a>
+                </li>
+                {{-- Walay "Removed Postings" nga item diri. Wala nay gi-approve nga
+                     posting, mao nga ang bugtong mosulod didto kay ang gitangtang
+                     sa staff — bihira, ug ang rason anaa na sa notification mismo.
+                     Ang route company.jobs buhi gihapon aron dili mabuak ang daan
+                     nga link. --}}
+            </ul>
+
+            <div class="nav-section">Manage</div>
+            <ul>
+                <li>
+                    @php $isReq = request()->routeIs('company.requirements*'); @endphp
+                    <a href="{{ route('company.requirements') }}" class="nav-link {{ $isReq ? 'active' : '' }}">
+                        <i class="{{ $isReq ? 'ph-fill' : 'ph' }} ph-upload-simple"></i> Requirements
+                        @if(!$sidebarHasRequirement)
+                            <span class="nav-flag is-required">Required</span>
+                        @else
+                            @include('partials.nav-dot', ['navKey' => 'requirements'])
+                        @endif
+                    </a>
+                </li>
+                {{-- Walay Job Fair nga item diri: usa na siya ka tab sa Active
+                     Job Postings (PESO interview, 2026-08-12). Ang route
+                     company.jobfair buhi gihapon ug mo-redirect didto, aron
+                     dili mabuak ang daan nga link ug ang notification. --}}
+                <li>
+                    @php $isReports = request()->routeIs('company.reports*'); @endphp
+                    <a href="{{ route('company.reports') }}"
+                       class="nav-link {{ $isReports ? 'active' : '' }} {{ !$sidebarReqApproved ? 'disabled' : '' }}"
+                       @if(!$sidebarReqApproved) onclick="return false" title="Requirements must be approved first" @endif>
+                        <i class="{{ $isReports ? 'ph-fill' : 'ph' }} ph-chart-bar"></i> Reports
+                        @if(!$sidebarReqApproved)<i class="ph ph-lock-simple ms-auto" style="font-size:13px;width:auto;"></i>@endif
+                    </a>
+                </li>
             </ul>
         </nav>
 
         <div class="sidebar-footer">
-            <div class="company-badge">
-                <div class="company-avatar">
-                    <i class="bi bi-building"></i>
+            {{-- ── ANG KOMPANYA NGA GITRABAHOAN ──
+                 PESO IT, 2026-08-26: usa ka HR mahimong maghawid ug duha ka
+                 kompanya sa usa ka email. Ang gipili dinhi mao ang tag-iya sa
+                 requirements, sa posting, sa in-house ug sa bell hangtod nga
+                 mo-ilis siya pag-usab. Ang account nga usa ra ug kompanya
+                 wala gyuy makita nga kalainan. --}}
+            @php
+                $myCompanies = Auth::user()->employerCompanies;
+                $myActive    = Auth::user()->activeCompany();
+            @endphp
+            @if($myCompanies->count() > 1)
+            <div class="px-2 pb-2">
+                <div style="font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:rgba(255,255,255,0.6);margin-bottom:6px;padding-left:6px;">
+                    Working on
                 </div>
-                <div>
-                    <div class="company-name">{{ optional(Auth::user()->employerNsrp)->company_name ?? Auth::user()->name ?? 'Company' }}</div>
-                    <div class="company-role">Company Account</div>
+                @foreach($myCompanies as $c)
+                    @if($myActive && $c->employer_nsrp_registrations_id === $myActive->employer_nsrp_registrations_id)
+                        <div class="d-flex align-items-center gap-2 px-2 py-2 mb-1"
+                             style="background:rgba(255,255,255,0.16);border-radius:8px;">
+                            <i class="ph-fill ph-check-circle" style="font-size:14px;color:#fff;flex-shrink:0;"></i>
+                            <span style="font-size:12px;color:#fff;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                                {{ $c->company_name }}
+                            </span>
+                        </div>
+                    @else
+                        <form method="POST" action="{{ route('company.companies.switch', $c->employer_nsrp_registrations_id) }}" class="mb-1">
+                            @csrf
+                            <button type="submit" class="d-flex align-items-center gap-2 px-2 py-2 w-100"
+                                    style="background:transparent;border:none;border-radius:8px;text-align:left;">
+                                <i class="ph ph-buildings" style="font-size:14px;color:rgba(255,255,255,0.7);flex-shrink:0;"></i>
+                                <span style="font-size:12px;color:rgba(255,255,255,0.85);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                                    {{ $c->company_name }}
+                                </span>
+                            </button>
+                        </form>
+                    @endif
+                @endforeach
+                <a href="{{ route('company.companies.add') }}"
+                   class="d-flex align-items-center gap-2 px-2 py-2 text-decoration-none">
+                    <i class="ph ph-plus-circle" style="font-size:14px;color:rgba(255,255,255,0.7);flex-shrink:0;"></i>
+                    <span style="font-size:12px;color:rgba(255,255,255,0.85);">Add another company</span>
+                </a>
+            </div>
+            @else
+            <div class="px-2 pb-2">
+                <a href="{{ route('company.companies.add') }}"
+                   class="d-flex align-items-center gap-2 px-2 py-2 text-decoration-none">
+                    <i class="ph ph-plus-circle" style="font-size:14px;color:rgba(255,255,255,0.7);flex-shrink:0;"></i>
+                    <span style="font-size:12px;color:rgba(255,255,255,0.85);">Add another company</span>
+                </a>
+            </div>
+            @endif
+
+            <div class="sidebar-user">
+                <div class="avatar">
+                    @if(Auth::user()->profile_photo)
+                        <img src="{{ asset('storage/'.Auth::user()->profile_photo) }}" alt="">
+                    @else
+                        <i class="ph ph-buildings"></i>
+                    @endif
+                </div>
+                <div style="min-width:0;flex:1;">
+                    <div class="u-name">{{ optional(Auth::user()->activeCompany())->company_name ?? Auth::user()->name ?? 'Company' }}</div>
+                    <div class="u-role">Employer</div>
                 </div>
             </div>
         </div>
@@ -679,18 +201,18 @@
     {{-- ── COMPLY REQUIREMENTS MODAL ── --}}
     <div class="modal fade" id="complyRequirementsModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content" style="border-radius:16px;border:none;box-shadow:0 8px 32px rgba(0,0,0,0.12);">
-                <div class="modal-header" style="background:linear-gradient(90deg,#90d870,#4dd9c0);border:none;">
-                    <h6 class="modal-title fw-bold text-white">
-                        <i class="bi bi-exclamation-triangle-fill me-2"></i>Requirements Needed
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title">
+                        <i class="ph-fill ph-warning me-2" style="color:var(--warn-solid);"></i>Requirements Needed
                     </h6>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body p-4">
-                    <p style="font-size:13px;color:#2d7a5f;font-weight:600;margin-bottom:12px;">
+                <div class="modal-body">
+                    <p style="font-size:13px;color:var(--n-900);font-weight:600;margin-bottom:12px;">
                         You must comply with these 6 requirements before requesting a job vacancy posting:
                     </p>
-                    <ul style="font-size:12px;color:#555;line-height:1.9;padding-left:20px;margin-bottom:0;">
+                    <ul style="font-size:13px;color:var(--n-500);line-height:1.9;padding-left:20px;margin-bottom:0;">
                         <li>CDO Business Permit 2026</li>
                         <li>SEC / DTI</li>
                         <li>Company Profile</li>
@@ -699,11 +221,10 @@
                         <li>Vacancy Posting</li>
                     </ul>
                 </div>
-                <div class="modal-footer" style="border-top:1px solid #e8f5f0;">
-                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <a href="{{ route('company.requirements') }}" class="btn btn-sm px-4 fw-semibold"
-                       style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;border-radius:8px;">
-                        <i class="bi bi-upload me-1"></i> Go to Requirements
+                <div class="modal-footer">
+                    <button type="button" class="btn-peso-outline btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <a href="{{ route('company.requirements') }}" class="btn-peso btn-sm">
+                        <i class="ph ph-upload-simple"></i> Go to Requirements
                     </a>
                 </div>
             </div>
@@ -713,112 +234,115 @@
     {{-- ── TOPBAR ── --}}
     <div class="topbar">
         <div class="d-flex align-items-center gap-2">
-            <button class="hamburger-btn" onclick="toggleSidebar()" type="button">
-                <i class="bi bi-list"></i>
+            <button class="hamburger" onclick="toggleSidebar()" type="button">
+                <i class="ph ph-list"></i>
             </button>
             <div class="page-title">@yield('page-title', 'Dashboard')</div>
         </div>
-        <div class="topbar-right">
 
-            {{-- Notification Bell --}}
+        <div class="d-flex align-items-center gap-2">
+
+            {{-- Notification bell --}}
             <div class="dropdown">
-                <a class="btn-notif position-relative" data-bs-toggle="dropdown" href="#">
-                    <i class="bi bi-bell"></i>
+                <a class="icon-btn" data-bs-toggle="dropdown" href="#" id="companyNotifBellBtn">
+                    <i class="ph ph-bell"></i>
                     @php
-                        $employerNsrp = \App\Models\EmployerNsrpRegistration::where('user_id', Auth::id())->first();
+                        $employerNsrp = Auth::user()->activeCompany();
                         $unreadCount = $employerNsrp
                             ? \App\Models\Announcement::where('employer_id', $employerNsrp->employer_nsrp_registrations_id)->where('is_read', false)->count()
                             : 0;
                     @endphp
-                    @if($unreadCount > 0)
-                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill"
-                              style="background:#e53935; font-size:9px; padding:3px 5px;">
-                            {{ $unreadCount }}
-                        </span>
-                    @endif
+                    <span id="companyNotifBadge" class="notif-badge" style="{{ $unreadCount > 0 ? '' : 'display:none;' }}">{{ $unreadCount }}</span>
                 </a>
-                <ul class="dropdown-menu dropdown-menu-end" style="min-width:300px; max-height:400px; overflow-y:auto;">
+                {{-- notif-dropdown-pinned: ang ulohan ug ang "View More"
+                     magpabilin nga makita; ang listahan ra ang mo-scroll.
+                     Kung ang tibuok dropdown ang mo-scroll, ang View More
+                     matago sa ubos ug kinahanglan pa nga pangitaon. --}}
+                <ul class="dropdown-menu dropdown-menu-end peso-dropdown notif-dropdown notif-dropdown-pinned">
+                    <li class="notif-head d-flex justify-content-between align-items-center">
+                        <span>Notifications</span>
+                        <form id="companyNotifClearAllForm" action="{{ route('company.notifications.clearAll') }}" method="POST" style="display:none;">
+                            @csrf
+                            <button type="submit" style="font-size:11px;color:var(--danger);background:none;border:none;cursor:pointer;font-weight:600;">
+                                Clear All
+                            </button>
+                        </form>
+                    </li>
                     @php
                         $notifications = $employerNsrp
                             ? \App\Models\Announcement::where('employer_id', $employerNsrp->employer_nsrp_registrations_id)->orderBy('created_at', 'desc')->take(5)->get()
                             : collect();
 
                         $companyNotifTargetUrl = function ($notif) {
-                            // ── "New Job Applicant" kay dapat mo-adto sa Qualified Applicants page sa maong job, dili sa Job Vacancy Request listing ──
+                            // ── "New Job Applicant" kay dapat mo-adto sa Qualified Applicants page sa maong job, dili sa lista sa Active Job Postings ──
                             if ($notif->type === 'new_applicant' && $notif->reference_id) {
                                 return route('company.jobs.qualified', $notif->reference_id);
                             }
                             return match($notif->reference_type) {
-                                'job'                     => route('company.jobs'),
+                                'job'                     => route('company.jobseekers'),
                                 'employer_requirement'    => route('company.requirements'),
+                                'job_archive'             => route('company.reports'),
                                 'job_fair'                => route('company.jobfair'),
                                 default                   => null,
                             };
                         };
                     @endphp
-                    <li class="px-3 py-2 border-bottom d-flex justify-content-between align-items-center">
-                        <span style="font-size:13px; font-weight:700; color:#2d7a5f;">
-                            <i class="bi bi-bell me-1"></i> Notifications
-                        </span>
-                        @if($notifications->count() > 0)
-                        <form action="{{ route('company.notifications.clearAll') }}" method="POST">
-                            @csrf
-                            <button type="submit"
-                                style="font-size:11px;color:#e05252;background:none;border:none;cursor:pointer;font-weight:600;">
-                                Clear All
-                            </button>
-                        </form>
-                        @endif
-                    </li>
+                    <div id="companyNotifList" class="notif-scroll">
                     @forelse($notifications as $notif)
                         <li>
-                            <a class="dropdown-item py-2 {{ !$notif->is_read ? 'bg-light' : '' }}"
+                            <a class="notif-item {{ !$notif->is_read ? 'unread' : '' }}"
                                href="{{ $companyNotifTargetUrl($notif) ?? '#' }}"
                                onclick="markRead({{ $notif->announcements_id }}, {{ $companyNotifTargetUrl($notif) ? 'true' : 'false' }})">
-                                <div style="font-size:12px; font-weight:{{ !$notif->is_read ? '700' : '500' }}; color:#2d7a5f;">
+                                <div style="font-weight:{{ !$notif->is_read ? '600' : '500' }};color:var(--n-900);">
                                     {{ $notif->title }}
                                 </div>
-                                <div style="font-size:11px; color:#888; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:240px;">{{ $notif->message }}</div>
-                                <div style="font-size:10px; color:#aaa;">{{ $notif->created_at->diffForHumans() }}</div>
+                                <div style="color:var(--n-500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $notif->message }}</div>
+                                <div class="notif-time">{{ $notif->created_at->diffForHumans() }}</div>
                             </a>
                         </li>
                     @empty
-                        <li class="text-center py-4">
-                            <i class="bi bi-bell-slash" style="font-size:24px; color:#ccc;"></i>
-                            <p style="font-size:12px; color:#aaa; margin-top:8px;">No notifications yet</p>
+                        <li class="peso-empty" style="padding:32px 16px;">
+                            <i class="ph ph-bell-slash"></i>
+                            <div class="peso-empty-text">No notifications yet</div>
                         </li>
                     @endforelse
-                    <li>
+                    </div>
+                    <li class="notif-foot">
                         <a href="{{ route('company.notifications.index') }}"
-                           class="text-decoration-none d-block text-center py-2"
-                           style="font-size:12px;font-weight:700;color:#2d7a5f;border-top:1px solid #f0f9f6;">
-                            View More <i class="bi bi-arrow-right ms-1"></i>
+                           class="d-block text-center py-2"
+                           style="font-size:12px;font-weight:600;color:var(--g-700);border-top:1px solid var(--n-200);">
+                            View More <i class="ph ph-arrow-right"></i>
                         </a>
                     </li>
                 </ul>
             </div>
 
+            {{-- Account menu --}}
             <div class="dropdown">
-                <button class="dropdown-toggle" data-bs-toggle="dropdown">
-                    <i class="bi bi-gear" style="color: var(--peso-dark); font-size:18px;"></i>
-                    <span>{{ optional(Auth::user()->employerNsrp)->company_name ?? Auth::user()->name ?? 'Company' }}</span>
-                    <i class="bi bi-chevron-down" style="font-size:11px; color:#888;"></i>
+                <button class="btn-peso-ghost dropdown-toggle" data-bs-toggle="dropdown"
+                        style="padding:6px 8px;font-weight:500;color:var(--n-700);">
+                    @if(Auth::user()->profile_photo)
+                        <img src="{{ asset('storage/'.Auth::user()->profile_photo) }}" alt=""
+                             style="width:24px;height:24px;object-fit:cover;border-radius:50%;">
+                    @else
+                        <i class="ph ph-user-circle" style="font-size:20px;"></i>
+                    @endif
+                    <span class="d-none d-sm-inline" style="font-size:13px;">{{ optional(Auth::user()->activeCompany())->company_name ?? Auth::user()->name ?? 'Company' }}</span>
                 </button>
-                <ul class="dropdown-menu dropdown-menu-end">
+                <ul class="dropdown-menu dropdown-menu-end peso-dropdown">
                     <li>
                         <a class="dropdown-item" href="{{ route('company.profile') }}">
-                            <i class="bi bi-person-circle" style="color: var(--peso-green);"></i>
-                            My Profile
+                            <i class="ph ph-user-circle"></i> My Profile
                         </a>
                     </li>
-                    <li><hr class="dropdown-divider my-1"></li>
+                    <li><hr class="dropdown-divider"></li>
                     <li>
                         <form method="POST" action="{{ route('logout') }}">
-    @csrf
-    <button type="submit" class="dropdown-item text-danger">
-        <i class="bi bi-box-arrow-right"></i> Logout
-    </button>
-</form>
+                            @csrf
+                            <button type="submit" class="dropdown-item is-danger w-100">
+                                <i class="ph ph-sign-out"></i> Logout
+                            </button>
+                        </form>
                     </li>
                 </ul>
             </div>
@@ -826,10 +350,31 @@
     </div>
 
     {{-- ── MAIN CONTENT ── --}}
-    <div class="main-content">
+    <div class="main-shell">
         <div class="content-inner">
+            {{-- Expired Business Permit: naa sa kada page, dili sa dashboard ra,
+                 kay ang employer mahimong mo-diretso sa Active Job Postings ug
+                 didto na lang mahibalo nga naka-block diay siya. --}}
+            @if(Auth::check() && Auth::user()->status === 'restricted' && !request()->routeIs('company.requirements*'))
+                <div class="alert alert-danger d-flex align-items-start gap-2 rounded-3 border-0 mb-3"
+                     style="background:#fdecea;color:#8a1c13;font-size:13px;">
+                    <i class="ph-fill ph-warning-circle" style="font-size:18px;flex-shrink:0;"></i>
+                    <div class="flex-grow-1">
+                        <strong>Your CDO Business Permit has expired.</strong>
+                        Job posting and job fair invitations are paused. Upload a renewed copy —
+                        your account resumes as soon as PESO staff approve it.
+                    </div>
+                    <a href="{{ route('company.requirements') }}" class="btn-peso btn-sm flex-shrink-0">
+                        <i class="ph ph-upload-simple"></i> Renew now
+                    </a>
+                </div>
+            @endif
 
             @yield('content')
+        </div>
+
+        <div class="peso-footer">
+            © {{ date('Y') }} Southern de Oro Philippines College, Bachelor of Science in Information Technology Researchers — All rights reserved
         </div>
     </div>
 
@@ -865,17 +410,108 @@
             });
             if (!hasTarget) {
                 event.preventDefault();
-                location.reload();
+                refreshCompanyNotifications();
             }
             // kung naay target URL, tugutan ang link mo-navigate diretso
         }
+
+        // ── Live notification bell — dili na kinahanglan i-reload ang page para makita ang bag-ong notification ──
+        function renderCompanyNotifItem(n) {
+            const href = n.url || '#';
+            return `<li>
+                <a class="notif-item ${!n.is_read ? 'unread' : ''}" href="${href}" onclick="markRead(${n.id}, ${n.url ? 'true' : 'false'})">
+                    <div style="font-weight:${!n.is_read ? '600' : '500'};color:var(--n-900);">${n.title}</div>
+                    <div style="color:var(--n-500);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${n.message}</div>
+                    <div class="notif-time">${n.time_ago}</div>
+                </a>
+            </li>`;
+        }
+
+        function refreshCompanyNotifications() {
+            fetch(`{{ route('company.notifications.fetch') }}`)
+                .then(res => res.json())
+                .then(data => {
+                    // Samtang abli ang dropdown, gibasa na niya silang tanan —
+                    // ang ihap gikan sa server mahimong una pa sa pagmarka,
+                    // ug kung tugutan, mobalik ang numero nga bag-o lang
+                    // nawala.
+                    const bellOpen = document.querySelector('#companyNotifBellBtn')
+                        ?.parentElement?.querySelector('.dropdown-menu.show');
+
+                    const badge = document.getElementById('companyNotifBadge');
+                    if (data.unread_count > 0 && !bellOpen) {
+                        badge.textContent = data.unread_count;
+                        badge.style.display = '';
+                    } else {
+                        badge.style.display = 'none';
+                    }
+
+                    const list = document.getElementById('companyNotifList');
+                    const clearForm = document.getElementById('companyNotifClearAllForm');
+                    if (data.notifications.length === 0) {
+                        list.innerHTML = `<li class="peso-empty" style="padding:32px 16px;">
+                            <i class="ph ph-bell-slash"></i>
+                            <div class="peso-empty-text">No notifications yet</div>
+                        </li>`;
+                        clearForm.style.display = 'none';
+                    } else {
+                        list.innerHTML = data.notifications.map(renderCompanyNotifItem).join('');
+                        clearForm.style.display = '';
+
+                        // Samang rason sa badge sa taas: abli ang dropdown, so
+                        // basa na silang tanan bisan pa'g ang tubag sa server
+                        // wala pa nakaabot sa pagmarka.
+                        if (bellOpen) {
+                            list.querySelectorAll('.notif-item.unread')
+                                .forEach(el => el.classList.remove('unread'));
+                        }
+                    }
+                })
+                .catch(() => {});
+        }
+
+        // ── Pag-abli sa bell, nakita na niya silang tanan — mawala dayon ang
+        // ── numero, ug ang tanang laray dili na "unread".
+        // ──
+        // ── Ang badge gitago sa wala pa mobalik ang server: ang mo-abli mao
+        // ── ang mobasa, ug ang paghulat sa network mo-himo sa numero nga
+        // ── daw wala mausab. Kung mapakyas ang tawag, ang sunod nga refresh
+        // ── (kada 20 segundos) mao ang mopakita sa tinuod nga ihap. ──
+        function markAllCompanyNotificationsRead() {
+            const badge = document.getElementById('companyNotifBadge');
+            if (badge) {
+                if (badge.style.display === 'none') return;   // wala nay bag-o
+                badge.style.display = 'none';
+            }
+
+            document.querySelectorAll('#companyNotifList .notif-item.unread')
+                .forEach(el => el.classList.remove('unread'));
+
+            fetch(`{{ route('company.notifications.markAllRead') }}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Content-Type': 'application/json'
+                }
+            }).catch(() => {});
+        }
+
+        const companyNotifBell = document.getElementById('companyNotifBellBtn');
+        companyNotifBell?.addEventListener('click', refreshCompanyNotifications);
+
+        // Ang 'shown.bs.dropdown' ang gigamit, dili ang click: sa ingon niini
+        // ang pagtago sa badge mahitabo human na maabli ang dropdown, ug dili
+        // sa pagsira niini.
+        companyNotifBell?.parentElement?.addEventListener('shown.bs.dropdown', markAllCompanyNotificationsRead);
+
+        setInterval(refreshCompanyNotifications, 20000);
 
         @if(session('success'))
             Swal.fire({
                 title: 'Success!',
                 text: @json(session('success')),
                 icon: 'success',
-                confirmButtonColor: '#4dd9c0',
+                confirmButtonColor: '#28812F',
                 confirmButtonText: 'OK',
             });
         @endif
@@ -885,11 +521,16 @@
                 title: 'Oops!',
                 text: @json($errors->first()),
                 icon: 'error',
-                confirmButtonColor: '#e05252',
+                confirmButtonColor: '#C4271B',
                 confirmButtonText: 'OK',
             });
         @endif
     </script>
     @yield('scripts')
+    {{-- Ang @yield ug ang @stack pareho nga kinahanglan: ang page mogamit ug
+         @section para sa kaugalingon niyang script, apan ang partial (sama sa
+         activity-calendar) mo-@push. Kung ang @stack wala, ang gi-push hilom
+         nga mawala ug ang partial mogawas nga patay. --}}
+    @stack('scripts')
 </body>
 </html>

@@ -1,0 +1,115 @@
+{
+  "page": 1,
+  "note": "NSRP Form 1 (September 2020), front of the sheet. All coordinates are fractions of the flattened page, never pixels, so a photo taken from a different distance still lands on the right field. Boxes are [x1, y1, x2, y2]; checkbox centres are [x, y] and get snapped to the real printed square at runtime.",
+
+  "identify": {
+    "region": [0.30, 0.05, 1.00, 0.13],
+    "expect": ["JOBSEEKER REGISTRATION FORM", "NATIONAL SKILLS REGISTRATION"]
+  },
+
+  "text_fields": {
+    "surname":                {"box": [0.040, 0.168, 0.275, 0.198], "kind": "name"},
+    "first_name":             {"box": [0.280, 0.168, 0.500, 0.198], "kind": "name"},
+    "middle_name":            {"box": [0.505, 0.168, 0.700, 0.198], "kind": "name"},
+    "suffix":                 {"box": [0.712, 0.166, 0.900, 0.191], "kind": "name"},
+
+    "date_of_birth":          {"box": [0.320, 0.209, 0.490, 0.227], "kind": "date"},
+    "age":                    {"box": [0.575, 0.209, 0.760, 0.227], "kind": "integer"},
+
+    "religion":               {"box": [0.125, 0.234, 0.360, 0.260], "kind": "lexicon"},
+
+    "house_street":           {"box": [0.545, 0.234, 0.975, 0.260], "kind": "address"},
+    "barangay":               {"box": [0.545, 0.259, 0.975, 0.283], "kind": "lexicon"},
+    "municipality_city":      {"box": [0.545, 0.282, 0.975, 0.305], "kind": "lexicon"},
+    "province":               {"box": [0.545, 0.304, 0.975, 0.327], "kind": "lexicon"},
+
+    "tin":                    {"box": [0.100, 0.313, 0.360, 0.338], "kind": "digits"},
+    "height":                 {"box": [0.805, 0.313, 0.975, 0.338], "kind": "decimal"},
+    "contact_number":         {"box": [0.805, 0.338, 0.985, 0.368], "kind": "mobile"},
+    "reg_email":              {"box": [0.805, 0.366, 0.985, 0.390], "kind": "email"},
+
+    "months_looking":         {"box": [0.830, 0.410, 0.945, 0.440], "kind": "integer"},
+    "self_employed_specify":  {"box": [0.290, 0.440, 0.430, 0.462], "kind": "free"},
+    "unemployed_other":       {"box": [0.760, 0.527, 0.960, 0.549], "kind": "free"},
+    "terminated_abroad_country": {"box": [0.845, 0.489, 0.975, 0.510], "kind": "lexicon"},
+
+    "ofw_country":            {"box": [0.150, 0.594, 0.320, 0.616], "kind": "lexicon"},
+    "latest_deployment_country": {"box": [0.610, 0.594, 0.790, 0.616], "kind": "lexicon"},
+    "return_month":           {"box": [0.700, 0.615, 0.880, 0.637], "kind": "date"},
+    "household_id":           {"box": [0.700, 0.628, 0.960, 0.650], "kind": "digits"},
+
+    "preferred_occupation_1": {"box": [0.055, 0.718, 0.295, 0.748], "kind": "free"},
+    "preferred_occupation_2": {"box": [0.055, 0.746, 0.295, 0.776], "kind": "free"},
+    "preferred_occupation_3": {"box": [0.055, 0.774, 0.295, 0.802], "kind": "free"},
+
+    "local_location_1":       {"box": [0.335, 0.718, 0.580, 0.748], "kind": "lexicon"},
+    "local_location_2":       {"box": [0.335, 0.746, 0.580, 0.776], "kind": "lexicon"},
+    "local_location_3":       {"box": [0.335, 0.774, 0.580, 0.802], "kind": "lexicon"},
+
+    "overseas_location_1":    {"box": [0.610, 0.718, 0.955, 0.748], "kind": "lexicon"},
+    "overseas_location_2":    {"box": [0.610, 0.746, 0.955, 0.776], "kind": "lexicon"},
+    "overseas_location_3":    {"box": [0.610, 0.774, 0.955, 0.802], "kind": "lexicon"}
+  },
+
+  "checkboxes": {
+    "sex_male":             {"centre": [0.093, 0.232], "group": "sex",           "value": "Male"},
+    "sex_female":           {"centre": [0.172, 0.232], "group": "sex",           "value": "Female"},
+
+    "civil_single":         {"centre": [0.170, 0.267], "group": "civil_status",  "value": "Single"},
+    "civil_married":        {"centre": [0.170, 0.285], "group": "civil_status",  "value": "Married"},
+    "civil_widowed":        {"centre": [0.170, 0.303], "group": "civil_status",  "value": "Widowed"},
+
+    "disability_visual":    {"centre": [0.140, 0.345], "group": "disabilities",  "value": "Visual"},
+    "disability_speech":    {"centre": [0.248, 0.345], "group": "disabilities",  "value": "Speech"},
+    "disability_mental":    {"centre": [0.372, 0.345], "group": "disabilities",  "value": "Mental"},
+    "disability_hearing":   {"centre": [0.140, 0.367], "group": "disabilities",  "value": "Hearing"},
+    "disability_physical":  {"centre": [0.248, 0.367], "group": "disabilities",  "value": "Physical"},
+    "disability_others":    {"centre": [0.372, 0.367], "group": "disabilities",  "value": "Others"},
+
+    "employed":             {"centre": [0.045, 0.409], "group": "employment",    "value": "Employed"},
+    "wage_employed":        {"centre": [0.079, 0.431], "group": "employed_sub",  "value": "Wage employed"},
+    "self_employed":        {"centre": [0.079, 0.448], "group": "employed_sub",  "value": "Self-employed"},
+
+    "unemployed":           {"centre": [0.465, 0.409], "group": "employment",    "value": "Unemployed"},
+    "new_entrant":          {"centre": [0.492, 0.454], "group": "unemployed_reason", "value": "New Entrant/Fresh Graduate"},
+    "finished_contract":    {"centre": [0.492, 0.482], "group": "unemployed_reason", "value": "Finished Contract"},
+    "resigned":             {"centre": [0.492, 0.510], "group": "unemployed_reason", "value": "Resigned"},
+    "retired":              {"centre": [0.492, 0.537], "group": "unemployed_reason", "value": "Retired"},
+    "terminated_calamity":  {"centre": [0.492, 0.565], "group": "unemployed_reason", "value": "Terminated/Laid off due to calamity"},
+    "terminated_local":     {"centre": [0.740, 0.454], "group": "unemployed_reason", "value": "Terminated/Laid off (local)"},
+    "terminated_abroad":    {"centre": [0.740, 0.482], "group": "unemployed_reason", "value": "Terminated/Laid off (abroad)"},
+    "unemployed_others":    {"centre": [0.740, 0.521], "group": "unemployed_reason", "value": "Others"},
+
+    "ofw_yes":              {"centre": [0.193, 0.581], "group": "is_ofw",        "value": true},
+    "ofw_no":               {"centre": [0.270, 0.581], "group": "is_ofw",        "value": false},
+    "former_ofw_yes":       {"centre": [0.590, 0.581], "group": "is_former_ofw", "value": true},
+    "former_ofw_no":        {"centre": [0.663, 0.581], "group": "is_former_ofw", "value": false},
+
+    "fourps_yes":           {"centre": [0.260, 0.632], "group": "is_4ps",        "value": true},
+    "fourps_no":            {"centre": [0.320, 0.632], "group": "is_4ps",        "value": false},
+
+    "work_parttime":        {"centre": [0.045, 0.703], "group": "work_type",     "value": "Part-time"},
+    "work_fulltime":        {"centre": [0.162, 0.703], "group": "work_type",     "value": "Full-time"},
+    "location_local":       {"centre": [0.318, 0.703], "group": "classification","value": "local"},
+    "location_overseas":    {"centre": [0.605, 0.703], "group": "classification","value": "overseas"}
+  },
+
+  "mark_cells": {
+    "note": "The language grid has no printed squares — people just draw a tick in an empty table cell. Ink presence in the cell is the whole signal, so these are measured as regions rather than snapped to a box.",
+
+    "english_read":        {"box": [0.300, 0.852, 0.450, 0.878], "group": "English",  "value": "read"},
+    "english_write":       {"box": [0.455, 0.852, 0.640, 0.878], "group": "English",  "value": "write"},
+    "english_speak":       {"box": [0.645, 0.852, 0.820, 0.878], "group": "English",  "value": "speak"},
+    "english_understand":  {"box": [0.825, 0.852, 0.975, 0.878], "group": "English",  "value": "understand"},
+
+    "filipino_read":       {"box": [0.300, 0.879, 0.450, 0.905], "group": "Filipino", "value": "read"},
+    "filipino_write":      {"box": [0.455, 0.879, 0.640, 0.905], "group": "Filipino", "value": "write"},
+    "filipino_speak":      {"box": [0.645, 0.879, 0.820, 0.905], "group": "Filipino", "value": "speak"},
+    "filipino_understand": {"box": [0.825, 0.879, 0.975, 0.905], "group": "Filipino", "value": "understand"},
+
+    "mandarin_read":       {"box": [0.300, 0.906, 0.450, 0.932], "group": "Mandarin", "value": "read"},
+    "mandarin_write":      {"box": [0.455, 0.906, 0.640, 0.932], "group": "Mandarin", "value": "write"},
+    "mandarin_speak":      {"box": [0.645, 0.906, 0.820, 0.932], "group": "Mandarin", "value": "speak"},
+    "mandarin_understand": {"box": [0.825, 0.906, 0.975, 0.932], "group": "Mandarin", "value": "understand"}
+  }
+}

@@ -3,13 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PESO CDO — All Job Postings</title>
+    @include('partials.head-brand')
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/bold/style.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('css/peso.css') }}">
     <style>
-        :root { --peso-green: #4dd9c0; --peso-light: #90d870; --peso-dark: #2d7a5f; }
         * { box-sizing: border-box; }
-        body { margin: 0; min-height: 100vh; font-family: 'Segoe UI', sans-serif; background: #0d1f18; display: flex; flex-direction: column; }
+        body { margin: 0; min-height: 100vh; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; background: var(--g-800); display: flex; flex-direction: column; }
 
         .peso-navbar { position: fixed; top: 0; left: 0; right: 0; z-index: 500; padding: 14px 20px; background: rgba(255,255,255,0.12); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border-bottom: 1px solid rgba(255,255,255,0.28); }
         body { padding-top: 68px; }
@@ -22,11 +27,11 @@
         .navbar-links { display: none; position: absolute; top: 100%; left: 0; right: 0; background: rgba(13,31,24,0.97); flex-direction: column; padding: 16px 20px 20px; gap: 14px; border-bottom: 1px solid rgba(255,255,255,0.12); }
         .navbar-links.open { display: flex; }
         .navbar-links a { color: rgba(255,255,255,0.85); text-decoration: none; font-size: 13.5px; font-weight: 600; }
-        .navbar-links a:hover { color: #90d870; }
+        .navbar-links a:hover { color: var(--g-600); }
         .navbar-auth-btns { display: flex; gap: 10px; margin-top: 6px; }
-        .btn-nav-login, .btn-nav-signup { border-radius: 8px; padding: 8px 16px; font-size: 12.5px; font-weight: 700; cursor: pointer; border: 1.5px solid transparent; text-decoration: none; display: inline-block; }
+        .btn-nav-login, .btn-nav-signup { border-radius: 8px; padding: 8px 16px; font-size: 12.5px; font-weight: 700; cursor: pointer; border: 1px solid transparent; text-decoration: none; display: inline-block; }
         .btn-nav-login { background: transparent; border-color: rgba(255,255,255,0.3); color: #fff; }
-        .btn-nav-signup { background: linear-gradient(90deg, var(--peso-light), var(--peso-green)); color: #0f2e24; border: none; }
+        .btn-nav-signup { background: var(--g-600); color: var(--g-900); border: none; }
 
         @media (min-width: 900px) {
             .navbar-toggle { display: none; }
@@ -44,15 +49,17 @@
         @media (min-width: 1024px) { .jobs-grid { grid-template-columns: repeat(3, 1fr); } }
 
         .job-card { background: rgba(255,255,255,0.96); border-radius: 14px; padding: 16px; box-shadow: 0 6px 18px rgba(0,0,0,0.15); display: flex; flex-direction: column; gap: 8px; }
+        .job-card-poster { display: block; width: calc(100% + 32px); height: 130px; object-fit: cover; margin: -16px -16px 4px; border-radius: 13px 13px 0 0; }
         .job-card-top { display: flex; align-items: flex-start; justify-content: space-between; }
-        .job-card-type-badge { background: #eafaf0; color: var(--peso-dark); font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
-        .job-icon { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, var(--peso-light), var(--peso-green)); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; }
+        .job-card-type-badge { color: var(--g-700); font-size: 10px; font-weight: 700; white-space: nowrap; }
+        .job-icon { width: 44px; height: 44px; border-radius: 12px; background: var(--g-600); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; }
         .job-title { font-size: 14.5px; font-weight: 700; color: var(--peso-dark); margin: 0; }
-        .job-company { font-size: 11.5px; color: #888; margin: 0; }
+        .job-company { font-size: 11.5px; color: var(--n-500); margin: 0; }
         .job-meta { display: flex; flex-wrap: wrap; gap: 6px; }
-        .job-badge { background: #f0f9f6; color: var(--peso-dark); font-size: 10.5px; padding: 3px 9px; border-radius: 20px; font-weight: 600; white-space: nowrap; }
-        .job-badge-deadline { background: #fff8e1; color: #f9a825; font-size: 10.5px; padding: 3px 9px; border-radius: 20px; font-weight: 600; white-space: nowrap; }
-        .btn-view-more { background: linear-gradient(90deg, var(--peso-light), var(--peso-green)); border: none; color: #fff; font-weight: 600; border-radius: 10px; padding: 9px 16px; font-size: 11.5px; margin-top: auto; }
+        /* Card meta — location, slots, deadline. Text, not buttons. */
+        .job-badge { color: var(--n-500); font-size: 10.5px; font-weight: 600; white-space: nowrap; }
+        .job-badge-deadline { color: var(--warn); font-size: 10.5px; font-weight: 600; white-space: nowrap; }
+        .btn-view-more { background: var(--g-600); border: none; color: #fff; font-weight: 600; border-radius: 10px; padding: 9px 16px; font-size: 11.5px; margin-top: auto; }
 
         .job-type-tab-btn {
             padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 700;
@@ -61,14 +68,14 @@
         }
         .job-type-tab-btn:hover { color: #fff; background: rgba(255,255,255,0.18); }
         .job-type-tab-btn.active {
-            background: linear-gradient(90deg, var(--peso-light), var(--peso-green));
-            color: #0f2e24; border-color: transparent;
+            background: var(--g-600);
+            color: var(--g-900); border-color: transparent;
         }
 
         .empty-box { background: rgba(255,255,255,0.9); border-radius: 16px; padding: 48px 20px; text-align: center; }
-        .empty-box i { font-size: 40px; color: #c0e8dc; }
+        .empty-box i { font-size: 40px; color: var(--n-300); }
         .empty-box h6 { color: var(--peso-dark); font-weight: 700; margin-top: 12px; }
-        .empty-box p { color: #888; font-size: 13px; margin: 0; }
+        .empty-box p { color: var(--n-500); font-size: 13px; margin: 0; }
 
         .landing-pagination { margin-top: 26px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
         .landing-pagination .pagination-summary { color: #fff; font-size: 13px; font-weight: 700; }
@@ -82,7 +89,7 @@
 
         .job-modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 999; align-items: center; justify-content: center; padding: 20px; }
         .job-modal-box { background: #fff; border-radius: 18px; padding: 24px 20px; max-width: 480px; width: 100%; position: relative; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
-        .job-modal-box .close-btn { position: absolute; top: 14px; right: 14px; background: none; border: none; font-size: 18px; color: #888; cursor: pointer; }
+        .job-modal-box .close-btn { position: absolute; top: 14px; right: 14px; background: none; border: none; font-size: 18px; color: var(--n-500); cursor: pointer; }
     </style>
 </head>
 <body>
@@ -94,7 +101,7 @@
                 <span>PUBLIC EMPLOYMENT SERVICE OFFICE<br><small>A Web-based Job Management System</small></span>
             </div>
             <button class="navbar-toggle" onclick="document.getElementById('navbarLinks').classList.toggle('open')">
-                <i class="bi bi-list"></i>
+                <i class="ph ph-list"></i>
             </button>
             <div class="navbar-links" id="navbarLinks">
                 <a href="{{ route('landing') }}">Home</a>
@@ -123,7 +130,7 @@
 
         @if($jobs->isEmpty())
             <div class="empty-box">
-                <i class="bi bi-briefcase"></i>
+                <i class="ph ph-briefcase"></i>
                 <h6>No job vacancies found</h6>
                 <p>Check back later for new opportunities.</p>
             </div>
@@ -131,17 +138,21 @@
             <div class="jobs-grid">
                 @foreach($jobs as $job)
                 <div class="job-card">
+                    @if($job->poster_image)
+                    <img src="{{ asset('storage/' . $job->poster_image) }}"
+                         alt="{{ $job->title }} hiring poster" class="job-card-poster" loading="lazy">
+                    @endif
                     <div class="job-card-top">
-                        <div class="job-icon"><i class="bi bi-building"></i></div>
+                        <div class="job-icon"><i class="ph ph-buildings"></i></div>
                         <span class="job-card-type-badge">{{ ucfirst(str_replace('_', ' ', $job->type)) }}</span>
                     </div>
                     <p class="job-title">{{ $job->title }}</p>
                     <p class="job-company">{{ $job->company->company_name ?? 'Company' }}</p>
                     <div class="job-meta">
-                        <span class="job-badge"><i class="bi bi-geo-alt me-1"></i>{{ $job->location }}</span>
-                        <span class="job-badge"><i class="bi bi-people me-1"></i>{{ $job->slots }} slot/s</span>
+                        <span class="job-badge"><i class="ph ph-map-pin me-1"></i>{{ $job->location }}</span>
+                        <span class="job-badge"><i class="ph ph-users-three me-1"></i>{{ $job->slots }} slot/s</span>
                         @if($job->deadline)
-                        <span class="job-badge-deadline"><i class="bi bi-calendar me-1"></i>Until {{ \Carbon\Carbon::parse($job->deadline)->format('M d, Y') }}</span>
+                        <span class="job-badge-deadline"><i class="ph ph-calendar-blank me-1"></i>Until {{ \Carbon\Carbon::parse($job->deadline)->format('M d, Y') }}</span>
                         @endif
                     </div>
                     <button type="button" class="btn-view-more"
@@ -152,7 +163,8 @@
                             '{{ ucfirst(str_replace('_', ' ', $job->type)) }}',
                             '{{ $job->slots }}',
                             '{{ $job->deadline ? \Carbon\Carbon::parse($job->deadline)->format('M d, Y') : '' }}',
-                            '{{ addslashes(strip_tags($job->description ?? '')) }}'
+                            '{{ addslashes(strip_tags($job->description ?? '')) }}',
+                            '{{ $job->poster_image ? asset('storage/' . $job->poster_image) : '' }}'
                         )">
                         View More
                     </button>
@@ -166,16 +178,16 @@
                     <ul class="pagination">
                         <li class="page-item {{ $jobs->onFirstPage() ? 'disabled' : '' }}">
                             @if($jobs->onFirstPage())
-                                <span class="page-link" aria-disabled="true" aria-label="Previous page"><i class="bi bi-chevron-left"></i></span>
+                                <span class="page-link" aria-disabled="true" aria-label="Previous page"><i class="ph ph-caret-left"></i></span>
                             @else
-                                <a class="page-link" href="{{ $jobs->previousPageUrl() }}" rel="prev" aria-label="Previous page"><i class="bi bi-chevron-left"></i></a>
+                                <a class="page-link" href="{{ $jobs->previousPageUrl() }}" rel="prev" aria-label="Previous page"><i class="ph ph-caret-left"></i></a>
                             @endif
                         </li>
                         <li class="page-item {{ $jobs->hasMorePages() ? '' : 'disabled' }}">
                             @if($jobs->hasMorePages())
-                                <a class="page-link" href="{{ $jobs->nextPageUrl() }}" rel="next" aria-label="Next page"><i class="bi bi-chevron-right"></i></a>
+                                <a class="page-link" href="{{ $jobs->nextPageUrl() }}" rel="next" aria-label="Next page"><i class="ph ph-caret-right"></i></a>
                             @else
-                                <span class="page-link" aria-disabled="true" aria-label="Next page"><i class="bi bi-chevron-right"></i></span>
+                                <span class="page-link" aria-disabled="true" aria-label="Next page"><i class="ph ph-caret-right"></i></span>
                             @endif
                         </li>
                     </ul>
@@ -186,39 +198,47 @@
 
     <div class="peso-footer">
         <a href="https://www.facebook.com/PESOCDO" target="_blank" rel="noopener" class="footer-fb-link" aria-label="PESO CDO Facebook Page">
-            <i class="bi bi-facebook"></i>
+            <i class="ph-fill ph-facebook-logo"></i>
         </a>
         <div>© {{ date('Y') }} Decierdo · Tagarao · Rivas · Santizo — All rights reserved</div>
     </div>
 
     <div id="jobModalOverlay" class="job-modal-overlay">
         <div class="job-modal-box">
-            <button class="close-btn" onclick="closeJobModal()"><i class="bi bi-x-lg"></i></button>
+            <button class="close-btn" onclick="closeJobModal()"><i class="ph ph-x"></i></button>
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-                <div class="job-icon"><i class="bi bi-building"></i></div>
+                <div class="job-icon"><i class="ph ph-buildings"></i></div>
                 <div>
-                    <div id="modalTitle" style="font-size:17px;font-weight:800;color:#2d7a5f;"></div>
-                    <div id="modalCompany" style="font-size:12px;color:#888;"></div>
+                    <div id="modalTitle" style="font-size:17px;font-weight:800;color:var(--g-700);"></div>
+                    <div id="modalCompany" style="font-size:12px;color:var(--n-500);"></div>
                 </div>
             </div>
+            <img id="modalPoster" alt="Hiring poster"
+                 style="display:none;width:100%;max-height:260px;object-fit:cover;
+                        border-radius:12px;margin-bottom:14px;">
             <div id="modalMeta" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;"></div>
-            <div id="modalDescription" style="font-size:13px;color:#555;line-height:1.6;margin-bottom:20px;"></div>
+            <div id="modalDescription" style="font-size:13px;color:var(--n-700);line-height:1.6;margin-bottom:20px;"></div>
             <a href="{{ route('login') }}" class="btn-view-more" style="text-decoration:none;display:block;text-align:center;">
-                <i class="bi bi-send-fill me-2"></i>Login to Apply
+                <i class="ph-fill ph-paper-plane-tilt me-2"></i>Login to Apply
             </a>
         </div>
     </div>
 
     <script>
-        function showJobModal(title, company, location, type, slots, deadline, description) {
+        function showJobModal(title, company, location, type, slots, deadline, description, poster) {
             document.getElementById('modalTitle').textContent = title;
             document.getElementById('modalCompany').textContent = company;
+
+            // Only the postings the employer gave a poster to show one.
+            const posterEl = document.getElementById('modalPoster');
+            posterEl.src = poster || '';
+            posterEl.style.display = poster ? 'block' : 'none';
             let metaHtml = `
-                <span class="job-badge"><i class="bi bi-geo-alt me-1"></i>${location}</span>
-                <span class="job-badge"><i class="bi bi-clock me-1"></i>${type}</span>
-                <span class="job-badge"><i class="bi bi-people me-1"></i>${slots} slot/s</span>`;
+                <span class="job-badge"><i class="ph ph-map-pin me-1"></i>${location}</span>
+                <span class="job-badge"><i class="ph ph-clock me-1"></i>${type}</span>
+                <span class="job-badge"><i class="ph ph-users-three me-1"></i>${slots} slot/s</span>`;
             if (deadline) {
-                metaHtml += `<span class="job-badge-deadline"><i class="bi bi-calendar me-1"></i>Until ${deadline}</span>`;
+                metaHtml += `<span class="job-badge-deadline"><i class="ph ph-calendar-blank me-1"></i>Until ${deadline}</span>`;
             }
             document.getElementById('modalMeta').innerHTML = metaHtml;
             document.getElementById('modalDescription').textContent = description || 'No description provided.';

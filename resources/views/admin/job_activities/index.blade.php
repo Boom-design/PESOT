@@ -3,49 +3,74 @@
 @section('content')
 
 <div class="mb-4">
-    <h5 class="fw-bold mb-1" style="color:#2d7a5f;">
-        <i class="bi bi-calendar2-check-fill me-2" style="color:#4dd9c0;"></i>Job Activities
+    <h5 class="fw-bold mb-1" style="color:var(--g-700);">
+        <i class="ph-fill ph-calendar-check me-2" style="color:var(--g-600);"></i>Job Activities
     </h5>
-    <p class="mb-0" style="font-size:13px;color:#888;">Overview of in-house interviews, company interviews, job solicitations, and job fair participants.</p>
+    <p class="mb-0" style="font-size:13px;color:var(--n-500);">Overview of in-house interviews, company interviews and job fair participants.</p>
 </div>
 
-{{-- TABS --}}
+{{-- TABS
+     Each button carries its own unseen count, so the number on the sidebar can
+     be traced to the tab that explains it. Opening the tab clears it — the
+     admin approves nothing here, so "I have looked at it" is the only thing
+     that can mean read. See App\Support\AdminInbox. --}}
+@php $tabAlerts = \App\Support\AdminInbox::jobActivityCounts(); @endphp
 <div class="d-flex gap-2 mb-4 flex-wrap">
     <a href="{{ route('admin.job.activities', ['tab' => 'inhouse']) }}"
        class="btn btn-sm fw-semibold"
        style="{{ request('tab', 'inhouse') === 'inhouse'
-           ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;'
-           : 'border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;' }}
+           ? 'background:var(--g-600);color:#fff;border:none;'
+           : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
            border-radius:8px;font-size:12px;padding:6px 18px;">
-        <i class="bi bi-building me-1"></i> In-house LRA/SRA
+        {{-- "LRA/SRA" named the two desks, which only the desks recognise.
+             The split the reader is looking at is local against overseas. --}}
+        <i class="ph ph-buildings me-1"></i> In-house Local/Overseas
+        @if(($tabAlerts['inhouse'] ?? 0) > 0)
+            {{-- .nav-dot only exists inside the sidebar, so the tab carries its
+                 own copy of the same red. --}}
+            <span title="{{ $tabAlerts['inhouse'] }} new since you last opened this tab"
+                  style="display:inline-flex;align-items:center;justify-content:center;min-width:17px;
+                         height:17px;padding:0 5px;margin-left:6px;border-radius:999px;
+                         background:var(--danger);color:#fff;font-size:10px;font-weight:700;
+                         line-height:1;vertical-align:middle;">{{ $tabAlerts['inhouse'] > 9 ? '9+' : $tabAlerts['inhouse'] }}</span>
+        @endif
         <span class="ms-1" style="font-size:10px;opacity:0.8;">({{ $inhouseSchedules->count() }})</span>
     </a>
     <a href="{{ route('admin.job.activities', ['tab' => 'companyinterview']) }}"
        class="btn btn-sm fw-semibold"
        style="{{ request('tab') === 'companyinterview'
-           ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;'
-           : 'border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;' }}
+           ? 'background:var(--g-600);color:#fff;border:none;'
+           : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
            border-radius:8px;font-size:12px;padding:6px 18px;">
-        <i class="bi bi-camera-video me-1"></i> Company Interview
+        <i class="ph ph-video-camera me-1"></i> Company Interview
+        @if(($tabAlerts['companyinterview'] ?? 0) > 0)
+            {{-- .nav-dot only exists inside the sidebar, so the tab carries its
+                 own copy of the same red. --}}
+            <span title="{{ $tabAlerts['companyinterview'] }} new since you last opened this tab"
+                  style="display:inline-flex;align-items:center;justify-content:center;min-width:17px;
+                         height:17px;padding:0 5px;margin-left:6px;border-radius:999px;
+                         background:var(--danger);color:#fff;font-size:10px;font-weight:700;
+                         line-height:1;vertical-align:middle;">{{ $tabAlerts['companyinterview'] > 9 ? '9+' : $tabAlerts['companyinterview'] }}</span>
+        @endif
         <span class="ms-1" style="font-size:10px;opacity:0.8;">({{ $companyInterviewJobs->count() }})</span>
     </a>
     <a href="{{ route('admin.job.activities', ['tab' => 'jobfair']) }}"
        class="btn btn-sm fw-semibold"
        style="{{ request('tab') === 'jobfair'
-           ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;'
-           : 'border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;' }}
+           ? 'background:var(--g-600);color:#fff;border:none;'
+           : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
            border-radius:8px;font-size:12px;padding:6px 18px;">
-        <i class="bi bi-people-fill me-1"></i> Job Fair
-        <span class="ms-1" style="font-size:10px;opacity:0.8;">({{ $jobFairParticipants->count() }})</span>
-    </a>
-    <a href="{{ route('admin.job.activities', ['tab' => 'officebased']) }}"
-       class="btn btn-sm fw-semibold"
-       style="{{ request('tab') === 'officebased'
-           ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;'
-           : 'border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;' }}
-           border-radius:8px;font-size:12px;padding:6px 18px;">
-        <i class="bi bi-briefcase me-1"></i> Job Solicitation
-        <span class="ms-1" style="font-size:10px;opacity:0.8;">({{ $officeBasedJobs->count() }})</span>
+        <i class="ph-fill ph-users-three me-1"></i> Job Fair
+        @if(($tabAlerts['jobfair'] ?? 0) > 0)
+            {{-- .nav-dot only exists inside the sidebar, so the tab carries its
+                 own copy of the same red. --}}
+            <span title="{{ $tabAlerts['jobfair'] }} new since you last opened this tab"
+                  style="display:inline-flex;align-items:center;justify-content:center;min-width:17px;
+                         height:17px;padding:0 5px;margin-left:6px;border-radius:999px;
+                         background:var(--danger);color:#fff;font-size:10px;font-weight:700;
+                         line-height:1;vertical-align:middle;">{{ $tabAlerts['jobfair'] > 9 ? '9+' : $tabAlerts['jobfair'] }}</span>
+        @endif
+        <span class="ms-1" style="font-size:10px;opacity:0.8;">({{ $jobFairEvents->count() }})</span>
     </a>
 </div>
 
@@ -54,16 +79,16 @@
 
     @if($inhouseSchedules->isEmpty())
         <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-            <i class="bi bi-calendar-x" style="font-size:48px;color:#a8e6cf;"></i>
+            <i class="ph ph-calendar-x" style="font-size:48px;color:var(--n-200);"></i>
             <p class="text-muted mt-3 mb-0">No in-house interview schedules found.</p>
         </div>
     @else
         <div class="d-flex justify-content-end mb-2">
             <div class="input-group" style="max-width:280px;">
-                <span class="input-group-text" style="border-color:#a8e6cf;background:#f0fdf9;">
-                    <i class="bi bi-search" style="color:#4dd9c0;"></i>
+                <span class="input-group-text" style="border-color:var(--n-200);background:var(--n-50);">
+                    <i class="ph ph-magnifying-glass" style="color:var(--g-600);"></i>
                 </span>
-                <input type="text" id="inhouseSearch" class="form-control" placeholder="Search..." style="border-color:#a8e6cf;font-size:13px;">
+                <input type="text" id="inhouseSearch" class="form-control" placeholder="Search..." style="border-color:var(--n-200);font-size:13px;">
             </div>
         </div>
         <div class="card border-0 shadow-sm rounded-3">
@@ -71,77 +96,94 @@
                 <table class="table table-hover align-middle mb-0" id="inhouseTable">
                     <thead>
                         <tr>
-                            <th style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;">#</th>
-                            <th data-sort-col="1" style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;cursor:pointer;">
+                            <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;">#</th>
+                            <th data-sort-col="1" style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;cursor:pointer;">
                                 Company
                                 <span style="display:inline-flex;flex-direction:column;margin-left:4px;vertical-align:middle;line-height:0.6;">
-                                    <i class="bi bi-caret-up-fill" style="font-size:9px;color:#4dd9c0;"></i>
-                                    <i class="bi bi-caret-down-fill" style="font-size:9px;color:#4dd9c0;"></i>
+                                    <i class="ph-fill ph-caret-up" style="font-size:9px;color:var(--g-600);"></i>
+                                    <i class="ph-fill ph-caret-down" style="font-size:9px;color:var(--g-600);"></i>
                                 </span>
                             </th>
-                            <th style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;">Preferred Date</th>
-                            <th style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;">Preferred Time</th>
-                            <th style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;">Number of Applicants</th>
-                            <th style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;">Job Offer</th>
-                            <th style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;">Classification</th>
-                            <th style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;">Status</th>
-                            <th style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;">Action</th>
+                            <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;">Preferred Date</th>
+                            <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;">Preferred Time</th>
+                            <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;">Number of Applicants</th>
+                            <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;">Job Offer</th>
+                            <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;">Classification</th>
+                            {{-- "Status" alone did not say whose. It is the
+                                 office's answer to the requested schedule. --}}
+                            <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;">Schedule Status</th>
+                            <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;">Details</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($inhouseSchedules as $i => $schedule)
                         <tr>
-                            <td style="font-size:13px;padding:12px 16px;color:#888;">{{ $i + 1 }}</td>
-                            <td style="font-size:13px;padding:12px 16px;font-weight:600;color:#2d7a5f;">
-                                {{ $schedule->employer->company_name ?? $schedule->employer->name ?? '—' }}
+                            <td data-row-number style="font-size:13px;padding:12px 16px;color:var(--n-500);">{{ $i + 1 }}</td>
+                            <td style="font-size:13px;padding:12px 16px;font-weight:600;color:var(--g-700);">
+                                {{ $schedule->employer->company_name ?? $schedule->employer->name ?? 'None' }}
                             </td>
-                            <td style="font-size:13px;padding:12px 16px;color:#555;">
-                                {{ \Carbon\Carbon::parse($schedule->preferred_date)->format('M d, Y') }}
+                            <td style="font-size:13px;padding:12px 16px;color:var(--n-700);">
+                                {{ $schedule->confirmed_date
+                                    ? $schedule->confirmed_date->format('M d, Y')
+                                    : $schedule->schedule_window_label }}
                             </td>
-                            <td style="font-size:13px;padding:12px 16px;color:#555;">
+                            <td style="font-size:13px;padding:12px 16px;color:var(--n-700);">
                                 {{ \Carbon\Carbon::parse($schedule->preferred_time)->format('h:i A') }}
                             </td>
-                            <td style="font-size:13px;padding:12px 16px;color:#555;">
+                            <td style="font-size:13px;padding:12px 16px;color:var(--n-700);">
                                 {{ $schedule->num_applicants }}
                             </td>
-                            <td style="font-size:13px;padding:12px 16px;color:#555;">
+                            <td style="font-size:13px;padding:12px 16px;color:var(--n-700);">
                                 {{ $schedule->job_offers }}
                             </td>
                             <td style="font-size:13px;padding:12px 16px;">
                                 @if($schedule->employer && $schedule->employer->employerNsrp)
-                                    <span class="badge" style="background:{{ $schedule->employer->employerNsrp->is_overseas ? '#f59e0b' : '#4dd9c0' }};color:#fff;font-weight:600;">
+                                    <span style="color:{{ $schedule->employer->employerNsrp->is_overseas ? 'var(--warn)' : 'var(--g-600)' }};font-weight:600;font-size:11px;">
                                         {{ $schedule->employer->employerNsrp->is_overseas ? 'SRA' : 'LRA' }}
                                     </span>
                                 @else
-                                    <span style="color:#aaa;font-size:12px;">None</span>
+                                    <span style="color:var(--n-400);font-size:12px;">None</span>
                                 @endif
                             </td>
                             <td style="font-size:13px;padding:12px 16px;">
                                 @php
-                                    $colors = [
-                                        'pending'  => '#f59e0b',
-                                        'accepted' => '#2d7a5f',
-                                        'rejected' => '#e05252',
-                                    ];
-                                    $color = $colors[$schedule->status] ?? '#888';
+                                    // "Pending", "Accepted", "Rejected" say what
+                                    // the column is called, not what happened.
+                                    // What the office actually did is pick a date,
+                                    // refuse one, or not answer yet, so the cell
+                                    // says that and shows the date it landed on.
+                                    $ihConfirmed = $schedule->confirmed_date
+                                        ? \Carbon\Carbon::parse($schedule->confirmed_date)->format('M d, Y')
+                                          . ($schedule->confirmed_time
+                                              ? ' at ' . \Carbon\Carbon::parse($schedule->confirmed_time)->format('h:i A')
+                                              : '')
+                                        : null;
+
+                                    [$ihLabel, $ihColor, $ihIcon, $ihNote] = match ($schedule->status) {
+                                        'accepted' => [
+                                            'Schedule confirmed', 'var(--g-600)', 'ph-check-circle',
+                                            $ihConfirmed ?: 'No date recorded',
+                                        ],
+                                        'rejected' => [
+                                            'Request declined', 'var(--danger)', 'ph-x-circle',
+                                            $schedule->rejection_reason ?: 'No reason given',
+                                        ],
+                                        default => [
+                                            'Waiting for a date', 'var(--warn)', 'ph-clock',
+                                            'The office has not answered yet',
+                                        ],
+                                    };
                                 @endphp
-                                <span style="color:{{ $color }};font-weight:600;">
-                                    {{ ucfirst($schedule->status) }}
+                                <span style="color:{{ $ihColor }};font-weight:600;">
+                                    <i class="ph-fill {{ $ihIcon }} me-1"></i>{{ $ihLabel }}
                                 </span>
+                                <div style="font-size:11px;color:var(--n-500);margin-top:2px;">{{ $ihNote }}</div>
                             </td>
-                            <td style="padding:12px 16px;">
-                                <button type="button" class="btn btn-sm fw-semibold inhouse-view-btn"
-                                    style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;border-radius:8px;font-size:12px;"
-                                    data-bs-toggle="modal" data-bs-target="#inhouseViewModal"
-                                    data-company="{{ $schedule->employer->company_name ?? $schedule->employer->name ?? '—' }}"
-                                    data-preferred-date="{{ \Carbon\Carbon::parse($schedule->preferred_date)->format('M d, Y') }}"
-                                    data-preferred-time="{{ \Carbon\Carbon::parse($schedule->preferred_time)->format('h:i A') }}"
-                                    data-confirmed-date="{{ $schedule->confirmed_date ? \Carbon\Carbon::parse($schedule->confirmed_date)->format('M d, Y') : '—' }}"
-                                    data-confirmed-time="{{ $schedule->confirmed_time ? \Carbon\Carbon::parse($schedule->confirmed_time)->format('h:i A') : '—' }}"
-                                    data-applicants="{{ $schedule->num_applicants }}"
-                                    data-offers="{{ $schedule->job_offers }}"
-                                    data-status="{{ ucfirst($schedule->status) }}">
-                                    <i class="bi bi-eye-fill me-1"></i>View
+                            <td style="font-size:13px;padding:12px 16px;">
+                                <button type="button" class="btn btn-sm fw-semibold"
+                                    data-bs-toggle="modal" data-bs-target="#inhouseModal{{ $schedule->inhouse_schedules_id }}"
+                                    style="border:1px solid var(--n-200);border-radius:8px;color:var(--g-700);background:#fff;font-size:12px;padding:5px 14px;">
+                                    <i class="ph ph-eye me-1"></i>View Details
                                 </button>
                             </td>
                         </tr>
@@ -151,45 +193,151 @@
             </div>
         </div>
         <div class="d-flex justify-content-center align-items-center gap-3 mt-3" id="inhousePagination">
-            <button type="button" id="inhousePaginationPrev" class="btn btn-sm" style="border:1.5px solid #a8e6cf;border-radius:8px;color:#2d7a5f;padding:6px 14px;"><i class="bi bi-chevron-left"></i></button>
-            <span id="inhousePaginationInfo" style="font-size:13px;color:#2d7a5f;font-weight:600;"></span>
-            <button type="button" id="inhousePaginationNext" class="btn btn-sm" style="border:1.5px solid #a8e6cf;border-radius:8px;color:#2d7a5f;padding:6px 14px;"><i class="bi bi-chevron-right"></i></button>
+            <button type="button" id="inhousePaginationPrev" class="btn btn-sm" style="border:1px solid var(--n-200);border-radius:8px;color:var(--g-700);padding:6px 14px;"><i class="ph ph-caret-left"></i></button>
+            <span id="inhousePaginationInfo" style="font-size:13px;color:var(--g-700);font-weight:600;"></span>
+            <button type="button" id="inhousePaginationNext" class="btn btn-sm" style="border:1px solid var(--n-200);border-radius:8px;color:var(--g-700);padding:6px 14px;"><i class="ph ph-caret-right"></i></button>
         </div>
 
-        {{-- IN-HOUSE VIEW MODAL --}}
-        <div class="modal fade" id="inhouseViewModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content" style="border-radius:16px;border:none;overflow:hidden;">
-                    <div class="modal-header border-0" style="background:linear-gradient(90deg,#90d870,#4dd9c0);padding:16px 20px;">
-                        <h6 class="modal-title fw-bold text-white mb-0"><i class="bi bi-building me-2"></i><span id="modalIhCompany"></span></h6>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    {{-- One modal per schedule. The row is deliberately narrow — it has to fit
+         eight columns — so everything the office keeps about the employer, and
+         every position they are interviewing for, lives in here. A schedule
+         with five job offers shows all five; the row could only ever show a
+         number. --}}
+    @foreach($inhouseSchedules as $schedule)
+    @php
+        $emp      = $schedule->employer;
+        $ihVenue  = $schedule->venue_type === 'other'
+            ? ($schedule->venue_address ?: 'Other venue')
+            : 'PESO Office';
+        $ihPlace  = collect([$emp->est_barangay ?? null, $emp->est_city_municipality ?? null, $emp->est_province ?? null])
+            ->filter()->implode(', ');
+        $ihOffers = collect($schedule->job_positions ?? [])->filter()->values();
+    @endphp
+    <div class="modal fade" id="inhouseModal{{ $schedule->inhouse_schedules_id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content" style="border-radius:16px;border:none;overflow:hidden;">
+                <div class="modal-header border-0" style="background:var(--g-600);padding:16px 20px;">
+                    <h6 class="modal-title fw-bold text-white mb-0">
+                        <i class="ph-fill ph-buildings me-2"></i>{{ $emp->company_name ?? 'None' }}
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4" style="font-size:13px;color:var(--g-700);">
+
+                    <div class="fw-bold mb-3" style="font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--g-600);">
+                        <i class="ph-fill ph-buildings me-1"></i>Company
                     </div>
-                    <div class="modal-body p-4" style="font-size:13px;color:#2d7a5f;">
-                        <div class="row g-3">
-                            <div class="col-6"><strong>Preferred Date</strong><div id="modalIhPreferredDate" class="text-muted"></div></div>
-                            <div class="col-6"><strong>Preferred Time</strong><div id="modalIhPreferredTime" class="text-muted"></div></div>
-                            <div class="col-6"><strong>Confirmed Date</strong><div id="modalIhConfirmedDate" class="text-muted"></div></div>
-                            <div class="col-6"><strong>Confirmed Time</strong><div id="modalIhConfirmedTime" class="text-muted"></div></div>
-                            <div class="col-6"><strong>Number of Applicants</strong><div id="modalIhApplicants" class="text-muted"></div></div>
-                            <div class="col-6"><strong>Job Offers</strong><div id="modalIhOffers" class="text-muted"></div></div>
-                            <div class="col-6"><strong>Status</strong><div id="modalIhStatus" class="text-muted"></div></div>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6"><strong>Company Name</strong><div class="text-muted">{{ $emp->company_name ?? 'None' }}</div></div>
+                        <div class="col-md-6"><strong>Trade Name</strong><div class="text-muted">{{ $emp->trade_name ?: 'None' }}</div></div>
+                        <div class="col-md-6"><strong>Contact Person</strong><div class="text-muted">{{ $emp->contact_person ?: 'None' }}</div></div>
+                        <div class="col-md-6"><strong>Position</strong><div class="text-muted">{{ $emp->position_title ?: 'None' }}</div></div>
+                        <div class="col-md-6"><strong>Mobile Number</strong><div class="text-muted">{{ $emp->mobile_number ?: 'None' }}</div></div>
+                        <div class="col-md-6"><strong>Telephone</strong><div class="text-muted">{{ $emp->telephone_no ?: 'None' }}</div></div>
+                        <div class="col-md-6"><strong>Email</strong><div class="text-muted">{{ optional($emp->employer)->email ?: 'None' }}</div></div>
+                        <div class="col-md-6"><strong>Placement</strong><div class="text-muted">{{ ($emp->is_overseas ?? false) ? 'Overseas' : 'Local' }}</div></div>
+                        <div class="col-md-6"><strong>Employer Type</strong><div class="text-muted">{{ $emp->employer_type ?: 'None' }}</div></div>
+                        <div class="col-md-6"><strong>Industry</strong><div class="text-muted">{{ $emp->industry_group ?: 'Not set' }}</div></div>
+                        <div class="col-md-6"><strong>Line of Business</strong><div class="text-muted">{{ $emp->line_of_business ?: 'None' }}</div></div>
+                        <div class="col-md-6"><strong>Total Workforce</strong><div class="text-muted">{{ $emp->total_workforce ?: 'None' }}</div></div>
+                        <div class="col-12"><strong>Address</strong><div class="text-muted">{{ $ihPlace ?: 'None' }}</div></div>
+                    </div>
+
+                    <div class="fw-bold mb-3" style="font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--g-600);">
+                        <i class="ph-fill ph-calendar-check me-1"></i>Schedule
+                    </div>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6"><strong>Requested Date</strong><div class="text-muted">{{ $schedule->schedule_window_label ?? ($schedule->preferred_date?->format('M d, Y') ?? 'Not set') }}</div></div>
+                        <div class="col-md-6"><strong>Requested Time</strong><div class="text-muted">{{ $schedule->preferred_time ? \Carbon\Carbon::parse($schedule->preferred_time)->format('h:i A') : 'Not set' }}</div></div>
+                        <div class="col-md-6"><strong>Confirmed Date</strong><div class="text-muted">{{ $schedule->confirmed_date ? \Carbon\Carbon::parse($schedule->confirmed_date)->format('M d, Y') : 'None' }}</div></div>
+                        <div class="col-md-6"><strong>Confirmed Time</strong><div class="text-muted">{{ $schedule->confirmed_time ? \Carbon\Carbon::parse($schedule->confirmed_time)->format('h:i A') : 'None' }}</div></div>
+                        <div class="col-md-6"><strong>Venue</strong><div class="text-muted">{{ $ihVenue }}</div></div>
+                        <div class="col-md-6"><strong>Number of Applicants</strong><div class="text-muted">{{ $schedule->num_applicants }}</div></div>
+                        <div class="col-md-6"><strong>Schedule Status</strong>
+                            <div class="text-muted">{{ ['accepted' => 'Accepted', 'rejected' => 'Declined'][$schedule->status] ?? 'Waiting for a date' }}</div>
                         </div>
+                        <div class="col-md-6"><strong>Job Offers Made</strong><div class="text-muted">{{ $schedule->job_offers }}</div></div>
+                        @if($schedule->status === 'rejected')
+                        <div class="col-12"><strong>Reason for Declining</strong><div class="text-muted">{{ $schedule->rejection_reason ?: 'No reason given' }}</div></div>
+                        @endif
+                        @if($schedule->notes)
+                        <div class="col-12"><strong>Employer Notes</strong><div class="text-muted">{{ $schedule->notes }}</div></div>
+                        @endif
                     </div>
+
+                    <div class="fw-bold mb-3" style="font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--g-600);">
+                        <i class="ph-fill ph-briefcase me-1"></i>Job Vacancies for this Interview
+                        <span style="font-weight:400;opacity:.7;">({{ $ihOffers->count() }})</span>
+                    </div>
+                    @if($ihOffers->isEmpty())
+                        <div class="text-muted" style="font-size:12.5px;">
+                            The employer did not name the positions for this schedule.
+                        </div>
+                    @else
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="background:var(--n-100);color:var(--g-700);font-size:11.5px;padding:10px 12px;">#</th>
+                                    <th style="background:var(--n-100);color:var(--g-700);font-size:11.5px;padding:10px 12px;">Job Vacancy</th>
+                                    <th style="background:var(--n-100);color:var(--g-700);font-size:11.5px;padding:10px 12px;text-align:center;">Slots</th>
+                                    <th style="background:var(--n-100);color:var(--g-700);font-size:11.5px;padding:10px 12px;">Salary</th>
+                                    <th style="background:var(--n-100);color:var(--g-700);font-size:11.5px;padding:10px 12px;">Posting</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($ihOffers as $k => $offer)
+                                @php
+                                    // The position is a name the employer typed on the
+                                    // request. Where a posting of that name exists for
+                                    // the same company, its slots and pay are shown;
+                                    // where it does not, the name still gets a row —
+                                    // a position with no posting is exactly the sort
+                                    // of gap this report is meant to expose.
+                                    $match = ($schedule->postings ?? collect())
+                                        ->first(fn($j) => strcasecmp(trim($j->title), trim($offer)) === 0);
+                                @endphp
+                                <tr>
+                                    <td style="font-size:12.5px;padding:10px 12px;color:var(--n-500);">{{ $k + 1 }}</td>
+                                    <td style="font-size:12.5px;padding:10px 12px;font-weight:600;color:var(--g-700);">{{ $offer }}</td>
+                                    <td style="font-size:12.5px;padding:10px 12px;text-align:center;color:var(--n-700);">{{ $match->slots ?? '—' }}</td>
+                                    <td style="font-size:12.5px;padding:10px 12px;color:var(--n-700);">{{ $match->salary ?? '—' }}</td>
+                                    <td style="font-size:12.5px;padding:10px 12px;">
+                                        @if($match)
+                                            <span style="color:{{ $match->status === 'open' ? 'var(--g-600)' : 'var(--n-500)' }};font-weight:600;">
+                                                {{ ucfirst($match->status) }}
+                                            </span>
+                                        @else
+                                            <span style="color:var(--warn);font-weight:600;">Not posted</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    @endif
                 </div>
             </div>
         </div>
+    </div>
+    @endforeach
+
     @endif
 
-{{-- ── TAB 2: JOB FAIR PARTICIPANTS ── --}}
+{{-- ── TAB 2: JOB FAIR ──
+     One row per event, not per invitation. The employers on a fair are the
+     detail behind the count, and they open in a modal that repeats the same
+     five headings so the reader never loses which event they are inside. --}}
 @elseif(request('tab') === 'jobfair')
 
-    @if($jobFairParticipants->isNotEmpty())
+    @if($jobFairEvents->isNotEmpty())
     <div class="d-flex justify-content-end mb-2">
         <div class="input-group" style="max-width:280px;">
-            <span class="input-group-text" style="border-color:#a8e6cf;background:#f0fdf9;">
-                <i class="bi bi-search" style="color:#4dd9c0;"></i>
+            <span class="input-group-text" style="border-color:var(--n-200);background:var(--n-50);">
+                <i class="ph ph-magnifying-glass" style="color:var(--g-600);"></i>
             </span>
-            <input type="text" id="jobFairSearch" class="form-control" placeholder="Search..." style="border-color:#a8e6cf;font-size:13px;">
+            <input type="text" id="jobFairSearch" class="form-control" placeholder="Search..." style="border-color:var(--n-200);font-size:13px;">
         </div>
     </div>
     @endif
@@ -198,55 +346,53 @@
             <table class="table table-hover align-middle mb-0" id="jobFairTable">
                 <thead>
                     <tr>
-                        <th style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;">#</th>
-                        <th data-sort-col="1" style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;cursor:pointer;">
-                            Company
+                        <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;">#</th>
+                        <th data-sort-col="1" style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;cursor:pointer;">
+                            Event Title
                             <span style="display:inline-flex;flex-direction:column;margin-left:4px;vertical-align:middle;line-height:0.6;">
-                                <i class="bi bi-caret-up-fill" style="font-size:9px;color:#4dd9c0;"></i>
-                                <i class="bi bi-caret-down-fill" style="font-size:9px;color:#4dd9c0;"></i>
+                                <i class="ph-fill ph-caret-up" style="font-size:9px;color:var(--g-600);"></i>
+                                <i class="ph-fill ph-caret-down" style="font-size:9px;color:var(--g-600);"></i>
                             </span>
                         </th>
-                        <th style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;">Event Title</th>
-                        <th style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;">Event Date</th>
-                        <th style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;">Venue</th>
-                        <th style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;">Confirmation</th>
+                        <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;">Venue</th>
+                        <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;">Invitation Date</th>
+                        <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;">Event Date</th>
+                        <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;">No. of Participants</th>
+                        <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;">Details</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($jobFairParticipants as $i => $participant)
+                    @forelse($jobFairEvents as $i => $event)
                     <tr>
-                        <td style="font-size:13px;padding:12px 16px;color:#888;">{{ $i + 1 }}</td>
-                        <td style="font-size:13px;padding:12px 16px;font-weight:600;color:#2d7a5f;">
-                            {{ $participant->employer->company_name ?? $participant->employer->name ?? '—' }}
+                        <td data-row-number style="font-size:13px;padding:12px 16px;color:var(--n-500);">{{ $i + 1 }}</td>
+                        <td style="font-size:13px;padding:12px 16px;font-weight:600;color:var(--g-700);">
+                            {{ $event->title }}
                         </td>
-                        <td style="font-size:13px;padding:12px 16px;color:#555;">
-                            {{ $participant->jobFair->title ?? '—' }}
+                        <td style="font-size:13px;padding:12px 16px;color:var(--n-700);">
+                            {{ $event->venue ?: 'Not set' }}
                         </td>
-                        <td style="font-size:13px;padding:12px 16px;color:#555;">
-                            {{ $participant->jobFair?->event_date?->format('M d, Y') ?? '—' }}
+                        <td style="font-size:13px;padding:12px 16px;color:var(--n-700);">
+                            {{ $event->invited_on ? \Carbon\Carbon::parse($event->invited_on)->format('M d, Y') : 'Not sent yet' }}
                         </td>
-                        <td style="font-size:13px;padding:12px 16px;color:#555;">
-                            {{ $participant->jobFair->venue ?? '—' }}
+                        <td style="font-size:13px;padding:12px 16px;color:var(--n-700);">
+                            {{ $event->event_date->format('M d, Y') }}
+                        </td>
+                        <td style="font-size:13px;padding:12px 16px;font-weight:600;color:var(--g-700);">
+                            {{ $event->roster->count() }}
                         </td>
                         <td style="font-size:13px;padding:12px 16px;">
-                            @php
-                                $colors = [
-                                    'confirmed' => '#2d7a5f',
-                                    'pending'   => '#f59e0b',
-                                    'declined'  => '#e05252',
-                                ];
-                                $color = $colors[$participant->confirmation_status] ?? '#888';
-                            @endphp
-                            <span style="color:{{ $color }};font-weight:600;">
-                                {{ ucfirst($participant->confirmation_status) }}
-                            </span>
+                            <button type="button" class="btn btn-sm fw-semibold"
+                                data-bs-toggle="modal" data-bs-target="#fairEventModal{{ $event->job_fair_events_id }}"
+                                style="border:1px solid var(--n-200);border-radius:8px;color:var(--g-700);background:#fff;font-size:12px;padding:5px 14px;">
+                                <i class="ph ph-eye me-1"></i>View Details
+                            </button>
                         </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6" class="text-center py-5">
-                            <i class="bi bi-people" style="font-size:40px;color:#a8e6cf;"></i>
-                            <p class="text-muted mt-2 mb-0">No job fair participants found.</p>
+                        <td colspan="7" class="text-center py-5">
+                            <i class="ph ph-users-three" style="font-size:40px;color:var(--n-200);"></i>
+                            <p class="text-muted mt-2 mb-0">No job fair events yet.</p>
                         </td>
                     </tr>
                     @endforelse
@@ -254,125 +400,123 @@
             </table>
         </div>
     </div>
-    @if($jobFairParticipants->isNotEmpty())
+    @if($jobFairEvents->isNotEmpty())
     <div class="d-flex justify-content-center align-items-center gap-3 mt-3" id="jobFairPagination">
-        <button type="button" id="jobFairPaginationPrev" class="btn btn-sm" style="border:1.5px solid #a8e6cf;border-radius:8px;color:#2d7a5f;padding:6px 14px;"><i class="bi bi-chevron-left"></i></button>
-        <span id="jobFairPaginationInfo" style="font-size:13px;color:#2d7a5f;font-weight:600;"></span>
-        <button type="button" id="jobFairPaginationNext" class="btn btn-sm" style="border:1.5px solid #a8e6cf;border-radius:8px;color:#2d7a5f;padding:6px 14px;"><i class="bi bi-chevron-right"></i></button>
+        <button type="button" id="jobFairPaginationPrev" class="btn btn-sm" style="border:1px solid var(--n-200);border-radius:8px;color:var(--g-700);padding:6px 14px;"><i class="ph ph-caret-left"></i></button>
+        <span id="jobFairPaginationInfo" style="font-size:13px;color:var(--g-700);font-weight:600;"></span>
+        <button type="button" id="jobFairPaginationNext" class="btn btn-sm" style="border:1px solid var(--n-200);border-radius:8px;color:var(--g-700);padding:6px 14px;"><i class="ph ph-caret-right"></i></button>
     </div>
     @endif
 
-{{-- ── TAB 3: JOB SOLICITATION ── --}}
-@elseif(request('tab') === 'officebased')
+    {{-- One modal per event. The five headings from the row are repeated at the
+         top so the list of employers cannot be read against the wrong fair. --}}
+    @foreach($jobFairEvents as $event)
+    <div class="modal fade" id="fairEventModal{{ $event->job_fair_events_id }}" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content" style="border-radius:16px;border:none;overflow:hidden;">
+                <div class="modal-header border-0" style="background:var(--g-600);padding:16px 20px;">
+                    <h6 class="modal-title fw-bold text-white mb-0">
+                        <i class="ph-fill ph-users-three me-2"></i>{{ $event->title }}
+                    </h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4" style="font-size:13px;color:var(--g-700);">
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <strong>Event Title</strong>
+                            <div class="text-muted">{{ $event->title }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Venue</strong>
+                            <div class="text-muted">{{ $event->venue ?: 'Not set' }}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Invitation Date</strong>
+                            <div class="text-muted">{{ $event->invited_on ? \Carbon\Carbon::parse($event->invited_on)->format('M d, Y') : 'Not sent yet' }}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Event Date</strong>
+                            <div class="text-muted">{{ $event->event_date->format('M d, Y') }}</div>
+                        </div>
+                        <div class="col-md-4">
+                            <strong>No. of Participants</strong>
+                            <div class="text-muted">{{ $event->roster->count() }}</div>
+                        </div>
+                    </div>
 
-    <div class="d-flex justify-content-end mb-3">
-        <form method="GET" action="{{ route('admin.job.activities') }}" class="d-flex align-items-center gap-2">
-            <input type="hidden" name="tab" value="officebased">
-            <label class="fw-semibold" style="font-size:12px;color:#2d7a5f;">Filter:</label>
-            <select name="classification" class="form-select form-select-sm"
-                style="border:1.5px solid #a8e6cf;border-radius:8px;font-size:12px;width:auto;"
-                onchange="this.form.submit()">
-                <option value="all" {{ $classification === 'all' ? 'selected' : '' }}>All</option>
-                <option value="lra" {{ $classification === 'lra' ? 'selected' : '' }}>LRA</option>
-                <option value="sra" {{ $classification === 'sra' ? 'selected' : '' }}>SRA</option>
-            </select>
-        </form>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="background:var(--n-100);color:var(--g-700);font-size:11.5px;padding:10px 12px;">#</th>
+                                    <th style="background:var(--n-100);color:var(--g-700);font-size:11.5px;padding:10px 12px;">Company Name</th>
+                                    <th style="background:var(--n-100);color:var(--g-700);font-size:11.5px;padding:10px 12px;">Placement</th>
+                                    <th style="background:var(--n-100);color:var(--g-700);font-size:11.5px;padding:10px 12px;">Status</th>
+                                    <th style="background:var(--n-100);color:var(--g-700);font-size:11.5px;padding:10px 12px;">Answered</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($event->roster as $j => $participant)
+                                @php
+                                    // "Waiting" is not a third answer — it is the
+                                    // absence of one. The employer has the
+                                    // invitation and has pressed neither button.
+                                    $status = $participant->confirmation_status;
+                                    $look   = [
+                                        'confirmed' => ['Confirmed', 'var(--g-600)', 'ph-check-circle'],
+                                        'declined'  => ['Declined',  'var(--danger)', 'ph-x-circle'],
+                                    ][$status] ?? ['Waiting', 'var(--warn)', 'ph-clock'];
+                                @endphp
+                                <tr>
+                                    <td style="font-size:12.5px;padding:10px 12px;color:var(--n-500);">{{ $j + 1 }}</td>
+                                    <td style="font-size:12.5px;padding:10px 12px;font-weight:600;color:var(--g-700);">
+                                        {{ $participant->employer->company_name ?? 'None' }}
+                                    </td>
+                                    <td style="font-size:12.5px;padding:10px 12px;">
+                                        <span style="color:{{ ($participant->employer->is_overseas ?? false) ? 'var(--warn)' : 'var(--g-600)' }};font-weight:600;font-size:11px;">
+                                            {{ ($participant->employer->is_overseas ?? false) ? 'Overseas' : 'Local' }}
+                                        </span>
+                                    </td>
+                                    <td style="font-size:12.5px;padding:10px 12px;">
+                                        <span style="color:{{ $look[1] }};font-weight:600;">
+                                            <i class="ph-fill {{ $look[2] }} me-1"></i>{{ $look[0] }}
+                                        </span>
+                                    </td>
+                                    <td style="font-size:12.5px;padding:10px 12px;color:var(--n-500);">
+                                        {{ $participant->responded_at?->format('M d, Y') ?? '—' }}
+                                    </td>
+                                </tr>
+                                @empty
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted" style="font-size:12.5px;">
+                                        No employer has been invited to this event yet.
+                                    </td>
+                                </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+    @endforeach
 
-    @if($officeBasedJobs->isEmpty())
-        <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-            <i class="bi bi-briefcase" style="font-size:48px;color:#a8e6cf;"></i>
-            <p class="text-muted mt-3 mb-0">No job solicitation postings found.</p>
-        </div>
-    @else
-        <div class="d-flex justify-content-end mb-2">
-            <div class="input-group" style="max-width:280px;">
-                <span class="input-group-text" style="border-color:#a8e6cf;background:#f0fdf9;">
-                    <i class="bi bi-search" style="color:#4dd9c0;"></i>
-                </span>
-                <input type="text" id="jobSolicitationSearch" class="form-control" placeholder="Search..." style="border-color:#a8e6cf;font-size:13px;">
-            </div>
-        </div>
-        <div class="card border-0 shadow-sm rounded-3">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0" id="jobSolicitationTable">
-                    <thead>
-                        <tr>
-                            <th style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;">#</th>
-                            <th data-sort-col="1" style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;cursor:pointer;">
-                                Job Title
-                                <span style="display:inline-flex;flex-direction:column;margin-left:4px;vertical-align:middle;line-height:0.6;">
-                                    <i class="bi bi-caret-up-fill" style="font-size:9px;color:#4dd9c0;"></i>
-                                    <i class="bi bi-caret-down-fill" style="font-size:9px;color:#4dd9c0;"></i>
-                                </span>
-                            </th>
-                            <th style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;">Company</th>
-                            <th style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;">Location</th>
-                            <th style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;">Type</th>
-                            <th style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;">Slots</th>
-                            <th style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;">Deadline</th>
-                            <th style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;">Classification</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($officeBasedJobs as $i => $job)
-                        <tr>
-                            <td style="font-size:13px;padding:12px 16px;color:#888;">{{ $i + 1 }}</td>
-                            <td style="font-size:13px;padding:12px 16px;font-weight:600;color:#2d7a5f;">
-                                {{ $job->title }}
-                            </td>
-                            <td style="font-size:13px;padding:12px 16px;color:#555;">
-                                {{ $job->company->company_name ?? '—' }}
-                            </td>
-                            <td style="font-size:13px;padding:12px 16px;color:#555;">
-                                {{ $job->location }}
-                            </td>
-                            <td style="font-size:13px;padding:12px 16px;color:#555;">
-                                {{ ucfirst(str_replace('_', ' ', $job->type)) }}
-                            </td>
-                            <td style="font-size:13px;padding:12px 16px;color:#555;">
-                                {{ $job->slots }}
-                            </td>
-                            <td style="font-size:13px;padding:12px 16px;color:#888;">
-                                {{ $job->deadline ? \Carbon\Carbon::parse($job->deadline)->format('M d, Y') : '—' }}
-                            </td>
-                            <td style="font-size:13px;padding:12px 16px;">
-                                @if($job->company && $job->company->employerNsrp)
-                                    <span class="badge" style="background:{{ $job->company->employerNsrp->is_overseas ? '#f59e0b' : '#4dd9c0' }};color:#fff;font-weight:600;">
-                                        {{ $job->company->employerNsrp->is_overseas ? 'SRA' : 'LRA' }}
-                                    </span>
-                                @else
-                                    <span style="color:#aaa;font-size:12px;">None</span>
-                                @endif
-                            </td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <div class="d-flex justify-content-center align-items-center gap-3 mt-3" id="jobSolicitationPagination">
-            <button type="button" id="jobSolicitationPaginationPrev" class="btn btn-sm" style="border:1.5px solid #a8e6cf;border-radius:8px;color:#2d7a5f;padding:6px 14px;"><i class="bi bi-chevron-left"></i></button>
-            <span id="jobSolicitationPaginationInfo" style="font-size:13px;color:#2d7a5f;font-weight:600;"></span>
-            <button type="button" id="jobSolicitationPaginationNext" class="btn btn-sm" style="border:1.5px solid #a8e6cf;border-radius:8px;color:#2d7a5f;padding:6px 14px;"><i class="bi bi-chevron-right"></i></button>
-        </div>
-    @endif
-
-{{-- ── TAB 4: COMPANY INTERVIEW ── --}}
+{{-- ── TAB 3: COMPANY INTERVIEW ── --}}
 @elseif(request('tab') === 'companyinterview')
 
     @if($companyInterviewJobs->isEmpty())
         <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-            <i class="bi bi-camera-video" style="font-size:48px;color:#a8e6cf;"></i>
+            <i class="ph ph-video-camera" style="font-size:48px;color:var(--n-200);"></i>
             <p class="text-muted mt-3 mb-0">No company interview postings found.</p>
         </div>
     @else
         <div class="d-flex justify-content-end mb-2">
             <div class="input-group" style="max-width:280px;">
-                <span class="input-group-text" style="border-color:#a8e6cf;background:#f0fdf9;">
-                    <i class="bi bi-search" style="color:#4dd9c0;"></i>
+                <span class="input-group-text" style="border-color:var(--n-200);background:var(--n-50);">
+                    <i class="ph ph-magnifying-glass" style="color:var(--g-600);"></i>
                 </span>
-                <input type="text" id="companyInterviewSearch" class="form-control" placeholder="Search..." style="border-color:#a8e6cf;font-size:13px;">
+                <input type="text" id="companyInterviewSearch" class="form-control" placeholder="Search..." style="border-color:var(--n-200);font-size:13px;">
             </div>
         </div>
         <div class="card border-0 shadow-sm rounded-3">
@@ -380,39 +524,52 @@
                 <table class="table table-hover align-middle mb-0" id="companyInterviewTable">
                     <thead>
                         <tr>
-                            <th style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;">#</th>
-                            <th data-sort-col="1" style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;cursor:pointer;">
+                            <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;">#</th>
+                            <th data-sort-col="1" style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;cursor:pointer;">
                                 Job Title
                                 <span style="display:inline-flex;flex-direction:column;margin-left:4px;vertical-align:middle;line-height:0.6;">
-                                    <i class="bi bi-caret-up-fill" style="font-size:9px;color:#4dd9c0;"></i>
-                                    <i class="bi bi-caret-down-fill" style="font-size:9px;color:#4dd9c0;"></i>
+                                    <i class="ph-fill ph-caret-up" style="font-size:9px;color:var(--g-600);"></i>
+                                    <i class="ph-fill ph-caret-down" style="font-size:9px;color:var(--g-600);"></i>
                                 </span>
                             </th>
-                            <th style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;">Company</th>
-                            <th style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;">Location</th>
-                            <th style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;">Slots</th>
-                            <th style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;">Deadline</th>
-                            <th style="background:#dde4e1;color:#2d7a5f;font-size:12px;padding:12px 16px;">Classification</th>
+                            <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;">Company Name</th>
+                            <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;">Location</th>
+                            <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;">Interview Date</th>
+                            <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;">Slots</th>
+                            {{-- "Deadline" on its own read like the interview
+                                 deadline. It is the day the posting stops
+                                 taking applications, so it says so. --}}
+                            <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;">Application Deadline</th>
+                            <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;">Classification</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($companyInterviewJobs as $i => $job)
                         <tr>
-                            <td style="font-size:13px;padding:12px 16px;color:#888;">{{ $i + 1 }}</td>
-                            <td style="font-size:13px;padding:12px 16px;font-weight:600;color:#2d7a5f;">{{ $job->title }}</td>
-                            <td style="font-size:13px;padding:12px 16px;color:#555;">{{ $job->company->company_name ?? '—' }}</td>
-                            <td style="font-size:13px;padding:12px 16px;color:#555;">{{ $job->location }}</td>
-                            <td style="font-size:13px;padding:12px 16px;color:#555;">{{ $job->slots }}</td>
-                            <td style="font-size:13px;padding:12px 16px;color:#888;">
-                                {{ $job->deadline ? \Carbon\Carbon::parse($job->deadline)->format('M d, Y') : '—' }}
+                            <td data-row-number style="font-size:13px;padding:12px 16px;color:var(--n-500);">{{ $i + 1 }}</td>
+                            <td style="font-size:13px;padding:12px 16px;font-weight:600;color:var(--g-700);">{{ $job->title }}</td>
+                            <td style="font-size:13px;padding:12px 16px;color:var(--n-700);">{{ $job->company->company_name ?? 'None' }}</td>
+                            <td style="font-size:13px;padding:12px 16px;color:var(--n-700);">{{ $job->location }}</td>
+                            {{-- The employer names the day themselves for a
+                                 company interview; there is no PESO date to
+                                 confirm, so preferred_date is the interview. --}}
+                            <td style="font-size:13px;padding:12px 16px;color:var(--n-700);">
+                                {{ $job->preferred_date?->format('M d, Y') ?? 'Not set' }}
+                            </td>
+                            <td style="font-size:13px;padding:12px 16px;color:var(--n-700);">{{ $job->slots }}</td>
+                            <td style="font-size:13px;padding:12px 16px;color:var(--n-500);">
+                                {{ $job->deadline ? \Carbon\Carbon::parse($job->deadline)->format('M d, Y') : 'None' }}
                             </td>
                             <td style="font-size:13px;padding:12px 16px;">
-                                @if($job->company && $job->company->employerNsrp)
-                                    <span class="badge" style="background:{{ $job->company->employerNsrp->is_overseas ? '#f59e0b' : '#4dd9c0' }};color:#fff;font-weight:600;">
-                                        {{ $job->company->employerNsrp->is_overseas ? 'SRA' : 'LRA' }}
+                                {{-- $job->company IS the NSRP row; the old
+                                     $job->company->employerNsrp was always null,
+                                     so this column read "None" on every line. --}}
+                                @if($job->company)
+                                    <span style="color:{{ $job->company->is_overseas ? 'var(--warn)' : 'var(--g-600)' }};font-weight:600;font-size:11px;">
+                                        {{ $job->company->is_overseas ? 'SRA' : 'LRA' }}
                                     </span>
                                 @else
-                                    <span style="color:#aaa;font-size:12px;">None</span>
+                                    <span style="color:var(--n-400);font-size:12px;">None</span>
                                 @endif
                             </td>
                         </tr>
@@ -422,9 +579,9 @@
             </div>
         </div>
         <div class="d-flex justify-content-center align-items-center gap-3 mt-3" id="companyInterviewPagination">
-            <button type="button" id="companyInterviewPaginationPrev" class="btn btn-sm" style="border:1.5px solid #a8e6cf;border-radius:8px;color:#2d7a5f;padding:6px 14px;"><i class="bi bi-chevron-left"></i></button>
-            <span id="companyInterviewPaginationInfo" style="font-size:13px;color:#2d7a5f;font-weight:600;"></span>
-            <button type="button" id="companyInterviewPaginationNext" class="btn btn-sm" style="border:1.5px solid #a8e6cf;border-radius:8px;color:#2d7a5f;padding:6px 14px;"><i class="bi bi-chevron-right"></i></button>
+            <button type="button" id="companyInterviewPaginationPrev" class="btn btn-sm" style="border:1px solid var(--n-200);border-radius:8px;color:var(--g-700);padding:6px 14px;"><i class="ph ph-caret-left"></i></button>
+            <span id="companyInterviewPaginationInfo" style="font-size:13px;color:var(--g-700);font-weight:600;"></span>
+            <button type="button" id="companyInterviewPaginationNext" class="btn btn-sm" style="border:1px solid var(--n-200);border-radius:8px;color:var(--g-700);padding:6px 14px;"><i class="ph ph-caret-right"></i></button>
         </div>
     @endif
 
@@ -453,6 +610,15 @@
 
             allRows.forEach(r => r.style.display = 'none');
             filtered.slice(start, start + perPage).forEach(r => r.style.display = '');
+
+            // The # column counts down the page and keeps counting across
+            // pages. Sorting alphabetically used to carry each row's original
+            // number with it, so the first column read 7, 2, 9, 4 and looked
+            // like an ID somebody could quote back to the office.
+            filtered.forEach((r, idx) => {
+                const cell = r.querySelector('[data-row-number]');
+                if (cell) cell.textContent = idx + 1;
+            });
 
             if (infoEl) infoEl.textContent = `Page ${currentPage} of ${totalPages}`;
             if (prevBtn) prevBtn.disabled = currentPage <= 1;
@@ -483,22 +649,8 @@
     }
 
     setupTableTools('inhouseTable', 'inhouseSearch', 'inhousePagination', 5);
-    setupTableTools('jobSolicitationTable', 'jobSolicitationSearch', 'jobSolicitationPagination', 5);
     setupTableTools('companyInterviewTable', 'companyInterviewSearch', 'companyInterviewPagination', 5);
     setupTableTools('jobFairTable', 'jobFairSearch', 'jobFairPagination', 5);
-
-    document.querySelectorAll('.inhouse-view-btn').forEach(btn => {
-        btn.addEventListener('click', function () {
-            document.getElementById('modalIhCompany').textContent        = this.dataset.company;
-            document.getElementById('modalIhPreferredDate').textContent  = this.dataset.preferredDate;
-            document.getElementById('modalIhPreferredTime').textContent  = this.dataset.preferredTime;
-            document.getElementById('modalIhConfirmedDate').textContent  = this.dataset.confirmedDate;
-            document.getElementById('modalIhConfirmedTime').textContent  = this.dataset.confirmedTime;
-            document.getElementById('modalIhApplicants').textContent     = this.dataset.applicants;
-            document.getElementById('modalIhOffers').textContent         = this.dataset.offers;
-            document.getElementById('modalIhStatus').textContent         = this.dataset.status;
-        });
-    });
 </script>
 
 @endsection

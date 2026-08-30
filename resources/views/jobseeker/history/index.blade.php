@@ -6,11 +6,11 @@
 
 <div class="d-flex align-items-center justify-content-between mb-4 fade-in">
     <div>
-        <h5 class="fw-bold mb-1" style="color:#2d7a5f; font-size:18px;">
-            <i class="bi bi-clock-history me-2" style="color:#4dd9c0;"></i>History
+        <h5 class="fw-bold mb-1" style="color:var(--g-700); font-size:18px;">
+            <i class="ph ph-clock-counter-clockwise me-2" style="color:var(--g-600);"></i>History
         </h5>
-        <p class="mb-0" style="font-size:13px; color:#888;">
-            Jobs you have been hired for.
+        <p class="mb-0" style="font-size:13px; color:var(--n-500);">
+            Every job you have applied for, and where you stand on each one.
         </p>
     </div>
 </div>
@@ -28,7 +28,7 @@
                 </div>
                 <div class="col-md-2">
                     <button type="submit" class="btn btn-peso w-100">
-                        <i class="bi bi-search me-1"></i> Search
+                        <i class="ph ph-magnifying-glass me-1"></i> Search
                     </button>
                 </div>
             </div>
@@ -36,14 +36,14 @@
     </div>
 </div>
 
-@if($hired->isEmpty())
+@if($history->isEmpty())
     <div class="peso-card fade-in">
         <div class="empty-state">
             <div class="empty-icon">
-                <i class="bi bi-clock-history"></i>
+                <i class="ph ph-clock-counter-clockwise"></i>
             </div>
-            <h6>No hiring history yet</h6>
-            <p>Jobs you get hired for will appear here.</p>
+            <h6>No history yet</h6>
+            <p>Jobs you apply for will appear here.</p>
         </div>
     </div>
 @else
@@ -52,32 +52,50 @@
             <table class="table table-hover align-middle mb-0">
                 <thead>
                     <tr>
-                        <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
-                        <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Job Title</th>
-                        <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Company</th>
-                        <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Match %</th>
-                        <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Date Hired</th>
+                        <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
+                        <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Job Title</th>
+                        <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Company Name</th>
+                        <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Job Match %</th>
+                        <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Application Status</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($hired as $i => $app)
+                    @foreach($history as $i => $app)
                     <tr>
-                        <td style="padding:12px 16px;color:#888;">{{ $hired->firstItem() + $i }}</td>
-                        <td style="padding:12px 16px;font-weight:600;color:#2d7a5f;">
-                            {{ $app->job->title ?? '—' }}
+                        <td style="padding:12px 16px;color:var(--n-500);">{{ $history->firstItem() + $i }}</td>
+                        <td style="padding:12px 16px;font-weight:600;color:var(--g-700);">
+                            {{ $app->job->title ?? 'None' }}
                         </td>
-                        <td style="padding:12px 16px;color:#555;">
-                            {{ $app->job->company->company_name ?? '—' }}
+                        <td style="padding:12px 16px;color:var(--n-700);">
+                            {{ $app->job->company->company_name ?? 'None' }}
                         </td>
                         <td style="padding:12px 16px;text-align:center;">
                             @php $match = $app->match_percentage ?? 0; @endphp
                             <span class="fw-semibold"
-                                style="color:{{ $match >= 75 ? '#2d7a5f' : ($match >= 50 ? '#f59e0b' : '#e05252') }}">
+                                style="color:{{ $match >= 75 ? 'var(--g-700)' : ($match >= 50 ? 'var(--warn)' : 'var(--danger)') }}">
                                 {{ $match }}%
                             </span>
                         </td>
-                        <td style="padding:12px 16px;text-align:center;color:#555;">
-                            {{ $app->updated_at?->format('M d, Y') ?? '—' }}
+                        {{-- Two states only, and neither is the raw application status.
+                             PESO asks one question of this page: is this person still
+                             looking for work? Someone who took the job is not, and
+                             everyone else is — whatever stage their application sits
+                             at. --}}
+                        <td style="padding:12px 16px;text-align:center;">
+                            @if($app->status === 'hired')
+                                <span class="fw-semibold" style="color:var(--g-700);font-size:11.5px;">
+                                    <i class="ph-fill ph-check-circle me-1"></i>Employed
+                                </span>
+                                {{-- The day it happened. It used to be a column of its
+                                     own; it belongs to this one row, not to every row. --}}
+                                <div style="font-size:11px;color:var(--n-500);margin-top:2px;">
+                                    since {{ $app->hired_at?->format('M d, Y') ?? 'None' }}
+                                </div>
+                            @else
+                                <span class="fw-semibold" style="color:var(--warn);font-size:11.5px;">
+                                    <i class="ph ph-magnifying-glass me-1"></i>Looking for Work
+                                </span>
+                            @endif
                         </td>
                     </tr>
                     @endforeach
@@ -86,9 +104,9 @@
         </div>
     </div>
 
-    @if($hired->hasPages())
+    @if($history->hasPages())
     <div class="d-flex justify-content-center mt-4">
-        {{ $hired->links() }}
+        {{ $history->links() }}
     </div>
     @endif
 @endif

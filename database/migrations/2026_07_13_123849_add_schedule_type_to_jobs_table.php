@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table((new \App\Models\Job)->getTable(), function (Blueprint $table) {
-            $table->string('schedule_type')->default('office_based')->after('status');
+            $table->string('schedule_type')->default('company_interview')->after('status');
             $table->date('preferred_date')->nullable()->after('schedule_type');
             $table->string('preferred_time')->nullable()->after('preferred_date');
         });

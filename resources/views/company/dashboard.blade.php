@@ -5,21 +5,16 @@
 @section('content')
 
 @php
-    $requirement = \App\Models\EmployerRequirement::where('user_id', $company->employerNsrp->employer_nsrp_registrations_id ?? 0)->first();
+    $requirement = \App\Models\EmployerRequirement::where('user_id', $company->activeCompany()->employer_nsrp_registrations_id ?? 0)->first();
     $reqStatus = $requirement?->status ?? 'none';
 @endphp
 
 {{-- ── GREETING ── --}}
-<div class="d-flex align-items-center justify-content-between mb-4 fade-in">
-    <div>
-        <h5 class="fw-bold mb-1" style="color: #2d7a5f; font-size: 18px;">
-            Welcome, {{ optional($company->employerNsrp)->company_name ?? $company->name ?? 'Company' }}! 👋
-        </h5>
-        <p class="mb-0" style="font-size: 13px; color: #888;">
-            {{ now()->format('l, F d, Y') }}
-        </p>
-    </div>
-    
+<div class="peso-page-head fade-in">
+    <h1 class="peso-page-title">
+        Welcome, {{ optional($company->activeCompany())->company_name ?? $company->name ?? 'Company' }}
+    </h1>
+    <p class="peso-page-sub">{{ now()->format('l, F d, Y') }}</p>
 </div>
 
 @include('company.partials.request-job-modal')
@@ -27,201 +22,148 @@
 {{-- ── REQUIREMENTS STATUS BANNER ── --}}
 
 @if($reqStatus === 'none')
-<div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-md-between gap-3 p-3 mb-4 rounded-3 fade-in"
-     style="background:#fff8e1; border:1.5px solid #f9a825;">
-    <div class="d-flex align-items-center gap-3">
-        <i class="bi bi-upload" style="font-size:28px; color:#f9a825;flex-shrink:0;"></i>
+<div class="peso-notice is-warn mb-4 fade-in flex-column flex-md-row align-items-md-center justify-content-md-between gap-3">
+    <div class="d-flex align-items-start gap-2">
+        <i class="ph ph-upload-simple"></i>
         <div>
-            <div style="font-size:14px; font-weight:700; color:#f9a825;">Requirements Not Yet Submitted</div>
-            <div style="font-size:12px; color:#888;">Submit your requirements to access PESO services.</div>
+            <div class="fw-semibold">Requirements Not Yet Submitted</div>
+            <div class="t-muted" style="font-size:12.5px;">Submit your requirements to access PESO services.</div>
         </div>
     </div>
-    <a href="{{ route('company.requirements') }}" class="btn btn-peso btn-sm px-3 w-100 w-md-auto">
-        <i class="bi bi-upload me-1"></i> Submit Requirements
+    <a href="{{ route('company.requirements') }}" class="btn-peso btn-sm flex-shrink-0">
+        <i class="ph ph-upload-simple"></i> Submit Requirements
     </a>
 </div>
 
 @elseif($reqStatus === 'pending')
-<div class="d-flex align-items-center gap-3 p-3 mb-4 rounded-3 fade-in"
-     style="background:#fff8e1; border:1.5px solid #f9a825;">
-    <i class="bi bi-clock-fill" style="font-size:28px; color:#f9a825;"></i>
+<div class="peso-notice is-warn mb-4 fade-in">
+    <i class="ph-fill ph-clock"></i>
     <div>
-        <div style="font-size:14px; font-weight:700; color:#f9a825;">Requirements Under Review</div>
-        <div style="font-size:12px; color:#888;">PESO staff is currently reviewing your submitted documents.</div>
+        <div class="fw-semibold">Requirements Under Review</div>
+        <div class="t-muted" style="font-size:12.5px;">PESO staff is currently reviewing your submitted documents.</div>
     </div>
 </div>
 
 @elseif($reqStatus === 'approved')
-<div class="d-flex align-items-center gap-3 p-3 mb-4 rounded-3 fade-in"
-     style="background:#e8f8f3; border:1.5px solid #4dd9c0;">
-    <i class="bi bi-check-circle-fill" style="font-size:28px; color:#2d7a5f;"></i>
+<div class="peso-notice is-success mb-4 fade-in">
+    <i class="ph-fill ph-check-circle"></i>
     <div>
-        <div style="font-size:14px; font-weight:700; color:#2d7a5f;">Requirements Approved ✅</div>
-        <div style="font-size:12px; color:#888;">You can now request in-house interviews and post job vacancies.</div>
+        <div class="fw-semibold">Requirements Approved</div>
+        <div class="t-muted" style="font-size:12.5px;">You can now request in-house interviews and post job vacancies.</div>
     </div>
 </div>
 
 @elseif($reqStatus === 'rejected')
-<div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-md-between gap-3 p-3 mb-4 rounded-3 fade-in"
-     style="background:#fff5f5; border:1.5px solid #e53935;">
-    <div class="d-flex align-items-center gap-3">
-        <i class="bi bi-x-circle-fill" style="font-size:28px; color:#e53935;flex-shrink:0;"></i>
+<div class="peso-notice is-danger mb-4 fade-in flex-column flex-md-row align-items-md-center justify-content-md-between gap-3">
+    <div class="d-flex align-items-start gap-2">
+        <i class="ph-fill ph-x-circle"></i>
         <div>
-            <div style="font-size:14px; font-weight:700; color:#e53935;">Requirements Rejected ❌</div>
-            <div style="font-size:12px; color:#888;">
+            <div class="fw-semibold">Requirements Rejected</div>
+            <div class="t-muted" style="font-size:12.5px;">
                 {{ $requirement?->remarks ?? 'Please resubmit the correct documents.' }}
             </div>
         </div>
     </div>
-    <a href="{{ route('company.requirements') }}" class="btn btn-sm px-3 w-100 w-md-auto"
-       style="background:#e53935; color:#fff; border-radius:10px; font-size:12px; font-weight:600;">
-        <i class="bi bi-arrow-repeat me-1"></i> Resubmit
+    <a href="{{ route('company.requirements') }}" class="btn-peso-danger btn-sm flex-shrink-0">
+        <i class="ph ph-arrows-clockwise"></i> Resubmit
+    </a>
+</div>
+
+@elseif($reqStatus === 'expired')
+@php
+    $expiredLabels = collect($requirement->rejected_fields ?? [])
+        ->map(fn($f) => \App\Models\EmployerRequirement::DOCUMENT_LABELS[$f] ?? $f)
+        ->implode(', ');
+@endphp
+<div class="peso-notice is-warn mb-4 fade-in flex-column flex-md-row align-items-md-center justify-content-md-between gap-3">
+    <div class="d-flex align-items-start gap-2">
+        <i class="ph ph-hourglass-medium"></i>
+        <div>
+            <div class="fw-semibold">Document(s) Expired</div>
+            <div class="t-muted" style="font-size:12.5px;">
+                {{ $expiredLabels ?: 'One or more of your documents' }} expired. Please resubmit with an updated file and new expiry date.
+            </div>
+        </div>
+    </div>
+    <a href="{{ route('company.requirements') }}" class="btn-peso btn-sm flex-shrink-0">
+        <i class="ph ph-arrows-clockwise"></i> Resubmit
     </a>
 </div>
 @endif
 
-{{-- ── STAT CARDS ── --}}
-<div class="row g-3 mb-4">
+{{-- ── STAT CARDS, WHICH ARE ALSO THE QUICK LINKS ──
+     There used to be a separate Quick Links card underneath saying the same
+     three or four words again. A number the employer is already looking at is
+     the better door: reading "3 hired" and wanting to know who they are is the
+     whole reason anyone opens Reports. So the cards carry the links, and the
+     row of duplicates is gone. --}}
+<style>
+    .stat-link { display:block; text-decoration:none; color:inherit; transition:transform .15s ease, box-shadow .15s ease; }
+    .stat-link:hover { transform:translateY(-2px); }
+    .stat-link:hover .stat-card { box-shadow:0 6px 18px rgba(0,0,0,.10); }
+    .stat-go { font-size:10.5px; color:var(--n-500); margin-top:6px; }
+    .stat-link:hover .stat-go { color:var(--g-600); }
+</style>
+<div class="row g-3 mb-2">
     <div class="col-6 col-md-4">
-        <div class="stat-card fade-in-1">
-            <div class="stat-icon">
-                <i class="bi bi-briefcase-fill"></i>
+        <a href="{{ route('company.jobseekers', ['tab' => 'vacancies']) }}" class="stat-link">
+            <div class="stat-card fade-in-1">
+                <div class="stat-icon"><i class="ph-fill ph-briefcase"></i></div>
+                <div class="stat-value">{{ $totalJobs }}</div>
+                <div class="stat-label">Active Job Posts</div>
+                <div class="stat-go">Open Active Job Postings <i class="ph ph-arrow-right"></i></div>
             </div>
-            <div class="stat-value">{{ $totalJobs }}</div>
-            <div class="stat-label">Total Job Posts</div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-md-4">
-        <div class="stat-card fade-in-2">
-            <div class="stat-icon">
-                <i class="bi bi-people-fill"></i>
+        {{-- Applicants are reached one posting at a time, so this lands on the
+             list of postings rather than on a page that does not exist. --}}
+        <a href="{{ route('company.jobseekers', ['tab' => 'vacancies']) }}" class="stat-link">
+            <div class="stat-card fade-in-2">
+                <div class="stat-icon is-info"><i class="ph-fill ph-users-three"></i></div>
+                <div class="stat-value">{{ $totalApplicants }}</div>
+                <div class="stat-label">Total Active Applicants</div>
+                <div class="stat-go">See them per posting <i class="ph ph-arrow-right"></i></div>
             </div>
-            <div class="stat-value">{{ $totalApplicants }}</div>
-            <div class="stat-label">Total Applicants</div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-md-4">
-        <div class="stat-card fade-in-3">
-            <div class="stat-icon">
-                <i class="bi bi-check-circle-fill"></i>
+        <a href="{{ route('company.reports') }}" class="stat-link">
+            <div class="stat-card fade-in-3">
+                <div class="stat-icon"><i class="ph-fill ph-check-circle"></i></div>
+                <div class="stat-value">{{ $hired }}</div>
+                <div class="stat-label">Hired</div>
+                <div class="stat-go">Open Reports <i class="ph ph-arrow-right"></i></div>
             </div>
-            <div class="stat-value">{{ $hired }}</div>
-            <div class="stat-label">Hired</div>
-        </div>
+        </a>
     </div>
 </div>
 
-{{-- ── QUICK LINKS ── --}}
-<div class="peso-card fade-in">
-    <div class="peso-card-header">
-        <h6><i class="bi bi-grid me-2" style="color:#4dd9c0;"></i>Quick Links</h6>
-    </div>
-    <div class="peso-card-body">
-        <div class="row g-3">
-            <div class="col-6 col-md-4">
-                <a href="{{ route('company.jobs') }}" class="text-decoration-none">
-                    <div class="p-3 rounded-3 text-center h-100"
-                         style="background:#f0f9f6; border:1.5px solid #a8e6cf; transition:all 0.2s;"
-                         onmouseover="this.style.background='#e8f8f3'"
-                         onmouseout="this.style.background='#f0f9f6'">
-                        <i class="bi bi-send" style="font-size:28px; color:#4dd9c0;"></i>
-                        <div style="font-size:13px; font-weight:700; color:#2d7a5f; margin-top:8px;">Job Requests</div>
-                        <div style="font-size:11px; color:#888;">View all job postings</div>
-                    </div>
-                </a>
-            </div>
-            <div class="col-6 col-md-4">
-                <a href="{{ route('company.requirements') }}" class="text-decoration-none">
-                    <div class="p-3 rounded-3 text-center h-100"
-                         style="background:#f0f9f6; border:1.5px solid #a8e6cf; transition:all 0.2s;"
-                         onmouseover="this.style.background='#e8f8f3'"
-                         onmouseout="this.style.background='#f0f9f6'">
-                        <i class="bi bi-upload" style="font-size:28px; color:#4dd9c0;"></i>
-                        <div style="font-size:13px; font-weight:700; color:#2d7a5f; margin-top:8px;">Requirements</div>
-                        <div style="font-size:11px; color:#888;">Submit your documents</div>
-                    </div>
-                </a>
-            </div>
-            <div class="col-6 col-md-4">
-                <a href="{{ route('company.profile') }}" class="text-decoration-none">
-                    <div class="p-3 rounded-3 text-center h-100"
-                         style="background:#f0f9f6; border:1.5px solid #a8e6cf; transition:all 0.2s;"
-                         onmouseover="this.style.background='#e8f8f3'"
-                         onmouseout="this.style.background='#f0f9f6'">
-                        <i class="bi bi-person-circle" style="font-size:28px; color:#4dd9c0;"></i>
-                        <div style="font-size:13px; font-weight:700; color:#2d7a5f; margin-top:8px;">My Profile</div>
-                        <div style="font-size:11px; color:#888;">Manage your account</div>
-                    </div>
-                </a>
-            </div>
-        </div>
-    </div>
-</div>
+<p class="t-sm t-muted mb-4">
+    Counting all your active job posts and their applicants. For a breakdown by date, open Reports.
+</p>
 
-{{-- ── TODAY'S ACTIVITIES ── --}}
-<div class="peso-card fade-in mt-4">
-    <div class="peso-card-header">
-        <h6><i class="bi bi-calendar-check me-2" style="color:#4dd9c0;"></i>Today's Activities</h6>
-    </div>
-    <div class="peso-card-body">
+{{-- ── UPCOMING EVENTS ──
+     PESO, 2026-08-26: this was "Today's Activities" — the fairs and interviews
+     happening on this one day and nothing else, so an interview four days out
+     was invisible until the morning it arrived. The same calendar the jobseeker
+     and the office read answers it properly: click a day, see what is on it.
 
-        {{-- Job Fair Events Today --}}
-        <div class="mb-3">
-            <div class="fw-semibold mb-2" style="font-size:13px; color:#2d7a5f;">
-                <i class="bi bi-people-fill me-1"></i> Job Fair Events
-            </div>
-            @if($todayJobFairs->isEmpty())
-                <div class="text-muted" style="font-size:13px; padding:10px 0;">
-                    No job fair events scheduled today.
-                </div>
-            @else
-                @foreach($todayJobFairs as $event)
-                <div class="d-flex align-items-center gap-3 p-2 rounded-3 mb-2"
-                     style="background:#f0f9f6; border:1px solid #a8e6cf;">
-                    <i class="bi bi-calendar-event" style="color:#4dd9c0; font-size:20px;"></i>
-                    <div>
-                        <div style="font-size:13px; font-weight:600; color:#2d7a5f;">{{ $event->title }}</div>
-                        <div style="font-size:12px; color:#888;">
-                            <i class="bi bi-geo-alt me-1"></i>{{ $event->venue }}
-                            &nbsp;•&nbsp;
-                            <span style="color:#4dd9c0; font-weight:600; text-transform:capitalize;">{{ $event->status }}</span>
-                        </div>
-                    </div>
-                </div>
-                @endforeach
-            @endif
-        </div>
-
-        <hr style="border-color:#e8f8f3; margin:12px 0;">
-
-        {{-- In-house Schedules Today --}}
-        <div>
-            <div class="fw-semibold mb-2" style="font-size:13px; color:#2d7a5f;">
-                <i class="bi bi-building me-1"></i> In-house Interviews
-            </div>
-            @if($todayInhouse->isEmpty())
-                <div class="text-muted" style="font-size:13px; padding:10px 0;">
-                    No in-house interviews scheduled today.
-                </div>
-            @else
-                @foreach($todayInhouse as $schedule)
-                <div class="d-flex align-items-center gap-3 p-2 rounded-3 mb-2"
-                     style="background:#f0f9f6; border:1px solid #a8e6cf;">
-                    <i class="bi bi-clock" style="color:#4dd9c0; font-size:20px;"></i>
-                    <div>
-                        <div style="font-size:13px; font-weight:600; color:#2d7a5f;">
-                            In-house Interview
-                        </div>
-                        <div style="font-size:12px; color:#888;">
-                            <i class="bi bi-clock me-1"></i>{{ \Carbon\Carbon::parse($schedule->confirmed_time)->format('h:i A') }}
-                        </div>
-                    </div>
-                </div>
-                @endforeach
-            @endif
-        </div>
-
-    </div>
+     What the employer sees is theirs alone: the fairs they were invited to and
+     their own interview days. PESO office days are left out — the office
+     being in a meeting is not theirs to know. --}}
+{{-- Same shell as every other portal: the partial brings its own card and
+     green header, so there is no wrapper here. --}}
+<div class="mt-4">
+@include('partials.activity-calendar', [
+    'calendarRole'      => 'company',
+    'calendarFeed'      => route('company.calendarData'),
+    'calendarTitle'     => 'Upcoming Events',
+    'calendarTypes'     => ['job_fair', 'inhouse', 'company_interview'],
+    'calendarRequested' => false,
+    'calendarNote'      => '',
+    'calendarNoun'      => ['Events', 'event'],
+])
 </div>
 
 @endsection

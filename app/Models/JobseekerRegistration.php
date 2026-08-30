@@ -18,13 +18,24 @@ class JobseekerRegistration extends Model
         'perm_house_street', 'perm_barangay', 'perm_municipality_city', 'perm_province',
         'same_as_permanent',
         'tin', 'disabilities', 'disability_other',
-        'height', 'contact_number', 'reg_email',
+        'height', 'weight', 'contact_number', 'reg_email',
+        'sms_opt_in',
+        // Ang is_walk_in gipasa sa storeWalkinNsrp ug sa pag-link sa account,
+        // apan wala siya diri kaniadto — mao nga hilom siyang gilabay sa mass
+        // assignment ug ang matag walk-in natala nga 0. Duha ang naguba niini:
+        // ang badge nga "Walk-in" sa listahan sa LRA/SRA wala gyud mogawas, ug
+        // ang auto-link sa UnifiedAuthController — nga mangita ug
+        // where('is_walk_in', true) — dili gyud makakita bisan usa, mao nga ang
+        // walk-in nga mohimo ug account ugma mapugos ug sulat pag-usab sa
+        // tibuok NSRP, ug duha na ang rekord sa usa ka tawo.
+        'is_walk_in',
     ];
 
     protected $casts = [
         'disabilities'       => 'array',
         'same_as_permanent'  => 'boolean',
         'date_of_birth'      => 'date',
+        'sms_opt_in'         => 'boolean',
     ];
 
     // ── RELATIONSHIPS ──

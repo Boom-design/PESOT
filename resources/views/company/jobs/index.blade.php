@@ -7,11 +7,13 @@
 {{-- ── HEADER ── --}}
 <div class="d-flex align-items-center justify-content-between mb-4 fade-in">
     <div>
-        <h5 class="fw-bold mb-1" style="color: #2d7a5f;">List of Job Vacancy Request</h5>
-        <p class="mb-0" style="font-size: 13px; color: #888;">Manage all your job postings</p>
+        <h5 class="fw-bold mb-1" style="color: var(--g-700);">Removed Postings</h5>
+        <p class="mb-0" style="font-size: 13px; color: var(--n-500);">
+            Jobs PESO took down, and why. Fix what they asked for and post the job again.
+        </p>
     </div>
     <a href="#" class="btn btn-peso" data-bs-toggle="modal" data-bs-target="#requestJobModal">
-        <i class="bi bi-plus-lg me-1"></i> Request Job Posting
+        <i class="ph ph-plus me-1"></i> Post a Job
     </a>
 </div>
 
@@ -20,9 +22,9 @@
 <div class="modal fade" id="initialVacancyModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg" style="max-height:90vh;margin-top:5vh;margin-bottom:5vh;">
         <div class="modal-content" style="border-radius:16px;border:none;max-height:90vh;display:flex;flex-direction:column;">
-            <div class="modal-header" style="background:linear-gradient(90deg,#90d870,#4dd9c0);flex-shrink:0;">
+            <div class="modal-header" style="background:var(--g-600);flex-shrink:0;">
                 <h5 class="modal-title text-white fw-bold">
-                    <i class="bi bi-briefcase me-2"></i>Confirm Your Job Vacancy Posting
+                    <i class="ph ph-briefcase me-2"></i>Confirm Your Job Vacancy Posting
                 </h5>
             </div>
             <form id="confirmVacancyForm" action="{{ route('company.jobs.confirmInitial') }}" method="POST"
@@ -31,27 +33,27 @@
                 <div class="modal-body p-4" style="overflow-y:auto;flex:1;">
 
                     <div class="alert alert-info" style="font-size:13px;border-radius:10px;">
-                        <i class="bi bi-info-circle-fill me-1"></i>
+                        <i class="ph-fill ph-info me-1"></i>
                         The following details were entered during your registration.
                         Review them, then click <strong>"Confirm"</strong> if everything is correct,
                         or click <strong>"Update"</strong> if you want to make changes first.
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:13px;">Schedule Type *</label>
+                        <label class="form-label fw-semibold" style="color:var(--g-700);font-size:13px;">Schedule Type *</label>
                         <div class="row g-2">
                             @foreach([
-                                'office_based' => ['Office Based', 'bi-building'],
-                                'inhouse'      => ['In-house', 'bi-calendar-check'],
-                                'job_fair'     => ['Job Fair', 'bi-calendar-event'],
+                                'company_interview' => ['Company Interview', 'ph ph-buildings'],
+                                'inhouse'      => ['In-house', 'ph ph-calendar-check'],
+                                'job_fair'     => ['Job Fair', 'ph ph-calendar-dots'],
                             ] as $val => $opt)
                             <div class="col-md-4">
-                                <div class="form-check p-3" style="border:1.5px solid #a8e6cf;border-radius:10px;">
+                                <div class="form-check p-3" style="border:1px solid var(--n-200);border-radius:10px;">
                                     <input class="form-check-input initial-schedule-type-radio" type="radio"
                                         name="schedule_type" value="{{ $val }}" id="initial_sched_{{ $val }}"
-                                        {{ $val === 'office_based' ? 'checked' : '' }} required>
+                                        {{ $val === 'company_interview' ? 'checked' : '' }} required>
                                     <label class="form-check-label" for="initial_sched_{{ $val }}"
-                                        style="font-size:12px;color:#2d7a5f;font-weight:600;">
+                                        style="font-size:12px;color:var(--g-700);font-weight:600;">
                                         <i class="{{ $opt[1] }} me-1"></i>{{ $opt[0] }}
                                     </label>
                                 </div>
@@ -62,179 +64,190 @@
 
                     <div id="initialDateFields" class="row g-3 mb-4" style="display:flex;">
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Preferred Date *</label>
-                            <input type="text" name="preferred_date" id="initialPreferredDateInput" class="form-control" autocomplete="off"
+                            <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;" id="initialPreferredDateLabel">Preferred Date *</label>
+                            {{-- Ang makita nga input kay pang-display ra; ang gipadala kay
+                                 ang duha ka hidden. Sa in-house, range ni — ang employer
+                                 mo-reserba sa kada adlaw sulod niini. --}}
+                            <input type="text" id="initialPreferredDateInput" class="form-control" autocomplete="off"
                                 placeholder="Select a date"
-                                style="border-color:#a8e6cf;font-size:13px;border-radius:8px;">
-                            <small id="initialPreferredDateHint" style="font-size:11px;color:#888;display:none;margin-top:4px;">
-                                Interview time will be scheduled between 8:00 AM – 5:00 PM.
+                                style="border-color:var(--n-200);font-size:13px;border-radius:8px;">
+                            <input type="hidden" name="preferred_date"     id="initialPreferredDateValue">
+                            <input type="hidden" name="preferred_date_end" id="initialPreferredDateEndValue">
+                            <small id="initialPreferredDateHint" style="font-size:11px;color:var(--n-500);display:none;margin-top:4px;">
+                                Pick the days you are available. All of them are held for you —
+                                no other company can book them, and you choose which one to
+                                interview on. Interview time is between 8:00 AM – 5:00 PM.
                             </small>
                             <div id="initialDateAvailabilityNote" style="font-size:11px;margin-top:4px;"></div>
                         </div>
                         <div class="col-md-6" id="initialVenueFields" style="display:none;">
-                            <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Venue *</label>
+                            <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Venue *</label>
                             <select name="venue_type" id="initialVenueTypeSelect" class="form-select"
-                                style="border-color:#a8e6cf;font-size:13px;border-radius:8px;">
+                                style="border-color:var(--n-200);font-size:13px;border-radius:8px;">
                                 <option value="peso_office">PESO Office</option>
                                 <option value="other">Other Venue</option>
                             </select>
+                            <small style="font-size:11px;color:var(--n-500);display:block;margin-top:4px;">
+                                The PESO Office takes {{ config('peso.schedule.inhouse_daily_companies') }} companies a day. Other Venue is your own place —
+                                no limit, so a date that is full here is still yours to use there.
+                            </small>
                         </div>
                         <div class="col-12" id="initialVenueAddressWrap" style="display:none;">
-                            <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Venue Address *</label>
+                            <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Venue Address *</label>
                             <input type="text" name="venue_address" id="initialVenueAddressInput" class="form-control"
                                 placeholder="e.g. SM CDO Downtown Premier, 3rd Floor"
-                                style="border-color:#a8e6cf;font-size:13px;border-radius:8px;">
+                                style="border-color:var(--n-200);font-size:13px;border-radius:8px;">
                         </div>
                     </div>
 
                     <div id="vacancyPositionsContainer">
                         @foreach(($employerNsrp->initial_vacancy_data ?? []) as $i => $pos)
-                        <div class="position-row mb-3 p-3" style="border:1.5px solid #a8e6cf;border-radius:12px;background:#f8fdfc;">
+                        <div class="position-row mb-3 p-3" style="border:1px solid var(--n-200);border-radius:12px;background:var(--n-50);">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span style="font-size:12px;font-weight:700;color:#2d7a5f;">Position #{{ $i + 1 }}</span>
+                                <span style="font-size:12px;font-weight:700;color:var(--g-700);">Position #{{ $i + 1 }}</span>
                                 @if($i > 0)
                                 <button type="button" class="btn btn-sm remove-position-btn"
-                                    style="background:#fff5f5;color:#e05252;border:1px solid #ffcdd2;border-radius:8px;font-size:11px;padding:2px 10px;">
-                                    <i class="bi bi-trash-fill"></i>
+                                    style="background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger-br);border-radius:8px;font-size:11px;padding:2px 10px;">
+                                    <i class="ph-fill ph-trash"></i>
                                 </button>
                                 @endif
                             </div>
                             <div class="row g-2">
                                 <div class="col-md-6">
-                                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Position Title *</label>
+                                    <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Position Title *</label>
                                     <input type="text" name="positions[{{ $i }}][title]" class="form-control vacancy-field"
                                         value="{{ $pos['title'] ?? '' }}" readonly required
-                                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;background:#f0f9f6;">
+                                        style="border-color:var(--n-200);font-size:13px;border-radius:8px;background:var(--n-50);">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Nature of Work *</label>
+                                    <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Nature of Work *</label>
                                     <select name="positions[{{ $i }}][type]" class="form-select vacancy-field vacancy-locked" required
-                                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;background:#f0f9f6;pointer-events:none;" tabindex="-1">
+                                        style="border-color:var(--n-200);font-size:13px;border-radius:8px;background:var(--n-50);pointer-events:none;" tabindex="-1">
                                         @foreach(['permanent'=>'Permanent','contractual'=>'Contractual','project_based'=>'Project-based','internship'=>'Internship / OJT','part_time'=>'Part-time','work_from_home'=>'Work from home / online job'] as $val => $label)
                                         <option value="{{ $val }}" {{ ($pos['type'] ?? '') === $val ? 'selected' : '' }}>{{ $label }}</option>
                                         @endforeach
                                     </select>
                                 </div>
                                 <div class="col-12">
-                                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Job Description *</label>
+                                    <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Job Description *</label>
                                     <textarea name="positions[{{ $i }}][description]" rows="2" readonly required
                                         class="form-control vacancy-field"
-                                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;background:#f0f9f6;">{{ $pos['description'] ?? '' }}</textarea>
+                                        style="border-color:var(--n-200);font-size:13px;border-radius:8px;background:var(--n-50);">{{ $pos['description'] ?? '' }}</textarea>
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Place of Work *</label>
+                                    <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Place of Work *</label>
                                     <input type="text" name="positions[{{ $i }}][location]" class="form-control vacancy-field"
                                         value="{{ $pos['location'] ?? '' }}" readonly required
-                                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;background:#f0f9f6;">
+                                        style="border-color:var(--n-200);font-size:13px;border-radius:8px;background:var(--n-50);">
                                 </div>
                                 <div class="col-md-4">
-                                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Salary</label>
+                                    <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Salary</label>
                                     <input type="text" name="positions[{{ $i }}][salary]" class="form-control vacancy-field"
                                         value="{{ $pos['salary'] ?? '' }}" readonly
-                                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;background:#f0f9f6;">
+                                        style="border-color:var(--n-200);font-size:13px;border-radius:8px;background:var(--n-50);">
                                 </div>
                                 <div class="col-md-2">
-                                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Vacancy Count *</label>
+                                    <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Vacancy Count *</label>
                                     <input type="number" name="positions[{{ $i }}][slots]" class="form-control vacancy-field"
                                         value="{{ $pos['slots'] ?? '' }}" readonly required min="1"
-                                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;background:#f0f9f6;">
+                                        style="border-color:var(--n-200);font-size:13px;border-radius:8px;background:var(--n-50);">
                                 </div>
                                 <div class="col-md-2 deadline-field-wrap">
-                                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Deadline</label>
+                                    <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Deadline</label>
                                     <input type="date" name="positions[{{ $i }}][deadline]" class="form-control vacancy-field"
                                         value="{{ $pos['deadline'] ?? '' }}" readonly
-                                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;background:#f0f9f6;">
+                                        style="border-color:var(--n-200);font-size:13px;border-radius:8px;background:var(--n-50);">
                                 </div>
 
-                                <div class="col-12 mt-2 pt-2" style="border-top:1px dashed #a8e6cf;">
-                                    <div style="font-size:11px;font-weight:700;color:#2d7a5f;margin-bottom:6px;">IV. Qualification Requirements</div>
+                                <div class="col-12 mt-2 pt-2" style="border-top:1px dashed var(--n-200);">
+                                    <div style="font-size:11px;font-weight:700;color:var(--g-700);margin-bottom:6px;">IV. Qualification Requirements</div>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Work Experience (months)</label>
+                                    <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Work Experience (months)</label>
                                     <input type="number" name="positions[{{ $i }}][experience_months]" class="form-control vacancy-field"
                                         value="{{ $pos['experience_months'] ?? '' }}" readonly
-                                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;background:#f0f9f6;">
+                                        style="border-color:var(--n-200);font-size:13px;border-radius:8px;background:var(--n-50);">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Religion</label>
+                                    <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Religion</label>
                                     <input type="text" name="positions[{{ $i }}][religion]" class="form-control vacancy-field"
                                         value="{{ $pos['religion'] ?? '' }}" readonly
-                                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;background:#f0f9f6;">
+                                        style="border-color:var(--n-200);font-size:13px;border-radius:8px;background:var(--n-50);">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Sex</label>
+                                    <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Sex</label>
                                     <select name="positions[{{ $i }}][sex_preference]" class="form-select vacancy-field vacancy-locked"
-                                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;background:#f0f9f6;pointer-events:none;" tabindex="-1">
+                                        style="border-color:var(--n-200);font-size:13px;border-radius:8px;background:var(--n-50);pointer-events:none;" tabindex="-1">
                                         @foreach(['Any'=>'No Preference','Male'=>'Male','Female'=>'Female'] as $val=>$label)
                                         <option value="{{ $val }}" {{ ($pos['sex_preference'] ?? 'Any') === $val ? 'selected' : '' }}>{{ $label }}</option>
                                         @endforeach
                                     </select>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Civil Status</label>
+                                    <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Civil Status</label>
                                     <select name="positions[{{ $i }}][civil_status]" class="form-select vacancy-field vacancy-locked"
-                                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;background:#f0f9f6;pointer-events:none;" tabindex="-1">
+                                        style="border-color:var(--n-200);font-size:13px;border-radius:8px;background:var(--n-50);pointer-events:none;" tabindex="-1">
                                         @foreach(['Any'=>'No Preference','Single'=>'Single','Married'=>'Married'] as $val=>$label)
                                         <option value="{{ $val }}" {{ ($pos['civil_status'] ?? 'Any') === $val ? 'selected' : '' }}>{{ $label }}</option>
                                         @endforeach
                                     </select>
                                 </div>
                                 <div class="col-12">
-                                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Other Qualifications</label>
+                                    <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Other Qualifications</label>
                                     <textarea name="positions[{{ $i }}][other_qualifications]" rows="2" readonly
                                         class="form-control vacancy-field"
-                                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;background:#f0f9f6;">{{ $pos['other_qualifications'] ?? '' }}</textarea>
+                                        style="border-color:var(--n-200);font-size:13px;border-radius:8px;background:var(--n-50);">{{ $pos['other_qualifications'] ?? '' }}</textarea>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Educational Level</label>
+                                    <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Educational Level</label>
                                     <input type="text" name="positions[{{ $i }}][education_required]" class="form-control vacancy-field"
                                         value="{{ $pos['education_required'] ?? '' }}" readonly
-                                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;background:#f0f9f6;">
+                                        style="border-color:var(--n-200);font-size:13px;border-radius:8px;background:var(--n-50);">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Course/Major</label>
+                                    <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Course/Major</label>
                                     <input type="text" name="positions[{{ $i }}][course_major]" class="form-control vacancy-field"
                                         value="{{ $pos['course_major'] ?? '' }}" readonly
-                                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;background:#f0f9f6;">
+                                        style="border-color:var(--n-200);font-size:13px;border-radius:8px;background:var(--n-50);">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">License</label>
+                                    <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">License</label>
                                     <input type="text" name="positions[{{ $i }}][license]" class="form-control vacancy-field"
                                         value="{{ $pos['license'] ?? '' }}" readonly
-                                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;background:#f0f9f6;">
+                                        style="border-color:var(--n-200);font-size:13px;border-radius:8px;background:var(--n-50);">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Eligibility</label>
+                                    <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Eligibility</label>
                                     <input type="text" name="positions[{{ $i }}][eligibility]" class="form-control vacancy-field"
                                         value="{{ $pos['eligibility'] ?? '' }}" readonly
-                                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;background:#f0f9f6;">
+                                        style="border-color:var(--n-200);font-size:13px;border-radius:8px;background:var(--n-50);">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Certification</label>
+                                    <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Certification</label>
                                     <input type="text" name="positions[{{ $i }}][certification]" class="form-control vacancy-field"
                                         value="{{ $pos['certification'] ?? '' }}" readonly
-                                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;background:#f0f9f6;">
+                                        style="border-color:var(--n-200);font-size:13px;border-radius:8px;background:var(--n-50);">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Language/Dialect</label>
+                                    <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Language/Dialect</label>
                                     <input type="text" name="positions[{{ $i }}][language]" class="form-control vacancy-field"
                                         value="{{ $pos['language'] ?? '' }}" readonly
-                                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;background:#f0f9f6;">
+                                        style="border-color:var(--n-200);font-size:13px;border-radius:8px;background:var(--n-50);">
                                 </div>
                                 <div class="col-12">
-                                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Preferred Residence</label>
+                                    <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Preferred Residence</label>
                                     <input type="text" name="positions[{{ $i }}][preferred_residence]" class="form-control vacancy-field"
                                         value="{{ $pos['preferred_residence'] ?? '' }}" readonly
-                                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;background:#f0f9f6;">
+                                        style="border-color:var(--n-200);font-size:13px;border-radius:8px;background:var(--n-50);">
                                 </div>
                                 @if(!empty($pos['job_image']))
-                                <div class="col-12 mt-2 pt-2" style="border-top:1px dashed #a8e6cf;">
-                                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">
-                                        <i class="bi bi-image me-1" style="color:#4dd9c0;"></i>Hiring Poster / Image
+                                <div class="col-12 mt-2 pt-2" style="border-top:1px dashed var(--n-200);">
+                                    <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">
+                                        <i class="ph ph-image me-1" style="color:var(--g-600);"></i>Hiring Poster / Image
                                     </label>
                                     <div class="mt-1">
                                         <img src="{{ Storage::url($pos['job_image']) }}" alt="Job Image"
-                                             style="max-width:200px;max-height:150px;border-radius:8px;border:1.5px solid #a8e6cf;object-fit:cover;">
+                                             style="max-width:200px;max-height:150px;border-radius:8px;border:1px solid var(--n-200);object-fit:cover;">
                                     </div>
                                     <input type="hidden" name="positions[{{ $i }}][job_image]" value="{{ $pos['job_image'] }}">
                                 </div>
@@ -246,19 +259,19 @@
 
                     <button type="button" id="addVacancyPositionBtn"
                         class="btn btn-sm fw-semibold mb-2"
-                        style="display:none;border:1.5px dashed #a8e6cf;color:#2d7a5f;background:#fff;border-radius:8px;font-size:12px;padding:6px 16px;">
-                        <i class="bi bi-plus-circle me-1"></i> Add Position
+                        style="display:none;border:1px dashed var(--n-200);color:var(--g-700);background:#fff;border-radius:8px;font-size:12px;padding:6px 16px;">
+                        <i class="ph ph-plus-circle me-1"></i> Add Position
                     </button>
 
                 </div>
-                <div class="modal-footer" style="border-top:1px solid #e8f5f0;flex-shrink:0;">
+                <div class="modal-footer" style="border-top:1px solid var(--n-200);flex-shrink:0;">
                     <button type="button" id="updateVacancyBtn" class="btn btn-sm fw-semibold"
-                        style="border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;border-radius:8px;padding:8px 20px;">
-                        <i class="bi bi-pencil-square me-1"></i> Update
+                        style="border:1px solid var(--n-200);color:var(--g-700);background:#fff;border-radius:8px;padding:8px 20px;">
+                        <i class="ph ph-note-pencil me-1"></i> Update
                     </button>
                     <button type="submit" id="confirmVacancyBtn" class="btn btn-sm fw-semibold"
-                        style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;border-radius:8px;padding:8px 24px;">
-                        <i class="bi bi-check-circle-fill me-1"></i> Confirm
+                        style="background:var(--g-600);color:#fff;border:none;border-radius:8px;padding:8px 24px;">
+                        <i class="ph-fill ph-check-circle me-1"></i> Confirm
                     </button>
                 </div>
             </form>
@@ -284,12 +297,12 @@
     @if($jobs->isEmpty())
         <div class="empty-state">
             <div class="empty-icon">
-                <i class="bi bi-briefcase"></i>
+                <i class="ph ph-briefcase"></i>
             </div>
-            <h6>No job posts yet</h6>
-            <p>Click "Post a Job" to get started!</p>
-            <a href="#" class="btn btn-peso mt-3" data-bs-toggle="modal" data-bs-target="#requestJobModal">
-                <i class="bi bi-plus-lg me-1"></i> Request Job Posting
+            <h6>Nothing was removed</h6>
+            <p>None of your jobs have been taken down. You will see them here if that ever happens.</p>
+            <a href="{{ route('company.jobseekers') }}" class="btn btn-peso mt-3">
+                <i class="ph ph-briefcase me-1"></i> Go to Active Job Postings
             </a>
         </div>
     @else
@@ -310,32 +323,31 @@
                 <tbody>
                     @foreach($jobs as $i => $job)
                     <tr class="job-row">
-                        <td style="color:#888;">{{ $i + 1 }}</td>
+                        <td style="color:var(--n-500);">{{ $i + 1 }}</td>
                         <td class="fw-semibold">{{ $job->title }}</td>
-                        <td><i class="bi bi-geo-alt me-1" style="color:#4dd9c0;"></i>{{ $job->location }}</td>
+                        <td><i class="ph ph-map-pin me-1" style="color:var(--g-600);"></i>{{ $job->location }}</td>
                         <td>{{ ucfirst(str_replace('_', ' ', $job->type)) }}</td>
                         <td>{{ $job->slots }}</td>
-                        <td>{{ $job->deadline ? \Carbon\Carbon::parse($job->deadline)->format('M d, Y') : '—' }}</td>
-                        <td>
-                            @if($job->is_expired)
-                                <span class="badge-closed" title="Deadline has passed">Closed (Expired)</span>
-                            @else
-                                <span class="badge-{{ $job->status }}">{{ ucfirst($job->status) }}</span>
-                            @endif
-                        </td>
+                        <td>{{ $job->deadline ? \Carbon\Carbon::parse($job->deadline)->format('M d, Y') : 'None' }}</td>
+                        <td>@include('partials.job-status-badge', ['job' => $job])</td>
                         <td>
                             <div class="d-flex gap-1">
-                                @if($job->status === 'closed')
+                                {{-- PESO interview 2026-08-13: ma-edit samtang buhi pa ang
+                                     posting — apil ang active nga posting, kay naa may
+                                     employer nga mo-hupay sa qualification kung walay
+                                     mo-apply (pananglit licensed CPA → accounting graduate).
+                                     Ang nahuman na (filled/expired/closed) dili na. --}}
+                                @if($job->is_editable)
                                 <a href="{{ route('company.jobs.edit', $job->job_qualifications_id) }}"
                                    class="btn btn-sm btn-peso-outline py-1 px-2" style="font-size:11px;"
                                    title="Edit">
-                                    <i class="bi bi-pencil"></i>
+                                    <i class="ph ph-pencil-simple"></i>
                                 </a>
                                 @else
                                 <button type="button" class="btn btn-sm py-1 px-2" disabled
-                                    style="font-size:11px;background:#f5f5f5;color:#bbb;border:1px solid #e0e0e0;border-radius:8px;cursor:not-allowed;"
-                                    title="Cannot edit — already approved and open">
-                                    <i class="bi bi-pencil"></i>
+                                    style="font-size:11px;background:var(--n-100);color:var(--n-400);border:1px solid var(--n-200);border-radius:8px;cursor:not-allowed;"
+                                    title="{{ $job->lifecycle_block_reason }}">
+                                    <i class="ph ph-pencil-simple"></i>
                                 </button>
                                 @endif
                             </div>
@@ -355,18 +367,18 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="border-radius:16px; border:none; box-shadow: 0 8px 32px rgba(0,0,0,0.12);">
             <div class="modal-body text-center p-4">
-                <div style="width:60px;height:60px;background:#fff5f5;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
-                    <i class="bi bi-trash" style="font-size:24px;color:#e53935;"></i>
+                <div style="width:60px;height:60px;background:var(--danger-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                    <i class="ph ph-trash" style="font-size:24px;color:var(--danger);"></i>
                 </div>
-                <h6 class="fw-bold mb-2" style="color:#2d7a5f;">Delete Job Post?</h6>
-                <p style="font-size:13px;color:#888;" id="deleteJobName">Are you sure you want to delete this job?</p>
+                <h6 class="fw-bold mb-2" style="color:var(--g-700);">Delete Job Post?</h6>
+                <p style="font-size:13px;color:var(--n-500);" id="deleteJobName">Are you sure you want to delete this job?</p>
                 <div class="d-flex gap-2 justify-content-center mt-3">
                     <button class="btn btn-peso-outline px-4" data-bs-dismiss="modal">Cancel</button>
                     <form id="deleteForm" method="POST">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="btn btn-sm px-4 py-2"
-                            style="background:#e53935;color:#fff;border:none;border-radius:10px;font-weight:600;">
+                            style="background:var(--danger);color:#fff;border:none;border-radius:10px;font-weight:600;">
                             Delete
                         </button>
                     </form>
@@ -406,7 +418,7 @@
 
     let vacancyPositionCount = {{ count($employerNsrp->initial_vacancy_data ?? []) }};
 
-    // ── Initial Vacancy — Schedule Type toggle (Preferred Date: office_based + inhouse; Venue: inhouse ra; Deadline: itago sa job_fair) ──
+    // ── Initial Vacancy — Schedule Type toggle (Preferred Date: company_interview + inhouse; Venue: inhouse ra; Deadline: itago sa job_fair) ──
     document.querySelectorAll('.initial-schedule-type-radio').forEach(function(radio) {
         radio.addEventListener('change', function() {
             const dateFields  = document.getElementById('initialDateFields');
@@ -415,7 +427,12 @@
             const venueFields = document.getElementById('initialVenueFields');
             const venueSelect = document.getElementById('initialVenueTypeSelect');
 
-            toggleDeadlineFieldsForScheduleType(this.value);
+            // Kaugalingon nga toggle, gi-scope sa initial-vacancy modal ra: ang
+            // Post a Job nga modal daghan nang schedule type nga mapili,
+            // mao nga lahi na ang rule niya sa Deadline field.
+            document.querySelectorAll('#initialVacancyModal .deadline-field-wrap').forEach(function(wrap) {
+                wrap.style.display = this.value === 'job_fair' ? 'none' : 'block';
+            }, this);
 
             if (this.value === 'job_fair') {
                 dateFields.style.display = 'none';
@@ -426,6 +443,14 @@
             } else {
                 dateFields.style.display = 'flex';
                 dateInput.setAttribute('required', 'required');
+
+                // In-house kay window — mahimong daghang adlaw ang itanyag ug
+                // ang PESO mopili. Ang company interview kay usa ra ka adlaw.
+                if (window.pesoSetDateMode) {
+                    window.pesoSetDateMode('initialPreferredDateInput', this.value === 'inhouse' ? 'range' : 'single');
+                }
+                document.getElementById('initialPreferredDateLabel').textContent =
+                    this.value === 'inhouse' ? 'Available Dates *' : 'Preferred Date *';
 
                 if (this.value === 'inhouse') {
                     venueFields.style.display = 'block';
@@ -454,32 +479,71 @@
                 wrap.style.display = 'none';
                 addressInput.removeAttribute('required');
             }
-            if (initialDateInputRef && initialDateInputRef.value) {
-                checkInitialDateAvailability(initialDateInputRef.value, this.value);
+            // Ang puno nga adlaw naka-disable sa PESO Office ra — i-redraw
+            // aron mapili siya balik kung Other Venue na ang gipili.
+            if (window.pesoPickers && window.pesoPickers.initialPreferredDateInput) {
+                window.pesoPickers.initialPreferredDateInput.redraw();
             }
+            checkInitialDateAvailability(this.value);
         });
     }
 
     const initialDateInputRef = document.getElementById('initialPreferredDateInput');
-    function checkInitialDateAvailability(date, venueType) {
-        const note = document.getElementById('initialDateAvailabilityNote');
-        if (venueType === 'other') {
-            note.textContent = 'No limit for other venues.';
-            note.style.color = '#2d7a5f';
-            return;
-        }
-        note.textContent = 'Checking availability...';
-        note.style.color = '#888';
 
-        fetch(`{{ route('company.inhouse.checkDate') }}?date=${date}&venue_type=${venueType}`)
+    // Ang tinuod nga petsa naa sa hidden nga field, dili sa makita nga input:
+    // ang gipakita nga teksto sa range kay "2026-08-13 to 2026-08-17".
+    function initialPickedDates() {
+        return {
+            start: document.getElementById('initialPreferredDateValue')?.value || '',
+            end:   document.getElementById('initialPreferredDateEndValue')?.value || '',
+        };
+    }
+
+    function checkInitialDateAvailability(venueType) {
+        const note = document.getElementById('initialDateAvailabilityNote');
+        const { start, end } = initialPickedDates();
+        if (!start) { note.textContent = ''; return; }
+
+        note.textContent = 'Checking availability...';
+        note.style.color = 'var(--n-500)';
+
+        const query = `date=${start}&date_end=${end || start}&venue_type=${venueType}`;
+
+        fetch(`{{ route('company.inhouse.checkDate') }}?${query}`)
             .then(res => res.json())
             .then(data => {
+                // Ang miting sa PESO mo-una: kung wala nay libre nga adlaw
+                // sulod sa window, wala nay pulos ang bilang sa venue.
+                if (data.office_full) {
+                    // Bisan usa ka adlaw nga puliki mobabag sa tibuok range:
+                    // ang employer mo-reserba man sa kada adlaw sulod niini.
+                    note.innerHTML = (data.office_note || 'PESO is not available on those dates.')
+                        + ' Please pick dates that do not include it.';
+                    note.style.color = 'var(--danger)';
+                    return;
+                }
+
+                const officeNote = data.office_note ? ' ' + data.office_note : '';
+
+                if (venueType === 'other') {
+                    note.textContent = 'No limit for other venues.' + officeNote;
+                    note.style.color = officeNote ? 'var(--warn)' : 'var(--g-700)';
+                    return;
+                }
+
                 if (data.occupied) {
-                    note.textContent = 'This date at PESO Office is fully booked (3/3 companies). Please choose another date or venue.';
-                    note.style.color = '#e53935';
+                    // Ang limit kay sa lawak, dili sa petsa — Other Venue ang
+                    // solusyon kung ang petsa ang gusto gyud sa employer.
+                    const cap = data.limit ?? INHOUSE_DAILY_COMPANIES;
+                    note.innerHTML = `PESO Office is full (${cap}/${cap} companies) on <strong>`
+                        + (data.full_days || []).join(', ') + '</strong>. '
+                        + 'Switch the venue to <strong>Other Venue</strong> to keep these dates — '
+                        + 'there is no company limit outside the PESO Office.';
+                    note.style.color = 'var(--danger)';
                 } else {
-                    note.textContent = `This date is available at PESO Office (${data.count}/3).`;
-                    note.style.color = '#2d7a5f';
+                    const cap = data.limit ?? INHOUSE_DAILY_COMPANIES;
+                    note.textContent = `Available at PESO Office (${data.count}/${cap} at the busiest day).` + officeNote;
+                    note.style.color = officeNote ? 'var(--warn)' : 'var(--g-700)';
                 }
             })
             .catch(() => { note.textContent = ''; });
@@ -488,7 +552,7 @@
     if (initialDateInputRef) {
         initialDateInputRef.addEventListener('change', function() {
             const venueType = document.getElementById('initialVenueTypeSelect')?.value || 'peso_office';
-            checkInitialDateAvailability(this.value, venueType);
+            checkInitialDateAvailability(venueType);
         });
     }
 
@@ -509,24 +573,24 @@
     // ── Dynamic Add Position ──
     function buildVacancyPositionRow(idx) {
         return `
-        <div class="position-row mb-3 p-3" style="border:1.5px solid #a8e6cf;border-radius:12px;background:#fff;">
+        <div class="position-row mb-3 p-3" style="border:1px solid var(--n-200);border-radius:12px;background:#fff;">
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <span style="font-size:12px;font-weight:700;color:#2d7a5f;">Position #<span class="pos-num">${idx + 1}</span></span>
+                <span style="font-size:12px;font-weight:700;color:var(--g-700);">Position #<span class="pos-num">${idx + 1}</span></span>
                 <button type="button" class="btn btn-sm remove-position-btn"
-                    style="background:#fff5f5;color:#e05252;border:1px solid #ffcdd2;border-radius:8px;font-size:11px;padding:2px 10px;">
-                    <i class="bi bi-trash-fill"></i>
+                    style="background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger-br);border-radius:8px;font-size:11px;padding:2px 10px;">
+                    <i class="ph-fill ph-trash"></i>
                 </button>
             </div>
             <div class="row g-2">
                 <div class="col-md-6">
-                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Position Title *</label>
+                    <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Position Title *</label>
                     <input type="text" name="positions[${idx}][title]" class="form-control vacancy-field" required
-                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;">
+                        style="border-color:var(--n-200);font-size:13px;border-radius:8px;">
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Nature of Work *</label>
+                    <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Nature of Work *</label>
                     <select name="positions[${idx}][type]" class="form-select vacancy-field" required
-                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;">
+                        style="border-color:var(--n-200);font-size:13px;border-radius:8px;">
                         <option value="" disabled selected>Select type</option>
                         <option value="permanent">Permanent</option>
                         <option value="contractual">Contractual</option>
@@ -538,29 +602,29 @@
                 </div>
                 <input type="hidden" name="positions[${idx}][industry_group]" value="${COMPANY_INDUSTRY_GROUP}">
                 <div class="col-12">
-                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Job Description *</label>
+                    <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Job Description *</label>
                     <textarea name="positions[${idx}][description]" rows="2" required class="form-control vacancy-field"
-                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;"></textarea>
+                        style="border-color:var(--n-200);font-size:13px;border-radius:8px;"></textarea>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Place of Work *</label>
+                    <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Place of Work *</label>
                     <input type="text" name="positions[${idx}][location]" class="form-control vacancy-field" required
-                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;">
+                        style="border-color:var(--n-200);font-size:13px;border-radius:8px;">
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Salary</label>
+                    <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Salary</label>
                     <input type="text" name="positions[${idx}][salary]" class="form-control vacancy-field"
-                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;">
+                        style="border-color:var(--n-200);font-size:13px;border-radius:8px;">
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Vacancy Count *</label>
+                    <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Vacancy Count *</label>
                     <input type="number" name="positions[${idx}][slots]" class="form-control vacancy-field" min="1" required
-                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;">
+                        style="border-color:var(--n-200);font-size:13px;border-radius:8px;">
                 </div>
                 <div class="col-md-2 deadline-field-wrap">
-                    <label class="form-label fw-semibold" style="color:#2d7a5f;font-size:12px;">Deadline</label>
+                    <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Deadline</label>
                     <input type="date" name="positions[${idx}][deadline]" class="form-control vacancy-field"
-                        style="border-color:#a8e6cf;font-size:13px;border-radius:8px;">
+                        style="border-color:var(--n-200);font-size:13px;border-radius:8px;">
                 </div>
             </div>
         </div>`;
@@ -588,10 +652,10 @@
             html: 'Are you sure you want to submit these job vacancy postings? Please review all details before confirming.',
             icon: 'question',
             showCancelButton: true,
-            confirmButtonColor: '#4dd9c0',
-            cancelButtonColor: '#e53935',
-            confirmButtonText: '<i class="bi bi-check-circle-fill me-1"></i> Yes, Confirm',
-            cancelButtonText: '<i class="bi bi-x-circle me-1"></i> Cancel',
+            confirmButtonColor: '#28812F',
+            cancelButtonColor: 'var(--danger)',
+            confirmButtonText: '<i class="ph-fill ph-check-circle me-1"></i> Yes, Confirm',
+            cancelButtonText: '<i class="ph ph-x-circle me-1"></i> Cancel',
         }).then((result) => {
             if (result.isConfirmed) {
                 form.submit();

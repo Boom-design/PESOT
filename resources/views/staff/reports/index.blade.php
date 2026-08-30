@@ -3,14 +3,14 @@
 @section('content')
 
 <div class="mb-4">
-    <h5 class="fw-bold mb-1" style="color:#2d7a5f;">
-        <i class="bi bi-bar-chart-fill me-2" style="color:#4dd9c0;"></i>
+    <h5 class="fw-bold mb-1" style="color:var(--g-700);">
+        <i class="ph-fill ph-chart-bar me-2" style="color:var(--g-600);"></i>
         @if($staffRole === 'lra') Local
         @elseif($staffRole === 'sra') Overseas
         @else Job Fair
         @endif Reports
     </h5>
-    <p class="mb-0" style="font-size:13px;color:#888;">
+    <p class="mb-0" style="font-size:13px;color:var(--n-500);">
         @if($staffRole === 'job_fair')
             Overall job fair event success rate
         @else
@@ -21,15 +21,15 @@
 
 @php
 $tabs = [
-    'attendance'         => ['icon' => 'bi-clipboard-check-fill', 'label' => 'Attendance'],
-    'companies'          => ['icon' => 'bi-building-fill', 'label' => $staffRole === 'sra' ? 'Overseas Companies' : 'Local Companies'],
-    'further_interview'  => ['icon' => 'bi-person-lines-fill', 'label' => 'Further Interview'],
-    'hots'               => ['icon' => 'bi-lightning-charge-fill', 'label' => 'Hired on the Spot'],
-    'summary'            => ['icon' => 'bi-clipboard-data-fill', 'label' => 'Post Job Fair Summary'],
-    'industry'           => ['icon' => 'bi-diagram-3-fill', 'label' => 'Companies w/ Vacancies'],
+    'attendance'         => ['icon' => 'ph-fill ph-clipboard-text', 'label' => 'Attendance'],
+    'companies'          => ['icon' => 'ph-fill ph-buildings', 'label' => $staffRole === 'sra' ? 'Overseas Companies' : 'Local Companies'],
+    'further_interview'  => ['icon' => 'ph-fill ph-user-list', 'label' => 'Further Interview'],
+    'hots'               => ['icon' => 'ph-fill ph-lightning', 'label' => 'Hired on the Spot'],
+    'summary'            => ['icon' => 'ph-fill ph-clipboard-text', 'label' => 'Post Job Fair Summary'],
+    'industry'           => ['icon' => 'ph-fill ph-tree-structure', 'label' => 'Companies w/ Vacancies'],
 ];
 if ($staffRole !== 'sra') {
-    $tabs['placement'] = ['icon' => 'bi-briefcase-fill', 'label' => 'Company Placement'];
+    $tabs['placement'] = ['icon' => 'ph-fill ph-briefcase', 'label' => 'Company Placement'];
 }
 @endphp
 
@@ -37,26 +37,26 @@ if ($staffRole !== 'sra') {
 <div class="row g-3 mb-4">
     <div class="col-12">
         <div class="card border-0 shadow-sm rounded-3 p-3 mb-3">
-            <div class="fw-semibold mb-2" style="color:#2d7a5f;font-size:14px;">
-                <i class="bi bi-briefcase-fill me-2"></i>Job Solicitation Statistics
+            <div class="fw-semibold mb-2" style="color:var(--g-700);font-size:14px;">
+                <i class="ph-fill ph-briefcase me-2"></i>Job Solicitation Statistics
             </div>
             <div class="row g-3">
                 <div class="col-12 col-md-4">
-                    <div class="p-3 rounded-3" style="background:#f0fdf9;border:1px solid #a8e6cf;">
-                        <div class="fw-bold" style="font-size:24px;color:#2d7a5f;">{{ $solicitationStats['lra'] ?? 0 }}</div>
-                        <div class="small" style="color:#4dd9c0;">LRA Job Solicitation</div>
+                    <div class="p-3 rounded-3" style="background:var(--n-50);border:1px solid var(--n-200);">
+                        <div class="fw-bold" style="font-size:24px;color:var(--g-700);">{{ $solicitationStats['lra'] ?? 0 }}</div>
+                        <div class="small" style="color:var(--g-600);">LRA Job Solicitation</div>
                     </div>
                 </div>
                 <div class="col-12 col-md-4">
-                    <div class="p-3 rounded-3" style="background:#f0fdf9;border:1px solid #a8e6cf;">
-                        <div class="fw-bold" style="font-size:24px;color:#2d7a5f;">{{ $solicitationStats['sra'] ?? 0 }}</div>
-                        <div class="small" style="color:#4dd9c0;">SRA Job Solicitation</div>
+                    <div class="p-3 rounded-3" style="background:var(--n-50);border:1px solid var(--n-200);">
+                        <div class="fw-bold" style="font-size:24px;color:var(--g-700);">{{ $solicitationStats['sra'] ?? 0 }}</div>
+                        <div class="small" style="color:var(--g-600);">SRA Job Solicitation</div>
                     </div>
                 </div>
                 <div class="col-12 col-md-4">
-                    <div class="p-3 rounded-3" style="background:#f0fdf9;border:1px solid #a8e6cf;">
-                        <div class="fw-bold" style="font-size:24px;color:#2d7a5f;">{{ $solicitationStats['overall'] ?? 0 }}</div>
-                        <div class="small" style="color:#4dd9c0;">Overall Job Solicitation</div>
+                    <div class="p-3 rounded-3" style="background:var(--n-50);border:1px solid var(--n-200);">
+                        <div class="fw-bold" style="font-size:24px;color:var(--g-700);">{{ $solicitationStats['overall'] ?? 0 }}</div>
+                        <div class="small" style="color:var(--g-600);">Overall Job Solicitation</div>
                     </div>
                 </div>
             </div>
@@ -65,35 +65,35 @@ if ($staffRole !== 'sra') {
     <div class="col-6 col-md-3">
         <a href="{{ route('admin.reports.staff', ['role' => 'lra']) }}" class="text-decoration-none">
             <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100"
-                style="{{ $staffRole === 'lra' ? 'background:linear-gradient(135deg,#90d870,#4dd9c0);' : 'background:#f0f9f6;' }}">
-                <i class="bi bi-person-lines-fill mb-2" style="font-size:26px;color:{{ $staffRole === 'lra' ? '#fff' : '#4dd9c0' }};"></i>
-                <div class="fw-semibold" style="font-size:13px;color:{{ $staffRole === 'lra' ? '#fff' : '#2d7a5f' }};">LRA Reports</div>
+                style="{{ $staffRole === 'lra' ? 'background:var(--g-600);' : 'background:var(--n-50);' }}">
+                <i class="ph-fill ph-user-list mb-2" style="font-size:26px;color:{{ $staffRole === 'lra' ? '#fff' : 'var(--g-600)' }};"></i>
+                <div class="fw-semibold" style="font-size:13px;color:{{ $staffRole === 'lra' ? '#fff' : 'var(--g-700)' }};">LRA Reports</div>
             </div>
         </a>
     </div>
     <div class="col-6 col-md-3">
         <a href="{{ route('admin.reports.staff', ['role' => 'sra']) }}" class="text-decoration-none">
             <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100"
-                style="{{ $staffRole === 'sra' ? 'background:linear-gradient(135deg,#90d870,#4dd9c0);' : 'background:#f0f9f6;' }}">
-                <i class="bi bi-globe mb-2" style="font-size:26px;color:{{ $staffRole === 'sra' ? '#fff' : '#4dd9c0' }};"></i>
-                <div class="fw-semibold" style="font-size:13px;color:{{ $staffRole === 'sra' ? '#fff' : '#2d7a5f' }};">SRA Reports</div>
+                style="{{ $staffRole === 'sra' ? 'background:var(--g-600);' : 'background:var(--n-50);' }}">
+                <i class="ph ph-globe mb-2" style="font-size:26px;color:{{ $staffRole === 'sra' ? '#fff' : 'var(--g-600)' }};"></i>
+                <div class="fw-semibold" style="font-size:13px;color:{{ $staffRole === 'sra' ? '#fff' : 'var(--g-700)' }};">SRA Reports</div>
             </div>
         </a>
     </div>
     <div class="col-6 col-md-3">
         <a href="{{ route('admin.reports.staff', ['role' => 'job_fair']) }}" class="text-decoration-none">
             <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100"
-                style="{{ $staffRole === 'job_fair' ? 'background:linear-gradient(135deg,#90d870,#4dd9c0);' : 'background:#f0f9f6;' }}">
-                <i class="bi bi-calendar-event-fill mb-2" style="font-size:26px;color:{{ $staffRole === 'job_fair' ? '#fff' : '#4dd9c0' }};"></i>
-                <div class="fw-semibold" style="font-size:13px;color:{{ $staffRole === 'job_fair' ? '#fff' : '#2d7a5f' }};">Job Fair Reports</div>
+                style="{{ $staffRole === 'job_fair' ? 'background:var(--g-600);' : 'background:var(--n-50);' }}">
+                <i class="ph-fill ph-calendar-dots mb-2" style="font-size:26px;color:{{ $staffRole === 'job_fair' ? '#fff' : 'var(--g-600)' }};"></i>
+                <div class="fw-semibold" style="font-size:13px;color:{{ $staffRole === 'job_fair' ? '#fff' : 'var(--g-700)' }};">Job Fair Reports</div>
             </div>
         </a>
     </div>
     <div class="col-6 col-md-3">
         <a href="{{ route('admin.reports.staffJobVacancy') }}" class="text-decoration-none">
-            <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="background:#f0f9f6;">
-                <i class="bi bi-briefcase-fill mb-2" style="font-size:26px;color:#4dd9c0;"></i>
-                <div class="fw-semibold" style="font-size:13px;color:#2d7a5f;">Job Vacancy Reports</div>
+            <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="background:var(--n-50);">
+                <i class="ph-fill ph-briefcase mb-2" style="font-size:26px;color:var(--g-600);"></i>
+                <div class="fw-semibold" style="font-size:13px;color:var(--g-700);">Job Vacancy Reports</div>
             </div>
         </a>
     </div>
@@ -102,7 +102,7 @@ if ($staffRole !== 'sra') {
 
 @if($staffRole === 'sra')
 <div class="mb-3">
-    <select id="reportViewSelector" class="form-select form-select-sm" style="max-width:260px;border-color:#a8e6cf;font-size:13px;" onchange="changeReportView(this.value)">
+    <select id="reportViewSelector" class="form-select form-select-sm" style="max-width:260px;border-color:var(--n-200);font-size:13px;" onchange="changeReportView(this.value)">
         <option value="staff" {{ ($reportView ?? 'staff') === 'staff' ? 'selected' : '' }}>Overseas Reports</option>
         <option value="jobfair" {{ ($reportView ?? 'staff') === 'jobfair' ? 'selected' : '' }}>Job Fair Reports (Overseas)</option>
     </select>
@@ -115,7 +115,7 @@ if ($staffRole !== 'sra') {
 {{-- EVENT SELECTOR --}}
 <div class="mb-3">
     <select id="eventSelector" class="form-select form-select-sm"
-        style="max-width:320px;width:100%;border-color:#a8e6cf;font-size:13px;"
+        style="max-width:320px;width:100%;border-color:var(--n-200);font-size:13px;"
         onchange="changeEvent(this.value)">
         <option value="">— Select Job Fair Event —</option>
         @foreach($allEvents as $ev)
@@ -132,26 +132,88 @@ if ($staffRole !== 'sra') {
     <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->query(), ['tab' => $key, 'event_id' => $eventId])) }}"
        class="btn btn-sm fw-semibold"
        style="{{ $tab === $key
-           ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;'
-           : 'border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;' }}
+           ? 'background:var(--g-600);color:#fff;border:none;'
+           : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
            border-radius:8px;font-size:11px;padding:5px 12px;white-space:nowrap;flex-shrink:0;">
-        <i class="bi {{ $t['icon'] }} me-1"></i>{{ $t['label'] }}
+        <i class="{{ $t['icon'] }} me-1"></i>{{ $t['label'] }}
     </a>
     @endforeach
     <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->query(), ['tab' => 'top_employers', 'event_id' => $eventId])) }}"
        class="btn btn-sm fw-semibold"
        style="{{ $tab === 'top_employers'
-           ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;'
-           : 'border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;' }}
+           ? 'background:var(--g-600);color:#fff;border:none;'
+           : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
            border-radius:8px;font-size:11px;padding:5px 12px;white-space:nowrap;flex-shrink:0;">
-        <i class="bi bi-building-fill me-1"></i>Top Employers
+        <i class="ph-fill ph-buildings me-1"></i>Top 10 Employers
+    </a>
+    {{-- Ang kaugalingon nga report sa staff. Job Fair staff ra — dili siya
+         bahin sa panglantaw sa SRA ug wala siya sa admin nga kopya. --}}
+    @if($staffRole === 'job_fair' && ($reportRouteName ?? 'staff.reports') === 'staff.reports')
+    <a href="{{ route('staff.reports', array_merge(request()->query(), ['tab' => 'imported', 'event_id' => $eventId])) }}"
+       class="btn btn-sm fw-semibold"
+       style="{{ $tab === 'imported'
+           ? 'background:var(--g-600);color:#fff;border:none;'
+           : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
+           border-radius:8px;font-size:11px;padding:5px 12px;white-space:nowrap;flex-shrink:0;">
+        <i class="ph-fill ph-upload-simple me-1"></i>My Imported Reports
+    </a>
+    @endif
+    <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->query(), ['tab' => 'archived', 'event_id' => $eventId])) }}"
+       class="btn btn-sm fw-semibold"
+       style="{{ $tab === 'archived'
+           ? 'background:var(--warn);color:#fff;border:none;'
+           : 'border:1px solid var(--warn-br);color:var(--warn);background:#fff;' }}
+           border-radius:8px;font-size:11px;padding:5px 12px;white-space:nowrap;flex-shrink:0;">
+        <i class="ph-fill ph-archive me-1"></i>Archived Job Postings
     </a>
 </div>
 
-@if(!$eventId)
+{{-- ── DOWNLOAD ──
+     PESO Job Fair staff, 2026-08-23: every tab has to come out as a file that
+     opens in Excel. Not on Archived (a record of the posting, not a count of
+     people — the same rule the LRA/SRA export already follows), not on My
+     Imported Reports (each import has its own Download), and not on the admin
+     copy of this blade, which renders it under a different route name. --}}
+@php
+    $downloadableTab = array_key_exists($tab, \App\Support\JobFairReport::TABS);
+    $downloadNeedsEvent = !in_array($tab, \App\Support\JobFairReport::TABS_WITHOUT_EVENT, true);
+@endphp
+@if($downloadableTab && (!$downloadNeedsEvent || $eventId)
+    && ($reportRouteName ?? 'staff.reports') === 'staff.reports')
+<div class="d-flex justify-content-end mb-3">
+    <a href="{{ route('staff.reports.jobfair.export', array_merge(request()->query(), ['tab' => $tab, 'event_id' => $eventId])) }}"
+       class="btn btn-sm fw-semibold"
+       style="background:#fff;color:var(--g-700);border:1px solid var(--n-200);
+              border-radius:8px;font-size:12px;padding:6px 14px;">
+        <i class="ph ph-download-simple me-1"></i>Download Excel
+    </a>
+</div>
+@endif
+
+@if($tab === 'archived')
+
+    @include('staff.reports._archived')
+
+@elseif($tab === 'imported')
+
+    {{-- Job Fair staff ra. Ang tab nga buton gitago na sa SRA, apan ang tab
+         maabot gihapon pinaagi sa URL, ug ang importJobFairReport mosalikway
+         kaniya — dili angay ipakita ang porma nga dili niya magamit. --}}
+    @if($staffRole === 'job_fair')
+        @include('staff.reports._imported')
+    @else
+        <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
+            <i class="ph ph-lock-simple" style="font-size:48px;color:var(--n-300);"></i>
+            <div class="mt-3 fw-semibold" style="color:var(--g-700);">
+                Imported reports belong to the Job Fair staff
+            </div>
+        </div>
+    @endif
+
+@elseif(!$eventId)
     <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-        <i class="bi bi-calendar-event" style="font-size:48px;color:#c0e8dc;"></i>
-        <div class="mt-3 fw-semibold" style="color:#2d7a5f;">Select a job fair event to view reports</div>
+        <i class="ph ph-calendar-dots" style="font-size:48px;color:var(--n-300);"></i>
+        <div class="mt-3 fw-semibold" style="color:var(--g-700);">Select a job fair event to view reports</div>
     </div>
 
 @else
@@ -159,41 +221,62 @@ if ($staffRole !== 'sra') {
     {{-- ── TAB 1: ATTENDANCE ── --}}
     @if($tab === 'attendance')
 
+@php
+            // Ang Job Fair staff ra ang makamarka, ug sa iyang kaugalingon nga
+            // pahina ra — ang kopya sa admin parehas ug blade apan lahi ug ruta.
+            $canMarkAttendance = $staffRole === 'job_fair'
+                && ($reportRouteName ?? 'staff.reports') === 'staff.reports'
+                && ($event->status ?? null) !== 'completed';
+            $attState = $attendanceState ?? 'attended';
+        @endphp
+
         @if($staffRole !== 'sra')
-        <div class="d-flex flex-wrap gap-2 mb-3">
+        <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+            {{-- Duha ka pangutana, usa ka listahan: kinsa ang ni-join (trabahoan
+                 sa adlaw sa fair), ug kinsa ang miabot (ang moadto sa DOLE).
+                 Ang Excel mosunod sa parehas nga pagpili. --}}
+            <select id="attState" class="form-select form-select-sm"
+                style="max-width:190px;border-color:var(--n-200);font-size:13px;"
+                onchange="changeAttendanceParam('attendance_state', this.value)">
+                @foreach(\App\Support\JobFairReport::STATES as $key => $label)
+                <option value="{{ $key }}" {{ $attState === $key ? 'selected' : '' }}>{{ $label }}</option>
+                @endforeach
+            </select>
+
             <select id="attFilter" class="form-select form-select-sm"
-                style="max-width:180px;border-color:#a8e6cf;font-size:13px;"
+                style="max-width:180px;border-color:var(--n-200);font-size:13px;"
                 onchange="changeAttendanceFilter(this.value)">
                 <option value="all" {{ $attendanceFilter === 'all' ? 'selected' : '' }}>All (Local + Overseas)</option>
                 <option value="local" {{ $attendanceFilter === 'local' ? 'selected' : '' }}>Local Only</option>
                 <option value="overseas" {{ $attendanceFilter === 'overseas' ? 'selected' : '' }}>Overseas Only</option>
             </select>
+
+            <div class="input-group ms-auto" style="max-width:260px;">
+                <span class="input-group-text" style="border-color:var(--n-200);background:var(--n-50);">
+                    <i class="ph ph-magnifying-glass" style="color:var(--g-600);"></i>
+                </span>
+                <input type="text" id="attendanceSearchInput" class="form-control"
+                    placeholder="Search name or slip no..."
+                    style="border-color:var(--n-200);font-size:13px;"
+                    value="{{ $attendanceSearch ?? '' }}">
+            </div>
         </div>
         @endif
 
-        <div class="row g-3 mb-4">
-            <div class="col-6 col-md-3">
+        {{-- Duha ra ka numero: pila ang ni-join, ug pila ang miabot. Ang
+             kalainan sa duha mao ang wala pa mahibaloan, ug ang badge sa matag
+             laray ang nagsulti kung kinsa sila. --}}
+        <div class="row g-3 mb-4" style="max-width:420px;">
+            <div class="col-6">
                 <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
-                    <div class="fs-2 fw-bold" style="color:#4dd9c0;">{{ $totalRegistered }}</div>
-                    <div class="text-muted small">Registered</div>
+                    <div class="fs-2 fw-bold" style="color:var(--g-600);">{{ $totalRegistered }}</div>
+                    <div class="text-muted small">Joined</div>
                 </div>
             </div>
-            <div class="col-6 col-md-3">
+            <div class="col-6">
                 <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
-                    <div class="fs-2 fw-bold" style="color:#2d7a5f;">{{ $totalAttended }}</div>
+                    <div class="fs-2 fw-bold" style="color:var(--g-700);">{{ $totalAttended }}</div>
                     <div class="text-muted small">Attended</div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
-                    <div class="fs-2 fw-bold" style="color:#f59e0b;">{{ $totalLocalAttendance }}</div>
-                    <div class="text-muted small">Local</div>
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
-                    <div class="fs-2 fw-bold" style="color:#8b5cf6;">{{ $totalOverseasAttendance }}</div>
-                    <div class="text-muted small">Overseas</div>
                 </div>
             </div>
         </div>
@@ -203,38 +286,108 @@ if ($staffRole !== 'sra') {
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Slip No.</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Jobseeker</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Type</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Status</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Slip No.</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Jobseeker</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Type</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Attendance</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Attended At</th>
+                            @if($canMarkAttendance)
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Action</th>
+                            @endif
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($registrations as $i => $r)
                         <tr style="font-size:13px;">
-                            <td style="padding:12px 16px;color:#888;">{{ $registrations->firstItem() + $i }}</td>
-                            <td style="padding:12px 16px;color:#555;">{{ $r->slip_number }}</td>
-                            <td style="padding:12px 16px;font-weight:600;color:#2d7a5f;">
+                            <td style="padding:12px 16px;color:var(--n-500);">{{ $registrations->firstItem() + $i }}</td>
+                            <td style="padding:12px 16px;color:var(--n-700);">{{ $r->slip_number }}</td>
+                            <td style="padding:12px 16px;font-weight:600;color:var(--g-700);">
                                 {{ trim(($r->jobseeker->first_name ?? '').' '.($r->jobseeker->surname ?? '')) ?: 'None' }}
                             </td>
-                            <td style="padding:12px 16px;text-align:center;color:#555;">
+                            <td style="padding:12px 16px;text-align:center;color:var(--n-700);">
                                 {{ ucfirst($r->jobseeker->nsrp->type ?? 'None') }}
                             </td>
+                            {{-- Tulo ka kahimtang, dili duha: ang wala mitubag ug ang
+                                 misulti nga dili siya makaadto managlahi ug buhaton. --}}
                             <td style="padding:12px 16px;text-align:center;">
                                 @if($r->is_attended)
-                                    <span class="badge fw-semibold" style="background:#2d7a5f;font-size:11px;padding:4px 10px;border-radius:20px;">Attended</span>
+                                    <span class="fw-semibold" style="color:var(--g-700);font-size:11px;">
+                                        <i class="ph-fill ph-check-circle me-1"></i>Attended
+                                    </span>
+                                @elseif($r->is_attended === null)
+                                    <span class="fw-semibold" style="color:var(--n-500);font-size:11px;">
+                                        Joined — no reply
+                                    </span>
                                 @else
-                                    <span class="badge fw-semibold" style="background:#f59e0b;font-size:11px;padding:4px 10px;border-radius:20px;">Not Yet</span>
+                                    <span class="fw-semibold" style="color:var(--warn);font-size:11px;">
+                                        Said they cannot come
+                                    </span>
                                 @endif
                             </td>
+                            <td style="padding:12px 16px;text-align:center;color:var(--n-700);">
+                                {{ $r->attended_at?->format('M d, Y h:i A') ?? 'None' }}
+                            </td>
+                            @if($canMarkAttendance)
+                            <td style="padding:12px 16px;text-align:center;">
+                                @if($r->is_attended)
+                                <form action="{{ route('staff.jobfair.attendance.unmark', $r->job_fair_registrations_id) }}" method="POST">
+                                    @csrf
+                                    <button type="submit" class="btn btn-sm fw-semibold"
+                                        style="border:1px solid var(--danger);color:var(--danger);background:#fff;
+                                               border-radius:8px;font-size:11px;padding:4px 12px;">
+                                        <i class="ph ph-x-circle me-1"></i>Unmark
+                                    </button>
+                                </form>
+                                @else
+                                <form action="{{ route('staff.jobfair.attendance.mark', $r->job_fair_registrations_id) }}" method="POST">
+                                    @csrf
+                                    <button type="submit" class="btn btn-sm fw-semibold"
+                                        style="background:var(--g-600);color:#fff;border:none;
+                                               border-radius:8px;font-size:11px;padding:4px 12px;">
+                                        <i class="ph ph-check-circle me-1"></i>Mark Attended
+                                    </button>
+                                </form>
+                                @endif
+                            </td>
+                            @endif
                         </tr>
                         @empty
-                        <tr><td colspan="5" class="text-center py-4" style="color:#888;font-size:13px;">No registrations found</td></tr>
+                        <tr><td colspan="{{ $canMarkAttendance ? 7 : 6 }}" class="text-center py-4" style="color:var(--n-500);font-size:13px;">
+                            @if($attState === 'attended')
+                                No one has been marked as attended for this event yet.
+                            @else
+                                No jobseeker has joined this event yet.
+                            @endif
+                        </td></tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
+            @if($registrations && $registrations->hasPages())
+            <div class="d-flex justify-content-between align-items-center px-3 py-3" style="border-top:1px solid var(--n-50);">
+                <div style="font-size:12px;color:var(--n-500);">
+                    Showing {{ $registrations->firstItem() }}–{{ $registrations->lastItem() }} of {{ $registrations->total() }} results
+                </div>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0 gap-1">
+                        <li class="page-item {{ $registrations->onFirstPage() ? 'disabled' : '' }}">
+                            <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $registrations->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
+                        </li>
+                        @foreach($registrations->getUrlRange(1, $registrations->lastPage()) as $page => $url)
+                        <li class="page-item {{ $page == $registrations->currentPage() ? 'active' : '' }}">
+                            <a class="page-link rounded-2"
+                               style="{{ $page == $registrations->currentPage() ? 'background:var(--g-600);border-color:transparent;color:#fff;' : 'border-color:var(--n-200);color:var(--g-700);' }}"
+                               href="{{ $url }}">{{ $page }}</a>
+                        </li>
+                        @endforeach
+                        <li class="page-item {{ !$registrations->hasMorePages() ? 'disabled' : '' }}">
+                            <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $registrations->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+            @endif
         </div>
 
     {{-- ── TAB 2: LOCAL/OVERSEAS COMPANIES ── --}}
@@ -243,26 +396,26 @@ if ($staffRole !== 'sra') {
         <div class="row g-2 mb-3">
             @if($staffRole !== 'sra')
             <div class="col-12 col-md-6">
-                <h6 class="fw-bold" style="color:#2d7a5f;font-size:13px;">Local Companies</h6>
+                <h6 class="fw-bold" style="color:var(--g-700);font-size:13px;">Local Companies</h6>
                 <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
                     <div class="table-responsive">
                         <table class="table table-hover mb-0">
                             <thead>
                                 <tr>
-                                    <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:11px;border:none;padding:10px 14px;">#</th>
-                                    <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:11px;border:none;padding:10px 14px;">Company</th>
-                                    <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:11px;border:none;padding:10px 14px;">Address</th>
+                                    <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:10px 14px;">#</th>
+                                    <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:10px 14px;">Company</th>
+                                    <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:10px 14px;">Address</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($companiesLocal as $i => $p)
                                 <tr style="font-size:12px;">
-                                    <td style="padding:10px 14px;color:#888;">{{ $i+1 }}</td>
-                                    <td style="padding:10px 14px;font-weight:600;color:#2d7a5f;">{{ $p->employer->company_name ?? 'None' }}</td>
-                                    <td style="padding:10px 14px;color:#555;">{{ $p->employer->est_barangay ?? '' }} {{ $p->employer->est_city_municipality ?? '' }}</td>
+                                    <td style="padding:10px 14px;color:var(--n-500);">{{ $i+1 }}</td>
+                                    <td style="padding:10px 14px;font-weight:600;color:var(--g-700);">{{ $p->employer->company_name ?? 'None' }}</td>
+                                    <td style="padding:10px 14px;color:var(--n-700);">{{ $p->employer->est_barangay ?? '' }} {{ $p->employer->est_city_municipality ?? '' }}</td>
                                 </tr>
                                 @empty
-                                <tr><td colspan="3" class="text-center py-3" style="color:#888;font-size:12px;">None yet</td></tr>
+                                <tr><td colspan="3" class="text-center py-3" style="color:var(--n-500);font-size:12px;">None yet</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -271,26 +424,26 @@ if ($staffRole !== 'sra') {
             </div>
             @endif
             <div class="col-12 col-md-6">
-                <h6 class="fw-bold" style="color:#2d7a5f;font-size:13px;">Overseas Companies</h6>
+                <h6 class="fw-bold" style="color:var(--g-700);font-size:13px;">Overseas Companies</h6>
                 <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
                     <div class="table-responsive">
                         <table class="table table-hover mb-0">
                             <thead>
                                 <tr>
-                                    <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:11px;border:none;padding:10px 14px;">#</th>
-                                    <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:11px;border:none;padding:10px 14px;">Company</th>
-                                    <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:11px;border:none;padding:10px 14px;">Address</th>
+                                    <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:10px 14px;">#</th>
+                                    <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:10px 14px;">Company</th>
+                                    <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:10px 14px;">Address</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($companiesOverseas as $i => $p)
                                 <tr style="font-size:12px;">
-                                    <td style="padding:10px 14px;color:#888;">{{ $i+1 }}</td>
-                                    <td style="padding:10px 14px;font-weight:600;color:#2d7a5f;">{{ $p->employer->company_name ?? 'None' }}</td>
-                                    <td style="padding:10px 14px;color:#555;">{{ $p->employer->est_barangay ?? '' }} {{ $p->employer->est_city_municipality ?? '' }}</td>
+                                    <td style="padding:10px 14px;color:var(--n-500);">{{ $i+1 }}</td>
+                                    <td style="padding:10px 14px;font-weight:600;color:var(--g-700);">{{ $p->employer->company_name ?? 'None' }}</td>
+                                    <td style="padding:10px 14px;color:var(--n-700);">{{ $p->employer->est_barangay ?? '' }} {{ $p->employer->est_city_municipality ?? '' }}</td>
                                 </tr>
                                 @empty
-                                <tr><td colspan="3" class="text-center py-3" style="color:#888;font-size:12px;">None yet</td></tr>
+                                <tr><td colspan="3" class="text-center py-3" style="color:var(--n-500);font-size:12px;">None yet</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -307,53 +460,53 @@ if ($staffRole !== 'sra') {
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Jobseeker</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Type</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Job Applied</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Company</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Date</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Jobseeker</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Type</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Job Applied</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Company</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Date</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($furtherInterview as $i => $app)
                         <tr style="font-size:13px;">
-                            <td style="padding:12px 16px;color:#888;">{{ $furtherInterview->firstItem() + $i }}</td>
-                            <td style="padding:12px 16px;font-weight:600;color:#2d7a5f;">
+                            <td style="padding:12px 16px;color:var(--n-500);">{{ $furtherInterview->firstItem() + $i }}</td>
+                            <td style="padding:12px 16px;font-weight:600;color:var(--g-700);">
                                 {{ trim(($app->jobseeker->first_name ?? '').' '.($app->jobseeker->surname ?? '')) ?: 'None' }}
                             </td>
-                            <td style="padding:12px 16px;text-align:center;color:#555;">
+                            <td style="padding:12px 16px;text-align:center;color:var(--n-700);">
                                 {{ ucfirst($app->jobseeker->nsrp->type ?? 'None') }}
                             </td>
-                            <td style="padding:12px 16px;color:#555;">{{ $app->job->title ?? 'None' }}</td>
-                            <td style="padding:12px 16px;color:#555;">{{ $app->job->company->company_name ?? 'None' }}</td>
-                            <td style="padding:12px 16px;text-align:center;color:#888;">{{ $app->updated_at->format('M d, Y') }}</td>
+                            <td style="padding:12px 16px;color:var(--n-700);">{{ $app->job->title ?? 'None' }}</td>
+                            <td style="padding:12px 16px;color:var(--n-700);">{{ $app->job->company->company_name ?? 'None' }}</td>
+                            <td style="padding:12px 16px;text-align:center;color:var(--n-500);">{{ $app->updated_at->format('M d, Y') }}</td>
                         </tr>
                         @empty
-                        <tr><td colspan="6" class="text-center py-4" style="color:#888;font-size:13px;">No applicants on waiting list</td></tr>
+                        <tr><td colspan="6" class="text-center py-4" style="color:var(--n-500);font-size:13px;">No applicants on waiting list</td></tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
             @if($furtherInterview && $furtherInterview->hasPages())
-            <div class="d-flex justify-content-between align-items-center px-3 py-3" style="border-top:1px solid #f0f9f6;">
-                <div style="font-size:12px;color:#888;">
+            <div class="d-flex justify-content-between align-items-center px-3 py-3" style="border-top:1px solid var(--n-50);">
+                <div style="font-size:12px;color:var(--n-500);">
                     Showing {{ $furtherInterview->firstItem() }}–{{ $furtherInterview->lastItem() }} of {{ $furtherInterview->total() }} results
                 </div>
                 <nav>
                     <ul class="pagination pagination-sm mb-0 gap-1">
                         <li class="page-item {{ $furtherInterview->onFirstPage() ? 'disabled' : '' }}">
-                            <a class="page-link rounded-2" style="border-color:#a8e6cf;color:#2d7a5f;" href="{{ $furtherInterview->previousPageUrl() }}"><i class="bi bi-chevron-left"></i></a>
+                            <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $furtherInterview->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
                         </li>
                         @foreach($furtherInterview->getUrlRange(1, $furtherInterview->lastPage()) as $page => $url)
                         <li class="page-item {{ $page == $furtherInterview->currentPage() ? 'active' : '' }}">
                             <a class="page-link rounded-2"
-                               style="{{ $page == $furtherInterview->currentPage() ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);border-color:transparent;color:#fff;' : 'border-color:#a8e6cf;color:#2d7a5f;' }}"
+                               style="{{ $page == $furtherInterview->currentPage() ? 'background:var(--g-600);border-color:transparent;color:#fff;' : 'border-color:var(--n-200);color:var(--g-700);' }}"
                                href="{{ $url }}">{{ $page }}</a>
                         </li>
                         @endforeach
                         <li class="page-item {{ !$furtherInterview->hasMorePages() ? 'disabled' : '' }}">
-                            <a class="page-link rounded-2" style="border-color:#a8e6cf;color:#2d7a5f;" href="{{ $furtherInterview->nextPageUrl() }}"><i class="bi bi-chevron-right"></i></a>
+                            <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $furtherInterview->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
                         </li>
                     </ul>
                 </nav>
@@ -369,53 +522,53 @@ if ($staffRole !== 'sra') {
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Name</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Gender</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Position</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Hiring Company</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Local/Overseas</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Name</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Gender</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Position</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Hiring Company</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Local/Overseas</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($hots as $i => $app)
                         <tr style="font-size:13px;">
-                            <td style="padding:12px 16px;color:#888;">{{ $hots->firstItem() + $i }}</td>
-                            <td style="padding:12px 16px;font-weight:600;color:#2d7a5f;">
+                            <td style="padding:12px 16px;color:var(--n-500);">{{ $hots->firstItem() + $i }}</td>
+                            <td style="padding:12px 16px;font-weight:600;color:var(--g-700);">
                                 {{ trim(($app->jobseeker->first_name ?? '').' '.($app->jobseeker->surname ?? '')) ?: 'None' }}
                             </td>
-                            <td style="padding:12px 16px;text-align:center;color:#555;">{{ $app->jobseeker->sex ?? 'None' }}</td>
-                            <td style="padding:12px 16px;color:#555;">{{ $app->job->title ?? 'None' }}</td>
-                            <td style="padding:12px 16px;color:#555;">{{ $app->job->company->company_name ?? 'None' }}</td>
-                            <td style="padding:12px 16px;text-align:center;color:#555;">
+                            <td style="padding:12px 16px;text-align:center;color:var(--n-700);">{{ $app->jobseeker->sex ?? 'None' }}</td>
+                            <td style="padding:12px 16px;color:var(--n-700);">{{ $app->job->title ?? 'None' }}</td>
+                            <td style="padding:12px 16px;color:var(--n-700);">{{ $app->job->company->company_name ?? 'None' }}</td>
+                            <td style="padding:12px 16px;text-align:center;color:var(--n-700);">
                                 {{ ($app->job->company->is_overseas ?? false) ? 'Overseas' : 'Local' }}
                             </td>
                         </tr>
                         @empty
-                        <tr><td colspan="6" class="text-center py-4" style="color:#888;font-size:13px;">No one hired on the spot yet</td></tr>
+                        <tr><td colspan="6" class="text-center py-4" style="color:var(--n-500);font-size:13px;">No one hired on the spot yet</td></tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
             @if($hots && $hots->hasPages())
-            <div class="d-flex justify-content-between align-items-center px-3 py-3" style="border-top:1px solid #f0f9f6;">
-                <div style="font-size:12px;color:#888;">
+            <div class="d-flex justify-content-between align-items-center px-3 py-3" style="border-top:1px solid var(--n-50);">
+                <div style="font-size:12px;color:var(--n-500);">
                     Showing {{ $hots->firstItem() }}–{{ $hots->lastItem() }} of {{ $hots->total() }} results
                 </div>
                 <nav>
                     <ul class="pagination pagination-sm mb-0 gap-1">
                         <li class="page-item {{ $hots->onFirstPage() ? 'disabled' : '' }}">
-                            <a class="page-link rounded-2" style="border-color:#a8e6cf;color:#2d7a5f;" href="{{ $hots->previousPageUrl() }}"><i class="bi bi-chevron-left"></i></a>
+                            <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $hots->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
                         </li>
                         @foreach($hots->getUrlRange(1, $hots->lastPage()) as $page => $url)
                         <li class="page-item {{ $page == $hots->currentPage() ? 'active' : '' }}">
                             <a class="page-link rounded-2"
-                               style="{{ $page == $hots->currentPage() ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);border-color:transparent;color:#fff;' : 'border-color:#a8e6cf;color:#2d7a5f;' }}"
+                               style="{{ $page == $hots->currentPage() ? 'background:var(--g-600);border-color:transparent;color:#fff;' : 'border-color:var(--n-200);color:var(--g-700);' }}"
                                href="{{ $url }}">{{ $page }}</a>
                         </li>
                         @endforeach
                         <li class="page-item {{ !$hots->hasMorePages() ? 'disabled' : '' }}">
-                            <a class="page-link rounded-2" style="border-color:#a8e6cf;color:#2d7a5f;" href="{{ $hots->nextPageUrl() }}"><i class="bi bi-chevron-right"></i></a>
+                            <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $hots->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
                         </li>
                     </ul>
                 </nav>
@@ -429,37 +582,37 @@ if ($staffRole !== 'sra') {
         <div class="row g-3 mb-4">
             <div class="col-4 col-md-2">
                 <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
-                    <div class="fs-4 fw-bold" style="color:#4dd9c0;">{{ $summaryTotals['vacancies'] }}</div>
+                    <div class="fs-4 fw-bold" style="color:var(--g-600);">{{ $summaryTotals['vacancies'] }}</div>
                     <div class="text-muted small">Vacancies</div>
                 </div>
             </div>
             <div class="col-4 col-md-2">
                 <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
-                    <div class="fs-4 fw-bold" style="color:#2d7a5f;">{{ $summaryTotals['interviewed'] }}</div>
+                    <div class="fs-4 fw-bold" style="color:var(--g-700);">{{ $summaryTotals['interviewed'] }}</div>
                     <div class="text-muted small">Interviewed</div>
                 </div>
             </div>
             <div class="col-4 col-md-2">
                 <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
-                    <div class="fs-4 fw-bold" style="color:#f59e0b;">{{ $summaryTotals['male'] }}</div>
+                    <div class="fs-4 fw-bold" style="color:var(--warn);">{{ $summaryTotals['male'] }}</div>
                     <div class="text-muted small">Male</div>
                 </div>
             </div>
             <div class="col-4 col-md-2">
                 <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
-                    <div class="fs-4 fw-bold" style="color:#8b5cf6;">{{ $summaryTotals['female'] }}</div>
+                    <div class="fs-4 fw-bold" style="color:var(--info);">{{ $summaryTotals['female'] }}</div>
                     <div class="text-muted small">Female</div>
                 </div>
             </div>
             <div class="col-4 col-md-2">
                 <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
-                    <div class="fs-4 fw-bold" style="color:#0ea5e9;">{{ $summaryTotals['qualified'] }}</div>
+                    <div class="fs-4 fw-bold" style="color:var(--info);">{{ $summaryTotals['qualified'] }}</div>
                     <div class="text-muted small">Qualified</div>
                 </div>
             </div>
             <div class="col-4 col-md-2">
                 <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
-                    <div class="fs-4 fw-bold" style="color:#2d7a5f;">{{ $summaryTotals['hired'] }}</div>
+                    <div class="fs-4 fw-bold" style="color:var(--g-700);">{{ $summaryTotals['hired'] }}</div>
                     <div class="text-muted small">Hired</div>
                 </div>
             </div>
@@ -470,30 +623,30 @@ if ($staffRole !== 'sra') {
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Employer</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Vacancies</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Interviewed</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Male</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Female</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Qualified</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Hired</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Employer</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Vacancies</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Interviewed</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Male</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Female</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Qualified</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Hired</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($summaryParticipants as $i => $p)
                         <tr style="font-size:13px;">
-                            <td style="padding:12px 16px;color:#888;">{{ $i+1 }}</td>
-                            <td style="padding:12px 16px;font-weight:600;color:#2d7a5f;">{{ $p->employer->company_name ?? 'None' }}</td>
-                            <td style="padding:12px 16px;text-align:center;color:#555;">{{ $p->vacancies }}</td>
-                            <td style="padding:12px 16px;text-align:center;color:#555;">{{ $p->interviewed }}</td>
-                            <td style="padding:12px 16px;text-align:center;color:#555;">{{ $p->male }}</td>
-                            <td style="padding:12px 16px;text-align:center;color:#555;">{{ $p->female }}</td>
-                            <td style="padding:12px 16px;text-align:center;color:#555;">{{ $p->qualified }}</td>
-                            <td style="padding:12px 16px;text-align:center;color:#2d7a5f;font-weight:600;">{{ $p->hired }}</td>
+                            <td style="padding:12px 16px;color:var(--n-500);">{{ $i+1 }}</td>
+                            <td style="padding:12px 16px;font-weight:600;color:var(--g-700);">{{ $p->employer->company_name ?? 'None' }}</td>
+                            <td style="padding:12px 16px;text-align:center;color:var(--n-700);">{{ $p->vacancies }}</td>
+                            <td style="padding:12px 16px;text-align:center;color:var(--n-700);">{{ $p->interviewed }}</td>
+                            <td style="padding:12px 16px;text-align:center;color:var(--n-700);">{{ $p->male }}</td>
+                            <td style="padding:12px 16px;text-align:center;color:var(--n-700);">{{ $p->female }}</td>
+                            <td style="padding:12px 16px;text-align:center;color:var(--n-700);">{{ $p->qualified }}</td>
+                            <td style="padding:12px 16px;text-align:center;color:var(--g-700);font-weight:600;">{{ $p->hired }}</td>
                         </tr>
                         @empty
-                        <tr><td colspan="8" class="text-center py-4" style="color:#888;font-size:13px;">No confirmed employers for this event</td></tr>
+                        <tr><td colspan="8" class="text-center py-4" style="color:var(--n-500);font-size:13px;">No confirmed employers for this event</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -506,24 +659,24 @@ if ($staffRole !== 'sra') {
         <div class="row g-2 mb-3">
             @if($staffRole !== 'sra')
             <div class="col-12 col-md-6">
-                <h6 class="fw-bold" style="color:#2d7a5f;font-size:13px;">Local — by Industry Group</h6>
+                <h6 class="fw-bold" style="color:var(--g-700);font-size:13px;">Local — by Industry Group</h6>
                 <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
                     <div class="table-responsive">
                         <table class="table table-hover mb-0">
                             <thead>
                                 <tr>
-                                    <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:11px;border:none;padding:10px 14px;">Industry Group</th>
-                                    <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:11px;border:none;padding:10px 14px;text-align:center;">Total Vacancies</th>
+                                    <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:10px 14px;">Industry Group</th>
+                                    <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:10px 14px;text-align:center;">Total Vacancies</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($industryLocal as $group => $total)
                                 <tr style="font-size:12px;">
-                                    <td style="padding:10px 14px;color:#2d7a5f;font-weight:600;">{{ $group ?: 'Uncategorized' }}</td>
-                                    <td style="padding:10px 14px;text-align:center;color:#555;">{{ $total }}</td>
+                                    <td style="padding:10px 14px;color:var(--g-700);font-weight:600;">{{ $group ?: 'Uncategorized' }}</td>
+                                    <td style="padding:10px 14px;text-align:center;color:var(--n-700);">{{ $total }}</td>
                                 </tr>
                                 @empty
-                                <tr><td colspan="2" class="text-center py-3" style="color:#888;font-size:12px;">No data yet</td></tr>
+                                <tr><td colspan="2" class="text-center py-3" style="color:var(--n-500);font-size:12px;">No data yet</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -532,24 +685,24 @@ if ($staffRole !== 'sra') {
             </div>
             @endif
             <div class="col-12 col-md-6">
-                <h6 class="fw-bold" style="color:#2d7a5f;font-size:13px;">Overseas — by Industry Group</h6>
+                <h6 class="fw-bold" style="color:var(--g-700);font-size:13px;">Overseas — by Industry Group</h6>
                 <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
                     <div class="table-responsive">
                         <table class="table table-hover mb-0">
                             <thead>
                                 <tr>
-                                    <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:11px;border:none;padding:10px 14px;">Industry Group</th>
-                                    <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:11px;border:none;padding:10px 14px;text-align:center;">Total Vacancies</th>
+                                    <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:10px 14px;">Industry Group</th>
+                                    <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:10px 14px;text-align:center;">Total Vacancies</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($industryOverseas as $group => $total)
                                 <tr style="font-size:12px;">
-                                    <td style="padding:10px 14px;color:#2d7a5f;font-weight:600;">{{ $group ?: 'Uncategorized' }}</td>
-                                    <td style="padding:10px 14px;text-align:center;color:#555;">{{ $total }}</td>
+                                    <td style="padding:10px 14px;color:var(--g-700);font-weight:600;">{{ $group ?: 'Uncategorized' }}</td>
+                                    <td style="padding:10px 14px;text-align:center;color:var(--n-700);">{{ $total }}</td>
                                 </tr>
                                 @empty
-                                <tr><td colspan="2" class="text-center py-3" style="color:#888;font-size:12px;">No data yet</td></tr>
+                                <tr><td colspan="2" class="text-center py-3" style="color:var(--n-500);font-size:12px;">No data yet</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -562,47 +715,42 @@ if ($staffRole !== 'sra') {
     @elseif($tab === 'top_employers')
 
         <div class="card border-0 shadow-sm rounded-3 p-3 mb-3">
-            <div class="fw-semibold mb-2" style="color:#2d7a5f;font-size:14px;">
-                <i class="bi bi-building-fill me-2"></i>Top 5 Employers by Job Fair Participation
+            <div class="fw-semibold mb-2" style="color:var(--g-700);font-size:14px;">
+                <i class="ph-fill ph-buildings me-2"></i>Top 10 Employers by Vacancies Offered
             </div>
-            <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
-                <div class="btn-group btn-group-sm" role="group" aria-label="Top employers filter">
-                    <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->query(), ['tab' => 'top_employers', 'event_id' => $eventId, 'top_employers_filter' => 'monthly', 'page' => 1])) }}"
-                       class="btn {{ ($topEmployersFilter ?? 'monthly') === 'monthly' ? 'btn-success' : 'btn-outline-success' }}"
-                       style="font-size:12px;">Monthly</a>
-                    <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->query(), ['tab' => 'top_employers', 'event_id' => $eventId, 'top_employers_filter' => 'yearly', 'page' => 1])) }}"
-                       class="btn {{ ($topEmployersFilter ?? 'monthly') === 'yearly' ? 'btn-success' : 'btn-outline-success' }}"
-                       style="font-size:12px;">Yearly</a>
-                </div>
-                @if(($topEmployersFilter ?? 'monthly') === 'monthly')
-                    <input type="month" class="form-control form-control-sm" style="max-width:220px;" value="{{ $topEmployersMonth ?: now()->format('Y-m') }}" onchange="changeTopEmployersDate(this.value)">
-                @else
-                    <select class="form-select form-select-sm" style="max-width:180px;" onchange="changeTopEmployersYear(this.value)">
-                        @for($year = now()->year; $year >= now()->year - 5; $year--)
-                            <option value="{{ $year }}" {{ ($topEmployersYear ?: now()->year) == $year ? 'selected' : '' }}>{{ $year }}</option>
-                        @endfor
-                    </select>
-                @endif
+            <div style="font-size:12px;color:var(--n-500);" class="mb-3">
+                Ranked by the number of vacancies each employer brought to
+                <strong style="color:var(--g-700);">{{ $event->title ?? 'this fair' }}</strong>.
+                The count comes from the postings themselves, so it needs nobody to type it in.
             </div>
-            @php($topEmployers = $topEmployersByOfficeBasedInterviews ?? collect())
+
+            {{-- Block form, dili ang inline nga @php(...): ang inline nga porma
+                 mo-pares gihapon sa sunod nga @endphp bisan asa kini sa file,
+                 mao nga ang bisan unsang bag-ong @php block sa ubos mo-guba sa
+                 tibuok page. --}}
+            @php
+                $topEmployers = $topEmployersByCompanyInterviews ?? collect();
+            @endphp
             @if($topEmployers->isEmpty())
-                <div class="text-muted small">No job fair participation data found for this period.</div>
+                <div class="text-muted small">No postings were brought to this job fair yet.</div>
             @else
                 <div class="table-responsive">
                     <table class="table table-sm mb-0">
                         <thead>
                             <tr>
-                                <th style="background:#f0fdf9;color:#2d7a5f;border:none;padding:8px 10px;">#</th>
-                                <th style="background:#f0fdf9;color:#2d7a5f;border:none;padding:8px 10px;">Employer</th>
-                                <th style="background:#f0fdf9;color:#2d7a5f;border:none;padding:8px 10px;text-align:center;">Job Fair Participations</th>
+                                <th style="background:var(--n-50);color:var(--g-700);border:none;padding:8px 10px;">#</th>
+                                <th style="background:var(--n-50);color:var(--g-700);border:none;padding:8px 10px;">Employer</th>
+                                <th style="background:var(--n-50);color:var(--g-700);border:none;padding:8px 10px;text-align:center;">Postings Brought</th>
+                                <th style="background:var(--n-50);color:var(--g-700);border:none;padding:8px 10px;text-align:center;">Vacancies Offered</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($topEmployers as $index => $entry)
                                 <tr style="font-size:13px;">
-                                    <td style="padding:8px 10px;color:#888;">{{ $index + 1 }}</td>
-                                    <td style="padding:8px 10px;color:#2d7a5f;font-weight:600;">{{ $entry['employer']->company_name ?? 'Unknown Employer' }}</td>
-                                    <td style="padding:8px 10px;text-align:center;color:#555;">{{ $entry['participation_count'] }}</td>
+                                    <td style="padding:8px 10px;color:var(--n-500);">{{ $index + 1 }}</td>
+                                    <td style="padding:8px 10px;color:var(--g-700);font-weight:600;">{{ $entry['employer']->company_name ?? 'Unknown Employer' }}</td>
+                                    <td style="padding:8px 10px;text-align:center;color:var(--n-700);">{{ $entry['posting_count'] }}</td>
+                                    <td style="padding:8px 10px;text-align:center;color:var(--g-700);font-weight:600;">{{ $entry['total_vacancies'] }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -619,49 +767,49 @@ if ($staffRole !== 'sra') {
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Name of Applicant</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Gender</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Position</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Date Hired</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Name of Applicant</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Gender</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Position</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Date Hired</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($placementReport as $i => $app)
                         <tr style="font-size:13px;">
-                            <td style="padding:12px 16px;color:#888;">{{ $placementReport->firstItem() + $i }}</td>
-                            <td style="padding:12px 16px;font-weight:600;color:#2d7a5f;">
+                            <td style="padding:12px 16px;color:var(--n-500);">{{ $placementReport->firstItem() + $i }}</td>
+                            <td style="padding:12px 16px;font-weight:600;color:var(--g-700);">
                                 {{ trim(($app->jobseeker->first_name ?? '').' '.($app->jobseeker->surname ?? '')) ?: 'None' }}
                             </td>
-                            <td style="padding:12px 16px;text-align:center;color:#555;">{{ $app->jobseeker->sex ?? 'None' }}</td>
-                            <td style="padding:12px 16px;color:#555;">{{ $app->job->title ?? 'None' }}</td>
-                            <td style="padding:12px 16px;text-align:center;color:#888;">{{ $app->updated_at->format('M d, Y') }}</td>
+                            <td style="padding:12px 16px;text-align:center;color:var(--n-700);">{{ $app->jobseeker->sex ?? 'None' }}</td>
+                            <td style="padding:12px 16px;color:var(--n-700);">{{ $app->job->title ?? 'None' }}</td>
+                            <td style="padding:12px 16px;text-align:center;color:var(--n-500);">{{ $app->updated_at->format('M d, Y') }}</td>
                         </tr>
                         @empty
-                        <tr><td colspan="5" class="text-center py-4" style="color:#888;font-size:13px;">No placements recorded yet</td></tr>
+                        <tr><td colspan="5" class="text-center py-4" style="color:var(--n-500);font-size:13px;">No placements recorded yet</td></tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
             @if($placementReport && $placementReport->hasPages())
-            <div class="d-flex justify-content-between align-items-center px-3 py-3" style="border-top:1px solid #f0f9f6;">
-                <div style="font-size:12px;color:#888;">
+            <div class="d-flex justify-content-between align-items-center px-3 py-3" style="border-top:1px solid var(--n-50);">
+                <div style="font-size:12px;color:var(--n-500);">
                     Showing {{ $placementReport->firstItem() }}–{{ $placementReport->lastItem() }} of {{ $placementReport->total() }} results
                 </div>
                 <nav>
                     <ul class="pagination pagination-sm mb-0 gap-1">
                         <li class="page-item {{ $placementReport->onFirstPage() ? 'disabled' : '' }}">
-                            <a class="page-link rounded-2" style="border-color:#a8e6cf;color:#2d7a5f;" href="{{ $placementReport->previousPageUrl() }}"><i class="bi bi-chevron-left"></i></a>
+                            <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $placementReport->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
                         </li>
                         @foreach($placementReport->getUrlRange(1, $placementReport->lastPage()) as $page => $url)
                         <li class="page-item {{ $page == $placementReport->currentPage() ? 'active' : '' }}">
                             <a class="page-link rounded-2"
-                               style="{{ $page == $placementReport->currentPage() ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);border-color:transparent;color:#fff;' : 'border-color:#a8e6cf;color:#2d7a5f;' }}"
+                               style="{{ $page == $placementReport->currentPage() ? 'background:var(--g-600);border-color:transparent;color:#fff;' : 'border-color:var(--n-200);color:var(--g-700);' }}"
                                href="{{ $url }}">{{ $page }}</a>
                         </li>
                         @endforeach
                         <li class="page-item {{ !$placementReport->hasMorePages() ? 'disabled' : '' }}">
-                            <a class="page-link rounded-2" style="border-color:#a8e6cf;color:#2d7a5f;" href="{{ $placementReport->nextPageUrl() }}"><i class="bi bi-chevron-right"></i></a>
+                            <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $placementReport->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
                         </li>
                     </ul>
                 </nav>
@@ -681,56 +829,146 @@ if ($staffRole !== 'sra') {
         <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->query(), ['tab' => 'registered', 'page' => 1])) }}"
            class="btn btn-sm fw-semibold"
            style="{{ request('tab','registered') === 'registered'
-               ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;'
-               : 'border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;' }}
+               ? 'background:var(--g-600);color:#fff;border:none;'
+               : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
                border-radius:8px;font-size:12px;padding:5px 16px;">
-            <i class="bi bi-person-check me-1"></i> Job Applicant Registered ({{ $totalRegistered }})
+            <i class="ph ph-user-list me-1"></i> Job Applicant Registered ({{ $totalRegistered }})
         </a>
         <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->query(), ['tab' => 'placed', 'page' => 1])) }}"
            class="btn btn-sm fw-semibold"
            style="{{ request('tab') === 'placed'
-               ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;'
-               : 'border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;' }} 
+               ? 'background:var(--g-600);color:#fff;border:none;'
+               : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }} 
                border-radius:8px;font-size:12px;padding:5px 16px;">
-            <i class="bi bi-briefcase-fill me-1"></i> Placed Applicants ({{ $totalPlaced }})
+            <i class="ph-fill ph-briefcase me-1"></i> Placed Applicants ({{ $totalPlaced }})
         </a>
         <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->query(), ['tab' => 'referred', 'page' => 1])) }}"
            class="btn btn-sm fw-semibold"
            style="{{ request('tab') === 'referred'
-               ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;'
-               : 'border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;' }}
+               ? 'background:var(--g-600);color:#fff;border:none;'
+               : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
                border-radius:8px;font-size:12px;padding:5px 16px;">
-            <i class="bi bi-people-fill me-1"></i> Job Applicants Referred ({{ $totalReferred }})
+            <i class="ph-fill ph-users-three me-1"></i> Job Applicants Referred ({{ $totalReferred }})
         </a>
+        {{-- Who got a room and who was turned down. Both desks keep one, each
+             for their own side. --}}
+        <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->query(), ['tab' => 'schedules', 'page' => 1])) }}"
+           class="btn btn-sm fw-semibold"
+           style="{{ request('tab') === 'schedules'
+               ? 'background:var(--g-600);color:#fff;border:none;'
+               : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
+               border-radius:8px;font-size:12px;padding:5px 16px;">
+            <i class="ph-fill ph-calendar-check me-1"></i> In-house Schedules
+        </a>
+        {{-- Overseas only. The local company interviews are on the Job Vacancy
+             desk's own report, because that desk owns them. --}}
+        @if($staffRole === 'sra')
+        <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->query(), ['tab' => 'company_interview', 'page' => 1])) }}"
+           class="btn btn-sm fw-semibold"
+           style="{{ request('tab') === 'company_interview'
+               ? 'background:var(--g-600);color:#fff;border:none;'
+               : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
+               border-radius:8px;font-size:12px;padding:5px 16px;">
+            <i class="ph-fill ph-video-camera me-1"></i> Company Interviews
+        </a>
+        @endif
         @if($staffRole === 'sra')
         <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->query(), ['tab' => 'vacancies', 'page' => 1])) }}"
            class="btn btn-sm fw-semibold"
            style="{{ request('tab') === 'vacancies'
-               ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;'
-               : 'border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;' }}
+               ? 'background:var(--g-600);color:#fff;border:none;'
+               : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
                border-radius:8px;font-size:12px;padding:5px 16px;">
-            <i class="bi bi-briefcase-fill me-1"></i> Job Vacancies Solicited ({{ $totalVacanciesSolicited ?? 0 }})
+            <i class="ph-fill ph-briefcase me-1"></i> Job Vacancies Solicited ({{ $totalVacanciesSolicited ?? 0 }})
         </a>
         @endif
+        {{-- PESO SRA, 2026-08-26: wala nay Top Employers sa overseas nga reports.
+             Ang ranggo sa employer napulot na sa job fair nga reports, diin
+             ang giihap mao ang bakante nga ilang gidala sa fair. Ang usa dinhi
+             nag-ihap ug in-house nga interview — tubag kana sa laing pangutana,
+             ug ang LRA ra ang nangutana niini. --}}
+        @if($staffRole !== 'sra')
         <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->query(), ['tab' => 'top_employers', 'page' => 1])) }}"
            class="btn btn-sm fw-semibold"
            style="{{ request('tab') === 'top_employers'
-               ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;'
-               : 'border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;' }}
+               ? 'background:var(--g-600);color:#fff;border:none;'
+               : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
                border-radius:8px;font-size:12px;padding:5px 16px;">
-            <i class="bi bi-building-fill me-1"></i> Top Employers
+            <i class="ph-fill ph-buildings me-1"></i> Top 5 Employers
         </a>
+        @endif
+        {{-- LRA staff, 2026-08-23: unsay nahitabo sa usa ka employer usa ka
+             semana human sa iyang in-house interview. Tab ni, dili kaugalingon
+             nga sidebar entry — taas na ang nav sa LRA, ug report man gihapon
+             siya. Wala sa admin nga kopya sa parehas nga blade. --}}
+        @if($staffRole === 'lra' && ($reportRouteName ?? 'staff.reports') === 'staff.reports')
+        <a href="{{ route('staff.reports', array_merge(request()->query(), ['tab' => 'employer_report', 'page' => 1])) }}"
+           class="btn btn-sm fw-semibold"
+           style="{{ request('tab') === 'employer_report'
+               ? 'background:var(--g-600);color:#fff;border:none;'
+               : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
+               border-radius:8px;font-size:12px;padding:5px 16px;">
+            <i class="ph-fill ph-clipboard-text me-1"></i> Employer Report
+        </a>
+        @endif
+        {{-- Walay Archived Job Postings para sa LRA: ang posting gidumala sa
+             Job Vacancy staff ug sa SRA, dili niya. --}}
+        @if($staffRole !== 'lra')
+        <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->query(), ['tab' => 'archived', 'page' => 1])) }}"
+           class="btn btn-sm fw-semibold"
+           style="{{ request('tab') === 'archived'
+               ? 'background:var(--warn);color:#fff;border:none;'
+               : 'border:1px solid var(--warn-br);color:var(--warn);background:#fff;' }}
+               border-radius:8px;font-size:12px;padding:5px 16px;">
+            <i class="ph-fill ph-archive me-1"></i> Archived Job Postings
+        </a>
+        @endif
     </div>
     <div class="input-group" style="max-width:260px;width:100%;">
-        <span class="input-group-text" style="border-color:#a8e6cf;background:#f0fdf9;">
-            <i class="bi bi-search" style="color:#4dd9c0;"></i>
+        <span class="input-group-text" style="border-color:var(--n-200);background:var(--n-50);">
+            <i class="ph ph-magnifying-glass" style="color:var(--g-600);"></i>
         </span>
         <input type="text" id="searchInput" class="form-control"
             placeholder="Search name or email..."
-            style="border-color:#a8e6cf;font-size:13px;"
+            style="border-color:var(--n-200);font-size:13px;"
             value="{{ request('search') }}">
     </div>
 </div>
+
+{{-- ── DATE RANGE + EXPORT — para sa tulo ka listahan nga isumite sa
+     Mayor's Office ug DOLE (PESO interview 2026-08-13). Ang job fair nga
+     report naay kaugalingon nga event filter, mao nga dili siya apil dinhi. ── --}}
+@php
+    // Ang Archived Job Postings wala giapil: rekord kadto sa posting mismo,
+    // dili ihap sa tawo sulod sa usa ka panahon.
+    $exportableTab = in_array(request('tab', 'registered'), ['registered', 'placed', 'referred'], true);
+    $exportTab     = request('tab', 'registered');
+@endphp
+
+@if(isset($range) && $exportableTab && ($reportRouteName ?? 'staff.reports') === 'staff.reports')
+    @include('partials.date-range-filter', [
+        'range'   => $range,
+        'action'  => route('staff.reports'),
+        'keep'    => array_filter([
+            'tab'             => $exportTab,
+            'registered_view' => request('registered_view'),
+            'search'          => request('search'),
+        ]),
+        'exports' => [
+            [
+                'url'   => route('staff.reports.export', array_merge($range->queryParams(), ['tab' => $exportTab])),
+                'label' => 'Download Excel',
+                'icon'  => 'ph-download-simple',
+            ],
+            [
+                'url'    => route('staff.reports.export', array_merge($range->queryParams(), ['tab' => $exportTab, 'format' => 'print'])),
+                'label'  => 'Print',
+                'icon'   => 'ph-printer',
+                'newTab' => true,
+            ],
+        ],
+    ])
+@endif
 
 {{-- ── TAB 1: JOB APPLICANT REGISTERED ── --}}
 @if(request('tab', 'registered') === 'registered')
@@ -738,7 +976,7 @@ if ($staffRole !== 'sra') {
     {{-- FILTER DROPDOWN: All Local Jobseekers vs In-house Participants --}}
     <div class="mb-3">
         <select id="registeredViewFilter" class="form-select form-select-sm"
-            style="max-width:280px;width:100%;border-color:#a8e6cf;font-size:13px;"
+            style="max-width:280px;width:100%;border-color:var(--n-200);font-size:13px;"
             onchange="changeRegisteredView(this.value)">
             <option value="all" {{ ($registeredView ?? 'all') === 'all' ? 'selected' : '' }}>
                 All {{ $staffRole === 'lra' ? 'Local' : 'Overseas' }} Jobseekers ({{ $totalRegisteredAll ?? 0 }})
@@ -753,8 +991,8 @@ if ($staffRole !== 'sra') {
 
         @if(($registeredAll ?? collect())->isEmpty())
             <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-                <i class="bi bi-inbox" style="font-size:48px;color:#c0e8dc;"></i>
-                <div class="mt-3 fw-semibold" style="color:#2d7a5f;">No registered jobseekers found</div>
+                <i class="ph ph-tray" style="font-size:48px;color:var(--n-300);"></i>
+                <div class="mt-3 fw-semibold" style="color:var(--g-700);">No registered jobseekers found</div>
             </div>
         @else
             <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
@@ -762,23 +1000,23 @@ if ($staffRole !== 'sra') {
                     <table class="table table-hover mb-0">
                         <thead>
                             <tr>
-                                <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
-                                <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Jobseeker</th>
-                                <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Email</th>
-                                <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Date Registered</th>
+                                <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
+                                <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Jobseeker</th>
+                                <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Email</th>
+                                <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Date Registered</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($registeredAll as $i => $reg)
                             <tr style="font-size:13px;">
-                                <td style="padding:12px 16px;color:#888;">{{ $registeredAll->firstItem() + $i }}</td>
-                                <td style="padding:12px 16px;font-weight:600;color:#2d7a5f;">
+                                <td style="padding:12px 16px;color:var(--n-500);">{{ $registeredAll->firstItem() + $i }}</td>
+                                <td style="padding:12px 16px;font-weight:600;color:var(--g-700);">
                                     {{ trim(($reg->first_name ?? '') . ' ' . ($reg->surname ?? '')) ?: ($reg->user->name ?? 'None') }}
                                 </td>
-                                <td style="padding:12px 16px;color:#555;">
+                                <td style="padding:12px 16px;color:var(--n-700);">
                                     {{ $reg->reg_email ?? $reg->user->email ?? 'None' }}
                                 </td>
-                                <td style="padding:12px 16px;text-align:center;color:#888;">
+                                <td style="padding:12px 16px;text-align:center;color:var(--n-500);">
                                     {{ $reg->created_at->format('M d, Y') }}
                                 </td>
                             </tr>
@@ -787,24 +1025,24 @@ if ($staffRole !== 'sra') {
                     </table>
                 </div>
                 @if($registeredAll->hasPages())
-                <div class="d-flex justify-content-between align-items-center px-3 py-3" style="border-top:1px solid #f0f9f6;">
-                    <div style="font-size:12px;color:#888;">
+                <div class="d-flex justify-content-between align-items-center px-3 py-3" style="border-top:1px solid var(--n-50);">
+                    <div style="font-size:12px;color:var(--n-500);">
                         Showing {{ $registeredAll->firstItem() }}–{{ $registeredAll->lastItem() }} of {{ $registeredAll->total() }} results
                     </div>
                     <nav>
                         <ul class="pagination pagination-sm mb-0 gap-1">
                             <li class="page-item {{ $registeredAll->onFirstPage() ? 'disabled' : '' }}">
-                                <a class="page-link rounded-2" style="border-color:#a8e6cf;color:#2d7a5f;" href="{{ $registeredAll->previousPageUrl() }}"><i class="bi bi-chevron-left"></i></a>
+                                <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $registeredAll->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
                             </li>
                             @foreach($registeredAll->getUrlRange(1, $registeredAll->lastPage()) as $page => $url)
                             <li class="page-item {{ $page == $registeredAll->currentPage() ? 'active' : '' }}">
                                 <a class="page-link rounded-2"
-                                   style="{{ $page == $registeredAll->currentPage() ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);border-color:transparent;color:#fff;' : 'border-color:#a8e6cf;color:#2d7a5f;' }}"
+                                   style="{{ $page == $registeredAll->currentPage() ? 'background:var(--g-600);border-color:transparent;color:#fff;' : 'border-color:var(--n-200);color:var(--g-700);' }}"
                                    href="{{ $url }}">{{ $page }}</a>
                             </li>
                             @endforeach
                             <li class="page-item {{ !$registeredAll->hasMorePages() ? 'disabled' : '' }}">
-                                <a class="page-link rounded-2" style="border-color:#a8e6cf;color:#2d7a5f;" href="{{ $registeredAll->nextPageUrl() }}"><i class="bi bi-chevron-right"></i></a>
+                                <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $registeredAll->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
                             </li>
                         </ul>
                     </nav>
@@ -815,8 +1053,8 @@ if ($staffRole !== 'sra') {
 
     @elseif($registeredParticipants->isEmpty())
         <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-            <i class="bi bi-inbox" style="font-size:48px;color:#c0e8dc;"></i>
-            <div class="mt-3 fw-semibold" style="color:#2d7a5f;">No registered applicants found</div>
+            <i class="ph ph-tray" style="font-size:48px;color:var(--n-300);"></i>
+            <div class="mt-3 fw-semibold" style="color:var(--g-700);">No registered applicants found</div>
             <div class="text-muted small mt-1">Jobseekers who accepted a confirmed in-house interview will appear here.</div>
         </div>
     @else
@@ -825,28 +1063,28 @@ if ($staffRole !== 'sra') {
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Jobseeker</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Employer</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Interview Date</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Accepted On</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Jobseeker</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Employer</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Interview Date</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Accepted On</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($registeredParticipants as $i => $p)
                         <tr style="font-size:13px;">
-                            <td style="padding:12px 16px;color:#888;">{{ $registeredParticipants->firstItem() + $i }}</td>
+                            <td style="padding:12px 16px;color:var(--n-500);">{{ $registeredParticipants->firstItem() + $i }}</td>
                             <td style="padding:12px 16px;">
-                                <div class="fw-semibold" style="color:#2d7a5f;">{{ trim(($p->jobseeker->first_name ?? '') . ' ' . ($p->jobseeker->surname ?? '')) ?: 'None' }}</div>
-                                <div style="font-size:11px;color:#888;">{{ $p->jobseeker->reg_email ?? $p->jobseeker->user->email ?? 'None' }}</div>
+                                <div class="fw-semibold" style="color:var(--g-700);">{{ trim(($p->jobseeker->first_name ?? '') . ' ' . ($p->jobseeker->surname ?? '')) ?: 'None' }}</div>
+                                <div style="font-size:11px;color:var(--n-500);">{{ $p->jobseeker->reg_email ?? $p->jobseeker->user->email ?? 'None' }}</div>
                             </td>
-                            <td style="padding:12px 16px;color:#555;">
+                            <td style="padding:12px 16px;color:var(--n-700);">
                                 {{ $p->job->company->company_name ?? 'None' }}
                             </td>
-                            <td style="padding:12px 16px;color:#555;">
-                                {{ $p->job->preferred_date ? \Carbon\Carbon::parse($p->job->preferred_date)->format('M d, Y') : 'None' }}
+                            <td style="padding:12px 16px;color:var(--n-700);">
+                                {{ $p->job->interview_date ? $p->job->interview_date->format('M d, Y') : 'None' }}
                             </td>
-                            <td style="padding:12px 16px;text-align:center;color:#888;">
+                            <td style="padding:12px 16px;text-align:center;color:var(--n-500);">
                                 {{ $p->updated_at?->format('M d, Y h:i A') ?? 'None' }}
                             </td>
                         </tr>
@@ -855,24 +1093,24 @@ if ($staffRole !== 'sra') {
                 </table>
             </div>
             @if($registeredParticipants->hasPages())
-            <div class="d-flex justify-content-between align-items-center px-3 py-3" style="border-top:1px solid #f0f9f6;">
-                <div style="font-size:12px;color:#888;">
+            <div class="d-flex justify-content-between align-items-center px-3 py-3" style="border-top:1px solid var(--n-50);">
+                <div style="font-size:12px;color:var(--n-500);">
                     Showing {{ $registeredParticipants->firstItem() }}–{{ $registeredParticipants->lastItem() }} of {{ $registeredParticipants->total() }} results
                 </div>
                 <nav>
                     <ul class="pagination pagination-sm mb-0 gap-1">
                         <li class="page-item {{ $registeredParticipants->onFirstPage() ? 'disabled' : '' }}">
-                            <a class="page-link rounded-2" style="border-color:#a8e6cf;color:#2d7a5f;" href="{{ $registeredParticipants->previousPageUrl() }}"><i class="bi bi-chevron-left"></i></a>
+                            <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $registeredParticipants->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
                         </li>
                         @foreach($registeredParticipants->getUrlRange(1, $registeredParticipants->lastPage()) as $page => $url)
                         <li class="page-item {{ $page == $registeredParticipants->currentPage() ? 'active' : '' }}">
                             <a class="page-link rounded-2"
-                               style="{{ $page == $registeredParticipants->currentPage() ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);border-color:transparent;color:#fff;' : 'border-color:#a8e6cf;color:#2d7a5f;' }}"
+                               style="{{ $page == $registeredParticipants->currentPage() ? 'background:var(--g-600);border-color:transparent;color:#fff;' : 'border-color:var(--n-200);color:var(--g-700);' }}"
                                href="{{ $url }}">{{ $page }}</a>
                         </li>
                         @endforeach
                         <li class="page-item {{ !$registeredParticipants->hasMorePages() ? 'disabled' : '' }}">
-                            <a class="page-link rounded-2" style="border-color:#a8e6cf;color:#2d7a5f;" href="{{ $registeredParticipants->nextPageUrl() }}"><i class="bi bi-chevron-right"></i></a>
+                            <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $registeredParticipants->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
                         </li>
                     </ul>
                 </nav>
@@ -884,10 +1122,17 @@ if ($staffRole !== 'sra') {
 {{-- ── TAB 2: PLACED APPLICANTS ── --}}
 @elseif(request('tab') === 'placed')
 
+    @if(isset($placedChart))
+        @include('partials.bar-chart', [
+            'title' => 'Placed applicants per month',
+            'rows'  => $placedChart,
+        ])
+    @endif
+
     @if($placedApplications->isEmpty())
         <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-            <i class="bi bi-inbox" style="font-size:48px;color:#c0e8dc;"></i>
-            <div class="mt-3 fw-semibold" style="color:#2d7a5f;">No placed applicants found</div>
+            <i class="ph ph-tray" style="font-size:48px;color:var(--n-300);"></i>
+            <div class="mt-3 fw-semibold" style="color:var(--g-700);">No placed applicants found</div>
         </div>
     @else
         <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
@@ -895,56 +1140,56 @@ if ($staffRole !== 'sra') {
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Name of Applicant</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Gender</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Referred As</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Referred To</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Placed As</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Placed To</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Date Hired</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Name of Applicant</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Gender</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Referred As</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Referred To</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Placed As</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Placed To</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Date Hired</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($placedApplications as $i => $app)
                         <tr style="font-size:13px;">
-                            <td style="padding:12px 16px;color:#888;">{{ $placedApplications->firstItem() + $i }}</td>
+                            <td style="padding:12px 16px;color:var(--n-500);">{{ $placedApplications->firstItem() + $i }}</td>
                             <td style="padding:12px 16px;">
-                                <div class="fw-semibold" style="color:#2d7a5f;">{{ trim(($app->jobseeker->first_name ?? '') . ' ' . ($app->jobseeker->surname ?? '')) ?: 'None' }}</div>
-                                <div style="font-size:11px;color:#888;">{{ $app->jobseeker->user->email ?? 'None' }}</div>
+                                <div class="fw-semibold" style="color:var(--g-700);">{{ trim(($app->jobseeker->first_name ?? '') . ' ' . ($app->jobseeker->surname ?? '')) ?: 'None' }}</div>
+                                <div style="font-size:11px;color:var(--n-500);">{{ $app->jobseeker->user->email ?? 'None' }}</div>
                             </td>
-                            <td style="padding:12px 16px;text-align:center;color:#555;">
+                            <td style="padding:12px 16px;text-align:center;color:var(--n-700);">
                                 {{ $app->jobseeker->sex ?? 'None' }}
                             </td>
-                            <td style="padding:12px 16px;color:#555;">{{ $app->job->title ?? 'None' }}</td>
-                            <td style="padding:12px 16px;color:#555;">{{ $app->job->company->company_name ?? 'None' }}</td>
-                            <td style="padding:12px 16px;color:#555;">{{ $app->job->title ?? 'None' }}</td>
-                            <td style="padding:12px 16px;color:#555;">{{ $app->job->company->company_name ?? 'None' }}</td>
-                            <td style="padding:12px 16px;text-align:center;color:#888;">{{ $app->updated_at->format('M d, Y') }}</td>
+                            <td style="padding:12px 16px;color:var(--n-700);">{{ $app->job->title ?? 'None' }}</td>
+                            <td style="padding:12px 16px;color:var(--n-700);">{{ $app->job->company->company_name ?? 'None' }}</td>
+                            <td style="padding:12px 16px;color:var(--n-700);">{{ $app->job->title ?? 'None' }}</td>
+                            <td style="padding:12px 16px;color:var(--n-700);">{{ $app->job->company->company_name ?? 'None' }}</td>
+                            <td style="padding:12px 16px;text-align:center;color:var(--n-500);">{{ $app->updated_at->format('M d, Y') }}</td>
                         </tr>
                         @endforeach
                     </tbody>
                 </table>
             </div>
             @if($placedApplications->hasPages())
-            <div class="d-flex justify-content-between align-items-center px-3 py-3" style="border-top:1px solid #f0f9f6;">
-                <div style="font-size:12px;color:#888;">
+            <div class="d-flex justify-content-between align-items-center px-3 py-3" style="border-top:1px solid var(--n-50);">
+                <div style="font-size:12px;color:var(--n-500);">
                     Showing {{ $placedApplications->firstItem() }}–{{ $placedApplications->lastItem() }} of {{ $placedApplications->total() }} results
                 </div>
                 <nav>
                     <ul class="pagination pagination-sm mb-0 gap-1">
                         <li class="page-item {{ $placedApplications->onFirstPage() ? 'disabled' : '' }}">
-                            <a class="page-link rounded-2" style="border-color:#a8e6cf;color:#2d7a5f;" href="{{ $placedApplications->previousPageUrl() }}"><i class="bi bi-chevron-left"></i></a>
+                            <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $placedApplications->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
                         </li>
                         @foreach($placedApplications->getUrlRange(1, $placedApplications->lastPage()) as $page => $url)
                         <li class="page-item {{ $page == $placedApplications->currentPage() ? 'active' : '' }}">
                             <a class="page-link rounded-2"
-                               style="{{ $page == $placedApplications->currentPage() ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);border-color:transparent;color:#fff;' : 'border-color:#a8e6cf;color:#2d7a5f;' }}"
+                               style="{{ $page == $placedApplications->currentPage() ? 'background:var(--g-600);border-color:transparent;color:#fff;' : 'border-color:var(--n-200);color:var(--g-700);' }}"
                                href="{{ $url }}">{{ $page }}</a>
                         </li>
                         @endforeach
                         <li class="page-item {{ !$placedApplications->hasMorePages() ? 'disabled' : '' }}">
-                            <a class="page-link rounded-2" style="border-color:#a8e6cf;color:#2d7a5f;" href="{{ $placedApplications->nextPageUrl() }}"><i class="bi bi-chevron-right"></i></a>
+                            <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $placedApplications->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
                         </li>
                     </ul>
                 </nav>
@@ -957,8 +1202,8 @@ if ($staffRole !== 'sra') {
 @elseif(request('tab') === 'top_employers')
 
     <div class="card border-0 shadow-sm rounded-3 p-3 mb-3">
-        <div class="fw-semibold mb-2" style="color:#2d7a5f;font-size:14px;">
-            <i class="bi bi-building-fill me-2"></i>Top 5 Employers by In-House Interviews
+        <div class="fw-semibold mb-2" style="color:var(--g-700);font-size:14px;">
+            <i class="ph-fill ph-buildings me-2"></i>Top 5 Employers by In-House Interviews
         </div>
         <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
             <div class="btn-group btn-group-sm" role="group" aria-label="Top employers filter">
@@ -979,7 +1224,9 @@ if ($staffRole !== 'sra') {
                 </select>
             @endif
         </div>
-        @php($topEmployers = $topEmployersByOfficeBasedInterviews ?? collect())
+        @php
+            $topEmployers = $topEmployersByCompanyInterviews ?? collect();
+        @endphp
         @if($topEmployers->isEmpty())
             <div class="text-muted small">No in-house interview data found for this period.</div>
         @else
@@ -987,17 +1234,17 @@ if ($staffRole !== 'sra') {
                 <table class="table table-sm mb-0">
                     <thead>
                         <tr>
-                            <th style="background:#f0fdf9;color:#2d7a5f;border:none;padding:8px 10px;">#</th>
-                            <th style="background:#f0fdf9;color:#2d7a5f;border:none;padding:8px 10px;">Employer</th>
-                            <th style="background:#f0fdf9;color:#2d7a5f;border:none;padding:8px 10px;text-align:center;">In-House Interviews</th>
+                            <th style="background:var(--n-50);color:var(--g-700);border:none;padding:8px 10px;">#</th>
+                            <th style="background:var(--n-50);color:var(--g-700);border:none;padding:8px 10px;">Employer</th>
+                            <th style="background:var(--n-50);color:var(--g-700);border:none;padding:8px 10px;text-align:center;">In-House Interviews</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($topEmployers as $index => $entry)
                             <tr style="font-size:13px;">
-                                <td style="padding:8px 10px;color:#888;">{{ $index + 1 }}</td>
-                                <td style="padding:8px 10px;color:#2d7a5f;font-weight:600;">{{ $entry['employer']->company_name ?? 'Unknown Employer' }}</td>
-                                <td style="padding:8px 10px;text-align:center;color:#555;">{{ $entry['interview_count'] }}</td>
+                                <td style="padding:8px 10px;color:var(--n-500);">{{ $index + 1 }}</td>
+                                <td style="padding:8px 10px;color:var(--g-700);font-weight:600;">{{ $entry['employer']->company_name ?? 'Unknown Employer' }}</td>
+                                <td style="padding:8px 10px;text-align:center;color:var(--n-700);">{{ $entry['interview_count'] }}</td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -1015,8 +1262,8 @@ if ($staffRole !== 'sra') {
 
     @if($solicitedJobs->isEmpty())
         <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-            <i class="bi bi-inbox" style="font-size:48px;color:#c0e8dc;"></i>
-            <div class="mt-3 fw-semibold" style="color:#2d7a5f;">No job vacancies solicited this month</div>
+            <i class="ph ph-tray" style="font-size:48px;color:var(--n-300);"></i>
+            <div class="mt-3 fw-semibold" style="color:var(--g-700);">No job vacancies solicited this month</div>
         </div>
     @else
         <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
@@ -1024,45 +1271,45 @@ if ($staffRole !== 'sra') {
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Job Title</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Company</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Slots</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Requirements</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Job Title</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Company</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Slots</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Requirements</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($solicitedJobs as $i => $job)
                         <tr style="font-size:13px;">
-                            <td style="padding:12px 16px;color:#888;">{{ $solicitedJobs->firstItem() + $i }}</td>
-                            <td style="padding:12px 16px;font-weight:600;color:#2d7a5f;">{{ $job->title }}</td>
-                            <td style="padding:12px 16px;color:#555;">{{ $job->company->company_name ?? 'None' }}</td>
-                            <td style="padding:12px 16px;text-align:center;color:#555;">{{ $job->slots }}</td>
-                            <td style="padding:12px 16px;color:#555;">{{ $job->education_required ?? 'Any' }}, {{ $job->experience_months ?? 0 }} mo. exp.</td>
+                            <td style="padding:12px 16px;color:var(--n-500);">{{ $solicitedJobs->firstItem() + $i }}</td>
+                            <td style="padding:12px 16px;font-weight:600;color:var(--g-700);">{{ $job->title }}</td>
+                            <td style="padding:12px 16px;color:var(--n-700);">{{ $job->company->company_name ?? 'None' }}</td>
+                            <td style="padding:12px 16px;text-align:center;color:var(--n-700);">{{ $job->slots }}</td>
+                            <td style="padding:12px 16px;color:var(--n-700);">{{ $job->education_required ?? 'Any' }}, {{ $job->experience_months ?? 0 }} mo. exp.</td>
                         </tr>
                         @endforeach
                     </tbody>
                 </table>
             </div>
             @if($solicitedJobs->hasPages())
-            <div class="d-flex justify-content-between align-items-center px-3 py-3" style="border-top:1px solid #f0f9f6;">
-                <div style="font-size:12px;color:#888;">
+            <div class="d-flex justify-content-between align-items-center px-3 py-3" style="border-top:1px solid var(--n-50);">
+                <div style="font-size:12px;color:var(--n-500);">
                     Showing {{ $solicitedJobs->firstItem() }}–{{ $solicitedJobs->lastItem() }} of {{ $solicitedJobs->total() }} results
                 </div>
                 <nav>
                     <ul class="pagination pagination-sm mb-0 gap-1">
                         <li class="page-item {{ $solicitedJobs->onFirstPage() ? 'disabled' : '' }}">
-                            <a class="page-link rounded-2" style="border-color:#a8e6cf;color:#2d7a5f;" href="{{ $solicitedJobs->previousPageUrl() }}"><i class="bi bi-chevron-left"></i></a>
+                            <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $solicitedJobs->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
                         </li>
                         @foreach($solicitedJobs->getUrlRange(1, $solicitedJobs->lastPage()) as $page => $url)
                         <li class="page-item {{ $page == $solicitedJobs->currentPage() ? 'active' : '' }}">
                             <a class="page-link rounded-2"
-                               style="{{ $page == $solicitedJobs->currentPage() ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);border-color:transparent;color:#fff;' : 'border-color:#a8e6cf;color:#2d7a5f;' }}"
+                               style="{{ $page == $solicitedJobs->currentPage() ? 'background:var(--g-600);border-color:transparent;color:#fff;' : 'border-color:var(--n-200);color:var(--g-700);' }}"
                                href="{{ $url }}">{{ $page }}</a>
                         </li>
                         @endforeach
                         <li class="page-item {{ !$solicitedJobs->hasMorePages() ? 'disabled' : '' }}">
-                            <a class="page-link rounded-2" style="border-color:#a8e6cf;color:#2d7a5f;" href="{{ $solicitedJobs->nextPageUrl() }}"><i class="bi bi-chevron-right"></i></a>
+                            <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $solicitedJobs->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
                         </li>
                     </ul>
                 </nav>
@@ -1072,12 +1319,16 @@ if ($staffRole !== 'sra') {
     @endif
 
 {{-- ── TAB 4: JOB APPLICANTS REFERRED ── --}}
+@elseif(request('tab') === 'employer_report' && $staffRole === 'lra')
+
+    @include('staff.reports._employer')
+
 @elseif(request('tab') === 'referred')
 
     @if(($referredApplications ?? collect())->isEmpty())
         <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-            <i class="bi bi-inbox" style="font-size:48px;color:#c0e8dc;"></i>
-            <div class="mt-3 fw-semibold" style="color:#2d7a5f;">No referred applicants found</div>
+            <i class="ph ph-tray" style="font-size:48px;color:var(--n-300);"></i>
+            <div class="mt-3 fw-semibold" style="color:var(--g-700);">No referred applicants found</div>
         </div>
     @else
         <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
@@ -1085,56 +1336,54 @@ if ($staffRole !== 'sra') {
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Jobseeker</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Job Title</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Company</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Status</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Date</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Jobseeker</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Job Title</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Company</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Status</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Date</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($referredApplications ?? collect() as $i => $app)
                         <tr style="font-size:13px;">
-                            <td style="padding:12px 16px;color:#888;">{{ ($referredApplications ?? collect())->firstItem() + $i }}</td>
+                            <td style="padding:12px 16px;color:var(--n-500);">{{ ($referredApplications ?? collect())->firstItem() + $i }}</td>
                             <td style="padding:12px 16px;">
-                                <div class="fw-semibold" style="color:#2d7a5f;">{{ trim(($app->jobseeker->first_name ?? '') . ' ' . ($app->jobseeker->surname ?? '')) ?: 'None' }}</div>
-                                <div style="font-size:11px;color:#888;">{{ $app->jobseeker->user->email ?? 'None' }}</div>
+                                <div class="fw-semibold" style="color:var(--g-700);">{{ trim(($app->jobseeker->first_name ?? '') . ' ' . ($app->jobseeker->surname ?? '')) ?: 'None' }}</div>
+                                <div style="font-size:11px;color:var(--n-500);">{{ $app->jobseeker->user->email ?? 'None' }}</div>
                             </td>
-                            <td style="padding:12px 16px;color:#555;">{{ $app->job->title ?? 'None' }}</td>
-                            <td style="padding:12px 16px;color:#555;">{{ $app->job->company->company_name ?? 'None' }}</td>
+                            <td style="padding:12px 16px;color:var(--n-700);">{{ $app->job->title ?? 'None' }}</td>
+                            <td style="padding:12px 16px;color:var(--n-700);">{{ $app->job->company->company_name ?? 'None' }}</td>
                             <td style="padding:12px 16px;text-align:center;">
-                                <span class="badge fw-semibold"
-                                    style="background:{{ $app->status === 'waiting' ? '#f59e0b' : '#e05252' }};
-                                           font-size:11px;padding:4px 10px;border-radius:20px;">
+                                <span class="fw-semibold" style="color:{{ $app->status === 'waiting' ? 'var(--warn)' : 'var(--danger)' }};font-size:11px;">
                                     {{ ucfirst($app->status) }}
                                 </span>
                             </td>
-                            <td style="padding:12px 16px;text-align:center;color:#888;">{{ $app->updated_at->format('M d, Y') }}</td>
+                            <td style="padding:12px 16px;text-align:center;color:var(--n-500);">{{ $app->updated_at->format('M d, Y') }}</td>
                         </tr>
                         @endforeach
                     </tbody>
                 </table>
             </div>
             @if(($referredApplications ?? collect())->hasPages())
-            <div class="d-flex justify-content-between align-items-center px-3 py-3" style="border-top:1px solid #f0f9f6;">
-                <div style="font-size:12px;color:#888;">
+            <div class="d-flex justify-content-between align-items-center px-3 py-3" style="border-top:1px solid var(--n-50);">
+                <div style="font-size:12px;color:var(--n-500);">
                     Showing {{ ($referredApplications ?? collect())->firstItem() }}–{{ ($referredApplications ?? collect())->lastItem() }} of {{ ($referredApplications ?? collect())->total() }} results
                 </div>
                 <nav>
                     <ul class="pagination pagination-sm mb-0 gap-1">
                         <li class="page-item {{ ($referredApplications ?? collect())->onFirstPage() ? 'disabled' : '' }}">
-                            <a class="page-link rounded-2" style="border-color:#a8e6cf;color:#2d7a5f;" href="{{ ($referredApplications ?? collect())->previousPageUrl() }}"><i class="bi bi-chevron-left"></i></a>
+                            <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ ($referredApplications ?? collect())->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
                         </li>
                         @foreach(($referredApplications ?? collect())->getUrlRange(1, ($referredApplications ?? collect())->lastPage()) as $page => $url)
                         <li class="page-item {{ $page == $referredApplications->currentPage() ? 'active' : '' }}">
                             <a class="page-link rounded-2"
-                               style="{{ $page == $referredApplications->currentPage() ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);border-color:transparent;color:#fff;' : 'border-color:#a8e6cf;color:#2d7a5f;' }}"
+                               style="{{ $page == $referredApplications->currentPage() ? 'background:var(--g-600);border-color:transparent;color:#fff;' : 'border-color:var(--n-200);color:var(--g-700);' }}"
                                href="{{ $url }}">{{ $page }}</a>
                         </li>
                         @endforeach
                         <li class="page-item {{ !$referredApplications->hasMorePages() ? 'disabled' : '' }}">
-                            <a class="page-link rounded-2" style="border-color:#a8e6cf;color:#2d7a5f;" href="{{ $referredApplications->nextPageUrl() }}"><i class="bi bi-chevron-right"></i></a>
+                            <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $referredApplications->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
                         </li>
                     </ul>
                 </nav>
@@ -1142,6 +1391,168 @@ if ($staffRole !== 'sra') {
             @endif
         </div>
     @endif
+
+{{-- ── TAB 5: ARCHIVED JOB POSTINGS ── --}}
+{{-- ── IN-HOUSE SCHEDULES ──
+     Who was given a room and who was turned down. Both desks answer for their
+     own side: the LRA for local employers, the SRA for overseas ones. --}}
+@elseif(request('tab') === 'schedules')
+
+    @php $ihRows = $inhouseReport ?? null; @endphp
+
+    @if(!$ihRows || $ihRows->total() === 0)
+        <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
+            <i class="ph ph-calendar-x" style="font-size:48px;color:var(--n-300);"></i>
+            <div class="mt-3 fw-semibold" style="color:var(--g-700);">No in-house schedule request yet</div>
+        </div>
+    @else
+    <div class="card border-0 shadow-sm rounded-3">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="inhouseReportTable">
+                <thead>
+                    <tr>
+                        <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 14px;">#</th>
+                        <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 14px;">Company Name</th>
+                        <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 14px;">Requested Date</th>
+                        <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 14px;">Requested Time</th>
+                        <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 14px;">Confirmed Date</th>
+                        <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 14px;">Venue</th>
+                        <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 14px;text-align:center;">Applicants</th>
+                        <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 14px;">Schedule Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($ihRows as $i => $sc)
+                    <tr>
+                        <td style="font-size:13px;padding:12px 14px;color:var(--n-500);">{{ $ihRows->firstItem() + $i }}</td>
+                        <td style="font-size:13px;padding:12px 14px;font-weight:600;color:var(--g-700);">
+                            {{ $sc->employer->company_name ?? 'None' }}
+                        </td>
+                        <td style="font-size:13px;padding:12px 14px;color:var(--n-700);">
+                            {{ $sc->schedule_window_label ?? ($sc->preferred_date?->format('M d, Y') ?? 'Not set') }}
+                        </td>
+                        <td style="font-size:13px;padding:12px 14px;color:var(--n-700);">
+                            {{ $sc->preferred_time ? \Carbon\Carbon::parse($sc->preferred_time)->format('h:i A') : 'Not set' }}
+                        </td>
+                        <td style="font-size:13px;padding:12px 14px;color:var(--n-700);">
+                            {{ $sc->confirmed_date ? \Carbon\Carbon::parse($sc->confirmed_date)->format('M d, Y') : '—' }}
+                        </td>
+                        <td style="font-size:13px;padding:12px 14px;color:var(--n-700);">
+                            {{ $sc->venue_type === 'other' ? ($sc->venue_address ?: 'Other venue') : 'PESO Office' }}
+                        </td>
+                        <td style="font-size:13px;padding:12px 14px;text-align:center;color:var(--n-700);">{{ $sc->num_applicants }}</td>
+                        <td style="font-size:13px;padding:12px 14px;">
+                            @php
+                                // The office either gave them a day, refused
+                                // one, or has not answered — say which.
+                                [$scLabel, $scColor, $scIcon, $scNote] = match ($sc->status) {
+                                    'accepted' => ['Accepted', 'var(--g-600)', 'ph-check-circle',
+                                        $sc->confirmed_time
+                                            ? 'at ' . \Carbon\Carbon::parse($sc->confirmed_time)->format('h:i A')
+                                            : ''],
+                                    'rejected' => ['Declined', 'var(--danger)', 'ph-x-circle',
+                                        $sc->rejection_reason ?: 'No reason given'],
+                                    default    => ['Waiting for a date', 'var(--warn)', 'ph-clock',
+                                        'The office has not answered yet'],
+                                };
+                            @endphp
+                            <span style="color:{{ $scColor }};font-weight:600;">
+                                <i class="ph-fill {{ $scIcon }} me-1"></i>{{ $scLabel }}
+                            </span>
+                            @if($scNote)
+                                <div style="font-size:11px;color:var(--n-500);margin-top:2px;">{{ $scNote }}</div>
+                            @endif
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
+        <div style="font-size:12px;color:var(--n-500);">
+            Showing {{ $ihRows->firstItem() }}–{{ $ihRows->lastItem() }} of {{ $ihRows->total() }} request(s)
+        </div>
+        {{ $ihRows->links() }}
+    </div>
+    @endif
+
+{{-- ── COMPANY INTERVIEWS (SRA) ──
+     The overseas half of the same list the Job Vacancy desk keeps for local
+     employers. The employer runs these at their own place, so this list is the
+     only record the office has of them. --}}
+@elseif(request('tab') === 'company_interview' && $staffRole === 'sra')
+
+    @php $sraCi = $companyInterviews ?? null; @endphp
+
+    @if(!$sraCi || $sraCi->total() === 0)
+        <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
+            <i class="ph ph-video-camera" style="font-size:48px;color:var(--n-300);"></i>
+            <div class="mt-3 fw-semibold" style="color:var(--g-700);">No company interview from an overseas employer yet</div>
+        </div>
+    @else
+    <div class="card border-0 shadow-sm rounded-3">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="sraCompanyInterviewTable">
+                <thead>
+                    <tr>
+                        <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 14px;">#</th>
+                        <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 14px;">Company Name</th>
+                        <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 14px;">Job Title</th>
+                        <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 14px;">Interview Date</th>
+                        <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 14px;">Date Posted</th>
+                        <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 14px;">Application Deadline</th>
+                        <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 14px;text-align:center;">Slots</th>
+                        <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 14px;">Interview Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($sraCi as $i => $ci)
+                    <tr>
+                        <td style="font-size:13px;padding:12px 14px;color:var(--n-500);">{{ $sraCi->firstItem() + $i }}</td>
+                        <td style="font-size:13px;padding:12px 14px;font-weight:600;color:var(--g-700);">
+                            {{ $ci->company->company_name ?? 'None' }}
+                        </td>
+                        <td style="font-size:13px;padding:12px 14px;color:var(--n-700);">{{ $ci->title }}</td>
+                        <td style="font-size:13px;padding:12px 14px;color:var(--n-700);">
+                            {{ $ci->preferred_date?->format('M d, Y') ?? 'Not set' }}
+                        </td>
+                        <td style="font-size:13px;padding:12px 14px;color:var(--n-500);">
+                            {{ $ci->created_at?->format('M d, Y') ?? '—' }}
+                        </td>
+                        <td style="font-size:13px;padding:12px 14px;color:var(--n-500);">
+                            {{ $ci->deadline?->format('M d, Y') ?? 'None' }}
+                        </td>
+                        <td style="font-size:13px;padding:12px 14px;text-align:center;color:var(--n-700);">{{ $ci->slots }}</td>
+                        <td style="font-size:13px;padding:12px 14px;">
+                            @php
+                                [$sciLabel, $sciColor, $sciIcon] = match ($ci->posting_status) {
+                                    'approved' => ['Approved', 'var(--g-600)',  'ph-check-circle'],
+                                    'rejected' => ['Declined', 'var(--danger)', 'ph-x-circle'],
+                                    default    => ['Pending',  'var(--warn)',   'ph-clock'],
+                                };
+                            @endphp
+                            <span style="color:{{ $sciColor }};font-weight:600;">
+                                <i class="ph-fill {{ $sciIcon }} me-1"></i>{{ $sciLabel }}
+                            </span>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
+        <div style="font-size:12px;color:var(--n-500);">
+            Showing {{ $sraCi->firstItem() }}–{{ $sraCi->lastItem() }} of {{ $sraCi->total() }} interview(s)
+        </div>
+        {{ $sraCi->links() }}
+    </div>
+    @endif
+
+@elseif($tab === 'archived')
+
+    @include('staff.reports._archived')
 
 @endif
 
@@ -1197,10 +1608,22 @@ if ($staffRole !== 'sra') {
     }
 
     function changeAttendanceFilter(type) {
+        changeAttendanceParam('attendance_filter', type);
+    }
+
+    function changeAttendanceParam(key, value) {
         const url = new URL(window.location.href);
-        url.searchParams.set('attendance_filter', type);
+        url.searchParams.set(key, value);
+        url.searchParams.set('page', 1);
         window.location.href = url.toString();
     }
+
+    let attendanceSearchTimer;
+    document.getElementById('attendanceSearchInput')?.addEventListener('input', function() {
+        clearTimeout(attendanceSearchTimer);
+        const value = this.value.trim();
+        attendanceSearchTimer = setTimeout(() => changeAttendanceParam('attendance_search', value), 500);
+    });
 
     function changeRegisteredView(val) {
         const url = new URL(window.location.href);

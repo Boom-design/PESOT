@@ -17,14 +17,16 @@ class Application extends Model
     'job_id',
     'jobseeker_id',
     'status',
+    'hired_at',
     'match_percentage',
     'inhouse_participation',
     'inhouse_participation_notified_at',
-    'office_participation',
+    'company_interview_participation',
 ];
 
     protected $casts = [
         'inhouse_participation_notified_at' => 'datetime',
+        'hired_at' => 'datetime',
     ];
 
     // Relationship: Application belongs to a Job

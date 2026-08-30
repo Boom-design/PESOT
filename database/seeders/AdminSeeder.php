@@ -14,7 +14,10 @@ class AdminSeeder extends Seeder
             ['email' => 'admin@peso.gov.ph'],
             [
                 'name'     => 'PESO Admin',
-                'password' => Hash::make('admin123'),
+                // Meets PasswordPolicy: 8+ characters, mixed case, a digit and a
+                // symbol. The old 'admin123' did not, so the account it created
+                // could not have been set through any of the app's own forms.
+                'password' => Hash::make('Admin123#'),
                 'role'     => 'admin',
                 'status'   => 'approved',
                 'phone'    => null,

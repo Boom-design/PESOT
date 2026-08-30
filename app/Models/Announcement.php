@@ -12,7 +12,7 @@ class Announcement extends Model
         'jobseeker_id', 'employer_id', 'staff_id',
         'type', 'title', 'message', 'is_read',
         'reference_type', 'reference_id',
-        'sms_status', 'sms_sent_at',
+        'sms_status', 'sms_sent_at', 'sms_error',
     ];
 
     protected $casts = [

@@ -1,0 +1,1340 @@
+/* ==========================================================================
+   PESO Design System
+   Single source of truth for colors, typography, and shared components.
+
+   Loaded after the Bootstrap CDN link so these rules win over Bootstrap's
+   defaults. Note that it cannot override inline style="" attributes — those
+   are remapped in the views themselves.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Tokens
+   -------------------------------------------------------------------------- */
+
+:root {
+    /* Brand green — #3AA346 is the approved brand color and is the dominant
+       surface (sidebar, footer). One hue, ramped; no second green anywhere. */
+    --g-50:  #F1FBF2;
+    --g-100: #D9F4DC;
+    --g-200: #B3E6B8;
+    --g-300: #80D189;
+    --g-400: #54C261;
+    --g-500: #3AA346;   /* APPROVED brand green */
+    --g-600: #28812F;   /* buttons — carries white text at 4.9:1 */
+    --g-700: #1D6F27;   /* green text on light — 6.3:1 on white */
+    --g-800: #14551B;
+    --g-900: #0C3911;
+
+    /* Neutrals, tinted a hair toward the brand hue so they sit with it.
+       Canvas is off-white, never pure white. */
+    --n-0:   #FFFFFF;
+    --n-25:  #FAFCFA;
+    --n-50:  #F4F7F4;
+    --n-100: #EAEFEA;
+    --n-200: #D8E0D9;
+    --n-300: #BAC5BB;
+    --n-400: #909B91;
+    --n-500: #5B655C;
+    --n-700: #363D37;
+    --n-900: #121612;
+
+    /* Semantic — exactly one of each state. */
+    --danger:     #C4271B;
+    --danger-bg:  #FEF3F2;
+    --danger-br:  #FECDCA;
+
+    --warn:       #B54708;
+    --warn-bg:    #FFFAEB;
+    --warn-br:    #FEDF89;
+    --warn-solid: #F79009;
+
+    --info:       #175CD3;
+    --info-bg:    #EFF8FF;
+    --info-br:    #B2DDFF;
+
+    --success:    var(--g-700);
+    --success-bg: var(--g-50);
+    --success-br: var(--g-200);
+
+    /* Elevation — flat and tight. */
+    --sh-sm: 0 1px 2px rgba(12, 21, 18, .06);
+    --sh-md: 0 1px 3px rgba(12, 21, 18, .08), 0 1px 2px rgba(12, 21, 18, .04);
+    --sh-lg: 0 4px 12px rgba(12, 21, 18, .08);
+
+    /* Radius */
+    --r-sm:   6px;
+    --r-md:   8px;
+    --r-lg:   12px;
+    --r-full: 999px;
+
+    /* Footer sits on its own green rather than matching the sidebar. */
+    --footer-bg: #4C8E06;
+
+    /* Layout */
+    --sidebar-w: 240px;
+    --topbar-h:  60px;
+
+    /* Focus */
+    --ring: 0 0 0 3px rgba(58, 163, 70, .35);
+
+    /* Legacy aliases. The old variable names are still referenced in a few
+       places; point them at the new ramp so nothing renders unstyled while
+       the remap rolls out portal by portal. */
+    --peso-green:  var(--g-600);
+    --peso-light:  var(--g-500);
+    --peso-dark:   var(--n-900);
+    --peso-border: var(--n-200);
+    --peso-bg:     var(--n-50);
+}
+
+/* --------------------------------------------------------------------------
+   2. Base
+   -------------------------------------------------------------------------- */
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--n-50);
+    color: var(--n-900);
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* No text-shadow. The old global shadow blurred every character in the
+       system and was the single largest contributor to the amateur look. */
+    text-shadow: none;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: var(--n-900);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+a { text-decoration: none; }
+
+/* Type scale */
+.t-display { font-size: 24px; font-weight: 700; line-height: 1.25; }
+.t-h1      { font-size: 20px; font-weight: 700; line-height: 1.3; }
+.t-h2      { font-size: 16px; font-weight: 600; line-height: 1.4; }
+.t-body    { font-size: 14px; font-weight: 400; }
+.t-sm      { font-size: 13px; font-weight: 400; }
+.t-caption { font-size: 12px; font-weight: 400; color: var(--n-500); }
+.t-label   { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+
+.t-muted   { color: var(--n-500); }
+.t-brand   { color: var(--g-700); }
+
+/* Icons — Phosphor. One size scale, optically aligned to text. */
+[class*="ph-"] { vertical-align: -0.125em; }
+.i-14 { font-size: 14px; }
+.i-16 { font-size: 16px; }
+.i-20 { font-size: 20px; }
+.i-24 { font-size: 24px; }
+
+:focus-visible {
+    outline: none;
+    box-shadow: var(--ring);
+    border-radius: var(--r-sm);
+}
+
+/* --------------------------------------------------------------------------
+   3. Page header
+   -------------------------------------------------------------------------- */
+
+.peso-page-head {
+    margin-bottom: 20px;
+}
+
+.peso-page-head h1,
+.peso-page-title {
+    margin: 0 0 2px;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--n-900);
+}
+
+.peso-page-sub {
+    margin: 0;
+    font-size: 13px;
+    color: var(--n-500);
+}
+
+/* --------------------------------------------------------------------------
+   4. Cards
+   -------------------------------------------------------------------------- */
+
+.peso-card {
+    background: var(--n-0);
+    border: 1px solid var(--n-200);
+    border-radius: var(--r-lg);
+    box-shadow: var(--sh-sm);
+}
+
+.peso-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--n-200);
+}
+
+.peso-card-header h2,
+.peso-card-title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--n-900);
+}
+
+.peso-card-body { padding: 18px; }
+
+/* Many pages still use Bootstrap's .card. Give it the same surface so the two
+   are indistinguishable, rather than leaving two card looks side by side. */
+.card {
+    background: var(--n-0);
+    border: 1px solid var(--n-200) !important;
+    border-radius: var(--r-lg) !important;
+    box-shadow: var(--sh-sm) !important;
+}
+
+.card-header {
+    background: var(--n-0);
+    border-bottom: 1px solid var(--n-200);
+    font-weight: 600;
+    color: var(--n-900);
+}
+
+/* --------------------------------------------------------------------------
+   5. Stat tiles
+   -------------------------------------------------------------------------- */
+
+.stat-card {
+    height: 100%;
+    padding: 18px;
+    background: var(--n-0);
+    border: 1px solid var(--n-200);
+    border-radius: var(--r-lg);
+    box-shadow: var(--sh-sm);
+    transition: border-color .15s, box-shadow .15s;
+}
+
+/* No translate on hover — layout-shifting hover reads as amateur. */
+.stat-card:hover {
+    border-color: var(--g-200);
+    box-shadow: var(--sh-md);
+}
+
+.stat-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    margin-bottom: 14px;
+    border-radius: var(--r-md);
+    background: var(--g-50);
+    color: var(--g-700);
+    font-size: 20px;
+}
+
+.stat-icon.is-warn   { background: var(--warn-bg);   color: var(--warn); }
+.stat-icon.is-danger { background: var(--danger-bg); color: var(--danger); }
+.stat-icon.is-info   { background: var(--info-bg);   color: var(--info); }
+.stat-icon.is-muted  { background: var(--n-100);     color: var(--n-500); }
+
+.stat-value {
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--n-900);
+    font-variant-numeric: tabular-nums;
+}
+
+.stat-label {
+    margin-top: 3px;
+    font-size: 12px;
+    color: var(--n-500);
+}
+
+/* --------------------------------------------------------------------------
+   6. Tables
+   -------------------------------------------------------------------------- */
+
+.peso-table {
+    width: 100%;
+    margin: 0;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.peso-table thead th {
+    padding: 11px 16px;
+    background: var(--g-100);
+    color: var(--g-700);
+    border-bottom: 1px solid var(--g-200);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    white-space: nowrap;
+    border: none;
+}
+
+.peso-table thead th:first-child { border-top-left-radius: var(--r-lg); }
+.peso-table thead th:last-child  { border-top-right-radius: var(--r-lg); }
+
+.peso-table tbody td {
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--n-700);
+    border-bottom: 1px solid var(--n-100);
+    vertical-align: middle;
+}
+
+.peso-table tbody tr:last-child td { border-bottom: none; }
+.peso-table tbody tr:hover td { background: var(--n-25); }
+
+.peso-table .cell-strong {
+    font-weight: 600;
+    color: var(--n-900);
+}
+
+.peso-table .cell-num {
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------------------------
+   7. Buttons
+   -------------------------------------------------------------------------- */
+
+.btn-peso,
+.btn-peso-outline,
+.btn-peso-ghost,
+.btn-peso-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 8px 16px;
+    border-radius: var(--r-md);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, color .15s;
+}
+
+/* --g-600 rather than the brand --g-500: the brand green is 3.2:1 against
+   white, which is under AA for 13px button text. --g-600 reaches 4.4:1. */
+.btn-peso {
+    background: var(--g-600);
+    border: 1px solid var(--g-600);
+    color: #fff;
+}
+.btn-peso:hover,
+.btn-peso:focus {
+    background: var(--g-700);
+    border-color: var(--g-700);
+    color: #fff;
+}
+
+.btn-peso-outline {
+    background: var(--n-0);
+    border: 1px solid var(--n-200);
+    color: var(--n-700);
+}
+.btn-peso-outline:hover,
+.btn-peso-outline:focus {
+    background: var(--n-50);
+    border-color: var(--n-300);
+    color: var(--n-900);
+}
+
+.btn-peso-ghost {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--n-500);
+}
+.btn-peso-ghost:hover {
+    background: var(--n-100);
+    color: var(--n-900);
+}
+
+.btn-peso-danger {
+    background: var(--n-0);
+    border: 1px solid var(--danger-br);
+    color: var(--danger);
+}
+.btn-peso-danger:hover {
+    background: var(--danger-bg);
+    color: var(--danger);
+}
+
+.btn-peso-sm,
+.btn-peso.btn-sm,
+.btn-peso-outline.btn-sm,
+.btn-peso-danger.btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.btn-peso:disabled,
+.btn-peso.disabled,
+.btn-peso-outline:disabled,
+.btn-peso-outline.disabled {
+    opacity: .5;
+    pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   8. Badges
+   -------------------------------------------------------------------------- */
+
+/* A shape behind text says "press me". These are status words and tags, not
+   controls, so they carry colour only — no pill, no border, no fill. */
+
+.badge-peso {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.5;
+    white-space: nowrap;
+    color: var(--n-700);
+}
+
+.badge-peso.is-success { color: var(--success); }
+.badge-peso.is-warn    { color: var(--warn); }
+.badge-peso.is-danger  { color: var(--danger); }
+.badge-peso.is-info    { color: var(--info); }
+.badge-peso.is-neutral { color: var(--n-500); }
+
+/* Was the solid variant; now simply the strongest colour of the set. */
+.badge-peso.is-solid   { color: var(--g-600); }
+
+/* --------------------------------------------------------------------------
+   9. Forms
+   -------------------------------------------------------------------------- */
+
+.peso-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--n-700);
+}
+
+.peso-input,
+.peso-select,
+textarea.peso-input {
+    width: 100%;
+    padding: 9px 12px;
+    background: var(--n-0);
+    border: 1px solid var(--n-200);
+    border-radius: var(--r-md);
+    font-size: 13px;
+    color: var(--n-900);
+    transition: border-color .15s, box-shadow .15s;
+}
+
+.peso-input::placeholder { color: var(--n-400); }
+
+.peso-input:focus,
+.peso-select:focus {
+    outline: none;
+    border-color: var(--g-500);
+    box-shadow: var(--ring);
+}
+
+.peso-input:disabled,
+.peso-input[readonly] {
+    background: var(--n-50);
+    color: var(--n-500);
+}
+
+.peso-input.is-invalid { border-color: var(--danger-br); }
+
+.peso-help  { margin-top: 5px; font-size: 11px; color: var(--n-500); }
+.peso-error { margin-top: 5px; font-size: 11px; color: var(--danger); }
+
+/* Search group */
+.peso-search {
+    display: flex;
+    align-items: stretch;
+    max-width: 360px;
+    background: var(--n-0);
+    border: 1px solid var(--n-200);
+    border-radius: var(--r-md);
+    overflow: hidden;
+}
+.peso-search:focus-within { border-color: var(--g-500); box-shadow: var(--ring); }
+.peso-search .peso-search-icon {
+    display: flex;
+    align-items: center;
+    padding: 0 10px 0 12px;
+    color: var(--n-400);
+}
+.peso-search input {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 10px 8px 0;
+    border: none;
+    outline: none;
+    font-size: 13px;
+    color: var(--n-900);
+    background: transparent;
+}
+
+/* --------------------------------------------------------------------------
+   10. Tabs
+   -------------------------------------------------------------------------- */
+
+.peso-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 4px;
+    margin-bottom: 20px;
+    background: var(--n-100);
+    border-radius: var(--r-md);
+}
+
+.peso-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: var(--r-sm);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--n-500);
+    background: transparent;
+    border: none;
+    transition: background .15s, color .15s;
+}
+
+.peso-tab:hover { color: var(--n-900); }
+
+.peso-tab.active {
+    background: var(--n-0);
+    color: var(--g-700);
+    font-weight: 600;
+    box-shadow: var(--sh-sm);
+}
+
+/* --------------------------------------------------------------------------
+   11. Pagination
+   -------------------------------------------------------------------------- */
+
+.peso-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 18px;
+    border-top: 1px solid var(--n-100);
+}
+
+.peso-pagination .peso-pagination-info {
+    font-size: 12px;
+    color: var(--n-500);
+}
+
+.peso-pagination ul {
+    display: flex;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.peso-pagination a,
+.peso-pagination span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
+    border: 1px solid var(--n-200);
+    border-radius: var(--r-sm);
+    background: var(--n-0);
+    font-size: 13px;
+    color: var(--n-700);
+}
+
+.peso-pagination a:hover { background: var(--n-50); border-color: var(--n-300); }
+
+.peso-pagination .active a,
+.peso-pagination .active span {
+    background: var(--g-600);
+    border-color: var(--g-600);
+    color: #fff;
+    font-weight: 600;
+}
+
+.peso-pagination .disabled a,
+.peso-pagination .disabled span {
+    color: var(--n-300);
+    pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   12. Empty state
+   -------------------------------------------------------------------------- */
+
+.peso-empty {
+    padding: 48px 24px;
+    text-align: center;
+}
+
+.peso-empty i {
+    font-size: 40px;
+    color: var(--n-300);
+}
+
+.peso-empty-title {
+    margin-top: 14px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--n-700);
+}
+
+.peso-empty-text {
+    margin-top: 4px;
+    font-size: 13px;
+    color: var(--n-500);
+}
+
+/* --------------------------------------------------------------------------
+   12b. Quick links + activity rows
+   -------------------------------------------------------------------------- */
+
+.quick-link {
+    display: block;
+    height: 100%;
+    padding: 16px 12px;
+    text-align: center;
+    background: var(--n-0);
+    border: 1px solid var(--n-200);
+    border-radius: var(--r-md);
+    transition: background .15s, border-color .15s;
+}
+
+.quick-link:hover {
+    background: var(--g-50);
+    border-color: var(--g-200);
+}
+
+.quick-link i {
+    font-size: 24px;
+    color: var(--g-600);
+}
+
+.quick-link-title {
+    margin-top: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--n-900);
+}
+
+.quick-link-sub {
+    font-size: 11.5px;
+    color: var(--n-500);
+}
+
+.activity-row {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    background: var(--n-50);
+    border: 1px solid var(--n-200);
+    border-radius: var(--r-md);
+}
+
+.activity-row > i {
+    font-size: 18px;
+    color: var(--g-600);
+    flex-shrink: 0;
+}
+
+.activity-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--n-900);
+}
+
+.activity-meta {
+    font-size: 12px;
+    color: var(--n-500);
+}
+
+.activity-dot { margin: 0 5px; color: var(--n-300); }
+
+/* --------------------------------------------------------------------------
+   13. Notice / alert
+   -------------------------------------------------------------------------- */
+
+.peso-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: var(--r-md);
+    border: 1px solid var(--n-200);
+    background: var(--n-50);
+    font-size: 13px;
+    color: var(--n-700);
+}
+
+.peso-notice i { font-size: 17px; line-height: 1.3; flex-shrink: 0; }
+
+.peso-notice.is-success { background: var(--success-bg); border-color: var(--success-br); color: var(--g-800); }
+.peso-notice.is-success i { color: var(--g-600); }
+.peso-notice.is-warn    { background: var(--warn-bg);    border-color: var(--warn-br);    color: var(--warn); }
+.peso-notice.is-warn i    { color: var(--warn-solid); }
+.peso-notice.is-danger  { background: var(--danger-bg);  border-color: var(--danger-br);  color: var(--danger); }
+.peso-notice.is-danger i  { color: var(--danger); }
+.peso-notice.is-info    { background: var(--info-bg);    border-color: var(--info-br);    color: var(--info); }
+.peso-notice.is-info i    { color: var(--info); }
+
+/* --------------------------------------------------------------------------
+   14. Sidebar
+   -------------------------------------------------------------------------- */
+
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    width: var(--sidebar-w);
+    height: 100vh;
+    background: var(--g-500);
+    overflow-y: auto;
+}
+
+.sidebar-brand {
+    padding: 22px 8px 18px;
+    text-align: center;
+    border-bottom: 1px solid rgba(255, 255, 255, .16);
+}
+
+.sidebar-brand img {
+    display: block;
+    width: 104px;
+    height: 104px;
+    margin: 0 auto 12px;
+    object-fit: contain;
+}
+
+/* One line, always. At 12px the word OFFICE wrapped onto a second line and
+   the block read as three lines of text under the logo. The name is a single
+   thing and is easier to read as one; the tagline below it is the second
+   line. nowrap is what guarantees it, the size is what makes it fit. */
+.brand-title {
+    font-size: 9.5px;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: .01em;
+    color: #fff;
+    white-space: nowrap;
+}
+
+.brand-sub {
+    margin-top: 4px;
+    font-size: 10px;
+    white-space: nowrap;
+    font-weight: 500;
+    line-height: 1.4;
+    color: #fff;
+}
+
+.sidebar-nav {
+    flex: 1;
+    padding: 14px 12px;
+}
+
+.sidebar-nav .nav-section {
+    padding: 0 10px;
+    margin: 16px 0 6px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: rgba(255, 255, 255, .95);
+}
+
+.sidebar-nav .nav-section:first-child { margin-top: 0; }
+
+.sidebar-nav ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.sidebar-nav .nav-link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    margin-bottom: 2px;
+    border-radius: var(--r-md);
+    font-size: 13px;
+    font-weight: 500;
+    color: #fff;
+    transition: background .15s, color .15s;
+}
+
+.sidebar-nav .nav-link i {
+    width: 18px;
+    font-size: 17px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+/* Hover and active are deliberately different. In the old layouts they shared
+   one rule, so there was no way to tell which page you were on. Active is an
+   off-white chip, echoing the content surface. */
+.sidebar-nav .nav-link:hover {
+    background: rgba(255, 255, 255, .15);
+    color: #fff;
+}
+
+.sidebar-nav .nav-link.active {
+    background: var(--n-25);
+    color: var(--g-700);
+    font-weight: 600;
+    box-shadow: var(--sh-sm);
+}
+
+.sidebar-nav .nav-link.active::before {
+    content: "";
+    position: absolute;
+    left: -12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 20px;
+    border-radius: 0 3px 3px 0;
+    background: var(--g-800);
+}
+
+.sidebar-nav .nav-link.disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+.sidebar-nav .nav-link.disabled:hover { background: transparent; }
+
+.sidebar-nav .nav-flag {
+    margin-left: auto;
+    padding: 2px 7px;
+    border-radius: var(--r-full);
+    background: rgba(255, 255, 255, .26);
+    font-size: 9px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.sidebar-nav .nav-flag.is-required {
+    background: var(--danger);
+    color: #fff;
+}
+
+/* Red count on a sidebar item that has something waiting for this user —
+   invitations to answer, postings to review. Different job from .nav-flag,
+   which labels a standing state ("Required") and never clears by itself. */
+.sidebar-nav .nav-dot {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: var(--r-full);
+    background: var(--danger);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    /* Ring so the red still reads against the dark sidebar. */
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, .22);
+}
+
+/* The active item is a light chip, so the light ring would vanish into it. */
+.sidebar-nav .nav-link.active .nav-dot { box-shadow: none; }
+
+.sidebar-footer {
+    padding: 12px;
+    border-top: 1px solid rgba(255, 255, 255, .16);
+}
+
+.sidebar-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: var(--r-md);
+    background: rgba(255, 255, 255, .14);
+}
+
+.sidebar-user .avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border-radius: var(--r-full);
+    background: var(--n-0);
+    color: var(--g-700);
+    font-size: 16px;
+    overflow: hidden;
+}
+
+.sidebar-user .avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.sidebar-user .u-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sidebar-user .u-role {
+    font-size: 10px;
+    color: rgba(255, 255, 255, .90);
+}
+
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    background: rgba(18, 22, 18, .45);
+}
+
+/* --------------------------------------------------------------------------
+   15. Topbar + content shell
+   -------------------------------------------------------------------------- */
+
+.topbar {
+    position: fixed;
+    top: 0;
+    left: var(--sidebar-w);
+    right: 0;
+    z-index: 90;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    height: var(--topbar-h);
+    padding: 0 24px;
+    background: var(--n-0);
+    border-bottom: 1px solid var(--n-200);
+}
+
+.topbar .page-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--n-900);
+}
+
+.topbar .hamburger {
+    display: none;
+    background: none;
+    border: none;
+    padding: 6px;
+    font-size: 20px;
+    color: var(--n-700);
+    cursor: pointer;
+}
+
+.icon-btn {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--n-200);
+    border-radius: var(--r-md);
+    background: var(--n-0);
+    color: var(--n-700);
+    font-size: 17px;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+}
+
+.icon-btn:hover { background: var(--n-50); border-color: var(--n-300); }
+
+.notif-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    border-radius: var(--r-full);
+    background: var(--danger);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 17px;
+    text-align: center;
+}
+
+.main-shell {
+    margin-left: var(--sidebar-w);
+    padding-top: var(--topbar-h);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.content-inner {
+    flex: 1;
+    padding: 24px;
+}
+
+.peso-footer {
+    padding: 14px 24px;
+    background: var(--footer-bg);
+    text-align: center;
+    font-size: 11.5px;
+    color: #fff;
+}
+
+/* --------------------------------------------------------------------------
+   16. Dropdowns
+   -------------------------------------------------------------------------- */
+
+.peso-dropdown {
+    padding: 6px;
+    border: 1px solid var(--n-200);
+    border-radius: var(--r-lg);
+    box-shadow: var(--sh-lg);
+    background: var(--n-0);
+}
+
+.peso-dropdown .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 10px;
+    border-radius: var(--r-sm);
+    font-size: 13px;
+    color: var(--n-700);
+}
+
+.peso-dropdown .dropdown-item:hover {
+    background: var(--n-50);
+    color: var(--n-900);
+}
+
+.peso-dropdown .dropdown-item.is-danger { color: var(--danger); }
+.peso-dropdown .dropdown-item.is-danger:hover { background: var(--danger-bg); }
+
+.peso-dropdown .dropdown-divider {
+    margin: 5px 0;
+    border-top: 1px solid var(--n-100);
+}
+
+/* Notification list */
+.notif-dropdown {
+    width: 340px;
+    max-height: 420px;
+    overflow-y: auto;
+    padding: 0;
+}
+
+.notif-dropdown .notif-head {
+    position: sticky;
+    top: 0;
+    padding: 12px 16px;
+    background: var(--n-0);
+    border-bottom: 1px solid var(--n-200);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--n-900);
+}
+
+.notif-dropdown .notif-item {
+    display: block;
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--n-100);
+    font-size: 12.5px;
+    color: var(--n-700);
+}
+
+/* Ang ulohan ug ang "View More" magpabilin nga makita; ang listahan ra ang
+   mo-scroll. Kung ang tibuok dropdown ang mo-scroll, ang "View More" mahulog
+   sa ubos sa sulod ug kinahanglan pa nga i-scroll ayha makita.
+
+   Ang `display: flex` gibutang SA `.show` ra. Ang Bootstrap nagsalig sa
+   display para sa pag-abli ug pagsira sa dropdown (`none` kung sirado,
+   `block` kung abli) — ang pag-flex sa dropdown mismo mopatay sa `none`, ug
+   ang menu dili na gyud masira. */
+.notif-dropdown-pinned.show {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.notif-dropdown-pinned .notif-head,
+.notif-dropdown-pinned .notif-foot { flex: 0 0 auto; }
+
+.notif-dropdown-pinned .notif-scroll {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.notif-dropdown .notif-item:hover { background: var(--n-50); }
+.notif-dropdown .notif-item.unread { background: var(--g-50); }
+.notif-dropdown .notif-item .notif-time { font-size: 11px; color: var(--n-400); }
+
+/* --------------------------------------------------------------------------
+   17. Modals
+   -------------------------------------------------------------------------- */
+
+.modal-content {
+    border: 1px solid var(--n-200);
+    border-radius: var(--r-lg);
+    box-shadow: var(--sh-lg);
+}
+
+.modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--n-200);
+}
+
+.modal-title { font-size: 16px; font-weight: 600; color: var(--n-900); }
+.modal-body  { padding: 20px; }
+
+.modal-footer {
+    padding: 14px 20px;
+    border-top: 1px solid var(--n-200);
+    gap: 8px;
+}
+
+/* --------------------------------------------------------------------------
+   18. Motion
+   -------------------------------------------------------------------------- */
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in   { animation: fadeInUp .35s ease forwards; }
+.fade-in-1 { animation: fadeInUp .35s ease .05s forwards; opacity: 0; }
+.fade-in-2 { animation: fadeInUp .35s ease .10s forwards; opacity: 0; }
+.fade-in-3 { animation: fadeInUp .35s ease .15s forwards; opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+    .fade-in, .fade-in-1, .fade-in-2, .fade-in-3 {
+        animation: none;
+        opacity: 1;
+    }
+}
+
+/* --------------------------------------------------------------------------
+   19. Compatibility aliases
+
+   Class names the existing views already use. Kept so pages keep rendering
+   while the portals migrate one at a time; retire these once every portal
+   uses the canonical names above.
+   -------------------------------------------------------------------------- */
+
+.main-content {
+    margin-left: var(--sidebar-w);
+    padding-top: var(--topbar-h);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.empty-state {
+    padding: 48px 24px;
+    text-align: center;
+}
+
+.empty-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 14px;
+    border-radius: var(--r-full);
+    background: var(--g-50);
+    color: var(--g-600);
+    font-size: 26px;
+}
+
+.empty-state h6 {
+    margin-bottom: 4px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--n-700);
+}
+
+.empty-state p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--n-500);
+}
+
+/* The status of a posting or an application — plain words, coloured. */
+.badge-open,
+.badge-hired    { display: inline-block; font-size: 11px; font-weight: 600; color: var(--success); }
+.badge-closed   { display: inline-block; font-size: 11px; font-weight: 600; color: var(--n-500); }
+.badge-pending  { display: inline-block; font-size: 11px; font-weight: 600; color: var(--warn); }
+.badge-rejected { display: inline-block; font-size: 11px; font-weight: 600; color: var(--danger); }
+
+.alert-peso {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 1px solid var(--n-200);
+    border-radius: var(--r-md);
+    font-size: 13px;
+}
+
+.alert-peso.alert-success,
+.alert-success { background: var(--success-bg); border-color: var(--success-br); color: var(--g-800); }
+.alert-peso.alert-danger,
+.alert-danger  { background: var(--danger-bg);  border-color: var(--danger-br);  color: var(--danger); }
+
+/* --------------------------------------------------------------------------
+   20. Responsive
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 991.98px) {
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform .22s ease;
+    }
+    .sidebar.sidebar-open { transform: translateX(0); }
+    .sidebar-overlay.show { display: block; }
+
+    .topbar      { left: 0; padding: 0 16px; }
+    .topbar .hamburger { display: flex; }
+    .main-shell,
+    .main-content { margin-left: 0; }
+    .content-inner { padding: 18px 16px; }
+}
+
+@media (max-width: 575.98px) {
+    .content-inner { padding: 14px 12px; }
+    .stat-value    { font-size: 22px; }
+    .notif-dropdown { width: calc(100vw - 32px); }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   ACTIVITY CALENDARS (flatpickr)
+
+   Gikan sa staff layout. Managsama ang kalendaryo sa staff ug sa
+   admin, mao nga usa ra ka kopya sa estilo — dili sila mag-drift.
+   ═══════════════════════════════════════════════════════════════ */
+.flatpickr-day.fp-date-has-schedule {
+    background: var(--g-50) !important;
+    color: var(--g-800) !important;
+    font-weight: 700;
+    border: 1px solid var(--g-500) !important;
+}
+/* ── Weekend ug holiday: pula, apan mapili ug ma-book gihapon. Mangayo
+     gyud ang employer ug schedule sa rest day, mao nga pahimangno ni
+     ug dili pugong. ── */
+.flatpickr-day.fp-day-rest {
+    color: var(--danger) !important;
+    font-weight: 600;
+}
+/* Ang holiday mas bug-at kaysa weekend — dili ni kasagaran nga adlaw. */
+.flatpickr-day.fp-day-holiday {
+    background: var(--danger-bg) !important;
+    box-shadow: inset 0 -2px 0 var(--danger);
+}
+/* Naay activity NGA holiday/weekend pud: ang berde nga marka sa
+   schedule ang mo-una, apan pula gihapon ang numero. */
+.flatpickr-day.fp-date-has-schedule.fp-day-rest {
+    color: var(--danger) !important;
+}
+/* ── Ang adlaw nga naa'y meeting/training ang opisina: dili ni mabook.
+     Lahi sa holiday — pugong ni, dili pahimangno ra. ── */
+.flatpickr-day.fp-day-blocked {
+    background: repeating-linear-gradient(
+        45deg, var(--n-100), var(--n-100) 3px, var(--n-200) 3px, var(--n-200) 6px
+    ) !important;
+    color: var(--n-500) !important;
+    text-decoration: line-through;
+}
+/* ── Tulbok kada matang sa aktibidad, ubos sa numero sa adlaw. Ang
+     hollow nga tulbok = gisugyot pa lang, wala pa mapili ang adlaw. ── */
+.peso-day-dots {
+    position: absolute;
+    bottom: 2px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    gap: 2px;
+    pointer-events: none;
+}
+.peso-day-dots i {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    display: block;
+}
+.flatpickr-calendar .flatpickr-day { position: relative; }
+
+/* ── Compact inline dashboard calendars — dile taason ang page, iwas scrollbar ── */
+.flatpickr-calendar.inline { font-size: 12px; max-width: 260px; }
+.flatpickr-calendar.inline .flatpickr-days,
+.flatpickr-calendar.inline .dayContainer { min-width: 260px; max-width: 260px; width: 260px; }
+
+/* Ang adlaw kinahanglan eksaktong 1/7 sa gilapdon, parehas sa header.
+   Ang daan nga `max-width: 30px` naghimo sa pito ka cell nga 210px ra
+   sulod sa 260px nga row; gibahin-bahin sa `space-around` sa dayContainer
+   ang nahibiling 50px isip gap, mao nga nabalhin ang mga cell ug murag
+   usa ka column ang lahi — ang Sabado nahimutang ubos sa Biyernes.
+   Ang justify-content: flex-start nagpugong nga mobalik ang gap. */
+.flatpickr-calendar.inline .dayContainer { justify-content: flex-start; }
+.flatpickr-calendar.inline .flatpickr-day {
+    height: 30px;
+    line-height: 30px;
+    flex-basis: 14.2857%;
+    max-width: 14.2857%;
+    margin: 0;
+}
+.flatpickr-calendar.inline .flatpickr-weekdaycontainer { display: flex; }
+.flatpickr-calendar.inline .flatpickr-weekday {
+    font-size: 10px;
+    flex: 0 0 14.2857%;
+    max-width: 14.2857%;
+}
+.flatpickr-calendar.inline .flatpickr-current-month { font-size: 13px; padding: 4px 0; }
