@@ -94,6 +94,26 @@ class DisableInactiveEmployers extends Command
 
             $employer->update(['inactivity_disable_prompted_at' => now()]);
 
+            // ── Ang employer masayod nga nahuman na ang iyang semana. ──
+            //
+            // Ang ikaduhang sulat naghatag kaniya ug pito ka adlaw. Kung
+            // molabay kadto nga walay bisan unsa nga moabot, ang hilom mabasa
+            // isip pag-uyon — ug ang sunod niyang mabati mao na ang na-tago
+            // nga mga bakante. Kini ang katapusang pag-tuktok sa dili pa ang
+            // desk mohukom, ug nagsulti gihapon kung unsa ang makapahunong
+            // niini: mo-sign in ug motubag, o mag-post ug bakante.
+            Announcement::sendToEmployers([
+                'type'           => 'employer_inactivity_final_notice',
+                'title'          => 'Your ' . $grace . '-day grace has ended ⏰',
+                'message'        => 'PESO gave you ' . $grace . ' days to tell us your status and has'
+                                    . ' had no answer. Your account is now with PESO staff, who may'
+                                    . ' set it to inactive — that hides your vacancies from jobseekers.'
+                                    . ' Nothing is deleted, and you can still stop this: sign in and'
+                                    . ' tell us your status, or post a new vacancy.',
+                'reference_type' => 'employer_inactivity',
+                'reference_id'   => $employer->employer_nsrp_registrations_id,
+            ], $employer->employer_nsrp_registrations_id);
+
             // ── Ang tibuok opisina masayod, apan usa ra ang makahimo. ──
             //
             // Ang lokal kay sa Job Vacancy, ang overseas kay sa SRA — samang

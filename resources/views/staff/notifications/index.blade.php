@@ -23,15 +23,11 @@
 @else
     <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
         @foreach($notifications as $notif)
-        <a href="{{ 
-            $notif->reference_type === 'employer_requirement' ? route('staff.requirements.view', $notif->reference_id) :
-            ($notif->reference_type === 'employer_registration' ? route('staff.employers', ['tab' => 'pre']) :
-            ($notif->reference_type === 'jobseeker_registration' ? route('staff.registrations.view', $notif->reference_id) :
-            ($notif->reference_type === 'jobseeker_notice' ? route('staff.registrations') :
-            ($notif->reference_type === 'job' ? route('staff.jobs') :
-            ($notif->reference_type === 'inhouse_schedule' ? route('staff.inhouse') :
-            ($notif->reference_type === 'job_fair' ? route('staff.jobfair.events') : '#'))))))
-        }}"
+        {{-- Ang bell dropdown ug kining page parehas ug tubag karon: tan-awa
+             ang Announcement::staffLinkUrl(). Kaniadto duha ka lista kini ug
+             nagkalahi — ang parehas nga notice moabli ug lain nga screen
+             depende kung asa siya gi-click. --}}
+        <a href="{{ $notif->staffLinkUrl() }}"
            class="d-block text-decoration-none px-4 py-3"
            style="border-bottom:1px solid var(--n-50); background:{{ !$notif->is_read ? 'var(--g-50)' : '#fff' }};">
             <div style="font-size:13px;font-weight:{{ !$notif->is_read ? '700' : '500' }};color:var(--g-700);">

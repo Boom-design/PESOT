@@ -251,7 +251,8 @@
                             ? $companyRow->jobs->flatMap->applications->where('status','hired')->count()
                             : 0;
                     @endphp
-                    <tr style="font-size:13px;">
+                    @php $isHit = ($highlight ?? null) == $companyRow->employer_nsrp_registrations_id; @endphp
+                    <tr style="font-size:13px;" @if($isHit) id="employerRow{{ $companyRow->employer_nsrp_registrations_id }}" class="peso-row-hit" @endif>
                         <td style="padding:12px 16px;color:var(--n-500);">
                             {{ $employers->firstItem() + $loop->index }}
                         </td>
@@ -973,5 +974,32 @@
     });
 </script>
 @endpush
+
+{{-- ── Ang laray nga gi-tudlo sa bell ──
+
+     Ang notice sa staff naghisgot ug usa ka kompanya. Ang controller na ang
+     nagdala kanimo sa husto nga page; kining bahin mao ang mag-ingon kung
+     hain siya sa page. Ang kolor mo-anam ug hanaw human sa pipila ka segundo
+     — usa ka pagtudlo, dili usa ka permanenteng marka. --}}
+<style>
+    tr.peso-row-hit > td {
+        background: #fff6d8;
+        box-shadow: inset 0 0 0 9999px rgba(255, 193, 7, 0.10);
+        animation: pesoRowHit 4s ease-out forwards;
+    }
+    tr.peso-row-hit > td:first-child { border-left: 3px solid var(--warn); }
+    @keyframes pesoRowHit {
+        0%, 55% { background: #fff6d8; }
+        100%    { background: transparent; }
+    }
+</style>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var hit = document.querySelector('tr.peso-row-hit');
+        if (hit) {
+            hit.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    });
+</script>
 
 @endsection

@@ -54,7 +54,8 @@
                     $colors   = ['still_hiring' => 'var(--g-700)', 'paused' => 'var(--warn)', 'closed' => 'var(--danger)'];
                     $answered = (bool) $nsrp?->inactivity_responded_at;
                 @endphp
-                <tr style="font-size:13px;">
+                @php $isHit = ($highlight ?? null) == $companyRow->employer_nsrp_registrations_id; @endphp
+                <tr style="font-size:13px;" @if($isHit) class="peso-row-hit" @endif>
                     <td style="padding:12px 16px;color:var(--n-500);">
                         {{ $employers->firstItem() + $loop->index }}
                     </td>

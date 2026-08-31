@@ -31,7 +31,11 @@
     $isJobseeker = request()->routeIs('staff.registrations*') || request()->routeIs('staff.nsrp*');
     $isEmployers = request()->is('staff/employers*');
     $isActivity  = request()->is('staff/inhouse*') || request()->is('staff/jobs') || request()->is('staff/jobs/*') || request()->is('staff/jobfair*');
-    $isJobsOnly  = request()->is('staff/jobs') || request()->is('staff/jobs/*') || request()->is('staff/jobfair*');
+    // Ang Job Fair nga tab sa Manage Job Activities naa sa staff/inhouse/jobfair,
+    // dili sa staff/jobfair — mao nga kining sala wala siya nadakpan ug walay
+    // nagdan-ag sa sidebar samtang naa ka sa maong tab.
+    $isJobsOnly  = request()->is('staff/jobs') || request()->is('staff/jobs/*')
+                   || request()->is('staff/jobfair*') || request()->routeIs('staff.inhouse.jobfair');
     $isReports   = request()->is('staff/reports*');
     $isEvents    = request()->routeIs('staff.jobfair.events*');
     $isPostings  = request()->routeIs('staff.jobfair.postings*');
@@ -237,14 +241,13 @@
                 <div id="staffNotifList">
                 @forelse($staffNotifications as $notif)
                 <li>
-                    <a href="{{
-                    $notif->reference_type === 'employer_requirement' ? route('staff.requirements.view', $notif->reference_id) :
-                    ($notif->reference_type === 'employer_registration' ? route('staff.employers', ['tab' => 'pre']) :
-                    ($notif->reference_type === 'jobseeker_registration' ? route('staff.registrations.view', $notif->reference_id) :
-                    ($notif->reference_type === 'job' ? route('staff.jobs') :
-                    ($notif->reference_type === 'inhouse_schedule' ? route('staff.inhouse') :
-                    ($notif->reference_type === 'job_fair' ? route('staff.jobfair.events') : route('staff.notifications.index'))))))
-                   }}"
+                    {{-- Kining dropdown, ang notifications page ug ang live
+                         fetch parehas nga motubag karon: Announcement::staffLinkUrl().
+                         Tulo ka kopya kini kaniadto ug nagkalahi — ang usa
+                         wala kabalo sa employer inactivity, mao nga ang
+                         pag-click dinhi mo-abot lang sa notifications page samtang
+                         ang View more mo-abot sa employer. --}}
+                    <a href="{{ $notif->staffLinkUrl() }}"
                    class="notif-item {{ !$notif->is_read ? 'unread' : '' }}"
                    onclick="staffMarkRead({{ $notif->announcements_id }})">
                         <div style="font-weight:{{ !$notif->is_read ? '600' : '500' }};color:var(--n-900);">

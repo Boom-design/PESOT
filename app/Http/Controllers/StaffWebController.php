@@ -1814,6 +1814,13 @@ $nsrp = $registration->nsrp;
         // ── nga wala pa ma-approve walay papel nga mahurot. ──
         $expiringOnly = $tab === 'approved' && request('filter') === 'expiring';
 
+        // ── Usa ka kompanya nga gikan sa bell. ──
+        //
+        // Ang notice sa inactivity naghisgot ug usa ka kompanya, mao nga ang
+        // link mo-abot sa page nga naay maong laray ug mo-ilhan siya. Kung
+        // ang desk ang mo-page pinaagi sa kamot, ang iyang ?page= ang mo-daog.
+        $highlight = (int) request('highlight') ?: null;
+
         // ── USA KA ROW KADA KOMPANYA, DILI KADA ACCOUNT.
         // ──
         // ── PESO IT, 2026-08-26: usa ka HR mahimong maghawid ug duha ka
@@ -1848,25 +1855,33 @@ $nsrp = $registration->nsrp;
                 ])
                 ->values();
 
+            $page = $this->pageForHighlight(
+                $employers->pluck('employer_nsrp_registrations_id')->all(), $highlight, 5
+            );
+
             $employers = new \Illuminate\Pagination\LengthAwarePaginator(
-                $employers->forPage(request('page', 1), 5),
+                $employers->forPage($page, 5),
                 $employers->count(),
                 5,
-                request('page', 1),
+                $page,
                 ['path' => request()->url(), 'query' => request()->query()]
             );
         } elseif ($tab === 'pre') {
-            $employers = (clone $baseQuery)
+            $preQuery = (clone $baseQuery)
                 ->where(fn($q) =>
                     $q->whereDoesntHave('requirement')
                       ->orWhereHas('requirement', fn($q2) => $q2->where('status', 'pending'))
                 )
+                ->latest();
+
+            $employers = (clone $preQuery)
                 ->with('employer')
-                ->latest()
-                ->paginate(5)
+                ->paginate(5, ['*'], 'page', $this->pageForHighlight(
+                    (clone $preQuery)->pluck('employer_nsrp_registrations_id')->all(), $highlight, 5
+                ))
                 ->withQueryString();
         } else {
-            $employers = (clone $baseQuery)
+            $approvedQuery = (clone $baseQuery)
                 ->whereHas('requirement', fn($q) => $q->where('status', 'approved'))
                 // Ang inactive naa sa kaugalingong tab. Kung magpakita sila
                 // dinhi pud, duha ka lugar ang parehas nga employer ug walay
@@ -1874,9 +1889,13 @@ $nsrp = $registration->nsrp;
                 ->whereNull('dormant_at')
                 ->when($expiringOnly, fn($q) =>
                     $q->whereHas('requirement', fn($r) => $r->expiringSoon()))
+                ->latest();
+
+            $employers = (clone $approvedQuery)
                 ->with(['employer', 'requirement', 'jobs.applications' => fn($q) => $q->where('status', 'hired')])
-                ->latest()
-                ->paginate(5)
+                ->paginate(5, ['*'], 'page', $this->pageForHighlight(
+                    (clone $approvedQuery)->pluck('employer_nsrp_registrations_id')->all(), $highlight, 5
+                ))
                 ->withQueryString();
         }
 
@@ -1909,9 +1928,33 @@ $nsrp = $registration->nsrp;
             'totalDormant'  => $totalDormant,
             'totalExpiring' => $totalExpiring,
             'expiringOnly'  => $expiringOnly,
+            'highlight'     => $highlight,
             'industry'      => $industry,
             'industries'    => EmployerNsrpRegistration::INDUSTRY_GROUPS,
         ]);
+    }
+
+    /**
+     * Which page of a list a highlighted row falls on.
+     *
+     * A bell notification names one company. Landing on page one of a list the
+     * company is not on leaves the staff hunting for the row the notice just
+     * told them about, so the link carries ?highlight= and this works out the
+     * page. An explicit ?page= wins: that is the desk paging by hand, and it
+     * would be maddening for the list to keep jumping back.
+     *
+     * The ids are read in the same order the page is built in, so the maths
+     * cannot drift from what is actually shown.
+     */
+    private function pageForHighlight(array $orderedIds, ?int $highlight, int $perPage): int
+    {
+        if (!$highlight || request()->filled('page')) {
+            return max((int) request('page', 1), 1);
+        }
+
+        $index = array_search($highlight, array_map('intval', $orderedIds), true);
+
+        return $index === false ? 1 : intdiv($index, $perPage) + 1;
     }
 
     // ───────────────────────────────
@@ -5153,24 +5196,13 @@ $nsrp = $registration->nsrp;
             ->take(5)
             ->get()
             ->map(function ($notif) {
-                $url = match ($notif->reference_type) {
-                    'employer_requirement'  => route('staff.requirements.view', $notif->reference_id),
-                    'employer_registration' => route('staff.employers', ['tab' => 'pre']),
-                    'employer_inactivity'    => route('staff.employers', ['tab' => 'dormant']),
-                    'jobseeker_registration' => route('staff.registrations.view', $notif->reference_id),
-                    'job'                    => route('staff.jobs'),
-                    'inhouse_schedule'       => route('staff.inhouse'),
-                    'job_fair'               => route('staff.jobfair.events'),
-                    default                  => route('staff.notifications.index'),
-                };
-
                 return [
                     'id'       => $notif->announcements_id,
                     'title'    => $notif->title,
                     'message'  => $notif->message,
                     'time_ago' => $notif->created_at->diffForHumans(),
                     'is_read'  => (bool) $notif->is_read,
-                    'url'      => $url,
+                    'url'      => $notif->staffLinkUrl(),
                 ];
             });
 
