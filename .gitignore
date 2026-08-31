@@ -21,3 +21,24 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
+
+# AI assistant / editor working directories
+/.mimocode
+/.agents
+/.continue
+/.windsurf
+
+# Local database backups — keep on disk, never in git
+/backup_*.sql
+/storage/backups/
+/database/database.sqlite
+
+# Python OCR service — venv ug model cache, dili ni angay sa git
+/ocr_service/venv
+/ocr_service/models
+/ocr_service/__pycache__
+/ocr_service/poc_crops
+/ocr_service/output
+
+# Demo helper, not part of the system (see the header inside the file).
+/test-clock.php

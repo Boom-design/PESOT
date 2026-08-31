@@ -20,7 +20,7 @@ class SendJobFairAttendanceConfirmations extends Command
 
         foreach ($todayEvents as $event) {
             $registrations = JobFairRegistration::with('jobseeker')
-                ->where('job_fair_id', $event->id)
+                ->where('job_fair_id', $event->job_fair_events_id)
                 ->whereNull('is_attended')
                 ->whereNull('attendance_notified_at')
                 ->get();
@@ -33,7 +33,7 @@ class SendJobFairAttendanceConfirmations extends Command
                     'title'          => 'Job Fair Attendance Confirmation 📋',
                     'message'        => 'Did you attend/participate in ' . $event->title . ' today at ' . $event->venue . '? Please confirm your attendance.',
                     'reference_type' => 'job_fair_registration',
-                    'reference_id'   => $reg->id,
+                    'reference_id'   => $reg->job_fair_registrations_id,
                 ], $reg->user_id);
 
                 $reg->update(['attendance_notified_at' => now()]);

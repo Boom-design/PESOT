@@ -1,0 +1,120 @@
+{
+  "page": 2,
+  "note": "NSRP Form 1 (September 2020), back of the same sheet. Same coordinate convention as page1.json: fractions of the flattened page, boxes are [x1, y1, x2, y2], checkbox centres are [x, y] and snap to the printed square at runtime.",
+
+  "identify": {
+    "region": [0.00, 0.04, 0.70, 0.10],
+    "expect": ["EDUCATIONAL BACKGROUND", "Currently in school"]
+  },
+
+  "text_fields": {
+    "education_elementary_school":  {"box": [0.215, 0.113, 0.500, 0.137], "kind": "free"},
+    "education_elementary_course":  {"box": [0.505, 0.113, 0.735, 0.137], "kind": "free"},
+    "education_elementary_year":    {"box": [0.740, 0.113, 0.820, 0.137], "kind": "year_range"},
+
+    "education_highschool_school":  {"box": [0.215, 0.136, 0.500, 0.158], "kind": "free"},
+    "education_highschool_course":  {"box": [0.505, 0.136, 0.735, 0.158], "kind": "free"},
+    "education_highschool_year":    {"box": [0.740, 0.136, 0.820, 0.158], "kind": "year_range"},
+
+    "education_seniorhigh_school":  {"box": [0.215, 0.157, 0.500, 0.180], "kind": "free"},
+    "education_seniorhigh_course":  {"box": [0.505, 0.157, 0.735, 0.180], "kind": "free"},
+    "education_seniorhigh_year":    {"box": [0.740, 0.157, 0.820, 0.180], "kind": "year_range"},
+
+    "education_college_school":     {"box": [0.215, 0.179, 0.500, 0.204], "kind": "free"},
+    "education_college_course":     {"box": [0.505, 0.179, 0.735, 0.204], "kind": "free"},
+    "education_college_year":       {"box": [0.740, 0.179, 0.820, 0.204], "kind": "year_range"},
+
+    "education_graduate_school":    {"box": [0.215, 0.203, 0.500, 0.237], "kind": "free"},
+    "education_graduate_course":    {"box": [0.505, 0.203, 0.735, 0.237], "kind": "free"},
+    "education_graduate_year":      {"box": [0.740, 0.203, 0.820, 0.237], "kind": "year_range"},
+
+    "training_1_course":       {"box": [0.075, 0.304, 0.355, 0.321], "kind": "free"},
+    "training_1_hours":        {"box": [0.360, 0.304, 0.465, 0.321], "kind": "integer"},
+    "training_1_duration":     {"box": [0.470, 0.304, 0.690, 0.321], "kind": "date_range"},
+    "training_1_institution":  {"box": [0.695, 0.304, 0.855, 0.321], "kind": "free"},
+    "training_1_certificate":  {"box": [0.860, 0.304, 0.970, 0.321], "kind": "free"},
+
+    "training_2_course":       {"box": [0.075, 0.323, 0.355, 0.339], "kind": "free"},
+    "training_2_hours":        {"box": [0.360, 0.323, 0.465, 0.339], "kind": "integer"},
+    "training_2_duration":     {"box": [0.470, 0.323, 0.690, 0.339], "kind": "date_range"},
+    "training_2_institution":  {"box": [0.695, 0.323, 0.855, 0.339], "kind": "free"},
+    "training_2_certificate":  {"box": [0.860, 0.323, 0.970, 0.339], "kind": "free"},
+
+    "training_3_course":       {"box": [0.075, 0.341, 0.355, 0.357], "kind": "free"},
+    "training_3_hours":        {"box": [0.360, 0.341, 0.465, 0.357], "kind": "integer"},
+    "training_3_duration":     {"box": [0.470, 0.341, 0.690, 0.357], "kind": "date_range"},
+    "training_3_institution":  {"box": [0.695, 0.341, 0.855, 0.357], "kind": "free"},
+    "training_3_certificate":  {"box": [0.860, 0.341, 0.970, 0.357], "kind": "free"},
+
+    "eligibility_1_name":      {"box": [0.075, 0.396, 0.300, 0.413], "kind": "free"},
+    "eligibility_1_date":      {"box": [0.305, 0.396, 0.400, 0.413], "kind": "date"},
+    "license_1_name":          {"box": [0.445, 0.396, 0.800, 0.413], "kind": "free"},
+    "license_1_valid_until":   {"box": [0.805, 0.396, 0.970, 0.413], "kind": "date"},
+
+    "eligibility_2_name":      {"box": [0.075, 0.415, 0.300, 0.431], "kind": "free"},
+    "eligibility_2_date":      {"box": [0.305, 0.415, 0.400, 0.431], "kind": "date"},
+    "license_2_name":          {"box": [0.445, 0.415, 0.800, 0.431], "kind": "free"},
+    "license_2_valid_until":   {"box": [0.805, 0.415, 0.970, 0.431], "kind": "date"},
+
+    "work_1_company":   {"box": [0.075, 0.483, 0.255, 0.513], "kind": "free"},
+    "work_1_address":   {"box": [0.260, 0.483, 0.440, 0.513], "kind": "lexicon"},
+    "work_1_position":  {"box": [0.445, 0.483, 0.600, 0.513], "kind": "free"},
+    "work_1_dates":     {"box": [0.605, 0.483, 0.775, 0.513], "kind": "date_range"},
+    "work_1_status":    {"box": [0.780, 0.483, 0.970, 0.513], "kind": "lexicon"},
+
+    "work_2_company":   {"box": [0.075, 0.514, 0.255, 0.546], "kind": "free"},
+    "work_2_address":   {"box": [0.260, 0.514, 0.440, 0.546], "kind": "lexicon"},
+    "work_2_position":  {"box": [0.445, 0.514, 0.600, 0.546], "kind": "free"},
+    "work_2_dates":     {"box": [0.605, 0.514, 0.775, 0.546], "kind": "date_range"},
+    "work_2_status":    {"box": [0.780, 0.514, 0.970, 0.546], "kind": "lexicon"},
+
+    "work_3_company":   {"box": [0.075, 0.547, 0.255, 0.579], "kind": "free"},
+    "work_3_address":   {"box": [0.260, 0.547, 0.440, 0.579], "kind": "lexicon"},
+    "work_3_position":  {"box": [0.445, 0.547, 0.600, 0.579], "kind": "free"},
+    "work_3_dates":     {"box": [0.605, 0.547, 0.775, 0.579], "kind": "date_range"},
+    "work_3_status":    {"box": [0.780, 0.547, 0.970, 0.579], "kind": "lexicon"},
+
+    "other_skills_specify":  {"box": [0.800, 0.676, 0.970, 0.693], "kind": "free"},
+    "certification_date":    {"box": [0.650, 0.768, 0.780, 0.794], "kind": "date"},
+    "referred_others_specify": {"box": [0.245, 0.905, 0.375, 0.928], "kind": "free"}
+  },
+
+  "checkboxes": {
+    "in_school_yes":  {"centre": [0.238, 0.070], "group": "currently_in_school", "value": true},
+    "in_school_no":   {"centre": [0.325, 0.070], "group": "currently_in_school", "value": false},
+
+    "skill_auto_mechanic":     {"centre": [0.090, 0.598], "group": "other_skills", "value": "Auto Mechanic"},
+    "skill_beautician":        {"centre": [0.090, 0.615], "group": "other_skills", "value": "Beautician"},
+    "skill_carpentry":         {"centre": [0.090, 0.631], "group": "other_skills", "value": "Carpentry Work"},
+    "skill_computer_literate": {"centre": [0.090, 0.648], "group": "other_skills", "value": "Computer Literate"},
+    "skill_domestic_chores":   {"centre": [0.090, 0.665], "group": "other_skills", "value": "Domestic Chores"},
+    "skill_driver":            {"centre": [0.090, 0.682], "group": "other_skills", "value": "Driver"},
+
+    "skill_electrician":       {"centre": [0.435, 0.598], "group": "other_skills", "value": "Electrician"},
+    "skill_embroidery":        {"centre": [0.435, 0.615], "group": "other_skills", "value": "Embroidery"},
+    "skill_gardening":         {"centre": [0.435, 0.631], "group": "other_skills", "value": "Gardening"},
+    "skill_masonry":           {"centre": [0.435, 0.648], "group": "other_skills", "value": "Masonry"},
+    "skill_painter_artist":    {"centre": [0.435, 0.665], "group": "other_skills", "value": "Painter/Artist"},
+    "skill_painting_jobs":     {"centre": [0.435, 0.682], "group": "other_skills", "value": "Painting Jobs"},
+
+    "skill_photography":       {"centre": [0.730, 0.598], "group": "other_skills", "value": "Photography"},
+    "skill_plumbing":          {"centre": [0.730, 0.615], "group": "other_skills", "value": "Plumbing"},
+    "skill_sewing_dresses":    {"centre": [0.730, 0.631], "group": "other_skills", "value": "Sewing Dresses"},
+    "skill_stenography":       {"centre": [0.730, 0.648], "group": "other_skills", "value": "Stenography"},
+    "skill_tailoring":         {"centre": [0.730, 0.665], "group": "other_skills", "value": "Tailoring"},
+    "skill_others":            {"centre": [0.730, 0.682], "group": "other_skills", "value": "Others"},
+
+    "referred_spes":     {"centre": [0.105, 0.845], "group": "referred_to", "value": "SPES"},
+    "referred_gip":      {"centre": [0.105, 0.862], "group": "referred_to", "value": "GIP"},
+    "referred_tupad":    {"centre": [0.105, 0.879], "group": "referred_to", "value": "TUPAD"},
+    "referred_jobstart": {"centre": [0.105, 0.896], "group": "referred_to", "value": "JobStart"},
+    "referred_others":   {"centre": [0.105, 0.913], "group": "referred_to", "value": "Others"},
+    "referred_dileep":   {"centre": [0.218, 0.845], "group": "referred_to", "value": "DILEEP"},
+    "referred_tesda":    {"centre": [0.218, 0.862], "group": "referred_to", "value": "TESDA Training"}
+  },
+
+  "unmapped": {
+    "note": "Present on the paper but with nowhere to go in the system today. Listed so the gap is a recorded decision rather than an oversight — the FOR USE OF PESO ONLY block is filled in by staff after the interview, not by the jobseeker, so it may not belong in the scan at all.",
+    "fields": ["referred_to", "assessed_by", "assessor_date", "signature"]
+  }
+}

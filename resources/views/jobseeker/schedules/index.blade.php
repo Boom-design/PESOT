@@ -1,15 +1,15 @@
 @extends('jobseeker.layouts.app')
 
-@section('page-title', 'My Schedules')
+@section('page-title', 'PESO Events')
 
 @section('content')
 
 <div class="mb-4">
-    <h5 class="fw-bold mb-1" style="color:#2d7a5f;">
-        <i class="bi bi-calendar-check-fill me-2" style="color:#4dd9c0;"></i>My Schedules
+    <h5 class="fw-bold mb-1" style="color:var(--g-700);">
+        <i class="ph-fill ph-calendar-check me-2" style="color:var(--g-600);"></i>PESO Events
     </h5>
-    <p class="mb-0" style="font-size:13px;color:#888;">
-        View your in-house interview and job fair schedules
+    <p class="mb-0" style="font-size:13px;color:var(--n-500);">
+        The in-house interviews and job fairs you have joined
     </p>
 </div>
 
@@ -18,10 +18,10 @@
     <a href="{{ route('jobseeker.schedules', ['type' => 'inhouse']) }}"
        class="btn btn-sm fw-semibold"
        style="{{ request('type','inhouse') === 'inhouse'
-           ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;'
-           : 'border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;' }}
+           ? 'background:var(--g-600);color:#fff;border:none;'
+           : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
            border-radius:8px;font-size:12px;padding:6px 18px;">
-        <i class="bi bi-building me-1"></i> In-house Interviews
+        <i class="ph ph-buildings me-1"></i> In-house Interviews
         <span class="badge ms-1"
             style="background:rgba(255,255,255,0.3);font-size:10px;">
             {{ $inhouseApplications->count() }}
@@ -30,10 +30,10 @@
     <a href="{{ route('jobseeker.schedules', ['type' => 'jobfair']) }}"
        class="btn btn-sm fw-semibold"
        style="{{ request('type') === 'jobfair'
-           ? 'background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;border:none;'
-           : 'border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;' }}
+           ? 'background:var(--g-600);color:#fff;border:none;'
+           : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
            border-radius:8px;font-size:12px;padding:6px 18px;">
-        <i class="bi bi-people-fill me-1"></i> Job Fairs
+        <i class="ph-fill ph-users-three me-1"></i> Job Fairs
         <span class="badge ms-1"
             style="background:rgba(255,255,255,0.3);font-size:10px;">
             {{ $jobFairSchedules->count() }}
@@ -46,8 +46,8 @@
 
     @if($inhouseApplications->isEmpty())
         <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-            <i class="bi bi-calendar-x" style="font-size:48px;color:#c0e8dc;"></i>
-            <div class="mt-3 fw-semibold" style="color:#2d7a5f;">No in-house schedules yet</div>
+            <i class="ph ph-calendar-x" style="font-size:48px;color:var(--n-300);"></i>
+            <div class="mt-3 fw-semibold" style="color:var(--g-700);">No in-house schedules yet</div>
             <div class="text-muted small mt-1">
                 In-house interview schedules will appear here once you confirm participation after applying
             </div>
@@ -58,35 +58,58 @@
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Company</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Job Position</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">Slots Needed</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;">In-house Date</th>
-                            <th style="background:linear-gradient(90deg,#90d870,#4dd9c0);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Status</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Company Name</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Job Position</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Slots Needed</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">In-house Date</th>
+                            {{-- When the office asked, and what the jobseeker
+                                 answered. Every row here is one they accepted,
+                                 but the day it arrived is what they forget. --}}
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Invitation Status</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Status</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($inhouseApplications as $i => $app)
                         <tr style="font-size:13px;">
-                            <td style="padding:12px 16px;color:#888;">{{ $i + 1 }}</td>
-                            <td style="padding:12px 16px;font-weight:600;color:#2d7a5f;">
-                                {{ $app->job->company->company_name ?? '—' }}
+                            <td style="padding:12px 16px;color:var(--n-500);">{{ $i + 1 }}</td>
+                            <td style="padding:12px 16px;font-weight:600;color:var(--g-700);">
+                                {{ $app->job->company->company_name ?? 'None' }}
                             </td>
-                            <td style="padding:12px 16px;color:#555;">
-                                {{ $app->job->title ?? '—' }}
+                            <td style="padding:12px 16px;color:var(--n-700);">
+                                {{ $app->job->title ?? 'None' }}
                             </td>
-                            <td style="padding:12px 16px;color:#555;">
-                                {{ $app->job->slots ?? '—' }}
+                            <td style="padding:12px 16px;color:var(--n-700);">
+                                {{ $app->job->slots ?? 'None' }}
                             </td>
-                            <td style="padding:12px 16px;color:#555;">
-                                {{ $app->job->preferred_date ? \Carbon\Carbon::parse($app->job->preferred_date)->format('M d, Y') : '—' }}
+                            <td style="padding:12px 16px;color:var(--n-700);">
+                                {{ $app->job->schedule_type === 'inhouse'
+                                    ? $app->job->schedule_window_label
+                                    : ($app->job->interview_date ? $app->job->interview_date->format('M d, Y') : 'None') }}
                             </td>
+                            <td style="padding:12px 16px;">
+                                @php
+                                    [$invLabel, $invColor] = match ($app->inhouse_participation) {
+                                        'accepted' => ['Accepted', 'var(--g-600)'],
+                                        'declined' => ['Declined', 'var(--danger)'],
+                                        default    => ['Waiting for your answer', 'var(--warn)'],
+                                    };
+                                @endphp
+                                <span class="fw-semibold" style="color:{{ $invColor }};font-size:11.5px;">{{ $invLabel }}</span>
+                                <div style="font-size:10.5px;color:var(--n-500);margin-top:2px;">
+                                    {{ $app->inhouse_participation_notified_at
+                                        ? 'Invited ' . $app->inhouse_participation_notified_at->format('F d, Y')
+                                        : 'Invitation date not recorded' }}
+                                </div>
+                            </td>
+                            {{-- A row only reaches this tab after the jobseeker has
+                                 accepted the invitation to take part, so it is always
+                                 joined. Same word as the job fair tab, so one thing is
+                                 not called two names. --}}
                             <td style="padding:12px 16px;text-align:center;">
-                                <span class="badge fw-semibold"
-                                    style="background:#2d7a5f;font-size:11px;
-                                           padding:4px 10px;border-radius:20px;">
-                                    Confirmed ✅
+                                <span class="fw-semibold" style="color:var(--g-700);font-size:11px;">
+                                    <i class="ph-fill ph-check-circle me-1"></i>Joined
                                 </span>
                             </td>
                         </tr>
@@ -102,8 +125,8 @@
 
     @if($jobFairSchedules->isEmpty())
         <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-            <i class="bi bi-calendar-x" style="font-size:48px;color:#c0e8dc;"></i>
-            <div class="mt-3 fw-semibold" style="color:#2d7a5f;">No job fair schedules yet</div>
+            <i class="ph ph-calendar-x" style="font-size:48px;color:var(--n-300);"></i>
+            <div class="mt-3 fw-semibold" style="color:var(--g-700);">No job fair schedules yet</div>
             <div class="text-muted small mt-1">
                 Job fair events will appear here once at least 3 employers have confirmed participation
             </div>
@@ -113,56 +136,52 @@
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
                     <thead>
-                        <tr style="background:linear-gradient(90deg,#90d870,#4dd9c0);">
-                            <th style="color:#2d7a5f;font-size:12px;border:none;padding:12px 16px;">#</th>
-                            <th style="color:#2d7a5f;font-size:12px;border:none;padding:12px 16px;">Event Title</th>
-                            <th style="color:#2d7a5f;font-size:12px;border:none;padding:12px 16px;">Date</th>
-                            <th style="color:#2d7a5f;font-size:12px;border:none;padding:12px 16px;">Venue</th>
-                            <th style="color:#2d7a5f;font-size:12px;border:none;padding:12px 16px;text-align:center;">Status</th>
-                            <th style="color:#2d7a5f;font-size:12px;border:none;padding:12px 16px;text-align:center;">Action</th>
+                        <tr style="background:var(--g-600);">
+                            <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">#</th>
+                            <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Event Title</th>
+                            <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Event Date</th>
+                            <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Venue</th>
+                            <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;text-align:center;">Status</th>
+                            <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;text-align:center;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($jobFairSchedules as $i => $event)
                         <tr style="font-size:13px;">
-                            <td style="padding:12px 16px;color:#888;">{{ $i + 1 }}</td>
-                            <td style="padding:12px 16px;font-weight:600;color:#2d7a5f;">
+                            <td style="padding:12px 16px;color:var(--n-500);">{{ $i + 1 }}</td>
+                            <td style="padding:12px 16px;font-weight:600;color:var(--g-700);">
                                 {{ $event->title }}
                             </td>
-                            <td style="padding:12px 16px;color:#555;">
+                            <td style="padding:12px 16px;color:var(--n-700);">
                                 {{ $event->event_date->format('M d, Y') }}
                             </td>
-                            <td style="padding:12px 16px;color:#555;">
+                            <td style="padding:12px 16px;color:var(--n-700);">
                                 {{ $event->venue }}
                             </td>
                             <td style="padding:12px 16px;text-align:center;">
                                 @php
-                                    $badge = [
-                                        'upcoming'  => ['bg' => '#4dd9c0', 'label' => 'Upcoming'],
-                                        'ongoing'   => ['bg' => '#f59e0b', 'label' => 'Ongoing'],
-                                        'completed' => ['bg' => '#2d7a5f', 'label' => 'Completed'],
-                                    ][$event->status] ?? ['bg' => '#888', 'label' => ucfirst($event->status)];
+                                    $state = [
+                                        'upcoming'  => ['color' => 'var(--g-700)', 'label' => 'Upcoming'],
+                                        'ongoing'   => ['color' => 'var(--warn)',  'label' => 'Ongoing'],
+                                        'completed' => ['color' => 'var(--n-500)', 'label' => 'Completed'],
+                                    ][$event->status] ?? ['color' => 'var(--n-500)', 'label' => ucfirst($event->status)];
                                 @endphp
-                                <span class="badge fw-semibold"
-                                    style="background:{{ $badge['bg'] }};font-size:11px;
-                                           padding:4px 10px;border-radius:20px;">
-                                    {{ $badge['label'] }}
+                                <span style="color:{{ $state['color'] }};font-weight:600;">
+                                    {{ $state['label'] }}
                                 </span>
                             </td>
                             <td style="padding:12px 16px;text-align:center;">
-                                @if(in_array($event->id, $joinedJobFairIds))
-                                    <span class="badge fw-semibold"
-                                        style="background:#e8f8f3;color:#2d7a5f;font-size:11px;
-                                               padding:4px 10px;border-radius:20px;">
-                                        <i class="bi bi-check-circle-fill me-1"></i>Joined
+                                @if(in_array($event->job_fair_events_id, $joinedJobFairIds))
+                                    <span class="fw-semibold" style="color:var(--g-700);font-size:11px;">
+                                        <i class="ph-fill ph-check-circle me-1"></i>Joined
                                     </span>
                                 @else
-                                    <form action="{{ route('jobseeker.jobfair.join', $event->id) }}" method="POST">
+                                    <form action="{{ route('jobseeker.jobfair.join', $event->job_fair_events_id) }}" method="POST">
                                         @csrf
                                         <button type="submit" class="btn btn-sm fw-semibold"
-                                            style="background:linear-gradient(90deg,#90d870,#4dd9c0);
+                                            style="background:var(--g-600);
                                                    color:#fff;border:none;border-radius:8px;font-size:11px;padding:4px 12px;">
-                                            <i class="bi bi-hand-index-thumb-fill me-1"></i>Join
+                                            <i class="ph-fill ph-hand-pointing me-1"></i>Join
                                         </button>
                                     </form>
                                 @endif

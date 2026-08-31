@@ -8,6 +8,8 @@ class JobseekerNsrpRegistration extends Model
 {
     protected $table = 'jobseeker_nsrp_registrations';
 
+    protected $primaryKey = 'jobseeker_nsrp_registrations_id';
+
     protected $fillable = [
     'jobseeker_registration_id',
     'type',

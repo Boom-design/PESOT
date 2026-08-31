@@ -3,13 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PESO — Register as Job Seeker</title>
+    @include('partials.head-brand')
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/bold/style.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('css/peso.css') }}">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
-        html, body { min-height: 100vh; font-family: 'Segoe UI', sans-serif; }
+        html, body { min-height: 100vh; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; background: #1a1a1a; }
 
         .bg-wrapper {
             position: fixed; inset: 0;
@@ -18,7 +24,7 @@
         }
         .bg-overlay {
             position: fixed; inset: 0;
-            background: linear-gradient(180deg, rgba(13,31,24,0.75) 0%, rgba(13,31,24,0.88) 100%);
+            background: linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.68) 100%);
             z-index: 1;
         }
 
@@ -30,44 +36,43 @@
         }
 
         .card-register {
-            background: rgba(255,255,255,0.07);
-            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.14);
+            border: 1px solid rgba(255,255,255,0.3);
             border-radius: 18px;
             padding: 24px 20px; width: 100%; max-width: 860px;
-            box-shadow: 0 24px 70px rgba(0,0,0,0.5);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            box-shadow: 0 24px 70px rgba(0,0,0,0.3);
             animation: fadeInUp 0.5s ease forwards;
         }
-        .card-register [style*="color:#2d7a5f"] { color: #eafaf0 !important; }
 
         @media (min-width: 768px) {
             .page { padding: 40px 20px; }
             .card-register { padding: 40px 48px; border-radius: 24px; }
         }
 
-        .peso-label { font-size: 12px; font-weight: 600; color: #90d870; margin-bottom: 6px; display: block; }
+        .peso-label { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.92); margin-bottom: 6px; display: block; }
         .peso-input {
-            width: 100%; border: 1.5px solid rgba(255,255,255,0.25); border-radius: 10px;
+            width: 100%; border: 1px solid rgba(255,255,255,0.4); border-radius: 10px;
             font-size: 13px; padding: 11px 14px; color: #fff;
-            transition: border-color 0.2s; outline: none; background: rgba(255,255,255,0.08);
+            transition: border-color 0.2s; outline: none; background: rgba(255,255,255,0.1);
         }
-        .peso-input::placeholder { color: rgba(255,255,255,0.4); }
-        .peso-input:focus { border-color: #4dd9c0; box-shadow: 0 0 0 3px rgba(77,217,192,0.2); background: rgba(255,255,255,0.12); }
+        .peso-input::placeholder { color: rgba(255,255,255,0.6); }
+        .peso-input:focus { border-color: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,0.22); background: rgba(255,255,255,0.16); }
         .input-wrap { position: relative; }
         .input-wrap .peso-input { padding-right: 40px; }
         .toggle-pw {
             position: absolute; right: 12px; top: 50%;
             transform: translateY(-50%);
-            background: none; border: none; color: #888;
+            background: none; border: none; color: rgba(255,255,255,0.7);
             cursor: pointer; font-size: 15px; padding: 0;
         }
+        .toggle-pw:hover { color: #fff; }
         .btn-register {
-            width: 100%; background: linear-gradient(90deg, #90d870, #4dd9c0);
-            border: none; color: #fff; font-weight: 700; border-radius: 10px;
+            width: 100%; background: #fff;
+            border: none; color: var(--g-700); font-weight: 700; border-radius: 10px;
             padding: 12px; font-size: 14px; cursor: pointer;
             transition: opacity 0.2s; margin-top: 8px;
-            box-shadow: 0 4px 16px rgba(77,217,192,0.35);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.25);
         }
         .btn-register:hover { opacity: 0.9; }
 
@@ -85,25 +90,25 @@
     <div class="page">
     <div class="card-register">
         <div class="text-center mb-4">
-            <div style="width:52px;height:52px;background:linear-gradient(135deg,#90d870,#4dd9c0);
+            <div style="width:52px;height:52px;background:var(--g-600);
                         border-radius:50%;display:flex;align-items:center;justify-content:center;
                         margin:0 auto 10px;font-size:22px;color:#fff;">
-                <i class="bi bi-person-fill"></i>
+                <i class="ph-fill ph-user"></i>
             </div>
-            <div style="font-size:20px;font-weight:800;color:#2d7a5f;">Job Seeker Registration</div>
-            <div style="font-size:13px;color:#888;margin-top:4px;">Create your PESO jobseeker account</div>
+            <div style="font-size:20px;font-weight:800;color:#fff;">Job Seeker Registration</div>
+            <div style="font-size:13px;color:rgba(255,255,255,0.8);margin-top:4px;">Create your PESO jobseeker account</div>
         </div>
 
         @if($errors->any())
-            <div style="background:#fff5f5;color:#c62828;border-radius:10px;padding:10px 14px;
+            <div style="background:rgba(198,40,40,0.25);color:var(--danger-br);border:1px solid rgba(198,40,40,0.45);border-radius:10px;padding:10px 14px;
                         font-size:12px;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
-                <i class="bi bi-exclamation-circle-fill"></i> {{ $errors->first() }}
+                <i class="ph-fill ph-warning-circle"></i> {{ $errors->first() }}
             </div>
         @endif
 
-        <div id="nameEmailWarning" style="background:#fff5f5;color:#c62828;border-radius:10px;padding:10px 14px;
+        <div id="nameEmailWarning" style="background:rgba(198,40,40,0.25);color:var(--danger-br);border:1px solid rgba(198,40,40,0.45);border-radius:10px;padding:10px 14px;
                     font-size:12px;margin-bottom:12px;display:none;align-items:center;gap:8px;">
-            <i class="bi bi-exclamation-circle-fill"></i> <span id="warn-text"></span>
+            <i class="ph-fill ph-warning-circle"></i> <span id="warn-text"></span>
         </div>
 
         <form method="POST" action="{{ route('register.jobseeker.post') }}">
@@ -115,14 +120,14 @@
                         placeholder="Juan" value="{{ old('first_name') }}" required>
                 </div>
                 <div class="col-md-4">
-                    <label class="peso-label">Last Name *</label>
-                    <input type="text" name="last_name" class="peso-input"
-                        placeholder="Dela Cruz" value="{{ old('last_name') }}" required>
-                </div>
-                <div class="col-md-4">
                     <label class="peso-label">Middle Name</label>
                     <input type="text" name="middle_name" class="peso-input"
                         placeholder="Optional" value="{{ old('middle_name') }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="peso-label">Last Name *</label>
+                    <input type="text" name="last_name" class="peso-input"
+                        placeholder="Dela Cruz" value="{{ old('last_name') }}" required>
                 </div>
                 <div class="col-md-4">
                     <label class="peso-label">Email Address *</label>
@@ -132,18 +137,20 @@
                 <div class="col-md-4">
                     <label class="peso-label">Phone Number</label>
                     <input type="text" name="phone" class="peso-input"
-                        placeholder="09123456789" value="{{ old('phone') }}">
+                        inputmode="numeric" maxlength="11" pattern="09[0-9]{9}"
+                        placeholder="09171234567" value="{{ old('phone') }}">
                 </div>
                 <div class="col-md-4"></div>
                 <div class="col-md-4">
                     <label class="peso-label">Password *</label>
                     <div class="input-wrap">
                         <input type="password" name="password" id="pw1" class="peso-input"
-                            placeholder="Minimum 6 characters" required>
+                            placeholder="Set a strong password" required>
                         <button type="button" class="toggle-pw" onclick="togglePw('pw1','icon1')">
-                            <i class="bi bi-eye" id="icon1"></i>
+                            <i class="ph ph-eye" id="icon1"></i>
                         </button>
                     </div>
+                    @include('partials.password-hint', ['onDark' => true])
                 </div>
                 <div class="col-md-4">
                     <label class="peso-label">Confirm Password *</label>
@@ -151,22 +158,22 @@
                         <input type="password" name="password_confirmation" id="pw2" class="peso-input"
                             placeholder="Repeat password" required>
                         <button type="button" class="toggle-pw" onclick="togglePw('pw2','icon2')">
-                            <i class="bi bi-eye" id="icon2"></i>
+                            <i class="ph ph-eye" id="icon2"></i>
                         </button>
                     </div>
-                    <div id="pwMismatchWarn" style="display:none;color:#ff8080;font-size:11px;margin-top:5px;">
-                        <i class="bi bi-exclamation-circle-fill me-1"></i>Passwords do not match.
+                    <div id="pwMismatchWarn" style="display:none;color:var(--danger-br);font-size:11px;margin-top:5px;">
+                        <i class="ph-fill ph-warning-circle me-1"></i>Passwords do not match.
                     </div>
                 </div>
             </div>
             <button type="submit" class="btn-register">
-                <i class="bi bi-person-check-fill me-2"></i>Create Account
+                <i class="ph-fill ph-user-list me-2"></i>Create Account
             </button>
         </form>
 
-        <div class="text-center mt-3" style="font-size:13px;color:#888;">
+        <div class="text-center mt-3" style="font-size:13px;color:rgba(255,255,255,0.75);">
             Already have an account?
-            <a href="{{ route('login') }}" style="color:#4dd9c0;font-weight:700;">Sign in</a>
+            <a href="{{ route('login') }}" style="color:#fff;font-weight:700;text-decoration:underline;">Sign in</a>
         </div>
     </div>
     </div>
@@ -176,7 +183,7 @@
             const input = document.getElementById(id);
             const icon  = document.getElementById(iconId);
             input.type  = input.type === 'password' ? 'text' : 'password';
-            icon.className = input.type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash';
+            icon.className = input.type === 'password' ? 'ph ph-eye' : 'ph ph-eye-slash';
         }
 
         const firstNameInput = document.querySelector('input[name="first_name"]');

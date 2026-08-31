@@ -23,7 +23,7 @@ class JobseekerWebController extends Controller
     // ── NSRP Guard — redirect to NSRP if not yet submitted ──
     private function requireNsrp($jobseeker)
     {
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
         if (!$registration || !$registration->nsrp) {
             return redirect()->route('jobseeker.nsrp')
                 ->with('info', 'Please complete your NSRP Registration Form first before accessing other features.');
@@ -39,31 +39,23 @@ class JobseekerWebController extends Controller
         $jobseeker = $this->authJobseeker();
         if (!$jobseeker) return redirect()->route('login');
 
-        $registration = JobseekerRegistration::with('nsrp')->where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::with('nsrp')->where('user_id', $jobseeker->users_id)->first();
         $nsrp = $registration->nsrp ?? null;
 
-        $regId = $registration->id ?? null;
+        $regId = $registration->jobseeker_registrations_id ?? null;
 
         $totalApplications   = $regId ? Application::where('jobseeker_id', $regId)->count() : 0;
         $pendingApplications = $regId ? Application::where('jobseeker_id', $regId)->where('status', 'pending')->count() : 0;
         $hiredApplications   = $regId ? Application::where('jobseeker_id', $regId)->where('status', 'hired')->count() : 0;
 
-        $todayJobFairs = \App\Models\JobFairEvent::whereDate('event_date', today())
-            ->where('status', '!=', 'completed')
-            ->get();
-
-        $todayInhouse = \App\Models\InhouseSchedule::whereDate('confirmed_date', today())
-            ->where('status', 'accepted')
-            ->get();
-
         // ── HIGHLY QUALIFIED MATCH — preferred occupation MATCHED + overall match score ≥75% ──
         $highlyQualifiedMatch = null;
         $preferredOccupations = $nsrp->preferred_occupations ?? [];
         if (!empty($preferredOccupations) && $regId) {
-            $openJobs = Job::with('company')->where('status', 'open')
-                ->where(function ($q) {
-                    $q->whereNull('deadline')->orWhereDate('deadline', '>=', now()->toDateString());
-                })->get();
+            // Job::active() — abli, wala pa malabyi ang deadline, ug wala pa
+            // mapuno ang slots. Walay pulos ang "highly qualified match" sa
+            // bakante nga dili na niya maapplyan.
+            $openJobs = Job::with('company')->active()->get();
 
             $appliedJobIds = Application::where('jobseeker_id', $regId)->pluck('job_id')->toArray();
             $shownJobIds   = session('highly_qualified_shown', []);
@@ -73,7 +65,7 @@ class JobseekerWebController extends Controller
             $bestPercentage = 0;
 
             foreach ($openJobs as $job) {
-                if (in_array($job->id, $appliedJobIds) || in_array($job->id, $shownJobIds)) continue;
+                if (in_array($job->job_qualifications_id, $appliedJobIds) || in_array($job->job_qualifications_id, $shownJobIds)) continue;
 
                 // Preferred occupation check una — dili gyud i-consider kung wala match sa preferred occupation
                 $occMatched = false;
@@ -85,7 +77,7 @@ class JobseekerWebController extends Controller
                 }
                 if (!$occMatched) continue;
 
-                $breakdown = $appController->computeMatchBreakdownPublic($jobseeker->id, $job);
+                $breakdown = $appController->computeMatchBreakdownPublic($jobseeker->users_id, $job);
                 if ($breakdown['percentage'] >= 75 && $breakdown['percentage'] > $bestPercentage) {
                     $bestPercentage = $breakdown['percentage'];
                     $bestMatch = $job;
@@ -97,15 +89,72 @@ class JobseekerWebController extends Controller
                     'job'        => $bestMatch,
                     'percentage' => $bestPercentage,
                 ];
-                session(['highly_qualified_shown' => array_unique(array_merge($shownJobIds, [$bestMatch->id]))]);
+                session(['highly_qualified_shown' => array_unique(array_merge($shownJobIds, [$bestMatch->job_qualifications_id]))]);
             }
         }
 
         return view('jobseeker.dashboard', compact(
             'jobseeker', 'registration', 'nsrp',
             'totalApplications', 'pendingApplications', 'hiredApplications',
-            'todayJobFairs', 'todayInhouse', 'highlyQualifiedMatch'
+            'highlyQualifiedMatch'
         ));
+    }
+
+    // ───────────────────────────────
+    // RESUME
+    // ───────────────────────────────
+
+    /**
+     * Build a resume out of what the jobseeker already filled in on the NSRP
+     * form and hand it over as a PDF.
+     *
+     * Nothing new is asked of them. The NSRP form already holds the schooling,
+     * the work history, the trainings, the eligibilities and the skills, which
+     * is everything a resume carries — it was only ever laid out as a
+     * government form. This re-lays the same answers as a document they can
+     * bring to an interview.
+     */
+    public function downloadResume()
+    {
+        $jobseeker = $this->authJobseeker();
+        if (!$jobseeker) return redirect()->route('login');
+        if ($guard = $this->requireNsrp($jobseeker)) return $guard;
+
+        $registration = JobseekerRegistration::with([
+            'user',
+            'nsrp.workExperiences' => fn($q) => $q->orderByDesc('is_current')->orderByDesc('date_from'),
+            'nsrp.certifications'  => fn($q) => $q->orderByDesc('date_taken'),
+        ])->where('user_id', $jobseeker->users_id)->firstOrFail();
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('jobseeker.resume', [
+            'registration' => $registration,
+            'nsrp'         => $registration->nsrp,
+        ])->setPaper('a4');
+
+        $name = trim(($registration->surname ?? '') . '-' . ($registration->first_name ?? ''), '-');
+        $name = preg_replace('/[^A-Za-z0-9\-]/', '', str_replace(' ', '-', $name)) ?: 'Jobseeker';
+
+        return $pdf->download('Resume-' . $name . '.pdf');
+    }
+
+    /**
+     * Feed for the dashboard activity calendar.
+     *
+     * Deliberately narrower than the staff feed. `blocked` is empty because a
+     * jobseeker never books the office, and the holidays are still sent so the
+     * weekends and non-working days read the same on every calendar in PESO.
+     */
+    public function calendarData()
+    {
+        $jobseeker = $this->authJobseeker();
+        if (!$jobseeker) return response()->json(['error' => 'Unauthorized'], 401);
+
+        return response()->json([
+            'dates'    => \App\Support\StaffCalendar::forJobseeker(),
+            'holidays' => \App\Support\Holidays::aroundNow(),
+            'blocked'  => [],
+            'legend'   => \App\Support\StaffCalendar::TYPES,
+        ]);
     }
 
     // ───────────────────────────────
@@ -117,66 +166,32 @@ class JobseekerWebController extends Controller
         if (!$jobseeker) return redirect()->route('login');
 
         $registration = JobseekerRegistration::with('nsrp.workExperiences')
-    ->where('user_id', $jobseeker->id)->first();
+    ->where('user_id', $jobseeker->users_id)->first();
 $nsrp = $registration->nsrp ?? null;
 
-return view('jobseeker.nsrp.index', compact('jobseeker', 'registration', 'nsrp'));
+// What the jobseeker can no longer change — see App\Support\NsrpLocks. The
+// form only greys the boxes out; nsrpStore below is what actually refuses.
+$lockedEducation = $nsrp ? \App\Support\NsrpLocks::storedEducation($nsrp) : [];
+
+return view('jobseeker.nsrp.index', compact('jobseeker', 'registration', 'nsrp', 'lockedEducation'));
     }
 
     // ───────────────────────────────
-    // NSRP OCR SCAN — Auto-fill from uploaded photo
+    // WALAY NSRP SCAN DINHI
     // ───────────────────────────────
-    public function nsrpScan(Request $request)
-    {
-        $jobseeker = $this->authJobseeker();
-        if (!$jobseeker) return response()->json(['error' => 'Unauthorized'], 401);
-
-        $request->validate([
-            'nsrp_image' => 'required|image|mimes:jpg,jpeg,png|max:5120',
-        ]);
-
-        $image    = $request->file('nsrp_image');
-        $path     = $image->store('nsrp_scans', 'public');
-        $fullPath = storage_path('app/public/' . $path);
-
-        try {
-            $text = (new \thiagoalessio\TesseractOCR\TesseractOCR($fullPath))->run();
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'OCR processing failed. Please fill out the form manually. (' . $e->getMessage() . ')',
-            ], 500);
-        }
-
-        $parsed = $this->parseNsrpText($text);
-
-        return response()->json([
-            'success'  => true,
-            'raw_text' => $text, // TEMPORARY — for debugging/tuning patterns. Remove once accuracy is confirmed.
-            'data'     => $parsed,
-        ]);
-    }
-
-    // ── Helper: parse raw OCR text into structured fields (basic label-matching) ──
-    private function parseNsrpText($text)
-    {
-        $data = [];
-
-        $patterns = [
-            'surname'        => '/Surname\s*[:\-]?\s*([A-Za-z\s]+)/i',
-            'first_name'     => '/First\s*Name\s*[:\-]?\s*([A-Za-z\s]+)/i',
-            'middle_name'    => '/Middle\s*Name\s*[:\-]?\s*([A-Za-z\s]+)/i',
-            'contact_number' => '/Contact\s*Number\/?s?\s*[:\-]?\s*([0-9\-\s]+)/i',
-            'religion'       => '/Religion\s*[:\-]?\s*([A-Za-z\s]+)/i',
-        ];
-
-        foreach ($patterns as $key => $pattern) {
-            if (preg_match($pattern, $text, $matches)) {
-                $data[$key] = trim(preg_replace('/\s+/', ' ', $matches[1]));
-            }
-        }
-
-        return $data;
-    }
+    //
+    // Naa siya kaniadto — Tesseract, uban ang label-matching nga regex — apan
+    // walay bisan usa ka Blade nga nagtawag kaniya. Ang NSRP page sa jobseeker
+    // wala gyuy scan nga buton, mao nga wala siya sukad maabot gikan sa UI.
+    //
+    // Ug tinuyo kadto. Ang jobseeker nga nagsulat sa iyang kaugalingon nga
+    // porma nagsulat sa iyang nahibaw-an na — mas paspas siyang mo-type kaysa
+    // mo-litrato ug mo-review. Ang scanner naa para sa staff nga nangopya sa
+    // sinulat sa lain nga tawo gikan sa papel.
+    //
+    // Ang tinuod nga scanner naa sa StaffWebController::nsrpScan, ug ang Python
+    // nga serbisyo sa ocr_service/ ang nagbasa — TrOCR para sa sinulat, ug
+    // geometry para sa mga checkbox.
 
     public function nsrpStore(Request $request)
     {
@@ -198,12 +213,13 @@ return view('jobseeker.nsrp.index', compact('jobseeker', 'registration', 'nsrp')
             'barangay'               => 'required|string|max:255',
             'municipality_city'      => 'required|string|max:255',
             'province'               => 'required|string|max:255',
-            'contact_number'    => 'required|string|max:20',
+            'contact_number'    => ['required', 'string', new \App\Rules\MobileNumber],
             'classification_type' => 'required|in:local,overseas,both',
             'employment_type'   => 'required|string',
             'work_type'         => 'required|string',
             'preferred_occupations.0' => 'required|string',
-            'certification_date'      => 'required|string',
+            // certification_date is not validated because it is not submitted —
+            // the server stamps it below.
             'certification_agreed'       => 'required',
             'training_certificates.*'    => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ]);
@@ -212,7 +228,7 @@ return view('jobseeker.nsrp.index', compact('jobseeker', 'registration', 'nsrp')
         // PART 1: Personal Info → jobseeker_registrations
         // ══════════════════════════════════════════
         $registrationData = [
-            'user_id'           => $jobseeker->id,
+            'user_id'           => $jobseeker->users_id,
             'surname'           => $request->surname,
             'first_name'        => $request->first_name,
             'middle_name'       => $request->middle_name,
@@ -240,7 +256,20 @@ return view('jobseeker.nsrp.index', compact('jobseeker', 'registration', 'nsrp')
             'disability_other'  => $request->disability_other,
         ];
 
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
+
+        // ── ANSWERS THAT ARE THE RECORD ──
+        //
+        // A name, a birthday and a sex are not preferences; the office holds a
+        // signed copy of them, and a form that lets them be retyped lets the
+        // two copies disagree. The boxes are disabled on the page, but a
+        // disabled box is a courtesy — this is the rule. See NsrpLocks.
+        foreach (\App\Support\NsrpLocks::IDENTITY_FIELDS as $field) {
+            if (\App\Support\NsrpLocks::identityLocked($registration, $field)) {
+                $registrationData[$field] = $registration->{$field};
+            }
+        }
+
         if ($registration) {
             $registration->update($registrationData);
         } else {
@@ -251,7 +280,7 @@ return view('jobseeker.nsrp.index', compact('jobseeker', 'registration', 'nsrp')
         // PART 2: NSRP Form Data → jobseeker_nsrp_registrations
         // ══════════════════════════════════════════
         $nsrpData = [
-            'jobseeker_registration_id' => $registration->id,
+            'jobseeker_registration_id' => $registration->jobseeker_registrations_id,
             'type'               => $request->classification_type ?? 'local',
     'employment_type'   => $request->employment_type,
             'is_ofw'            => $request->is_ofw ?? false,
@@ -259,12 +288,25 @@ return view('jobseeker.nsrp.index', compact('jobseeker', 'registration', 'nsrp')
             'is_4ps'            => $request->is_4ps ?? false,
             'household_id'      => $request->household_id,
             'work_type'         => $request->work_type,
-            'preferred_occupations' => array_filter($request->preferred_occupations ?? []),
-            'education'         => $request->education ?? [],
+            // array_values, not just array_filter: dropping a blank middle box
+            // leaves a hole in the keys, and a PHP array with holes encodes as a
+            // JSON object rather than a list. The form reads it back by index.
+            'preferred_occupations' => array_values(array_filter($request->preferred_occupations ?? [], fn($v) => filled($v))),
+            // A school already finished cannot be unfinished. Levels the
+            // jobseeker has already answered keep their answers; the ones
+            // still blank — in practice the masters row — stay open.
+            'education'         => \App\Support\NsrpLocks::mergeEducation(
+                \App\Support\NsrpLocks::storedEducation(
+                    JobseekerNsrpRegistration::where('jobseeker_registration_id', $registration->jobseeker_registrations_id)->first()
+                ),
+                $request->education ?? []
+            ),
             'other_skills'      => $request->other_skills ?? [],
             'other_skills_specify' => $request->other_skills_specify,
             'certification_agreed' => true,
-            'certification_date'   => $request->certification_date,
+            // The day the form was actually submitted, taken from the server
+            // clock rather than a field the signer could set to any date.
+            'certification_date'   => today()->toDateString(),
             'status'               => 'submitted',
             'employed_sub_type'         => $request->employed_sub_type,
             'self_employed_specify'     => $request->self_employed_specify,
@@ -286,7 +328,7 @@ return view('jobseeker.nsrp.index', compact('jobseeker', 'registration', 'nsrp')
         ];
 
         // Handle certificate file uploads
-        $nsrp = JobseekerNsrpRegistration::where('jobseeker_registration_id', $registration->id)->first();
+        $nsrp = JobseekerNsrpRegistration::where('jobseeker_registration_id', $registration->jobseeker_registrations_id)->first();
 
         $existingCerts = [];
         if ($nsrp && $nsrp->training_certificates) {
@@ -302,7 +344,7 @@ return view('jobseeker.nsrp.index', compact('jobseeker', 'registration', 'nsrp')
                     if (!empty($uploadedCerts[$idx])) {
                         \Illuminate\Support\Facades\Storage::delete($uploadedCerts[$idx]);
                     }
-                    $path = $file->store('certificates', 'public');
+                    $path = $file->store('certificates', 'local');
                     $uploadedCerts[$idx] = $path;
                 }
             }
@@ -321,14 +363,14 @@ return view('jobseeker.nsrp.index', compact('jobseeker', 'registration', 'nsrp')
 // PART 3: Work Experiences → jobseeker_work_experiences (naka-link na sa NSRP Form)
 // ══════════════════════════════════════════
 \App\Models\JobseekerWorkExperience::where(
-    'jobseeker_nsrp_registration_id', $nsrp->id
+    'jobseeker_nsrp_registration_id', $nsrp->jobseeker_nsrp_registrations_id
 )->delete();
 
 $workExperiences = $request->work_experiences ?? [];
 foreach ($workExperiences as $exp) {
     if (!empty($exp['company_name']) && !empty($exp['position'])) {
         \App\Models\JobseekerWorkExperience::create([
-            'jobseeker_nsrp_registration_id' => $nsrp->id,
+            'jobseeker_nsrp_registration_id' => $nsrp->jobseeker_nsrp_registrations_id,
             'company_name'      => $exp['company_name'],
             'position'          => $exp['position'],
             'industry'          => $exp['industry'] ?? null,
@@ -344,7 +386,7 @@ foreach ($workExperiences as $exp) {
         // PART 4: Certifications → jobseeker_certifications
         // ══════════════════════════════════════════
         \App\Models\JobseekerCertification::where(
-            'jobseeker_nsrp_registration_id', $nsrp->id
+            'jobseeker_nsrp_registration_id', $nsrp->jobseeker_nsrp_registrations_id
         )->delete();
 
         // ── Helper: safely parse a date string, return null kung dili valid ──
@@ -361,7 +403,7 @@ foreach ($workExperiences as $exp) {
         foreach ($eligibilities as $e) {
             if (!empty($e['name'])) {
                 \App\Models\JobseekerCertification::create([
-                    'jobseeker_nsrp_registration_id' => $nsrp->id,
+                    'jobseeker_nsrp_registration_id' => $nsrp->jobseeker_nsrp_registrations_id,
                     'category'    => 'eligibility',
                     'name'        => $e['name'],
                     'date_taken'  => $safeParseDate($e['date_taken'] ?? null),
@@ -373,7 +415,7 @@ foreach ($workExperiences as $exp) {
         foreach ($licenses as $l) {
             if (!empty($l['name'])) {
                 \App\Models\JobseekerCertification::create([
-                    'jobseeker_nsrp_registration_id' => $nsrp->id,
+                    'jobseeker_nsrp_registration_id' => $nsrp->jobseeker_nsrp_registrations_id,
                     'category'     => 'license',
                     'name'         => $l['name'],
                     'valid_until'  => $safeParseDate($l['valid_until'] ?? null),
@@ -388,7 +430,7 @@ foreach ($workExperiences as $exp) {
             if (in_array($nsrp->type, ['overseas', 'both'])) $rolesToNotify[] = 'sra';
 
             if (!empty($rolesToNotify)) {
-                $staffIds = \App\Models\Staff::whereIn('staff_role', $rolesToNotify)->pluck('id');
+                $staffIds = \App\Models\Staff::whereIn('staff_role', $rolesToNotify)->pluck('staff_id');
 
                 $jobseekerName = trim(($registration->first_name ?? '') . ' ' . ($registration->surname ?? ''));
 
@@ -397,7 +439,7 @@ foreach ($workExperiences as $exp) {
                     'title'          => 'New Jobseeker Registration 📋',
                     'message'        => ($jobseekerName ?: 'A jobseeker') . ' has submitted their NSRP registration form.',
                     'reference_type' => 'jobseeker_registration',
-                    'reference_id'   => $registration->id,
+                    'reference_id'   => $registration->jobseeker_registrations_id,
                 ], $staffIds);
             }
         }
@@ -416,10 +458,22 @@ foreach ($workExperiences as $exp) {
 
         $jobType = $request->input('job_type', 'all'); // all | local | overseas | job_fair
 
-        $query = Job::with('company')->where('status', 'open')
-            ->where(function ($q) {
-                $q->whereNull('deadline')->orWhereDate('deadline', '>=', now()->toDateString());
-            })
+        $registration = \App\Models\JobseekerRegistration::with('nsrp')->where('user_id', $jobseeker->users_id)->first();
+
+        // ── CLASSIFICATION GATE ──
+        // The classification on the NSRP form decides which market this
+        // jobseeker is in. Someone registered as local is shown local vacancies
+        // only; to see overseas work they change the classification on their
+        // own form to Overseas or Both. It is their answer, so it is theirs to
+        // change — but until they do, the list follows it.
+        //
+        // Someone who has not filled in an NSRP yet has no classification, so
+        // nothing is hidden from them. They cannot apply without one anyway.
+        $classification = $registration->nsrp->type ?? null;
+
+        $query = Job::with('company')->active()
+            ->when($classification === 'local',    fn($q) => $q->whereHas('company', fn($c) => $c->where('is_overseas', false)))
+            ->when($classification === 'overseas', fn($q) => $q->whereHas('company', fn($c) => $c->where('is_overseas', true)))
             ->when($jobType === 'local', fn($q) => $q->whereHas('company', fn($c) => $c->where('is_overseas', false)))
             ->when($jobType === 'overseas', fn($q) => $q->whereHas('company', fn($c) => $c->where('is_overseas', true)))
             ->when($jobType === 'job_fair', fn($q) => $q->where('schedule_type', 'job_fair'));
@@ -431,12 +485,88 @@ foreach ($workExperiences as $exp) {
             });
         }
 
-        $jobs = $query->latest()->paginate(4)->withQueryString();
+        // ── SORTING ──
+        // latest      — newest posting first, the plain order.
+        // location    — nearest to where the jobseeker lives.
+        // background  — how well the posting fits what they filled in on the NSRP.
+        //
+        // The last two cannot be done in SQL: neither proximity nor the match
+        // score exists as a column. So those two load the matching set, score it
+        // in PHP and paginate the result by hand.
+        $sort = $request->input('sort', 'latest');
 
-        $registration = \App\Models\JobseekerRegistration::with('nsrp')->where('user_id', $jobseeker->id)->first();
+        if (in_array($sort, ['location', 'background'], true) && $registration) {
+            $all = $query->get();
+
+            if ($sort === 'location') {
+                $all = $all->sortByDesc(fn($job) => $this->proximityScore($job, $registration));
+            } else {
+                $matcher = new ApplicationController();
+                $all = $all->sortByDesc(fn($job) =>
+                    $matcher->computeMatchBreakdownPublic($jobseeker->users_id, $job)['percentage']
+                );
+            }
+
+            $perPage = 4;
+            $page    = \Illuminate\Pagination\Paginator::resolveCurrentPage();
+
+            $jobs = new \Illuminate\Pagination\LengthAwarePaginator(
+                $all->forPage($page, $perPage)->values(),
+                $all->count(),
+                $perPage,
+                $page,
+                ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath()]
+            );
+            $jobs->withQueryString();
+        } else {
+            $sort = 'latest';
+            $jobs = $query->latest()->paginate(4)->withQueryString();
+        }
+
         $preferredOccupations = $registration->nsrp->preferred_occupations ?? [];
 
-        return view('jobseeker.jobs.index', compact('jobseeker', 'jobs', 'jobType', 'preferredOccupations'));
+        // Only offer the tabs the classification allows — a Local jobseeker has
+        // no use for an Overseas tab that can only ever come back empty.
+        $tabs = ['all' => 'All', 'local' => 'Local', 'overseas' => 'Overseas', 'job_fair' => 'Job Fair'];
+        if ($classification === 'local')    unset($tabs['overseas']);
+        if ($classification === 'overseas') unset($tabs['local']);
+
+        return view('jobseeker.jobs.index', compact(
+            'jobseeker', 'jobs', 'jobType', 'preferredOccupations', 'classification', 'tabs', 'sort'
+        ));
+    }
+
+    /**
+     * How near a vacancy is to where the jobseeker lives.
+     *
+     * There are no coordinates anywhere in this system — a job's location is a
+     * line of text an employer typed. So proximity is read off that text,
+     * narrowest ring first: the same barangay beats the same city, which beats
+     * the same province. A place the jobseeker named on their NSRP as a
+     * preferred work location counts at city level, because that is the level
+     * they wrote it at.
+     *
+     * A vacancy that matches nothing scores zero and sinks to the bottom rather
+     * than disappearing — near is a preference here, not a filter.
+     */
+    private function proximityScore($job, $registration): int
+    {
+        $haystack = strtolower((string) $job->location);
+        if ($haystack === '') return 0;
+
+        $has = fn($needle) => filled($needle)
+            && str_contains($haystack, strtolower(trim((string) $needle)));
+
+        if ($has($registration->barangay))           return 4;
+        if ($has($registration->municipality_city))  return 3;
+
+        foreach (($registration->nsrp->local_locations ?? []) as $preferred) {
+            if ($has($preferred)) return 3;
+        }
+
+        if ($has($registration->province))           return 2;
+
+        return 0;
     }
 
     // ───────────────────────────────
@@ -448,10 +578,24 @@ foreach ($workExperiences as $exp) {
         if (!$jobseeker) return redirect()->route('login');
 
         $job  = Job::with('company')->findOrFail($id);
-        $registration = JobseekerRegistration::with('nsrp')->where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::with('nsrp')->where('user_id', $jobseeker->users_id)->first();
         $nsrp = $registration->nsrp ?? null;
 
-        $application    = $registration ? Application::where('jobseeker_id', $registration->id)->where('job_id', $id)->first() : null;
+        // The same classification gate as the list. Hiding a vacancy from the
+        // list is not enough on its own — the URL is a plain job id, so the
+        // rule has to hold here too or it holds nowhere.
+        $classification = $nsrp->type ?? null;
+        $isOverseasJob  = (bool) optional($job->company)->is_overseas;
+
+        if (($classification === 'local' && $isOverseasJob) ||
+            ($classification === 'overseas' && !$isOverseasJob)) {
+            return redirect()->route('jobseeker.jobs')->with('info',
+                $isOverseasJob
+                    ? 'That is an overseas vacancy. Change your classification to Overseas or Both on your profile to see it.'
+                    : 'That is a local vacancy. Change your classification to Local or Both on your profile to see it.');
+        }
+
+        $application    = $registration ? Application::where('jobseeker_id', $registration->jobseeker_registrations_id)->where('job_id', $id)->first() : null;
         $alreadyApplied = $application !== null;
 
         // Compute match percentage + breakdown
@@ -459,16 +603,15 @@ foreach ($workExperiences as $exp) {
         $matchCriteria   = [];
         if ($nsrp) {
             $appController = new ApplicationController();
-            $breakdown       = $appController->computeMatchBreakdownPublic($jobseeker->id, $job);
+            $breakdown       = $appController->computeMatchBreakdownPublic($jobseeker->users_id, $job);
             $matchPercentage = $breakdown['percentage'];
             $matchCriteria   = $breakdown['criteria'];
         }
 
         // ── In-house: auto-prompt kung ≤5 days na lang ang nabilin sa preferred_date ug wala pa nagrespond ──
         $showInhouseParticipationPrompt = false;
-        if ($application && $job->schedule_type === 'inhouse' && $application->inhouse_participation === 'pending' && $job->preferred_date) {
-            $daysUntil = now()->diffInDays(\Carbon\Carbon::parse($job->preferred_date), false);
-            $showInhouseParticipationPrompt = $daysUntil >= 0 && $daysUntil <= 5;
+        if ($application && $application->inhouse_participation === 'pending') {
+            $showInhouseParticipationPrompt = $job->isInhousePromptDue();
         }
 
         return view('jobseeker.jobs.show', compact(
@@ -487,10 +630,10 @@ foreach ($workExperiences as $exp) {
         if (!$jobseeker) return redirect()->route('login');
         if ($guard = $this->requireNsrp($jobseeker)) return $guard;
 
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
 
         $applications = Application::with('job.company')
-            ->where('jobseeker_id', $registration->id ?? 0)
+            ->where('jobseeker_id', $registration->jobseeker_registrations_id ?? 0)
             ->latest()
             ->get();
 
@@ -505,7 +648,9 @@ foreach ($workExperiences as $exp) {
         $jobseeker = $this->authJobseeker();
         if (!$jobseeker) return redirect()->route('login');
 
-        return view('jobseeker.profile', compact('jobseeker'));
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
+
+        return view('jobseeker.profile', compact('jobseeker', 'registration'));
     }
 
     public function updateProfile(Request $request)
@@ -514,24 +659,51 @@ foreach ($workExperiences as $exp) {
         if (!$jobseeker) return redirect()->route('login');
 
         $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name'  => 'required|string|max:255',
-            'email'      => 'required|email|unique:users,email,' . $jobseeker->id,
+            'first_name'  => 'required|string|max:255',
+            'middle_name' => 'nullable|string|max:255',
+            'last_name'   => 'required|string|max:255',
+            'email'       => 'required|email|unique:users,email,' . $jobseeker->users_id . ',users_id',
+            // 18 is the minimum age the NSRP form accepts; the profile must not
+            // be a way around it.
+            'date_of_birth' => 'nullable|date|before_or_equal:' . now()->subYears(18)->toDateString(),
+            'profile_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'phone'      => ['nullable', 'string', new \App\Rules\MobileNumber],
+            'sms_opt_in' => 'nullable|boolean',
+        ], [
+            'date_of_birth.before_or_equal' => 'You must be at least 18 years old.',
         ]);
 
-        $jobseeker->update([
+        $data = [
             'email' => $request->email,
             'phone' => $request->phone,
             'name'  => $request->first_name . ' ' . $request->last_name,
-        ]);
+            // Mirrored onto the account as well as the registration below.
+            // Somebody who has not filled the NSRP form yet has no registration
+            // row, and without this their middle name would have nowhere to go.
+            'middle_name' => trim((string) $request->middle_name) ?: null,
+        ];
 
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        if ($request->hasFile('profile_photo')) {
+            if ($jobseeker->profile_photo) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($jobseeker->profile_photo);
+            }
+            $data['profile_photo'] = $request->file('profile_photo')->store('profile_photos', 'public');
+        }
+
+        $jobseeker->update($data);
+
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
         if ($registration) {
             $registration->update([
                 'first_name'    => $request->first_name,
                 'surname'       => $request->last_name,
                 'middle_name'   => $request->middle_name,
                 'date_of_birth' => $request->date_of_birth,
+                // Kept in step with users.phone. SMS is sent to the number on
+                // the registration, so the two drifting apart would mean the
+                // number edited here is not the number that gets texted.
+                'contact_number' => $request->phone,
+                'sms_opt_in'     => $request->boolean('sms_opt_in'),
             ]);
         }
 
@@ -545,7 +717,7 @@ foreach ($workExperiences as $exp) {
 
         $request->validate([
             'current_password' => 'required|string',
-            'new_password'     => 'required|string|min:6|confirmed',
+            'new_password'     => \App\Rules\PasswordPolicy::required(),
         ]);
 
         if (!Hash::check($request->current_password, $jobseeker->password)) {
@@ -568,11 +740,11 @@ foreach ($workExperiences as $exp) {
 
         $type = request('type', 'inhouse');
 
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
 
         // ── In-house interviews nga na-ACCEPT sa jobseeker (gikan sa Job-based in-house postings) ──
         $inhouseApplications = Application::with('job.company')
-            ->where('jobseeker_id', $registration->id ?? 0)
+            ->where('jobseeker_id', $registration->jobseeker_registrations_id ?? 0)
             ->where('inhouse_participation', 'accepted')
             ->whereHas('job', function ($q) {
                 $q->where('schedule_type', 'inhouse');
@@ -589,7 +761,7 @@ foreach ($workExperiences as $exp) {
             ->latest()
             ->get();
 
-        $joinedJobFairIds = \App\Models\JobFairRegistration::where('user_id', $registration->id ?? 0)
+        $joinedJobFairIds = \App\Models\JobFairRegistration::where('user_id', $registration->jobseeker_registrations_id ?? 0)
             ->pluck('job_fair_id')
             ->toArray();
 
@@ -606,15 +778,15 @@ foreach ($workExperiences as $exp) {
         $jobseeker = $this->authJobseeker();
         if (!$jobseeker) return redirect()->route('login');
 
-        $schedule = \App\Models\InhouseSchedule::where('id', $id)
+        $schedule = \App\Models\InhouseSchedule::where('inhouse_schedules_id', $id)
             ->where('status', 'accepted')
             ->firstOrFail();
 
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
 
         \App\Models\InhouseParticipant::firstOrCreate([
-            'inhouse_schedule_id' => $schedule->id,
-            'jobseeker_id'        => $registration->id ?? 0,
+            'inhouse_schedule_id' => $schedule->inhouse_schedules_id,
+            'jobseeker_id'        => $registration->jobseeker_registrations_id ?? 0,
         ], [
             'joined_at' => now(),
         ]);
@@ -630,28 +802,28 @@ foreach ($workExperiences as $exp) {
         $jobseeker = $this->authJobseeker();
         if (!$jobseeker) return redirect()->route('login');
 
-        $jobFair = \App\Models\JobFairEvent::where('id', $id)
+        $jobFair = \App\Models\JobFairEvent::where('job_fair_events_id', $id)
             ->where('status', '!=', 'completed')
             ->firstOrFail();
 
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
 
-        $alreadyJoined = \App\Models\JobFairRegistration::where('job_fair_id', $jobFair->id)
-            ->where('user_id', $registration->id ?? 0)
+        $alreadyJoined = \App\Models\JobFairRegistration::where('job_fair_id', $jobFair->job_fair_events_id)
+            ->where('user_id', $registration->jobseeker_registrations_id ?? 0)
             ->exists();
 
         if ($alreadyJoined) {
             return back()->with('info', 'You have already joined this job fair.');
         }
 
-        $totalRegistered = \App\Models\JobFairRegistration::where('job_fair_id', $jobFair->id)->count();
-        $slipNumber = 'JF' . $jobFair->id . '-' . str_pad($totalRegistered + 1, 4, '0', STR_PAD_LEFT);
+        $totalRegistered = \App\Models\JobFairRegistration::where('job_fair_id', $jobFair->job_fair_events_id)->count();
+        $slipNumber = 'JF' . $jobFair->job_fair_events_id . '-' . str_pad($totalRegistered + 1, 4, '0', STR_PAD_LEFT);
 
         $isEarly = now()->diffInDays($jobFair->event_date, false) >= 3;
 
         \App\Models\JobFairRegistration::create([
-            'job_fair_id' => $jobFair->id,
-            'user_id'     => $registration->id ?? 0,
+            'job_fair_id' => $jobFair->job_fair_events_id,
+            'user_id'     => $registration->jobseeker_registrations_id ?? 0,
             'slip_number' => $slipNumber,
             'is_early'    => $isEarly,
         ]);
@@ -669,10 +841,10 @@ foreach ($workExperiences as $exp) {
 
         $request->validate(['response' => 'required|in:yes,no']);
 
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
 
-        $reg = \App\Models\JobFairRegistration::where('id', $registrationId)
-            ->where('user_id', $registration->id ?? 0)
+        $reg = \App\Models\JobFairRegistration::where('job_fair_registrations_id', $registrationId)
+            ->where('user_id', $registration->jobseeker_registrations_id ?? 0)
             ->firstOrFail();
 
         $reg->update([
@@ -694,11 +866,13 @@ foreach ($workExperiences as $exp) {
 
         $search = $request->input('search');
 
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
 
-        $hired = Application::with('job.company')
-            ->where('jobseeker_id', $registration->id ?? 0)
-            ->where('status', 'hired')
+        // Every application, not only the ones that ended in a hire. PESO reads
+        // this page to tell whether a jobseeker is still looking for work, and
+        // a list of nothing but successes cannot answer that.
+        $history = Application::with('job.company')
+            ->where('jobseeker_id', $registration->jobseeker_registrations_id ?? 0)
             ->when($search, function ($q) use ($search) {
                 $q->whereHas('job', function ($jq) use ($search) {
                     $jq->where('title', 'like', "%{$search}%")
@@ -709,7 +883,7 @@ foreach ($workExperiences as $exp) {
             ->paginate(10)
             ->withQueryString();
 
-        return view('jobseeker.history.index', compact('hired', 'search'));
+        return view('jobseeker.history.index', compact('history', 'search'));
     }
 
     // ───────────────────────────────
@@ -720,11 +894,11 @@ foreach ($workExperiences as $exp) {
         $jobseeker = $this->authJobseeker();
         if (!$jobseeker) return response()->json(['error' => 'Unauthorized'], 401);
 
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
         if (!$registration) return response()->json(['error' => 'Not found'], 404);
 
-        \App\Models\Announcement::where('id', $id)
-            ->where('jobseeker_id', $registration->id)
+        \App\Models\Announcement::where('announcements_id', $id)
+            ->where('jobseeker_id', $registration->jobseeker_registrations_id)
             ->update(['is_read' => true]);
 
         return response()->json(['success' => true]);
@@ -735,10 +909,10 @@ foreach ($workExperiences as $exp) {
         $jobseeker = $this->authJobseeker();
         if (!$jobseeker) return response()->json(['error' => 'Unauthorized'], 401);
 
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
         if (!$registration) return response()->json(['error' => 'Not found'], 404);
 
-        \App\Models\Announcement::where('jobseeker_id', $registration->id)
+        \App\Models\Announcement::where('jobseeker_id', $registration->jobseeker_registrations_id)
             ->where('is_read', false)
             ->update(['is_read' => true]);
 
@@ -750,10 +924,10 @@ foreach ($workExperiences as $exp) {
         $jobseeker = $this->authJobseeker();
         if (!$jobseeker) return redirect()->route('login');
 
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
 
         $notifications = $registration
-            ? \App\Models\Announcement::where('jobseeker_id', $registration->id)->latest()->get()
+            ? \App\Models\Announcement::where('jobseeker_id', $registration->jobseeker_registrations_id)->latest()->get()
             : collect();
 
         return view('jobseeker.notifications.index', compact('notifications'));

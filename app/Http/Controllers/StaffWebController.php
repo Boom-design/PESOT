@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\EmployerNsrpRegistration;
 use App\Models\User;
 use App\Models\JobseekerRegistration;
 use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class StaffWebController extends Controller
 {
@@ -73,11 +76,42 @@ class StaffWebController extends Controller
             ));
 
         } elseif ($staffRole === 'job_vacancy') {
-            $pendingCount  = \App\Models\EmployerRequirement::where('status', 'pending')->count();
-            $approvedCount = \App\Models\EmployerRequirement::where('status', 'approved')->count();
-            $rejectedCount = \App\Models\EmployerRequirement::where('status', 'rejected')->count();
+            // ── Ang tulo ka stat card kay quick link na sa Employers page,
+            // ── mao nga ang numero kinahanglan pareho gyud sa makita nila
+            // ── didto. Kaniadto nag-ihap ni ug requirement row sa tibuok
+            // ── sistema — apil ang overseas, nga sa SRA man — mao nga ang
+            // ── card nag-ingon ug usa ka numero ug ang tab lain. Ang
+            // ── basihan karon pareho sa employers(): kompanya, local, ug
+            // ── ang parehas nga kahulogan sa kada tab. ──
+            $companies = EmployerNsrpRegistration::query()
+                ->whereHas('employer', fn($q) => $q->where('role', 'company'))
+                ->where('is_overseas', false);
+
+            // Pre-Employer: wala pay gipasa nga requirement, o gipasa na apan
+            // wala pa ma-desisyonan.
+            $pendingCount = (clone $companies)
+                ->where(fn($q) =>
+                    $q->whereDoesntHave('requirement')
+                      ->orWhereHas('requirement', fn($r) => $r->where('status', 'pending'))
+                )->count();
+
+            // Approved Employers: gi-ihap ang kompanya, dili ang papel.
+            $approvedCount = (clone $companies)
+                ->whereHas('requirement', fn($r) => $r->where('status', 'approved'))
+                ->whereNull('dormant_at')
+                ->count();
+
+            // Ang mga approved nga naay papel nga mahurot sulod sa usa ka
+            // semana. Kini ang gikinahanglan ug aksyon karon — dili ang
+            // rejected, nga naa naman sa Pre-Employer tab ug gihulat na lang
+            // ang bag-ong pasa sa employer.
+            $expiringCount = (clone $companies)
+                ->whereHas('requirement', fn($r) => $r->where('status', 'approved')->expiringSoon())
+                ->whereNull('dormant_at')
+                ->count();
+
             return view('staff.job_vacancy.dashboard', compact(
-                'pendingCount', 'approvedCount', 'rejectedCount',
+                'pendingCount', 'approvedCount', 'expiringCount',
                 'todayJobFair', 'todayInhouse'
             ));
         }
@@ -94,40 +128,135 @@ class StaffWebController extends Controller
         if (!$staff) return redirect()->route('login');
 
         $staffRole = $staff->staff_role;
-        $search = request('search');
+        if (!in_array($staffRole, ['lra', 'sra'], true)) return redirect()->route('staff.dashboard');
 
-       if ($staffRole === 'sra') {
-    $registrations = JobseekerRegistration::with(['user', 'nsrp'])
-        ->whereHas('nsrp', function($q) {
-            $q->whereIn('type', ['overseas', 'both']);
-        })
-                ->when($search, function($q) use ($search) {
-                    $q->whereHas('user', function($u) use ($search) {
-                        $u->where('name', 'like', "%{$search}%")
-                          ->orWhere('email', 'like', "%{$search}%");
-                    });
-                })
-                ->latest()
-                ->paginate(10);
-            return view('staff.sra.registrations.index', compact('registrations'));
+        $search     = request('search');
+        $occupation = request('occupation');
+        $education  = request('education');
 
-        } elseif ($staffRole === 'lra') {
-    $registrations = JobseekerRegistration::with(['user', 'applications', 'nsrp'])
-        ->whereHas('nsrp', function($q) {
-            $q->whereIn('type', ['local', 'both']);
-        })
-                ->when($search, function($q) use ($search) {
-                    $q->whereHas('user', function($u) use ($search) {
-                        $u->where('name', 'like', "%{$search}%")
-                          ->orWhere('email', 'like', "%{$search}%");
-                    });
-                })
-                ->latest()
-                ->paginate(10);
-            return view('staff.lra.registrations.index', compact('registrations'));
+        $all = $this->jobseekerPool($staffRole, $search, $occupation, $education);
+
+        // Manual nga pagination: ang educational attainment gikuha sa PHP, dili
+        // sa SQL - usa siya ka JSON nga mapa sa lima ka lebel, ug ang gipangita
+        // mao ang pinakataas nga napun-an. Wala kana masulti sa usa ka WHERE.
+        $perPage = 10;
+        $page    = \Illuminate\Pagination\Paginator::resolveCurrentPage();
+
+        $registrations = new \Illuminate\Pagination\LengthAwarePaginator(
+            $all->forPage($page, $perPage)->values(),
+            $all->count(),
+            $perPage,
+            $page,
+            ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath()]
+        );
+        $registrations->withQueryString();
+
+        $occupationOptions = $this->occupationOptions($staffRole);
+        $educationOptions  = \App\Support\JobseekerProfile::EDUCATION_LEVELS;
+
+        $view = $staffRole === 'sra' ? 'staff.sra.registrations.index' : 'staff.lra.registrations.index';
+
+        return view($view, compact(
+            'registrations', 'search', 'occupation', 'education',
+            'occupationOptions', 'educationOptions'
+        ));
+    }
+
+    /**
+     * The jobseekers this desk answers for, narrowed by what was asked for.
+     *
+     * PESO LRA, 2026-08-26: the desk is asked for candidates by trade and by
+     * schooling - "give me the caregivers", "give me the college graduates".
+     * Both are answers the jobseeker already gave on the NSRP form, so nothing
+     * new is asked of anyone; they were only never searchable.
+     */
+    private function jobseekerPool(string $staffRole, ?string $search, ?string $occupation, ?string $education)
+    {
+        $allowedClass = $staffRole === 'sra' ? ['overseas', 'both'] : ['local', 'both'];
+
+        $rows = JobseekerRegistration::with(['user', 'applications', 'nsrp'])
+            ->whereHas('nsrp', fn($q) => $q->whereIn('type', $allowedClass))
+            ->when($search, fn($q) => $q->where(function ($outer) use ($search) {
+                $outer->where('first_name', 'like', "%{$search}%")
+                      ->orWhere('surname', 'like', "%{$search}%")
+                      ->orWhereHas('user', fn($u) => $u->where('name', 'like', "%{$search}%")
+                                                       ->orWhere('email', 'like', "%{$search}%"));
+            }))
+            // Ang preferred_occupations usa ka JSON nga lista. Ang LIKE sa
+            // hilaw nga teksto igo na dinhi ug modagan sa MariaDB nga walay
+            // JSON nga function.
+            ->when($occupation, fn($q) => $q->whereHas('nsrp', fn($n) =>
+                $n->where('preferred_occupations', 'like', '%' . $occupation . '%')
+            ))
+            ->latest()
+            ->get();
+
+        if ($education) {
+            $rows = $rows->filter(fn($registration) =>
+                \App\Support\JobseekerProfile::highestEducation($registration->nsrp) === $education
+            );
         }
 
-        return redirect()->route('staff.dashboard');
+        return $rows->values();
+    }
+
+    /** Ang trabaho nga tinuod nga gisulat sa mga jobseeker niini nga desk. */
+    private function occupationOptions(string $staffRole): array
+    {
+        $allowedClass = $staffRole === 'sra' ? ['overseas', 'both'] : ['local', 'both'];
+
+        return \App\Models\JobseekerNsrpRegistration::whereIn('type', $allowedClass)
+            ->pluck('preferred_occupations')
+            ->flatMap(fn($list) => is_array($list) ? $list : (json_decode($list ?? '[]', true) ?: []))
+            ->filter()
+            ->map(fn($occupation) => trim($occupation))
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+    }
+
+    /** Ang gipakita nga listahan, isip Excel nga file. */
+    public function exportRegistrations()
+    {
+        $staff = $this->authStaff();
+        if (!$staff) return redirect()->route('login');
+
+        $staffRole = $staff->staff_role;
+        if (!in_array($staffRole, ['lra', 'sra'], true)) return redirect()->route('staff.dashboard');
+
+        $search     = request('search');
+        $occupation = request('occupation');
+        $education  = request('education');
+
+        $rows = $this->jobseekerPool($staffRole, $search, $occupation, $education);
+
+        $preamble = array_values(array_filter([
+            ['PESO Cagayan de Oro - Registered Jobseekers'],
+            ['Desk', $staffRole === 'sra' ? 'Overseas (SRA)' : 'Local (LRA)'],
+            $occupation ? ['Preferred occupation', $occupation] : null,
+            $education  ? ['Educational attainment', $education] : null,
+            $search     ? ['Search', $search] : null,
+            ['Total', $rows->count()],
+            ['Generated', now()->format('Y-m-d H:i')],
+        ]));
+
+        return \App\Support\ExcelExport::stream(
+            'peso-jobseekers-' . now()->format('Ymd') . '.xlsx',
+            ['#', 'Name', 'Sex', 'Age', 'Contact', 'Classification', 'Educational Attainment', 'Preferred Occupations', 'Registered'],
+            $rows->values()->map(fn($registration, $i) => [
+                $i + 1,
+                trim(($registration->first_name ?? '') . ' ' . ($registration->surname ?? '')),
+                $registration->sex,
+                $registration->age,
+                $registration->contact_number,
+                ucfirst($registration->nsrp->type ?? ''),
+                \App\Support\JobseekerProfile::highestEducation($registration->nsrp) ?: 'None',
+                collect($registration->nsrp->preferred_occupations ?? [])->filter()->implode(', '),
+                optional($registration->created_at)->format('Y-m-d'),
+            ]),
+            $preamble
+        );
     }
 
     // ───────────────────────────────
@@ -143,12 +272,12 @@ $nsrp = $registration->nsrp;
         $staffRole    = $staff->staff_role;
 
         $isOverseas = $staffRole === 'sra';
-        $existingAppliedJobIds = \App\Models\Application::where('jobseeker_id', $registration->id)->pluck('job_id')->toArray();
+        $existingAppliedJobIds = \App\Models\Application::where('jobseeker_id', $registration->jobseeker_registrations_id)->pluck('job_id')->toArray();
 
         $openJobs = \App\Models\Job::with('company')
             ->where('status', 'open')
             ->whereHas('company', fn($q) => $q->where('is_overseas', $isOverseas))
-            ->whereNotIn('id', $existingAppliedJobIds)
+            ->whereNotIn('job_qualifications_id', $existingAppliedJobIds)
             ->where(function ($q) {
                 $q->whereNull('deadline')->orWhereDate('deadline', '>=', now()->toDateString());
             })
@@ -167,6 +296,158 @@ $nsrp = $registration->nsrp;
     // ───────────────────────────────
     // JOB FAIR — VIEW ONLY (LRA/SRA)
     // ───────────────────────────────
+    /**
+     * Who turned up for what — the jobseekers who joined an in-house interview
+     * or registered for a job fair.
+     *
+     * Split by the jobseeker's own classification, not the employer's. LRA
+     * answers for the local jobseeker and SRA for the one bound overseas, and
+     * "Both" belongs to each of them: that person is in both markets, so both
+     * desks have to be able to see them.
+     */
+    public function participants()
+    {
+        $staff = $this->authStaff();
+        if (!$staff) return redirect()->route('login');
+
+        $staffRole = $staff->staff_role;
+        if (!in_array($staffRole, ['lra', 'sra'], true)) return redirect()->route('staff.dashboard');
+
+        $tab    = request('tab', 'inhouse') === 'jobfair' ? 'jobfair' : 'inhouse';
+        $search = request('search');
+
+        $allowedClass = $staffRole === 'lra' ? ['local', 'both'] : ['overseas', 'both'];
+
+        $byClassification = fn($q) => $q->whereHas('nsrp', fn($n) => $n->whereIn('type', $allowedClass));
+
+        $byName = function ($q) use ($search) {
+            if (!$search) return;
+            $q->where(fn($n) => $n->where('first_name', 'like', "%{$search}%")
+                                  ->orWhere('surname', 'like', "%{$search}%"));
+        };
+
+        // ── IN-HOUSE — the jobseeker said yes to taking part. ──
+        $inhouse = \App\Models\Application::with(['job.company', 'jobseeker.nsrp'])
+            ->where('inhouse_participation', 'accepted')
+            ->whereHas('job', fn($j) => $j->where('schedule_type', 'inhouse'))
+            ->whereHas('jobseeker', $byClassification)
+            ->when($search, fn($q) => $q->whereHas('jobseeker', $byName))
+            ->latest()
+            ->paginate(5, ['*'], 'inhousePage')
+            ->withQueryString();
+
+        // ── JOB FAIR — registered for the event. ──
+        $jobfair = \App\Models\JobFairRegistration::with(['jobFair', 'jobseeker.nsrp'])
+            ->whereHas('jobseeker', $byClassification)
+            ->when($search, fn($q) => $q->whereHas('jobseeker', $byName))
+            ->latest()
+            ->paginate(5, ['*'], 'jobfairPage')
+            ->withQueryString();
+
+        return view('staff.participants.index', compact(
+            'staffRole', 'tab', 'search', 'inhouse', 'jobfair'
+        ));
+    }
+
+    // ───────────────────────────────
+    // OVERSEAS LINE-UP — SRA picks who goes to the fair
+    // ───────────────────────────────
+
+    /**
+     * The overseas agencies eligible for a fair, and which of them SRA has put on it.
+     *
+     * PESO SRA, 2026-08-26: the head of the office decides which agencies are
+     * brought to a job fair, and SRA asks her before adding them. That
+     * conversation happens in the office, so the system cannot hold the
+     * permission itself — only who acted on it. Which is why nothing here is
+     * automatic: an overseas agency joins a fair because a person put them on
+     * it, and their name is on the record.
+     */
+    /**
+     * The overseas line-up shown inside the SRA's Job Fair tab.
+     *
+     * Returns [events, chosen event, agencies not yet on it, agencies on it].
+     * It had a page of its own until the office asked for one tab fewer; the
+     * work belongs to the fair, so it is drawn with the fair.
+     */
+    private function overseasLineupData(): array
+    {
+        // Ang fair nga wala pa nahuman ug modawat ug overseas. Ang uban walay
+        // pulos dinhi — walay lugar nga mapilian.
+        $events = \App\Support\JobFairInvites::upcomingEvents()
+            ->filter(fn($event) => $event->catersTo(true))
+            ->values();
+
+        $eventId = request('lineup_event');
+        $event   = $eventId
+            ? $events->firstWhere('job_fair_events_id', (int) $eventId)
+            : $events->first();
+
+        $available = $event
+            ? \App\Support\JobFairInvites::notYetInvited($event, true)
+            : collect();
+
+        $onTheList = $event
+            ? \App\Models\JobFairParticipant::with(['employer', 'invitedBy'])
+                ->where('job_fair_id', $event->job_fair_events_id)
+                ->whereHas('employer', fn($q) => $q->where('is_overseas', true))
+                ->get()
+            : collect();
+
+        return [$events, $event, $available, $onTheList];
+    }
+
+    /** Put the chosen agencies on the fair, and record on whose word. */
+    public function inviteOverseasToJobFair(Request $request, $id)
+    {
+        $staff = $this->authStaff();
+        if (!$staff) return redirect()->route('login');
+        if ($staff->staff_role !== 'sra') return redirect()->route('staff.dashboard');
+
+        $event = \App\Models\JobFairEvent::findOrFail($id);
+
+        if ($event->status === 'completed') {
+            return back()->with('error', 'This job fair is over. No further invitations can be sent.');
+        }
+
+        if (!$event->catersTo(true)) {
+            return back()->with('error', 'This job fair does not cater to overseas employers.');
+        }
+
+        $request->validate([
+            'employer_ids'     => ['required', 'array', 'min:1'],
+            'employer_ids.*'   => ['integer'],
+            'permission_note'  => ['required', 'string', 'max:255'],
+        ], [
+            'employer_ids.required'    => 'Select at least one agency to add.',
+            'permission_note.required' => 'Record who cleared this and when — it is the only trace the permission leaves.',
+        ]);
+
+        // Gitandi batok sa listahan mismo, dili sa exists: ang employer nga
+        // participant na, o wala pa na-approve ang requirements, o lokal, dili
+        // gyud angay makasulod pinaagi sa usa ka gi-usab nga porma.
+        $available = \App\Support\JobFairInvites::notYetInvited($event, true);
+        $chosen    = $available->whereIn('employer_nsrp_registrations_id', $request->employer_ids)->values();
+
+        if ($chosen->isEmpty()) {
+            return back()->with('error', 'None of those agencies can be added to this job fair.');
+        }
+
+        $staffRecord = \App\Models\Staff::where('user_id', $staff->users_id)->first();
+
+        $sent = \App\Support\JobFairInvites::invite(
+            $event,
+            $chosen,
+            $staffRecord?->staff_id,
+            $request->permission_note
+        );
+
+        $window = (int) config('peso.jobfair.confirm_window_days');
+
+        return back()->with('success', $sent . ' agency(ies) added to ' . $event->title . '. They have '
+            . $window . ' days to confirm, until ' . now()->addDays($window)->format('M d, Y') . '.');
+    }
+
     public function jobFairViewOnly()
     {
         $staff = $this->authStaff();
@@ -177,29 +458,56 @@ $nsrp = $registration->nsrp;
         $events = \App\Models\JobFairEvent::orderByDesc('event_date')->paginate(3, ['*'], 'event_page');
 
         $jobs = null;
-        $jobStatus = request('job_status', 'pending');
-        $totalPendingJobs = $totalApprovedJobs = $totalRejectedJobs = 0;
+        $totalApprovedJobs = 0;
+
+        // ── Ang gipili nga fair. ──
+        //
+        // PESO, 2026-08-30: kining tab kay monitoring — ang pag-approve sa
+        // posting naa sa Job Fair desk, dili dinhi. Mao nga ang gilista mao ra
+        // ang APPROVED, ug ang pangutana sa desk kay "unsa ang naa sa fair nga
+        // ni" — busa usa ka dropdown sa event, dili usa ka sala sa posting
+        // status. Ang pending ug rejected wala na: wala silay mahimo niini.
+        $eventId = request('event_id');
 
         // ── LRA dili mo-approve og Job Fair postings (SRA/Job Vacancy ra) — pero pwede gihapon makakita sa events monitoring ──
         if (in_array($staffRole, ['job_vacancy', 'sra'])) {
             $isOverseas = $staffRole === 'sra';
 
             $baseJobQuery = \App\Models\Job::where('schedule_type', 'job_fair')
+                ->where('posting_status', 'approved')
                 ->whereHas('company', fn($n) => $n->where('is_overseas', $isOverseas));
 
-            $totalPendingJobs  = (clone $baseJobQuery)->where('posting_status', 'pending')->count();
-            $totalApprovedJobs = (clone $baseJobQuery)->where('posting_status', 'approved')->count();
-            $totalRejectedJobs = (clone $baseJobQuery)->where('posting_status', 'rejected')->count();
+            $totalApprovedJobs = (clone $baseJobQuery)->count();
 
             $jobs = (clone $baseJobQuery)->with('company')
-                ->when($jobStatus !== 'all', fn($q) => $q->where('posting_status', $jobStatus))
+                ->when($eventId, fn($q) => $q->where('requested_job_fair_id', $eventId))
                 ->latest()
-                ->paginate(3, ['*'], 'job_page');
+                ->paginate(5, ['*'], 'job_page')
+                ->withQueryString();
         }
 
+        // Ang tanang fair nga mapilian sa dropdown — bag-o ang una, kay didto
+        // man ang trabaho.
+        $jobFairOptions = \App\Models\JobFairEvent::orderByDesc('event_date')
+            ->get(['job_fair_events_id', 'title', 'event_date']);
+
+        // ── Ang overseas nga line-up, sulod na niining page.
+        // ──
+        // ── Kaniadto naa siyay kaugalingong tab. Ang tanan nga gibuhat niya iya
+        // ── man sa fair, mao nga dinhi na siya. SRA ra ang mobasa niini — siya
+        // ── ra man ang makapili kung kinsang ahensya ang dad-on sa fair.
+        // ──
+        // ── Duha ka panel, dili nag-uban-uban: ang postings ug ang pag-imbita.
+        // ── Kung tapadon sila, ang pag-imbita mahulog sa ubos sa tibuok lamesa
+        // ── ug kinahanglan pang i-scroll siya pangitaon. ──
+        $panel = request('panel') === 'invite' ? 'invite' : 'postings';
+
+        [$lineupEvents, $lineupEvent, $lineupAvailable, $lineupOnTheList] =
+            $staffRole === 'sra' ? $this->overseasLineupData() : [collect(), null, collect(), collect()];
+
         return view('staff.inhouse.jobfair', compact(
-            'events', 'staffRole', 'jobs', 'jobStatus',
-            'totalPendingJobs', 'totalApprovedJobs', 'totalRejectedJobs'
+            'events', 'staffRole', 'jobs', 'eventId', 'jobFairOptions', 'totalApprovedJobs',
+            'panel', 'lineupEvents', 'lineupEvent', 'lineupAvailable', 'lineupOnTheList'
         ));
     }
 
@@ -222,92 +530,90 @@ $nsrp = $registration->nsrp;
             ->when($search, fn($q) => $q->where('title', 'like', "%{$search}%")
                                         ->orWhere('venue', 'like', "%{$search}%"))
             ->latest()
-            ->paginate(10);
+            ->paginate(5);
 
         $totalUpcoming  = \App\Models\JobFairEvent::where('status', 'upcoming')->count();
         $totalOngoing   = \App\Models\JobFairEvent::where('status', 'ongoing')->count();
         $totalCompleted = \App\Models\JobFairEvent::where('status', 'completed')->count();
 
-        $participants        = null;
-        $confirmedCount      = 0;
-        $pendingCount        = 0;
-        $declinedCount       = 0;
-        $employmentRequests  = collect();
+        $participants          = null;
+        $confirmedCount        = 0;
+        $pendingCount          = 0;
+        $declinedCount         = 0;
+        $expiredCount          = 0;
+        $participantLocal      = 0;
+        $participantOverseas   = 0;
+        $employmentRequests    = collect();
+        $employerOpenPostings  = collect();
+        $notYetInvited         = collect();
+        $participantFilter     = request('participant_filter', 'all');
 
         if ($view === 'participants' && request('event_id')) {
-            $participants = \App\Models\JobFairParticipant::with('employer')
+            // ── PESO Job Fair staff, 2026-08-23: kinahanglan nila makita ang
+            // ── local ug overseas nga employer apil ang mga bakante nila. Ang
+            // ── filter mao ang nagbulag sa duha; ang employer.employer mao ang
+            // ── users nga row diin naa ang email — ang employer_nsrp_registrations
+            // ── walay email nga kolum, mao nga "None" gyud ang na-print sukad. ──
+            $participantQuery = \App\Models\JobFairParticipant::with(['employer.employer'])
                 ->where('job_fair_id', request('event_id'))
-                ->latest()
-                ->paginate(10);
+                ->when($participantFilter !== 'all', fn($q) =>
+                    $q->whereHas('employer', fn($e) =>
+                        $e->where('is_overseas', $participantFilter === 'overseas'))
+                );
+
+            $participants = $participantQuery->latest()->paginate(10)->withQueryString();
 
             $employmentRequests = \App\Models\JobFairEmploymentRequest::with('job')
                 ->where('job_fair_id', request('event_id'))
                 ->get()
                 ->groupBy('employer_id');
 
-            $confirmedCount = \App\Models\JobFairParticipant::where('job_fair_id', request('event_id'))
-                ->where('confirmation_status', 'confirmed')->count();
-            $pendingCount   = \App\Models\JobFairParticipant::where('job_fair_id', request('event_id'))
-                ->where('confirmation_status', 'pending')->count();
-            $declinedCount  = \App\Models\JobFairParticipant::where('job_fair_id', request('event_id'))
-                ->where('confirmation_status', 'declined')->count();
+            // ── Ang employer nga wala pa nagpili ug bakante para niini nga fair
+            // ── naa ra bay bakante? Kung naa, ipakita — mao gyud kana ang
+            // ── gipangita sa staff, ug ang "No jobs selected yet" nga linya
+            // ── nagtago sa tubag. ──
+            $employerOpenPostings = \App\Models\Job::where('schedule_type', 'job_fair')
+                ->where('posting_status', 'approved')
+                ->whereIn('company_id', $participants->pluck('employer_id'))
+                ->get(['job_qualifications_id', 'company_id', 'title'])
+                ->groupBy('company_id');
+
+            $baseParticipants = \App\Models\JobFairParticipant::where('job_fair_id', request('event_id'));
+
+            $confirmedCount = (clone $baseParticipants)->where('confirmation_status', 'confirmed')->count();
+            $pendingCount   = (clone $baseParticipants)->where('confirmation_status', 'pending')->count();
+            $declinedCount  = (clone $baseParticipants)->where('confirmation_status', 'declined')->count();
+            $expiredCount   = (clone $baseParticipants)->where('confirmation_status', 'expired')->count();
+
+            $participantLocal    = (clone $baseParticipants)->whereHas('employer', fn($e) => $e->where('is_overseas', false))->count();
+            $participantOverseas = (clone $baseParticipants)->whereHas('employer', fn($e) => $e->where('is_overseas', true))->count();
+
+            // ── Ang reserba. Sa adlaw nga gihimo ang event, ang tanan sulod sa
+            // ── gipiling industriya na-invite na, mao nga kung mo-lapse ang usa
+            // ── ka semana ug kulang pa, kining listahan ra ang mabilin. Wala ni
+            // ── awtomatik nga gipadad-an — ang staff ang mopili, kay ang
+            // ── paghukom nga ang hotel nga agency angay sa Manufacturing nga
+            // ── fair kay hukom sa tawo. ──
+            $eventForInvites = \App\Models\JobFairEvent::find(request('event_id'));
+            if ($eventForInvites && $eventForInvites->status !== 'completed') {
+                $notYetInvited = \App\Support\JobFairInvites::notYetInvited($eventForInvites, false);
+            }
         }
 
-        // ── ATTENDANCE VIEW ──
-        $registrations       = null;
-        $attendanceFilter    = request('attendance_filter', 'all');
-        $totalRegistered     = 0;
-        $totalAttended       = 0;
-        $totalAbsent         = 0;
-        $totalLocal          = 0;
-        $totalOverseas       = 0;
-
-        $attendanceSearch = request('attendance_search');
-
+        // ── Ang attendance naa na sa Reports, dili na dinhi.
+        // ──
+        // ── Duha ka tab kaniadto ang nagpakita sa parehas nga mga tawo ug
+        // ── managlahi ug ihap. Karon usa ra: Reports, tab nga Attendance, uban
+        // ── ang Mark Attended ug ang pagpili tali sa "All joined" ug
+        // ── "Attended only". ──
         $event = request('event_id') ? \App\Models\JobFairEvent::find(request('event_id')) : null;
-
-        if ($view === 'attendance' && request('event_id')) {
-            // ── Dili pa gi-confirm (is_attended NULL) DILI mabutang sa listahan — mabutang lang human ma-confirm sa jobseeker sa event day ──
-            $regQuery = \App\Models\JobFairRegistration::with(['jobseeker.nsrp', 'jobseeker.user'])
-                ->where('job_fair_id', request('event_id'))
-                ->whereNotNull('is_attended')
-                ->when($attendanceFilter !== 'all', function ($q) use ($attendanceFilter) {
-                    $q->whereHas('jobseeker.nsrp', function ($n) use ($attendanceFilter) {
-                        $n->whereIn('type', [$attendanceFilter, 'both']);
-                    });
-                })
-                ->when($attendanceSearch, function ($q) use ($attendanceSearch) {
-                    $q->where(function ($sub) use ($attendanceSearch) {
-                        $sub->where('slip_number', 'like', "%{$attendanceSearch}%")
-                            ->orWhereHas('jobseeker', function ($jq) use ($attendanceSearch) {
-                                $jq->where('first_name', 'like', "%{$attendanceSearch}%")
-                                   ->orWhere('surname', 'like', "%{$attendanceSearch}%");
-                            });
-                    });
-                });
-
-            $registrations = $regQuery->latest()->paginate(10)->withQueryString();
-
-            $baseCountQuery = \App\Models\JobFairRegistration::where('job_fair_id', request('event_id'));
-
-            $totalRegistered = (clone $baseCountQuery)->count();
-            $totalAttended   = (clone $baseCountQuery)->where('is_attended', true)->count();
-            $totalAbsent     = (clone $baseCountQuery)->where('is_attended', false)->count();
-
-            $totalLocal = (clone $baseCountQuery)->whereNotNull('is_attended')->whereHas('jobseeker.nsrp', fn($n) =>
-                $n->whereIn('type', ['local', 'both'])
-            )->count();
-
-            $totalOverseas = (clone $baseCountQuery)->whereNotNull('is_attended')->whereHas('jobseeker.nsrp', fn($n) =>
-                $n->whereIn('type', ['overseas', 'both'])
-            )->count();
-        }
 
         return view('staff.job_fair.events.index', compact(
             'events', 'status', 'totalUpcoming', 'totalOngoing', 'totalCompleted',
             'allEvents', 'participants', 'confirmedCount', 'pendingCount', 'declinedCount',
-            'employmentRequests', 'registrations', 'attendanceFilter', 'attendanceSearch',
-            'totalRegistered', 'totalAttended', 'totalAbsent', 'totalLocal', 'totalOverseas', 'event'
+            'expiredCount', 'notYetInvited',
+            'participantFilter', 'participantLocal', 'participantOverseas', 'employerOpenPostings',
+            'employmentRequests', 'event'
         ));
     }
 
@@ -315,7 +621,37 @@ $nsrp = $registration->nsrp;
     {
         $staff = $this->authStaff();
         if (!$staff || $staff->staff_role !== 'job_fair') return redirect()->route('login');
-        return view('staff.job_fair.events.create');
+
+        return view('staff.job_fair.events.create', $this->jobFairIndustryPicture());
+    }
+
+    // ── Kinsa ang naa didto, gibahin sa industriya.
+    // ──
+    // ── Ang staff mopili ug industriya nga gipangita sa fair, ug ang gipili
+    // ── mao ang mopili sa padad-an. Kung dili niya makita ang gidaghanon sa
+    // ── dili pa siya mo-save, mahimo siyang mopadala ug imbitasyon nga walay
+    // ── makadawat ug wala siyay paagi nga masayod.
+    // ──
+    // ── Ang $unclassified mao ang pahimangno: kining mga employer dili gyud
+    // ── maapil kung naay gipiling industriya. ──
+    private function jobFairIndustryPicture(): array
+    {
+        $employers = EmployerNsrpRegistration::whereHas('employer', fn($q) =>
+                $q->where('role', 'company')
+                  ->where('status', 'approved')
+                  ->whereHas('employerRequirement', fn($r) => $r->where('status', 'approved'))
+            )
+            ->get(['industry_group', 'is_overseas']);
+
+        return [
+            'industryCounts' => collect(EmployerNsrpRegistration::INDUSTRY_GROUPS)
+                ->mapWithKeys(fn($group) => [$group => [
+                    'local'    => $employers->where('industry_group', $group)->where('is_overseas', false)->count(),
+                    'overseas' => $employers->where('industry_group', $group)->where('is_overseas', true)->count(),
+                ]])
+                ->all(),
+            'unclassified' => $employers->whereNull('industry_group')->count(),
+        ];
     }
 
     public function storeJobFairEvent(Request $request)
@@ -323,136 +659,142 @@ $nsrp = $registration->nsrp;
         $staff = $this->authStaff();
         if (!$staff || $staff->staff_role !== 'job_fair') return redirect()->route('login');
 
+        $cater    = (array) $request->input('cater', []);
+        $leadDays = (int) config('peso.jobfair.create_lead_days');
+        $earliest = now()->addDays($leadDays);
+
         $request->validate([
             'title'             => 'required|string|max:255',
-            'event_date'        => 'required|date|after_or_equal:' . now()->addDays(10)->format('Y-m-d'),
+            'event_date'        => 'required|date|after_or_equal:' . $earliest->format('Y-m-d') . '|unique:job_fair_events,event_date',
             'event_time'        => 'required|date_format:H:i|after_or_equal:09:00|before_or_equal:17:00',
             'venue'             => 'required|string|max:255',
-            'employer_capacity' => 'required|integer|min:1',
             'cater'             => 'required|array|min:1',
             'cater.*'           => 'in:local,overseas',
+            // The headcount is a target the office writes down, not a limit —
+            // the sponsor decides how many employers fit. Optional for both
+            // types, and nothing is refused when it is reached.
+            'local_capacity'    => 'nullable|integer|min:1',
+            'overseas_capacity' => 'nullable|integer|min:1',
+            // Which industries this fair is looking for. Absent means all of
+            // them, which is how every event behaved before today.
+            'target_industries'   => 'nullable|array',
+            'target_industries.*' => [Rule::in(EmployerNsrpRegistration::INDUSTRY_GROUPS)],
+            // A fair held for PWD applicants. Absent means an ordinary fair,
+            // which is how every event behaved before today.
+            'pwd_only'            => 'nullable|boolean',
         ], [
-            'event_date.after_or_equal' => 'Event date must be at least 10 days from today (earliest: ' . now()->addDays(10)->format('M d, Y') . ').',
+            'event_date.after_or_equal' => 'Event date must be at least ' . $leadDays . ' days from today (earliest: ' . $earliest->format('M d, Y') . ').',
+            'event_date.unique'         => 'A job fair event is already scheduled on this date. Please choose a different date.',
             'event_time.after_or_equal' => 'Event time must be between 9:00 AM and 5:00 PM.',
             'event_time.before_or_equal' => 'Event time must be between 9:00 AM and 5:00 PM.',
             'cater.required'            => 'Please check at least one employer type (Local or Overseas) to invite.',
         ]);
 
-        $staffRecord = \App\Models\Staff::where('user_id', $staff->id)->first();
+        // ── Dili ma-book ang adlaw nga puliki ang opisina. Lahi ni sa holiday:
+        // ── ang holiday pahimangno ra, apan kung naa'y meeting o training,
+        // ── anaa didto ang tanang staff nga mo-atiman sa job fair. ──
+        if ($why = \App\Support\OfficeCalendar::reason($request->event_date, true)) {
+            return back()->withInput()->with('error',
+                'That date is taken by a PESO office schedule. ' . $why);
+        }
+
+        $staffRecord = \App\Models\Staff::where('user_id', $staff->users_id)->first();
+
+        [$localCapacity, $overseasCapacity] = $this->jobFairTargets($request, $cater);
 
         $event = \App\Models\JobFairEvent::create([
-            'created_by'        => $staffRecord->id,
+            'created_by'        => $staffRecord->staff_id,
             'title'             => $request->title,
             'event_date'        => $request->event_date,
             'event_time'        => $request->event_time,
             'venue'             => $request->venue,
-            'employer_capacity' => $request->employer_capacity,
+            'cater'             => array_values($cater),
+            'target_industries' => $this->jobFairTargetIndustries($request),
+            'pwd_only'          => $request->boolean('pwd_only'),
+            'local_capacity'    => $localCapacity,
+            'overseas_capacity' => $overseasCapacity,
+            // Kept as the combined figure so existing reads of employer_capacity
+            // still see a sensible total.
+            'employer_capacity' => $localCapacity === null && $overseasCapacity === null
+                                    ? null
+                                    : (int) $localCapacity + (int) $overseasCapacity,
             'status'            => 'upcoming',
         ]);
 
-        // ── Auto-notify approved employers, na-filter base sa gi-check nga Local/Overseas ──
-        $caterTo = $request->cater;
-        $employers = User::where('role', 'company')
-            ->where('status', 'approved')
-            ->whereHas('employerRequirement', fn($q) => $q->where('status', 'approved'))
-            ->whereHas('employerNsrp', function ($q) use ($caterTo) {
-                $q->where(function ($q2) use ($caterTo) {
-                    if (in_array('local', $caterTo)) {
-                        $q2->orWhere('is_overseas', false);
-                    }
-                    if (in_array('overseas', $caterTo)) {
-                        $q2->orWhere('is_overseas', true);
-                    }
-                });
-            })
-            ->get();
+        // ── Ang pag-invite naa na sa JobFairInvites, dili na dinhi.
+        // ──
+        // ── Duha ka gutlo ang nagpadala ug invitation: dinhi, ug ang pag-
+        // ── approve sa requirements sa usa ka employer. Kung magbulag-bulag
+        // ── ang ilang kahulogan sa "kinsa ang angay i-invite", magkalahi sila.
+        // ── Ang `cater` ug ang `target_industries` nga gi-save sa taas ang
+        // ── mopili — wala nay lain nga mobasa sa $cater human niini. ──
+        $invited = \App\Support\JobFairInvites::invite(
+            $event,
+            \App\Support\JobFairInvites::autoEligibleFor($event)
+        );
 
-        foreach ($employers as $employer) {
-            \App\Models\JobFairParticipant::create([
-                'job_fair_id'         => $event->id,
-                'employer_id'         => $employer->employerNsrp->id,
-                'confirmation_status' => 'pending',
-            ]);
-        }
+        // ── WALAY POSTING NGA MO-ABLI DINHI.
+        // ──
+        // ── PESO Job Fair staff, 2026-08-26: ang pag-create ug event dili
+        // ── pagdapit sa bisan unsang bakante. Ang bag-ong event walay posting
+        // ── hangtod nga ang desk mismo mo-post niini gikan sa Job Postings —
+        // ── salaan sa industriya, tsekan, ug Post Selected.
+        // ──
+        // ── Kaniadto mo-abli dayon dinhi ang mga naghulat nga posting kung ang
+        // ── event sulod na sa lima ka adlaw nga window. Sakto pa kadto samtang
+        // ── ang posting mosulod sa fair nga siya ra; karon ang desk na ang
+        // ── mopili, mao nga ang pag-abli mahitabo lang human niya mapili.
+        // ──
+        // ── Ang gidawat nga posting mo-abli sa duha ka lugar, ug wala nay lain:
+        // ── ang acceptPostingIntoFair (kung duol na ang fair niadtong taknaa)
+        // ── ug ang jobfair:open-postings nga command sa T-minus. ──
+        $openDate = $event->event_date->copy()->subDays(\App\Support\JobFairPostingWindow::daysBefore());
+        $note     = ' No vacancy is on it yet — post them from Job Postings. '
+                  . 'Whatever is on it by ' . $openDate->format('M d, Y') . ' goes live that day, '
+                  . \App\Support\JobFairPostingWindow::daysBefore() . ' days before the event.';
 
-        \App\Models\Announcement::sendToEmployers([
-            'type'           => 'job_fair_invitation',
-            'title'          => 'Job Fair Invitation 🎉',
-            'message'        => 'You are invited to join ' . $event->title . ' on ' . $event->event_date->format('M d, Y') . ' at ' . $event->venue . '. Please respond to confirm your participation.',
-            'reference_type' => 'job_fair',
-            'reference_id'   => $event->id,
-        ], $employers->map(fn($e) => $e->employerNsrp->id));
-
-        // ── AUTO-OPEN: tanan Job Fair postings nga approved na pero magpabilin CLOSED (nag-hulat sa bag-ong event) mabalhin karon nga OPEN, mapost na sa landing page ──
-        $closedJobFairJobs = \App\Models\Job::with('company')
-            ->where('schedule_type', 'job_fair')
-            ->where('posting_status', 'approved')
-            ->where('status', 'closed')
-            ->get();
-
-        foreach ($closedJobFairJobs as $job) {
-            $job->update(['status' => 'open']);
-
-            \App\Models\Announcement::sendToEmployers([
-                'type'           => 'job_fair_posting_opened',
-                'title'          => 'Job Fair Posting Now Live 🎪',
-                'message'        => 'Your job fair posting "' . $job->title . '" is now open and visible to jobseekers, following the creation of ' . $event->title . '.',
-                'reference_type' => 'job',
-                'reference_id'   => $job->id,
-            ], $job->company_id);
-        }
-
-        if ($closedJobFairJobs->isNotEmpty()) {
-            $allJobseekerRegs = \App\Models\JobseekerRegistration::whereHas('user', fn($q) => $q->where('status', 'approved'))
-                ->with('nsrp')
-                ->get();
-
-            foreach ($closedJobFairJobs as $job) {
-                $matchedIds = collect();
-                $unmatchedIds = collect();
-                $jobTitleLower = strtolower($job->title);
-
-                foreach ($allJobseekerRegs as $jsReg) {
-                    $nsrp = $jsReg->nsrp;
-                    $preferred = $nsrp->preferred_occupations ?? [];
-                    $isMatch = false;
-                    foreach ($preferred as $occ) {
-                        if (strtolower(trim($occ)) === $jobTitleLower) {
-                            $isMatch = true;
-                            break;
-                        }
-                    }
-                    if ($isMatch) {
-                        $matchedIds->push($jsReg->id);
-                    } else {
-                        $unmatchedIds->push($jsReg->id);
-                    }
-                }
-
-                if ($matchedIds->isNotEmpty()) {
-                    \App\Models\Announcement::sendToJobseekers([
-                        'type'           => 'job_match',
-                        'title'          => 'Matching Job Vacancy Found! 💼',
-                        'message'        => 'A job vacancy matching your preferred position "' . $job->title . '" from ' . ($job->company->company_name ?? 'an employer') . ' is now available. Would you like to apply?',
-                        'reference_type' => 'job',
-                        'reference_id'   => $job->id,
-                    ], $matchedIds);
-                }
-
-                if ($unmatchedIds->isNotEmpty()) {
-                    \App\Models\Announcement::sendToJobseekers([
-                        'type'           => 'job_posted',
-                        'title'          => 'New Job Vacancy Posted 💼',
-                        'message'        => 'A new job vacancy "' . $job->title . '" from ' . ($job->company->company_name ?? 'an employer') . ' is now available!',
-                        'reference_type' => 'job',
-                        'reference_id'   => $job->id,
-                    ], $unmatchedIds);
-                }
-            }
-        }
+        // ── Isulti gyud ang gidaghanon. Kung ang gipiling industriya walay
+        // ── employer, ang "employers notified" mabakak, ug walay paagi nga
+        // ── mahibaw-an sa staff nga walay nakadawat. ──
+        $who = $invited > 0
+            ? $invited . ' employer(s) invited.'
+            : 'No employer matched this event yet — check the employer types and industries you chose.';
 
         return redirect()->route('staff.jobfair.events')
-            ->with('success', 'Job Fair event created and employers notified!' . ($closedJobFairJobs->isNotEmpty() ? ' ' . $closedJobFairJobs->count() . ' job fair posting(s) are now live.' : ''));
+            ->with('success', 'Job Fair event created. ' . $who . $note);
+    }
+
+    // ── Ang target nga gidaghanon kada tipo, o null kung wala gisulat.
+    // ──
+    // ── Ang tipo nga wala gi-tsek walay target bisan unsa pa ang nahibilin sa
+    // ── iyang input. Ang null ug ang 0 managlahi karon: ang null nagpasabot
+    // ── nga wala pa nakadesisyon ang opisina, ang 0 wala nay kahulogan kay ang
+    // ── tipo mismo ang naa na sa `cater`. ──
+    private function jobFairTargets(Request $request, array $cater): array
+    {
+        return [
+            in_array('local', $cater) && $request->filled('local_capacity')
+                ? (int) $request->local_capacity : null,
+            in_array('overseas', $cater) && $request->filled('overseas_capacity')
+                ? (int) $request->overseas_capacity : null,
+        ];
+    }
+
+    // ── Ang gipangita nga industriya, o null nga nagpasabot ug tanan.
+    // ──
+    // ── Ang "All industries" nga checkbox sa porma mao ang default. Kung siya
+    // ── ang gi-tsek, walay industriya nga gi-save — parehas gyud sa gibuhat sa
+    // ── tanan nga event sa wala pa gipangayo sa opisina ang targeted nga
+    // ── imbitasyon. ──
+    private function jobFairTargetIndustries(Request $request): ?array
+    {
+        if ($request->boolean('all_industries')) {
+            return null;
+        }
+
+        $industries = array_values(array_filter((array) $request->input('target_industries', [])));
+
+        return $industries ?: null;
     }
 
     public function editJobFairEvent($id)
@@ -461,7 +803,9 @@ $nsrp = $registration->nsrp;
         if (!$staff || $staff->staff_role !== 'job_fair') return redirect()->route('login');
 
         $event = \App\Models\JobFairEvent::findOrFail($id);
-        return view('staff.job_fair.events.edit', compact('event'));
+
+        return view('staff.job_fair.events.edit',
+            array_merge(['event' => $event], $this->jobFairIndustryPicture()));
     }
 
     public function updateJobFairEvent(Request $request, $id)
@@ -469,25 +813,135 @@ $nsrp = $registration->nsrp;
         $staff = $this->authStaff();
         if (!$staff || $staff->staff_role !== 'job_fair') return redirect()->route('login');
 
+        $cater = (array) $request->input('cater', []);
+
         $request->validate([
             'title'      => 'required|string|max:255',
-            'event_date' => 'required|date',
-            'event_time' => 'required',
+            'event_date' => 'required|date|unique:job_fair_events,event_date,' . $id . ',job_fair_events_id',
+            // Parehas sa storeJobFairEvent. Kaniadto bisan unsang teksto
+            // dawaton diri, mao nga ang oras nga gisalikway sa paghimo mahimo
+            // ra pud ipasulod pinaagi sa pag-edit.
+            'event_time' => 'required|date_format:H:i|after_or_equal:09:00|before_or_equal:17:00',
             'venue'      => 'required|string|max:255',
             'status'     => 'required|in:upcoming,ongoing,completed',
+            // ── Ang tipo ug ang industriya mahimo na usbon human mahimo ang
+            // ── event.
+            // ──
+            // ── Kaniadto sa paghimo ra siya mabutang, mao nga ang event nga
+            // ── Local ra ang na-tsek dili na gyud maabli sa overseas — bisan
+            // ── unsa pa. Ang bugtong dalan kay tangtangon ang event ug himoon
+            // ── pag-usab, ug mawala ang tanan nga na-confirm na. ──
+            'cater'             => 'required|array|min:1',
+            'cater.*'           => 'in:local,overseas',
+            'local_capacity'    => 'nullable|integer|min:1',
+            'overseas_capacity' => 'nullable|integer|min:1',
+            'target_industries'   => 'nullable|array',
+            'target_industries.*' => [Rule::in(EmployerNsrpRegistration::INDUSTRY_GROUPS)],
+            // A fair held for PWD applicants. Absent means an ordinary fair,
+            // which is how every event behaved before today.
+            'pwd_only'            => 'nullable|boolean',
+        ], [
+            'event_date.unique'          => 'A job fair event is already scheduled on this date. Please choose a different date.',
+            'event_time.after_or_equal'  => 'Event time must be between 9:00 AM and 5:00 PM.',
+            'event_time.before_or_equal' => 'Event time must be between 9:00 AM and 5:00 PM.',
+            'cater.required'             => 'Please check at least one employer type (Local or Overseas) to invite.',
         ]);
+
+        if ($why = \App\Support\OfficeCalendar::reason($request->event_date, true)) {
+            return back()->withInput()->with('error',
+                'That date is taken by a PESO office schedule. ' . $why);
+        }
 
         $event = \App\Models\JobFairEvent::findOrFail($id);
+
+        [$localCapacity, $overseasCapacity] = $this->jobFairTargets($request, $cater);
+
+        // ── Walay pagsusi nga "dili mapakubsan ubos sa na-confirm na" dinhi.
+        // ──
+        // ── Naa siya kaniadto, ug husto siya kaniadto: ang numero utlanan man,
+        // ── mao nga ang pagpakubs niini ubos sa na-confirm makahimo sa event
+        // ── nga sobra sa iyang kaugalingon nga limit. Ang numero target na ra
+        // ── karon — walay bisan unsa nga gitandi kaniya — mao nga walay
+        // ── mabuak kung usbon siya bisan asa. ──
         $event->update([
-            'title'      => $request->title,
-            'event_date' => $request->event_date,
-            'event_time' => $request->event_time,
-            'venue'      => $request->venue,
-            'status'     => $request->status,
+            'title'             => $request->title,
+            'event_date'        => $request->event_date,
+            'event_time'        => $request->event_time,
+            'venue'             => $request->venue,
+            'status'            => $request->status,
+            'cater'             => array_values($cater),
+            'target_industries' => $this->jobFairTargetIndustries($request),
+            'pwd_only'          => $request->boolean('pwd_only'),
+            'local_capacity'    => $localCapacity,
+            'overseas_capacity' => $overseasCapacity,
+            // Gibilin isip kinatibuk-an aron ang daan nga pagbasa sa
+            // employer_capacity makakita gihapon ug makatarunganon nga gidaghanon.
+            'employer_capacity' => $localCapacity === null && $overseasCapacity === null
+                                    ? null
+                                    : (int) $localCapacity + (int) $overseasCapacity,
         ]);
 
+        // ── Ang pagdugang ug tipo o industriya kay pag-abli sa pultahan, mao
+        // ── nga ablihan siya gyud. Ang employer nga na-approve na kaniadto
+        // ── dili na gyud moagi pag-usab sa approveRequirement, mao nga kung
+        // ── dili dinhi mo-invite, ang pag-usab sa porma magbag-o ra sa porma
+        // ── ug walay makadawat. Ang na-invite na gilaktawan sa helper mismo. ──
+        $invited = \App\Support\JobFairInvites::invite(
+            $event->refresh(),
+            \App\Support\JobFairInvites::autoEligibleFor($event)
+        );
+
         return redirect()->route('staff.jobfair.events')
-            ->with('success', 'Job Fair event updated successfully!');
+            ->with('success', 'Job Fair event updated successfully!'
+                . ($invited > 0 ? ' ' . $invited . ' newly eligible employer(s) invited.' : ''));
+    }
+
+    // ───────────────────────────────
+    // INVITE MORE EMPLOYERS
+    // ───────────────────────────────
+    // ── Kung mo-lapse ang imbitasyon ug kulang pa ang na-confirm, kining lihok
+    // ── mao ang "mangita ug lain nga employer" nga gisulti sa staff.
+    // ──
+    // ── Manwal siya tinuyo. Ang tanan sulod sa gipiling industriya na-invite na
+    // ── sa unang adlaw, mao nga ang mabilin kay ang mga gawas niini — ug ang
+    // ── paghukom nga haom sila sa fair kay hukom sa opisina, dili lagda nga
+    // ── masulat sa code. ──
+    public function inviteMoreEmployers(Request $request, $id)
+    {
+        $staff = $this->authStaff();
+        if (!$staff || $staff->staff_role !== 'job_fair') return redirect()->route('login');
+
+        $event = \App\Models\JobFairEvent::findOrFail($id);
+
+        if ($event->status === 'completed') {
+            return back()->with('error', 'This job fair is over. No further invitations can be sent.');
+        }
+
+        $request->validate([
+            'employer_ids'   => ['required', 'array', 'min:1'],
+            'employer_ids.*' => ['integer'],
+        ], [
+            'employer_ids.required' => 'Select at least one employer to invite.',
+        ]);
+
+        // Gitandi batok sa listahan mismo, dili sa exists: ang employer nga
+        // participant na, o wala pa na-approve ang requirements, o sayop nga
+        // tipo para niini nga fair, dili gyud angay makasulod pinaagi sa usa ka
+        // gi-usab nga porma.
+        $available = \App\Support\JobFairInvites::notYetInvited($event, false);
+
+        $chosen = $available->whereIn('employer_nsrp_registrations_id', $request->employer_ids)->values();
+
+        if ($chosen->isEmpty()) {
+            return back()->with('error', 'None of those employers can be invited to this job fair.');
+        }
+
+        $sent = \App\Support\JobFairInvites::invite($event, $chosen);
+
+        $window = (int) config('peso.jobfair.confirm_window_days');
+
+        return back()->with('success', $sent . ' employer(s) invited. They have ' . $window
+            . ' days to confirm, until ' . now()->addDays($window)->format('M d, Y') . '.');
     }
 
     public function deleteJobFairEvent($id)
@@ -501,135 +955,178 @@ $nsrp = $registration->nsrp;
     }
 
     // ───────────────────────────────
-    // AUTO-CHECK & NOTIFY JOB FAIR
+    // JOB FAIR — walay checkAndNotifyJobFair dinhi
     // ───────────────────────────────
-    public function checkAndNotifyJobFair($id)
-    {
-        $event = \App\Models\JobFairEvent::findOrFail($id);
+    //
+    // Ang employer nga wala pa mo-tubag gipahinumdoman na karon sa
+    // jobfair:send-confirmation-reminders, dili na sa usa ka buton nga
+    // hinumdoman pa sa staff nga pindoton.
+    //
+    // Ang notice sa jobseeker ("Job Fair Event Available") gikan na sa
+    // Notification nav, gamit ang "Qualified jobseekers" nga audience. Ang
+    // maong page nagbuhat ug in-app nga Announcement kada tawo ug mo-text ra
+    // kung gi-tsek ang SMS, ug ang audience naka-lock na daan sa
+    // JobFairAudience::isUnlocked() hangtod igo na ang na-confirm nga
+    // employer — mao nga walay nawala sa pagkuha sa buton.
+    //
+    // Walay sendJobFairInvitation pud dinhi. Naa siya kaniadto, apan walay
+    // bisan usa ka Blade nga nagtawag kaniya — dili gyud siya maabot gikan sa
+    // UI, mao nga usa ka tuig siyang nagpakaaron-ingnon nga tubag sa problema
+    // nga wala gyud niya nasulbad. Gipulihan siya sa tulo ka automatic nga
+    // pagtawag sa JobFairInvites: sa paghimo sa event, sa pag-approve sa
+    // requirements, ug sa pagdugang sa kwota.
 
-        $confirmedCount = \App\Models\JobFairParticipant::where('job_fair_id', $id)
-            ->where('confirmation_status', 'confirmed')
-            ->count();
-
-        if ($confirmedCount >= 3) {
-            $jobseekers = User::where('role', 'jobseeker')
-                ->where('status', 'approved')
-                ->get();
-
-            $alreadyNotifiedIds = \App\Models\AnnouncementJobseeker::whereHas('announcement', function ($q) use ($event) {
-                $q->where('reference_type', 'job_fair')
-                  ->where('reference_id', $event->id)
-                  ->where('type', 'job_fair_open');
-            })->pluck('jobseeker_id');
-
-            $regIds = \App\Models\JobseekerRegistration::whereIn('user_id', $jobseekers->pluck('id'))
-                ->whereNotIn('id', $alreadyNotifiedIds)
-                ->pluck('id');
-
-            if ($regIds->isNotEmpty()) {
-                \App\Models\Announcement::sendToJobseekers([
-                    'type'           => 'job_fair_open',
-                    'title'          => 'Job Fair Event Available! 🎉',
-                    'message'        => $event->title . ' on ' . $event->event_date->format('M d, Y') . ' at ' . $event->venue . ' is now open!',
-                    'reference_type' => 'job_fair',
-                    'reference_id'   => $event->id,
-                ], $regIds);
-            }
-            return back()->with('success', 'Jobseekers notified successfully!');
-        }
-
-        $daysRemaining = now()->diffInDays($event->event_date, false);
-        if ($confirmedCount < 3 && $daysRemaining <= 5 && $daysRemaining > 0) {
-            $pendingEmployers = \App\Models\JobFairParticipant::with('employer')
-                ->where('job_fair_id', $id)
-                ->where('confirmation_status', 'pending')
-                ->get();
-
-            \App\Models\Announcement::sendToEmployers([
-                'type'           => 'job_fair_reminder',
-                'title'          => 'Job Fair Reminder ⏰',
-                'message'        => 'Only ' . $daysRemaining . ' days left! Please confirm your participation for ' . $event->title . ' on ' . $event->event_date->format('M d, Y') . '.',
-                'reference_type' => 'job_fair',
-                'reference_id'   => $event->id,
-            ], $pendingEmployers->pluck('employer_id'));
-            return back()->with('success', 'Reminder sent to pending employers!');
-        }
-
-        return back()->with('info', 'No notifications sent. Confirmed: ' . $confirmedCount . ', Days remaining: ' . $daysRemaining);
-    }
-
-    public function sendJobFairInvitation($id)
-    {
-        $staff = $this->authStaff();
-        if (!$staff || $staff->staff_role !== 'job_fair') return redirect()->route('login');
-
-        $event = \App\Models\JobFairEvent::findOrFail($id);
-
-        $employers = User::where('role', 'company')
-            ->where('status', 'approved')
-            ->whereHas('employerRequirement', fn($q) => $q->where('status', 'approved'))
-            ->get();
-
-        $sent = 0;
-        $newEmployerIds = collect();
-        foreach ($employers as $employer) {
-            $exists = \App\Models\JobFairParticipant::where('job_fair_id', $event->id)
-                ->where('employer_id', $employer->employerNsrp->id)
-                ->exists();
-
-            if (!$exists) {
-                \App\Models\JobFairParticipant::create([
-                    'job_fair_id'         => $event->id,
-                    'employer_id'         => $employer->employerNsrp->id,
-                    'confirmation_status' => 'pending',
-                ]);
-
-                $newEmployerIds->push($employer->employerNsrp->id);
-                $sent++;
-            }
-        }
-
-        if ($newEmployerIds->isNotEmpty()) {
-            \App\Models\Announcement::sendToEmployers([
-                'type'           => 'job_fair_invitation',
-                'title'          => 'Job Fair Invitation 🎉',
-                'message'        => 'You are invited to join ' . $event->title . ' on ' . $event->event_date->format('M d, Y') . ' at ' . $event->venue . '. Please respond to confirm your participation.',
-                'reference_type' => 'job_fair',
-                'reference_id'   => $event->id,
-            ], $newEmployerIds);
-        }
-
-        return back()->with('success', "Invitations sent to {$sent} employers!");
-    }
-
-    public function jobFairParticipants($id)
-    {
-        $staff = $this->authStaff();
-        if (!$staff || $staff->staff_role !== 'job_fair') return redirect()->route('login');
-
-        $event        = \App\Models\JobFairEvent::findOrFail($id);
-        $participants = \App\Models\JobFairParticipant::with('employer')
-            ->where('job_fair_id', $id)
-            ->latest()
-            ->paginate(10);
-
-        $totalPending  = \App\Models\JobFairParticipant::where('job_fair_id', $id)->where('confirmation_status', 'pending')->count();
-        $totalAccepted = \App\Models\JobFairParticipant::where('job_fair_id', $id)->where('confirmation_status', 'accepted')->count();
-        $totalDeclined = \App\Models\JobFairParticipant::where('job_fair_id', $id)->where('confirmation_status', 'declined')->count();
-
-        return view('staff.job_fair.events.participants', compact(
-            'event', 'participants', 'totalPending', 'totalAccepted', 'totalDeclined'
-        ));
-    }
+    // ── Walay jobFairParticipants dinhi.
+    // ──
+    // ── Naa siya kaniadto, uban sa kaugalingon niyang page ug route, apan
+    // ── walay bisan usa ka link nga miabot kaniya — gipulihan siya sa
+    // ── Participants nga tab sa events/index. Nag-ihap pa gani siya ug
+    // ── confirmation_status = 'accepted', nga wala sa enum (pending,
+    // ── confirmed, declined), mao nga ang iyang Accepted nga card zero gyud
+    // ── kanunay. Ang page nga dili maabot ug sayop ang gi-ihap dili angay
+    // ── ayohon, angay tangtangon. ──
 
     // ───────────────────────────────
     // JOB FAIR — SHOW SEND PAGE
     // ───────────────────────────────
-    public function showJobFairSend()
+    public function showJobFairSend(Request $request)
     {
         $staff = $this->authStaff();
         if (!$staff || $staff->staff_role !== 'job_fair') return redirect()->route('login');
-        return view('staff.job_fair.send');
+
+        // Only events that have not happened yet — there is nothing to announce
+        // about a job fair that is already over.
+        $events = \App\Models\JobFairEvent::whereIn('status', ['upcoming', 'ongoing'])
+            ->orderBy('event_date')
+            ->get();
+
+        $selectedEvent = null;
+        if ($request->filled('event_id')) {
+            $selectedEvent = $events->firstWhere('job_fair_events_id', (int) $request->event_id);
+        }
+        $selectedEvent = $selectedEvent ?: $events->first();
+
+        return view('staff.job_fair.send', [
+            'events'         => $events,
+            'selectedEvent'  => $selectedEvent,
+            'audiences'      => $this->jobFairAudienceSummary($selectedEvent),
+            'confirmedCount' => $selectedEvent ? \App\Support\JobFairAudience::confirmedCount($selectedEvent) : 0,
+            'threshold'      => \App\Support\JobFairAudience::threshold(),
+            'gateMet'        => $selectedEvent ? \App\Support\JobFairAudience::gateMet($selectedEvent) : false,
+            'smsLive'        => \App\Support\PhilSms::enabled(),
+        ]);
+    }
+
+    /**
+     * Per-audience head count for the send screen, so staff see how many people
+     * an option covers and how many of them can actually receive a text before
+     * they pick it.
+     */
+    private function jobFairAudienceSummary(?\App\Models\JobFairEvent $event): array
+    {
+        if (!$event) return [];
+
+        $summary = [];
+
+        foreach (\App\Support\JobFairAudience::options() as $key => $option) {
+            $recipients = \App\Support\JobFairAudience::resolve($event, $key);
+            $breakdown  = \App\Support\JobFairAudience::breakdown($recipients);
+
+            $summary[$key] = [
+                'label'     => $option['label'],
+                'hint'      => $option['hint'],
+                'total'     => $breakdown['total'],
+                'reachable' => count($breakdown['sendable']),
+                'unlocked'  => \App\Support\JobFairAudience::isUnlocked($event, $key),
+            ];
+        }
+
+        return $summary;
+    }
+
+    // ───────────────────────────────
+    // JOB FAIR — PREVIEW BEFORE SENDING
+    // ───────────────────────────────
+    /**
+     * Nothing leaves the system here. Every text costs the office money, so the
+     * exact recipient count, the skipped recipients with their reasons, and the
+     * number of billable message parts are shown first.
+     */
+    public function previewJobFairNotification(Request $request)
+    {
+        $staff = $this->authStaff();
+        if (!$staff || $staff->staff_role !== 'job_fair') return redirect()->route('login');
+
+        $data = $this->validateJobFairBlast($request);
+
+        $event      = \App\Models\JobFairEvent::findOrFail($data['event_id']);
+        $recipients = \App\Support\JobFairAudience::resolve($event, $data['audience']);
+        $breakdown  = \App\Support\JobFairAudience::breakdown($recipients);
+
+        $sendSms  = (bool) ($data['send_sms'] ?? false);
+        $smsText  = $sendSms ? $data['sms_message'] : null;
+
+        // A one-time token, so refreshing or replaying the confirmation page
+        // cannot bill the office for the same blast twice.
+        $token = \Illuminate\Support\Str::random(40);
+        $request->session()->put('jobfair_blast', [
+            'token'    => $token,
+            'payload'  => $data,
+            'staff_id' => $staff->staff_id,
+        ]);
+
+        return view('staff.job_fair.send_confirm', [
+            'event'      => $event,
+            'payload'    => $data,
+            'breakdown'  => $breakdown,
+            'sendSms'    => $sendSms,
+            'smsText'    => $smsText,
+            'segments'   => $smsText ? \App\Support\PhilSms::segments($smsText) : 0,
+            'token'      => $token,
+            'smsLive'    => \App\Support\PhilSms::enabled(),
+            'audienceLabel' => \App\Support\JobFairAudience::label($data['audience']),
+        ]);
+    }
+
+    /**
+     * Shared rules for both the preview and the send, so the confirmation page
+     * cannot be bypassed by posting a different payload to the send route.
+     */
+    private function validateJobFairBlast(Request $request): array
+    {
+        $rules = [
+            'event_id'    => 'required|integer|exists:job_fair_events,job_fair_events_id',
+            'audience'    => ['required', 'string', \Illuminate\Validation\Rule::in(array_keys(\App\Support\JobFairAudience::options()))],
+            'title'       => 'required|string|max:255',
+            'message'     => 'required|string',
+            'send_sms'    => 'nullable|boolean',
+            // 3 message parts. Longer than that and a single announcement starts
+            // costing more than the office expects.
+            'sms_message' => 'nullable|string|max:459|required_if:send_sms,1',
+        ];
+
+        $data = $request->validate($rules, [
+            'sms_message.required_if' => 'Write the text message that will be sent.',
+            'sms_message.max'         => 'Keep the text message under 459 characters (3 message parts).',
+        ]);
+
+        $data['send_sms'] = (bool) $request->boolean('send_sms');
+
+        $event = \App\Models\JobFairEvent::findOrFail($data['event_id']);
+
+        // The office notifies employers first and only opens the event to
+        // jobseekers once enough employers have confirmed. Enforce it here as
+        // well as in the UI — a locked option must not be reachable by posting
+        // the form directly.
+        if (!\App\Support\JobFairAudience::isUnlocked($event, $data['audience'])) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'audience' => 'Only ' . \App\Support\JobFairAudience::confirmedCount($event) . ' of '
+                    . \App\Support\JobFairAudience::threshold()
+                    . ' employers have confirmed. Jobseekers cannot be notified yet.',
+            ]);
+        }
+
+        return $data;
     }
 
     // ───────────────────────────────
@@ -640,31 +1137,115 @@ $nsrp = $registration->nsrp;
         $staff = $this->authStaff();
         if (!$staff || $staff->staff_role !== 'job_fair') return redirect()->route('login');
 
-        $request->validate([
-            'title'   => 'required|string|max:255',
-            'message' => 'required|string',
-        ]);
+        $blast = $request->session()->get('jobfair_blast');
 
-        $jobseekerRegIds = \App\Models\JobseekerRegistration::whereHas('user', fn($q) => $q->where('status', 'approved'))->pluck('id');
-        \App\Models\Announcement::sendToJobseekers([
-            'type'           => 'job_fair',
-            'title'          => $request->title,
-            'message'        => $request->message,
-            'reference_type' => 'job_fair',
-            'reference_id'   => null,
-        ], $jobseekerRegIds);
+        if (!$blast || !hash_equals((string) $blast['token'], (string) $request->input('token'))) {
+            return redirect()->route('staff.jobfair.send')
+                ->with('error', 'That confirmation has already been used. Please compose the notification again.');
+        }
 
-        $employerIds = \App\Models\EmployerNsrpRegistration::whereHas('user', fn($q) => $q->where('status', 'approved'))->pluck('id');
-        \App\Models\Announcement::sendToEmployers([
-            'type'           => 'job_fair',
-            'title'          => $request->title,
-            'message'        => $request->message,
-            'reference_type' => 'job_fair',
-            'reference_id'   => null,
-        ], $employerIds);
+        // Consumed on the first use, so a refresh cannot send it a second time.
+        $request->session()->forget('jobfair_blast');
 
-        $total = $jobseekerRegIds->count() + $employerIds->count();
-        return back()->with('success', 'Job Fair notification sent to ' . $total . ' users!');
+        $throttleKey = 'jobfair-blast:' . $staff->staff_id;
+        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            $wait = \Illuminate\Support\Facades\RateLimiter::availableIn($throttleKey);
+            return redirect()->route('staff.jobfair.send')
+                ->with('error', 'Too many notifications sent in a short time. Please wait ' . $wait . ' seconds.');
+        }
+        \Illuminate\Support\Facades\RateLimiter::hit($throttleKey, 600);
+
+        $data  = $blast['payload'];
+        $event = \App\Models\JobFairEvent::findOrFail($data['event_id']);
+
+        // Resolved again rather than trusting the list that was previewed —
+        // recipients may have changed between the two steps.
+        $recipients = \App\Support\JobFairAudience::resolve($event, $data['audience']);
+        $breakdown  = \App\Support\JobFairAudience::breakdown($recipients);
+
+        if ($recipients->isEmpty()) {
+            return redirect()->route('staff.jobfair.send', ['event_id' => $event->job_fair_events_id])
+                ->with('error', 'That audience has no recipients for this event.');
+        }
+
+        $sendSms = (bool) ($data['send_sms'] ?? false);
+
+        // One announcement row per recipient, created directly rather than via
+        // Announcement::sendTo* because each row's SMS outcome is recorded on it.
+        // The number is carried alongside the row rather than used as an array
+        // key — PHP turns a numeric string key into an integer, which would stop
+        // it matching the gateway's string results.
+        $rows = [];
+        foreach ($recipients as $recipient) {
+            $rows[] = [
+                'number'       => $recipient['number'],
+                'announcement' => \App\Models\Announcement::create([
+                    'type'           => 'job_fair',
+                    'title'          => $data['title'],
+                    'message'        => $data['message'],
+                    'reference_type' => 'job_fair',
+                    'reference_id'   => $event->job_fair_events_id,
+                    'jobseeker_id'   => $recipient['kind'] === 'jobseeker' ? $recipient['id'] : null,
+                    'employer_id'    => $recipient['kind'] === 'employer' ? $recipient['id'] : null,
+                    'sms_status'     => $sendSms ? 'pending' : 'not_applicable',
+                ]),
+            ];
+        }
+
+        $summary = 'Notification sent to ' . $recipients->count() . ' '
+            . \App\Support\JobFairAudience::label($data['audience']) . '.';
+
+        if (!$sendSms) {
+            return redirect()->route('staff.jobfair.send', ['event_id' => $event->job_fair_events_id])
+                ->with('success', $summary);
+        }
+
+        $numbers = array_column($breakdown['sendable'], 'number');
+        $result  = \App\Support\PhilSms::send($numbers, $data['sms_message']);
+
+        $now = now();
+
+        $sentNumbers = array_flip($result['sent']);
+
+        foreach ($rows as $row) {
+            $number       = $row['number'];
+            $announcement = $row['announcement'];
+
+            if ($number !== null && isset($sentNumbers[$number])) {
+                $announcement->update([
+                    'sms_status'  => 'sent',
+                    'sms_sent_at' => $now,
+                    'sms_error'   => null,
+                ]);
+            } elseif ($number !== null && isset($result['failed'][$number])) {
+                $announcement->update([
+                    'sms_status' => 'failed',
+                    'sms_error'  => \Illuminate\Support\Str::limit($result['failed'][$number], 250),
+                ]);
+            } else {
+                // No number, an unusable number, or opted out — the in-app
+                // notification still stands, there is simply nothing to text.
+                $announcement->update(['sms_status' => 'not_applicable']);
+            }
+        }
+
+        $sentCount   = count($result['sent']);
+        $failedCount = count($result['failed']);
+        $skipped     = $recipients->count() - $sentCount - $failedCount;
+
+        $smsSummary = $sentCount . ' text message(s) sent';
+        if (!\App\Support\PhilSms::enabled()) {
+            $smsSummary .= ' (test mode — nothing was actually sent)';
+        }
+        if ($failedCount > 0) {
+            $smsSummary .= ', ' . $failedCount . ' failed';
+        }
+        if ($skipped > 0) {
+            $smsSummary .= ', ' . $skipped . ' skipped';
+        }
+
+        return redirect()->route('staff.jobfair.send', ['event_id' => $event->job_fair_events_id])
+            ->with($failedCount > 0 ? 'warning' : 'success', $summary . ' ' . $smsSummary . '.');
     }
 
     // ───────────────────────────────
@@ -675,62 +1256,294 @@ $nsrp = $registration->nsrp;
         $staff = $this->authStaff();
         if (!$staff || $staff->staff_role !== 'job_fair') return redirect()->route('login');
 
-        $status = request('status', 'closed'); // closed | open | all
+        // Closed and Open are the only tabs; anything else in the query string
+        // falls back to Closed rather than quietly listing everything.
+        $status = request('status', 'closed');
+        if (!in_array($status, ['closed', 'open'], true)) {
+            $status = 'closed';
+        }
         $search = request('search');
 
+        // ── Ang sala nga gigamit sa desk sa dili pa siya mo-post ug tinapok.
+        // ──
+        // ── PESO Job Fair staff, 2026-08-26: ang fair nga para sa Education ra
+        // ── modawat sa Education ra. Imbis nga basahon ang tibuok listahan ug
+        // ── pilion usa-usa, salaan sa industriya, tsekan ang tanan, ug i-post.
+        // ── Ang wala sa listahan gikuha gikan sa INDUSTRY_GROUPS lang, aron ang
+        // ── query string dili makasulod ug bisan unsa. ──
+        $industry = request('industry');
+        if (!in_array($industry, EmployerNsrpRegistration::INDUSTRY_GROUPS, true)) {
+            $industry = null;
+        }
+
+        $pwd = request('pwd');
+        if (!in_array($pwd, ['yes', 'no'], true)) {
+            $pwd = null;
+        }
+
+        // ── Ang "Closed" nga tab nagpasabot "nag-hulat pa ug event", dili
+        // ── "nahuman na". Ang nalabyan na nga deadline naa sa Archived Job
+        // ── Postings, mao nga gi-gawas siya diri. ──
         $query = \App\Models\Job::with('company')
             ->where('schedule_type', 'job_fair')
             ->whereIn('posting_status', ['pending', 'approved'])
-            ->when($status !== 'all', fn($q) => $q->where('status', $status))
-            ->when($search, fn($q) => $q->where('title', 'like', "%{$search}%")
+            ->where('status', $status)
+            ->withinDeadline()
+            ->when($industry, fn($q) => $q->where('industry_group', $industry))
+            ->when($pwd, fn($q) => $q->where('accepts_disability', $pwd))
+            ->when($search, fn($q) => $q->where(fn($w) => $w->where('title', 'like', "%{$search}%")
                 ->orWhereHas('company', fn($u) => $u->where('company_name', 'like', "%{$search}%"))
-            );
+            ));
 
         $totalClosed = \App\Models\Job::where('schedule_type', 'job_fair')
             ->whereIn('posting_status', ['pending', 'approved'])
-            ->where('status', 'closed')->count();
+            ->where('status', 'closed')
+            ->withinDeadline()
+            ->count();
         $totalOpen = \App\Models\Job::where('schedule_type', 'job_fair')
             ->where('posting_status', 'approved')
             ->where('status', 'open')->count();
 
         $jobs = $query->latest()->paginate(10)->withQueryString();
 
-        return view('staff.job_fair.postings', compact('jobs', 'status', 'totalClosed', 'totalOpen'));
+        // Ang fair nga mapilian sa pag-dawat sa usa ka posting. Ang nahuman na
+        // wala apil — walay pulos ang pagsulod ug bakante sa fair nga milabay.
+        $events = \App\Support\JobFairInvites::upcomingEvents();
+
+        // ── Asa gyud ma-apil ang matag posting.
+        // ──
+        // ── Ang picker kaniadto naglista sa TANAN nga umaabot nga fair, mao nga
+        // ── ang staff makapili ug fair nga mosalikway ra sa posting inig-save.
+        // ── Ang hinungdan gikuha dinhi ug gidala sa porma, aron ang rason nga
+        // ── makita sa staff mao ra gyud ang rason nga isulti sa server. ──
+        $eventFit = $jobs->getCollection()->mapWithKeys(fn($job) => [
+            $job->job_qualifications_id => $events->mapWithKeys(fn($event) => [
+                $event->job_fair_events_id => $event->catersTo((bool) optional($job->company)->is_overseas)
+                    ? $event->postingMismatch($job)
+                    : $event->title . ' does not take '
+                        . (optional($job->company)->is_overseas ? 'overseas' : 'local') . ' employers.',
+            ])->all(),
+        ])->all();
+
+        return view('staff.job_fair.postings', [
+            'jobs'         => $jobs,
+            'status'       => $status,
+            'totalClosed'  => $totalClosed,
+            'totalOpen'    => $totalOpen,
+            'events'       => $events,
+            'eventFit'     => $eventFit,
+            'industry'     => $industry,
+            'pwd'          => $pwd,
+            'industries'   => EmployerNsrpRegistration::INDUSTRY_GROUPS,
+        ]);
     }
 
     // ───────────────────────────────
     // JOB FAIR — APPROVE JOB POSTING
     // ───────────────────────────────
-    public function approveJobFairJob($id)
+    /**
+     * Take a posting into a job fair.
+     *
+     * PESO Job Fair staff, 2026-08-26: a vacancy does not walk into a fair on
+     * its own. The desk decides which fair it belongs to — a fair for PWD
+     * applicants takes the postings that accept them — and that decision is
+     * this action. The employer may have named a fair when they posted; that
+     * is a request, and the desk can honour it or send the posting elsewhere.
+     *
+     * The job_fair_employment_requests row is written here and nowhere else.
+     * It is what every job fair report reads as "this posting is on this fair",
+     * so it must not exist before somebody accepted the posting.
+     */
+    public function approveJobFairJob(Request $request, $id)
     {
         $staff = $this->authStaff();
         if (!$staff || $staff->staff_role !== 'job_fair') return redirect()->route('login');
 
         $job = \App\Models\Job::with('company')->findOrFail($id);
 
+        $request->validate([
+            'job_fair_id' => ['required', 'exists:job_fair_events,job_fair_events_id'],
+        ], [
+            'job_fair_id.required' => 'Choose which job fair this vacancy joins.',
+        ]);
+
+        $event = \App\Models\JobFairEvent::findOrFail($request->job_fair_id);
+
+        // Nabasa sa dili pa ang lihok: ang lihok mismo ang mag-timan-an niini.
+        $wasAnnounced = $event->jobseekers_invited_at !== null;
+
+        if ($why = $this->acceptPostingIntoFair($job, $event)) {
+            return back()->with('error', $why);
+        }
+
+        $announced = $this->jobseekerAnnouncementNote($event, $wasAnnounced);
+
+        return back()->with('success', '"' . $job->title . '" accepted into ' . $event->title
+            . '. ' . \App\Support\JobFairPostingWindow::liveNote($event) . $announced);
+    }
+
+    // ───────────────────────────────
+    // JOB FAIR — POST THE SELECTED POSTINGS
+    // ───────────────────────────────
+    /**
+     * Take every ticked vacancy into one fair.
+     *
+     * PESO Job Fair staff, 2026-08-26: nothing walks into a fair on its own.
+     * The desk filters the list down to what the fair is looking for — an
+     * Education fair, the vacancies that accept PWD applicants — ticks them,
+     * and posts them in one go. One at a time still works; this is the same
+     * decision made for a whole screen at once.
+     *
+     * Each posting is checked on its own and the ones that do not belong are
+     * named back, rather than the whole batch being refused: the desk ticked
+     * Select all, and one stale row must not undo the rest.
+     */
+    public function bulkApproveJobFairJobs(Request $request)
+    {
+        $staff = $this->authStaff();
+        if (!$staff || $staff->staff_role !== 'job_fair') return redirect()->route('login');
+
+        $request->validate([
+            'job_fair_id' => ['required', 'exists:job_fair_events,job_fair_events_id'],
+            'job_ids'     => ['required', 'array', 'min:1'],
+            'job_ids.*'   => ['integer'],
+        ], [
+            'job_fair_id.required' => 'Choose which job fair these vacancies join.',
+            'job_ids.required'     => 'Tick at least one job posting to post.',
+        ]);
+
+        $event = \App\Models\JobFairEvent::findOrFail($request->job_fair_id);
+
+        $wasAnnounced = $event->jobseekers_invited_at !== null;
+
+        $jobs = \App\Models\Job::with('company')
+            ->whereIn('job_qualifications_id', $request->job_ids)
+            ->get();
+
+        $accepted = 0;
+        $refused  = [];
+
+        foreach ($jobs as $job) {
+            if ($why = $this->acceptPostingIntoFair($job, $event)) {
+                $refused[] = '"' . $job->title . '" ' . '—' . ' ' . $why;
+                continue;
+            }
+            $accepted++;
+        }
+
+        $note = $accepted . ' posting(s) accepted into ' . $event->title . '. '
+            . \App\Support\JobFairPostingWindow::liveNote($event)
+            . $this->jobseekerAnnouncementNote($event, $wasAnnounced);
+
+        if (!$refused) {
+            return back()->with('success', $note);
+        }
+
+        // Ginganlan gyud ang wala nakasulod. Ang "8 of 10" nga walay ngalan
+        // mopakuti sa desk sa pagpangita kung kinsa ang duha.
+        return back()->with($accepted ? 'warning' : 'error',
+            $note . ' Not accepted: ' . implode(' ', $refused));
+    }
+
+    /**
+     * One line saying whether this action is what announced the fair.
+     *
+     * The desk needs to know a blast went out under their click, and needs to
+     * not be told again on the next posting. Read from the stamp, so the
+     * sentence and the actual send cannot disagree.
+     */
+    private function jobseekerAnnouncementNote(\App\Models\JobFairEvent $event, bool $wasAnnounced): string
+    {
+        if ($wasAnnounced || $event->fresh()->jobseekers_invited_at === null) {
+            return '';
+        }
+
+        return ' Jobseekers have been told the fair is happening.';
+    }
+
+    /**
+     * Put one vacancy on one fair, or say why it cannot go.
+     *
+     * Both the single Accept and Post Selected run through here, so the rule
+     * the modal enforces and the rule the batch enforces cannot drift apart.
+     * Returns null on success, or the sentence to show the staff.
+     */
+    private function acceptPostingIntoFair(\App\Models\Job $job, \App\Models\JobFairEvent $event): ?string
+    {
         if ($job->schedule_type !== 'job_fair') {
-            return back()->with('error', 'This job is not a job fair posting.');
+            return 'This job is not a job fair posting.';
         }
 
         if ($job->posting_status !== 'pending') {
-            return back()->with('error', 'Only pending job postings can be approved.');
+            return 'Only pending job postings can be accepted.';
         }
 
+        if ($event->status === 'completed') {
+            return 'That job fair is over. Choose an upcoming one.';
+        }
+
+        if (!$event->catersTo((bool) optional($job->company)->is_overseas)) {
+            return 'That job fair does not cater to this employer.';
+        }
+
+        // ── Ang event mismo ang mopili.
+        // ──
+        // ── PESO Job Fair staff, 2026-08-26: ang fair nga para sa PWD modawat
+        // ── lang sa bakante nga nagdawat kanila, ug ang fair nga nangita ug usa
+        // ── ka industriya modawat lang sa bakante nga sakop niini. Gipugngan
+        // ── dinhi ug gipugngan sa picker: ang gitago sa porma dili gyud angay
+        // ── makasulod pinaagi sa pag-post sa laing job_fair_id. ──
+        if ($why = $event->postingMismatch($job)) {
+            return $why;
+        }
+
+        // ── Ang deadline nga mas sayo pa kay sa adlaw sa fair magpatay sa
+        // ── posting sa dili pa siya magamit. ──
+        if ($job->deadline && $job->deadline->lt($event->event_date)) {
+            $job->update(['deadline' => $event->event_date->toDateString()]);
+        }
+
+        // ── Kung duol na ang fair, ang posting nga karon pa ma-approve mo-abli
+        // ── dayon — kay ang scheduled command dili na mobalik sa maong window.
+        // ── Kung layo pa, magpabilin siyang closed hangtod sa T-minus.
+        // ──
+        // ── Ang gipangutana kay ANG FAIR nga gisudlan, dili kung naa bay bisan
+        // ── unsang fair nga duol na: ang gidawat sa Oktubre nga fair dili angay
+        // ── mo-abli tungod sa Septyembre. ──
+        $windowOpen = \App\Support\JobFairPostingWindow::opensFor($event);
+
         $job->update([
-            'posting_status' => 'approved',
-            'status'         => 'closed',
-            'remarks'        => null,
+            'posting_status'        => 'approved',
+            'status'                => $windowOpen ? 'open' : 'closed',
+            'remarks'               => null,
+            'requested_job_fair_id' => $event->job_fair_events_id,
         ]);
+
+        \App\Models\JobFairEmploymentRequest::firstOrCreate([
+            'job_fair_id' => $event->job_fair_events_id,
+            'employer_id' => $job->company_id,
+            'job_id'      => $job->job_qualifications_id,
+        ]);
+
+        // ── Ang jobseeker masayod nga naay fair.
+        // ──
+        // ── PESO, 2026-08-26: ang fair tinuod na sa jobseeker sa higayon nga
+        // ── naa nay bakante nga iyang kaadtoan, ug kana nga higayon mao kini.
+        // ── Kausa ra kada fair — ang helper mismo ang nagbantay niini, mao
+        // ── nga ang pag-post ug napulo ka bakante usa ra gihapon ka anunsyo. ──
+        \App\Support\JobFairInvites::inviteJobseekers($event);
 
         \App\Models\Announcement::sendToEmployers([
             'type'           => 'job_approved',
-            'title'          => 'Job Posting Approved ✅',
-            'message'        => 'Your job posting "' . $job->title . '" has been approved for job fair use. It will go live once PESO opens a job fair event.',
+            'title'          => 'Job Posting Accepted ✅',
+            'message'        => 'Your job posting "' . $job->title . '" was accepted into '
+                . $event->title . ' on ' . $event->event_date->format('M d, Y') . '. '
+                . \App\Support\JobFairPostingWindow::liveNote($event),
             'reference_type' => 'job',
-            'reference_id'   => $job->id,
+            'reference_id'   => $job->job_qualifications_id,
         ], $job->company_id);
 
-        return back()->with('success', 'Job posting approved. It will go live once a job fair event is created.');
+        return null;
     }
 
     // ───────────────────────────────
@@ -760,7 +1573,7 @@ $nsrp = $registration->nsrp;
             'title'          => 'Job Posting Rejected ❌',
             'message'        => 'Your job posting "' . $job->title . '" was rejected for job fair use. Reason: ' . $request->remarks,
             'reference_type' => 'job',
-            'reference_id'   => $job->id,
+            'reference_id'   => $job->job_qualifications_id,
         ], $job->company_id);
 
         return back()->with('success', 'Job posting rejected.');
@@ -780,7 +1593,7 @@ $nsrp = $registration->nsrp;
 
         if ($staffRole === 'lra') {
             $requirements = \App\Models\EmployerRequirement::with(['employer.jobs.applications'])
-                ->where('status', 'approved')
+                ->whereIn('status', ['approved', 'expired'])
                 ->whereHas('employer', fn($u) => $u->where('is_overseas', false))
                 ->when($search, fn($q) => $q->whereHas('employer', fn($u) =>
                     $u->where('company_name', 'like', "%{$search}%")
@@ -845,23 +1658,51 @@ $nsrp = $registration->nsrp;
         if (!$isOverseas && $staff->staff_role !== 'job_vacancy') {
             return back()->with('error', 'Only Job Vacancy staff can approve local employer requirements.');
         }
-        $staffRecord = \App\Models\Staff::where('user_id', $staff->id)->first();
+        $staffRecord = \App\Models\Staff::where('user_id', $staff->users_id)->first();
         $requirement->update([
             'status'      => 'approved',
-            'reviewed_by' => $staffRecord->id ?? null,
+            'reviewed_by' => $staffRecord->staff_id ?? null,
             'remarks'     => null,
         ]);
+
+        // ── Reactivation. Ang employer nga na-restrict tungod sa expired nga
+        // ── Business Permit mobalik og 'approved' dinhi mismo — walay lain nga
+        // ── buton nga pangitaon sa staff. Ang 'deactivated' wala gihilabti:
+        // ── kana kay desisyon sa Admin, dili masulbad sa usa ka papel. ──
+        $employerUser = $requirement->employer?->employer;
+        $wasRestricted = $employerUser && $employerUser->status === 'restricted';
+        if ($wasRestricted) {
+            $employerUser->update(['status' => 'approved']);
+        }
 
         \App\Models\Announcement::sendToEmployers([
             'type'           => 'requirements_approved',
             'title'          => 'Requirements Approved ✅',
-            'message'        => 'Your submitted requirements have been approved by PESO staff. You can now request in-house interviews and post job vacancies.',
+            'message'        => $wasRestricted
+                ? 'Your renewed requirements have been approved by PESO staff. Job posting and job fair invitations are active again.'
+                : 'Your submitted requirements have been approved by PESO staff. You can now request in-house interviews and post job vacancies.',
             'reference_type' => 'employer_requirement',
-            'reference_id'   => $requirement->id,
+            'reference_id'   => $requirement->employer_requirements_id,
         ], $requirement->user_id);
 
+        // ── Karon pa siya nahimong eligible, mao nga karon pa siya makasulod
+        // ── sa mga job fair nga naay lugar para sa iyang tipo.
+        // ──
+        // ── Kaniadto ang invitation gipadala kausa ra — sa mismong gutlo sa
+        // ── paghimo sa event. Ang employer nga ni-rehistro human niadto wala
+        // ── gyud makadawat, ug walay buton nga makapadala kaniya. ──
+        $invited = 0;
+        if ($requirement->employer) {
+            $invited = \App\Support\JobFairInvites::inviteToOpenEvents($requirement->employer);
+        }
+
         return redirect()->route('staff.requirements')
-            ->with('success', 'Requirements approved successfully.');
+            ->with('success', ($wasRestricted
+                    ? 'Requirements approved. The employer account has been reactivated.'
+                    : 'Requirements approved successfully.')
+                . ($invited > 0
+                    ? ' They were also invited to ' . $invited . ' upcoming job fair event(s).'
+                    : ''));
     }
 
     public function rejectRequirement(Request $request, $id)
@@ -882,10 +1723,10 @@ $nsrp = $registration->nsrp;
         // ── SRA rejection: simple reason ra, walay per-document checklist ──
         if ($isOverseas) {
             $request->validate(['remarks' => 'required|string|max:500']);
-            $staffRecord = \App\Models\Staff::where('user_id', $staff->id)->first();
+            $staffRecord = \App\Models\Staff::where('user_id', $staff->users_id)->first();
             $requirement->update([
                 'status'      => 'rejected',
-                'reviewed_by' => $staffRecord->id ?? null,
+                'reviewed_by' => $staffRecord->staff_id ?? null,
                 'remarks'     => $request->remarks,
             ]);
 
@@ -894,7 +1735,7 @@ $nsrp = $registration->nsrp;
                 'title'          => 'Requirements Rejected ❌',
                 'message'        => 'Please resubmit your requirements. Reason: ' . $request->remarks,
                 'reference_type' => 'employer_requirement',
-                'reference_id'   => $requirement->id,
+                'reference_id'   => $requirement->employer_requirements_id,
             ], $requirement->user_id);
 
             return redirect()->route('staff.requirements')  
@@ -908,10 +1749,10 @@ $nsrp = $registration->nsrp;
         ], [
             'rejected_fields.required' => 'Please check at least one document that is incorrect or missing.',
         ]);
-        $staffRecord = \App\Models\Staff::where('user_id', $staff->id)->first();
+        $staffRecord = \App\Models\Staff::where('user_id', $staff->users_id)->first();
         $requirement->update([
             'status'          => 'rejected',
-            'reviewed_by'     => $staffRecord->id ?? null,
+            'reviewed_by'     => $staffRecord->staff_id ?? null,
             'remarks'         => $request->remarks,
             'rejected_fields' => $request->rejected_fields,
         ]);
@@ -930,7 +1771,7 @@ $nsrp = $registration->nsrp;
             'title'          => 'Requirements Rejected ❌',
             'message'        => 'Please resubmit the following document(s): ' . $rejectedLabels . '. Reason: ' . $request->remarks,
             'reference_type' => 'employer_requirement',
-            'reference_id'   => $requirement->id,
+            'reference_id'   => $requirement->employer_requirements_id,
         ], $requirement->user_id);
 
         return redirect()->route('staff.requirements')
@@ -946,84 +1787,1185 @@ $nsrp = $registration->nsrp;
         if (!$staff) return redirect()->route('login');
 
         $staffRole = $staff->staff_role;
+
+        // PESO, 2026-08-26: ang Job Fair desk wala nay page dinhi. Dili siya
+        // mo-approve ug account — ang Job Vacancy ug ang SRA ang naghimo
+        // niana — mao nga ang bugtong butang nga iya niya sa employer mao ang
+        // pagdala ug walk-in ngadto sa fair, ug kana nagpuyo na sa Job Postings.
+        if ($staffRole === 'job_fair') {
+            return redirect()->route('staff.jobfair.postings');
+        }
         $tab       = $staffRole === 'lra' ? 'approved' : request('tab', 'pre');
         $search    = request('search');
 
-        $baseQuery = User::where('role', 'company')
-    ->when($staffRole === 'lra' || $staffRole === 'job_vacancy', fn($q) =>
-        $q->whereHas('employerNsrp', fn($n) => $n->where('is_overseas', false))
-    )
-    ->when($staffRole === 'sra', fn($q) =>
-        $q->whereHas('employerNsrp', fn($n) => $n->where('is_overseas', true))
-    )
-            ->when($search, fn($q) =>
-                $q->whereHas('employerNsrp', fn($n) => $n->where('company_name', 'like', "%{$search}%"))
-                  ->orWhere('email', 'like', "%{$search}%")
+        // ── Ang sala sa industriya.
+        // ──
+        // ── PESO, 2026-08-26: ang desk kinahanglan makatan-aw sa mga
+        // ── Manufacturing lang, o sa Education lang, ug ma-download kadto.
+        // ── Gikuha gikan sa INDUSTRY_GROUPS lang, aron ang query string dili
+        // ── makasulod ug bisan unsa. ──
+        $industry = request('industry');
+        if (!in_array($industry, EmployerNsrpRegistration::INDUSTRY_GROUPS, true)) {
+            $industry = null;
+        }
+
+        // ── Ang "Nearly Expired Requirements" nga stat card sa dashboard
+        // ── mo-landing dinhi. Sala lang ni sa Approved tab: usa ka kompanya
+        // ── nga wala pa ma-approve walay papel nga mahurot. ──
+        $expiringOnly = $tab === 'approved' && request('filter') === 'expiring';
+
+        // ── Usa ka kompanya nga gikan sa bell. ──
+        //
+        // Ang notice sa inactivity naghisgot ug usa ka kompanya, mao nga ang
+        // link mo-abot sa page nga naay maong laray ug mo-ilhan siya. Kung
+        // ang desk ang mo-page pinaagi sa kamot, ang iyang ?page= ang mo-daog.
+        $highlight = (int) request('highlight') ?: null;
+
+        // ── USA KA ROW KADA KOMPANYA, DILI KADA ACCOUNT.
+        // ──
+        // ── PESO IT, 2026-08-26: usa ka HR mahimong maghawid ug duha ka
+        // ── kompanya sa usa ka email. Ang gi-approve sa desk kay ang
+        // ── ESTABLISEMENTO — kaugalingong papel, kaugalingong permit,
+        // ── kaugalingong bakante — mao nga ang listahan mo-ihap ug
+        // ── kompanya. Kung mag-ihap ni ug account, ang ikaduhang kompanya
+        // ── dili gyud makita sa desk ug dili gyud ma-approve. ──
+        $baseQuery = EmployerNsrpRegistration::query()
+            ->whereHas('employer', fn($q) => $q->where('role', 'company'))
+            ->when($staffRole === 'lra' || $staffRole === 'job_vacancy',
+                fn($q) => $q->where('is_overseas', false))
+            ->when($staffRole === 'sra',
+                fn($q) => $q->where('is_overseas', true))
+            ->when($industry, fn($q) => $q->where('industry_group', $industry))
+            ->when($search, fn($q) => $q->where(fn($w) =>
+                $w->where('company_name', 'like', "%{$search}%")
+                  ->orWhereHas('employer', fn($u) => $u->where('email', 'like', "%{$search}%"))
+            ));
+
+        // ── Ang employer nga na-disable kay hunong na sa pagpasa ug bakante
+        // ── ug wala mitubag sa email. Ang gi-una mao ang nakatubag na — sila
+        // ── ang naghulat sa desisyon sa staff. ──
+        if ($tab === 'dormant') {
+            $employers = (clone $baseQuery)
+                ->whereNotNull('dormant_at')
+                ->with('employer')
+                ->get()
+                ->sortBy(fn($c) => [
+                    $c->inactivity_responded_at ? 0 : 1,
+                    -optional($c->dormant_at)->timestamp,
+                ])
+                ->values();
+
+            $page = $this->pageForHighlight(
+                $employers->pluck('employer_nsrp_registrations_id')->all(), $highlight, 5
             );
 
-        if ($tab === 'pre') {
-            $employers = (clone $baseQuery)
+            $employers = new \Illuminate\Pagination\LengthAwarePaginator(
+                $employers->forPage($page, 5),
+                $employers->count(),
+                5,
+                $page,
+                ['path' => request()->url(), 'query' => request()->query()]
+            );
+        } elseif ($tab === 'pre') {
+            $preQuery = (clone $baseQuery)
                 ->where(fn($q) =>
-                    $q->whereDoesntHave('employerRequirement')
-                      ->orWhereHas('employerRequirement', fn($q2) =>
-                          $q2->where('status', 'pending')
-                      )
+                    $q->whereDoesntHave('requirement')
+                      ->orWhereHas('requirement', fn($q2) => $q2->where('status', 'pending'))
                 )
-                ->latest()
-                ->paginate(10);
+                ->latest();
+
+            $employers = (clone $preQuery)
+                ->with('employer')
+                ->paginate(5, ['*'], 'page', $this->pageForHighlight(
+                    (clone $preQuery)->pluck('employer_nsrp_registrations_id')->all(), $highlight, 5
+                ))
+                ->withQueryString();
         } else {
-            $employers = (clone $baseQuery)
-                ->whereHas('employerRequirement', fn($q) =>
-                    $q->where('status', 'approved')
-                )
-                ->with(['jobs.applications' => fn($q) =>
-                    $q->where('status', 'hired')
-                ])
-                ->latest()
-                ->paginate(10);
+            $approvedQuery = (clone $baseQuery)
+                ->whereHas('requirement', fn($q) => $q->where('status', 'approved'))
+                // Ang inactive naa sa kaugalingong tab. Kung magpakita sila
+                // dinhi pud, duha ka lugar ang parehas nga employer ug walay
+                // makahibalo asa siya angay tan-awon.
+                ->whereNull('dormant_at')
+                ->when($expiringOnly, fn($q) =>
+                    $q->whereHas('requirement', fn($r) => $r->expiringSoon()))
+                ->latest();
+
+            $employers = (clone $approvedQuery)
+                ->with(['employer', 'requirement', 'jobs.applications' => fn($q) => $q->where('status', 'hired')])
+                ->paginate(5, ['*'], 'page', $this->pageForHighlight(
+                    (clone $approvedQuery)->pluck('employer_nsrp_registrations_id')->all(), $highlight, 5
+                ))
+                ->withQueryString();
         }
 
         $totalPre = (clone $baseQuery)
             ->where(fn($q) =>
-                $q->whereDoesntHave('employerRequirement')
-                  ->orWhereHas('employerRequirement', fn($q2) =>
-                      $q2->where('status', 'pending')
-                  )
+                $q->whereDoesntHave('requirement')
+                  ->orWhereHas('requirement', fn($q2) => $q2->where('status', 'pending'))
             )->count();
 
         $totalApproved = (clone $baseQuery)
-            ->whereHas('employerRequirement', fn($q) =>
-                $q->where('status', 'approved')
-            )->count();
+            ->whereHas('requirement', fn($q) => $q->where('status', 'approved'))
+            ->whereNull('dormant_at')
+            ->count();
 
-        return view('staff.employers.index', compact(
-            'employers', 'staffRole', 'tab',
-            'totalPre', 'totalApproved'
+        $totalDormant = (clone $baseQuery)
+            ->whereNotNull('dormant_at')
+            ->count();
+
+        $totalExpiring = (clone $baseQuery)
+            ->whereHas('requirement', fn($q) => $q->where('status', 'approved')->expiringSoon())
+            ->whereNull('dormant_at')
+            ->count();
+
+        return view('staff.employers.index', [
+            'employers'     => $employers,
+            'staffRole'     => $staffRole,
+            'tab'           => $tab,
+            'totalPre'      => $totalPre,
+            'totalApproved' => $totalApproved,
+            'totalDormant'  => $totalDormant,
+            'totalExpiring' => $totalExpiring,
+            'expiringOnly'  => $expiringOnly,
+            'highlight'     => $highlight,
+            'industry'      => $industry,
+            'industries'    => EmployerNsrpRegistration::INDUSTRY_GROUPS,
+        ]);
+    }
+
+    /**
+     * Which page of a list a highlighted row falls on.
+     *
+     * A bell notification names one company. Landing on page one of a list the
+     * company is not on leaves the staff hunting for the row the notice just
+     * told them about, so the link carries ?highlight= and this works out the
+     * page. An explicit ?page= wins: that is the desk paging by hand, and it
+     * would be maddening for the list to keep jumping back.
+     *
+     * The ids are read in the same order the page is built in, so the maths
+     * cannot drift from what is actually shown.
+     */
+    private function pageForHighlight(array $orderedIds, ?int $highlight, int $perPage): int
+    {
+        if (!$highlight || request()->filled('page')) {
+            return max((int) request('page', 1), 1);
+        }
+
+        $index = array_search($highlight, array_map('intval', $orderedIds), true);
+
+        return $index === false ? 1 : intdiv($index, $perPage) + 1;
+    }
+
+    // ───────────────────────────────
+    // EMPLOYERS — EXCEL
+    // ───────────────────────────────
+    /**
+     * The approved employers this desk owns, as a spreadsheet.
+     *
+     * PESO, 2026-08-26: the desk filters the list to one industry and wants
+     * that list on paper. The filter and the download read the same query, so
+     * what downloads is exactly what is on screen — nothing wider.
+     *
+     * Local belongs to Job Vacancy, overseas to SRA. The desk that cannot see
+     * an employer on screen cannot pull it into a file either.
+     */
+    public function exportEmployers()
+    {
+        $staff = $this->authStaff();
+        if (!$staff) return redirect()->route('login');
+
+        $staffRole = $staff->staff_role;
+        if (!in_array($staffRole, ['lra', 'sra', 'job_vacancy'], true)) {
+            return redirect()->route('staff.dashboard');
+        }
+
+        $industry = request('industry');
+        if (!in_array($industry, EmployerNsrpRegistration::INDUSTRY_GROUPS, true)) {
+            $industry = null;
+        }
+        $search = request('search');
+
+        $companies = EmployerNsrpRegistration::query()
+            ->whereHas('employer', fn($q) => $q->where('role', 'company'))
+            ->when($staffRole === 'lra' || $staffRole === 'job_vacancy',
+                fn($q) => $q->where('is_overseas', false))
+            ->when($staffRole === 'sra', fn($q) => $q->where('is_overseas', true))
+            ->whereHas('requirement', fn($q) => $q->where('status', 'approved'))
+            ->whereNull('dormant_at')
+            ->when($industry, fn($q) => $q->where('industry_group', $industry))
+            ->when($search, fn($q) => $q->where(fn($w) =>
+                $w->where('company_name', 'like', "%{$search}%")
+                  ->orWhereHas('employer', fn($u) => $u->where('email', 'like', "%{$search}%"))
+            ))
+            ->with(['employer', 'jobs.applications'])
+            ->orderBy('company_name')
+            ->get();
+
+        $preamble = array_values(array_filter([
+            ['Report', 'Approved Employers'],
+            ['Desk', match ($staffRole) {
+                'sra'          => 'Overseas (SRA)',
+                'job_vacancy'  => 'Local (Job Vacancy)',
+                default        => 'Local (LRA)',
+            }],
+            ['Industry', $industry ?: 'All industries'],
+            $search ? ['Search', $search] : null,
+            ['Total', $companies->count()],
+            ['Generated', now()->format('Y-m-d H:i')],
+        ]));
+
+        return \App\Support\ExcelExport::stream(
+            'peso-approved-employers-' . now()->format('Ymd') . '.xlsx',
+            ['#', 'Company', 'Trade Name', 'Industry Group', 'Employer Type', 'Placement',
+             'Contact Person', 'Position', 'Mobile', 'Email', 'Address',
+             'Open Vacancies', 'Total Hired', 'Registered'],
+            $companies->values()->map(function ($c, $i) {
+                $jobs = $c->jobs;
+
+                return [
+                    $i + 1,
+                    $c->company_name,
+                    $c->trade_name ?: 'None',
+                    $c->industry_group ?: 'Not set',
+                    $c->employer_type ?: 'None',
+                    $c->is_overseas ? 'Overseas' : 'Local',
+                    $c->contact_person ?: 'None',
+                    $c->position_title ?: 'None',
+                    $c->mobile_number ?: 'None',
+                    $c->employer->email ?? 'None',
+                    collect([$c->est_barangay, $c->est_city_municipality, $c->est_province])
+                        ->filter()->implode(', ') ?: 'None',
+                    $jobs->where('status', 'open')->count(),
+                    $jobs->flatMap->applications->where('status', 'hired')->count(),
+                    optional($c->created_at)->format('Y-m-d'),
+                ];
+            }),
+            $preamble
+        );
+    }
+
+    // ───────────────────────────────
+    // WALK-IN EMPLOYER — Job Vacancy staff encoding a company at the counter
+    // ───────────────────────────────
+    //
+    // The jobseeker counter has had this since July (staff.nsrp). The employer
+    // counter had nothing: a local employer who walked in was told to go home
+    // and register online, and the vacancy they came to give was lost with
+    // them. Staff now do the whole visit in one sitting — company, documents,
+    // vacancy.
+    //
+    // Two things are deliberately different from the online wizard:
+    //
+    //   1. The requirements are REQUIRED and are saved already approved. The
+    //      staff member is holding the papers; there is no second reviewer to
+    //      wait for. `reviewed_by` records who that was.
+    //   2. The staff never types a password. The system issues a temporary one,
+    //      shown once on the Employers page, and `must_change_password` forces
+    //      the employer to replace it at first login — the same handling the HR
+    //      handover already uses.
+    private function assertJobVacancyStaff()
+    {
+        $staff = $this->authStaff();
+        if (!$staff) return [null, redirect()->route('login')];
+        if ($staff->staff_role !== 'job_vacancy') {
+            return [null, redirect()->route('staff.dashboard')
+                ->with('error', 'Only Job Vacancy staff can open this page.')];
+        }
+        return [$staff, null];
+    }
+
+    // ── Duha ka counter ang mo-encode ug walk-in nga employer: ang Job Vacancy
+    // ── para sa lokal, ug ang SRA para sa overseas. Ang role mao ang mo-desisyon
+    // ── kung asa nga listahan mosulod ang kompanya — dili ang gipili nga
+    // ── employer type — kay ang desk mismo ang nag-atiman kaniya. ──
+    private function assertWalkinEmployerStaff()
+    {
+        $staff = $this->authStaff();
+        if (!$staff) return [null, redirect()->route('login')];
+        // Job Fair staff apil sukad 2026-08-26: naa'y employer nga moduol sa
+        // adlaw sa fair kay nakabasa siya sa post sa Facebook, dala ang iyang
+        // papel ug ang iyang bakante. Kung dili siya maka-encode, mapalta ang
+        // employer sa fair nga iyang giadtoan.
+        if (!in_array($staff->staff_role, ['job_vacancy', 'sra', 'job_fair'], true)) {
+            return [null, redirect()->route('staff.dashboard')
+                ->with('error', 'Only Job Vacancy, SRA and Job Fair staff can register a walk-in employer.')];
+        }
+        return [$staff, null];
+    }
+
+    // ── Ang duha ka feed sa calendar picker sa walk-in nga porma. Parehas
+    // ── gyud sa gikaon sa modal sa employer, gikan sa samang App\Support\
+    // ── InhouseBooking — mao nga ang adlaw nga puno sa usa puno pud sa usa. ──
+    public function inhouseBookedDates()
+    {
+        $staff = $this->authStaff();
+        if (!$staff) return response()->json(['error' => 'Unauthorized'], 401);
+
+        return response()->json(['booked_dates' => \App\Support\InhouseBooking::bookedDates()]);
+    }
+
+    public function inhouseCheckDate(Request $request)
+    {
+        $staff = $this->authStaff();
+        if (!$staff) return response()->json(['error' => 'Unauthorized'], 401);
+
+        return response()->json(\App\Support\InhouseBooking::availability(
+            $request->query('date'),
+            $request->query('date_end'),
+            $request->query('venue_type', 'peso_office')
         ));
+    }
+
+    public function walkinEmployer()
+    {
+        [$staff, $deny] = $this->assertWalkinEmployerStaff();
+        if ($deny) return $deny;
+
+        return view('staff.employers.walkin', [
+            'staffRole'         => $staff->staff_role,
+            // SRA = overseas nga counter, Job Vacancy = lokal. Ang Job Fair
+            // walay kaugalingong merkado: modawat siya sa duha, ug ang employer
+            // type mao ang mopili — parehas sa online nga registration.
+            'isOverseas'        => $staff->staff_role === 'sra',
+            // Ang calendar picker mao ra gihapon sa employer: ang puno nga
+            // adlaw naka-disable ug pula, ang holiday dalag, ug ang live nga
+            // pagsusi mosulti kung pila na ang naka-book.
+            'earliestBookable'  => \App\Support\OfficeCalendar::earliestBookableDate(),
+            'inhouseDailyLimit' => \App\Support\InhouseBooking::dailyLimit(),
+            // Job Fair ra ang channel nga nagkinahanglan ug event. Kung walay
+            // umaabot, ang checkbox dili mapili.
+            'jobFairEvents'     => \App\Models\JobFairEvent::whereDate('event_date', '>=', today())
+                                       ->where('status', '!=', 'completed')
+                                       ->orderBy('event_date')
+                                       ->get(),
+        ]);
+    }
+
+    public function storeWalkinEmployer(Request $request)
+    {
+        [$staff, $deny] = $this->assertWalkinEmployerStaff();
+        if ($deny) return $deny;
+
+        $isJobFairDesk = $staff->staff_role === 'job_fair';
+
+        // Ang SRA nga counter kay overseas, ang Job Vacancy kay lokal. Ang Job
+        // Fair modawat sa duha, mao nga ang employer type ang mosulti — mao
+        // gihapon ang lagda nga gisunod sa online nga registration.
+        $isOverseas = $isJobFairDesk
+            ? $request->employer_type === 'Overseas Recruitment Agency'
+            : $staff->staff_role === 'sra';
+
+        $requestedTypes = array_values(array_intersect(
+            ['company_interview', 'inhouse', 'job_fair'],
+            array_map('strval', (array) $request->input('schedule_types', []))
+        ));
+
+        // Ang Job Fair desk usa ra ang gibuhat: pagdala ug employer ngadto sa
+        // fair. Ang in-house iya sa LRA ug ang company interview sa Job
+        // Vacancy — dili sila iya niining counter.
+        if ($isJobFairDesk) {
+            $requestedTypes = ['job_fair'];
+        }
+
+        $wantsCompanyInterview = in_array('company_interview', $requestedTypes, true);
+        $wantsInhouse          = in_array('inhouse', $requestedTypes, true);
+        $wantsJobFair          = in_array('job_fair', $requestedTypes, true);
+
+        $request->validate([
+            // ── I. Establishment Details ──
+            'company_name'          => 'required|string|max:255',
+            'trade_name'            => 'nullable|string|max:255',
+            'tin'                   => 'required|string|max:50',
+            'tin_type'              => 'nullable|in:main,branch',
+            'employer_type'         => 'required|string',
+            'total_workforce'       => 'nullable|in:micro,small,medium,large',
+            'line_of_business'      => 'nullable|string|max:255',
+            'industry_group'        => ['required', \Illuminate\Validation\Rule::in(\App\Models\EmployerNsrpRegistration::INDUSTRY_GROUPS)],
+            'est_barangay'          => 'nullable|string|max:255',
+            'est_city_municipality' => 'nullable|string|max:255',
+            'est_province'          => 'nullable|string|max:255',
+            // ── II. Establishment Contact Details ──
+            'contact_person'  => 'required|string|max:255',
+            'position_title'  => 'required|string|max:255',
+            'contact_title'   => 'nullable|string|max:20',
+            'telephone_no'    => 'nullable|string|max:20',
+            'mobile_number'   => ['required', 'string', new \App\Rules\MobileNumber],
+            'fax_no'          => 'nullable|string|max:20',
+            'email'           => 'required|email|unique:users,email',
+            // ── III. Requirements — required here, unlike the online wizard,
+            // ── because they are saved approved on the strength of the staff
+            // ── member having seen them. ──
+            'business_permit'             => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'sec_dti'                     => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'company_profile'             => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'no_pending_case_certificate' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'vacancy_posting'             => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            // Ang business permit tinuig — ang tuig ang gipangayo, dili petsa.
+            'business_permit_year'                   => 'required|integer|min:' . (now()->year - 2) . '|max:' . (now()->year + 1),
+            'company_logo'                           => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            'sec_dti_expires_at'                     => 'required|date|after:today',
+            'company_profile_expires_at'             => 'required|date|after:today',
+            'no_pending_case_certificate_expires_at' => 'required|date|after:today',
+            'vacancy_posting_expires_at'             => 'required|date|after:today',
+            // ── IV. The vacancy they came to give ──
+            'title'       => 'required|string|max:255',
+            'description' => 'required|string',
+            'location'    => 'required|string|max:255',
+            'type'        => 'required|in:full_time,part_time,contractual,casual',
+            'slots'       => 'required|integer|min:1',
+            'salary'      => 'nullable|string|max:255',
+            'deadline'    => 'nullable|date|after:today',
+            // Gipangutana kay ang fair nga para sa PWD modawat lang sa bakante
+            // nga "yes" dinhi. Kung wala ni, ang walk-in dili gyud makasulod
+            // sa maong fair, ug walay porma nga makatul-id niini human.
+            'accepts_disability' => 'required|in:yes,no',
+            'disability_types'   => 'nullable|array',
+            'disability_types.*' => 'string|max:50',
+            // ── Ang channel. Parehas sa modal sa employer: usa ka fill-up,
+            // ── mahimong daghang channel, apan usa ra gihapon ka set sa
+            // ── bakante tungod sa posting_group_id. ──
+            'schedule_types'   => 'required|array|min:1',
+            'schedule_types.*' => 'in:inhouse,company_interview,job_fair',
+            'company_interview_date' => [\Illuminate\Validation\Rule::requiredIf($wantsCompanyInterview), 'nullable', 'date',
+                                         'after_or_equal:' . \App\Support\OfficeCalendar::earliestBookableDate()],
+            'inhouse_date'     => [\Illuminate\Validation\Rule::requiredIf($wantsInhouse), 'nullable', 'date',
+                                   'after_or_equal:' . \App\Support\OfficeCalendar::earliestBookableDate()],
+            'inhouse_date_end' => 'nullable|date|after_or_equal:inhouse_date',
+            'venue_type'       => [\Illuminate\Validation\Rule::requiredIf($wantsInhouse), 'nullable', 'in:peso_office,other'],
+            'venue_address'    => 'required_if:venue_type,other|nullable|string|max:255',
+            'job_fair_id'      => [\Illuminate\Validation\Rule::requiredIf($wantsJobFair), 'nullable',
+                                   'exists:job_fair_events,job_fair_events_id'],
+            // ── Certification ──
+            'certification_agreed' => 'required|accepted',
+        ], [
+            'email.unique' => 'This email address is already registered. Search the Employers list instead of encoding a second account.',
+            'certification_agreed.accepted' => 'The employer must agree to the certification and authorization.',
+            'schedule_types.required' => 'Pick at least one schedule type for this vacancy.',
+            'accepts_disability.required' => 'Ask the employer whether this vacancy accepts applicants with disability.',
+            'company_interview_date.required' => 'Pick the preferred date for the Company Interview posting.',
+            'inhouse_date.required'   => 'Pick the preferred date for the In-house posting.',
+            'company_interview_date.after_or_equal' => \App\Support\OfficeCalendar::leadTimeMessage(),
+            'inhouse_date.after_or_equal'           => \App\Support\OfficeCalendar::leadTimeMessage(),
+            'inhouse_date_end.after_or_equal'       => 'The last available date cannot be before the first.',
+            'venue_type.required'     => 'Pick the venue for the In-house interview.',
+            'job_fair_id.required'    => 'Pick which job fair this vacancy is for.',
+        ]);
+
+        // ── Sarado ang PESO sa holiday. Ang date picker mo-disable na niini,
+        // ── apan ang browser dili basihan — ang POST mahimong moabot bisan asa.
+        // ── Ang in-house nga window gilaktawan kung labaw pa sa usa ka adlaw:
+        // ── walay daot kung naa'y holiday sulod niini, laing adlaw na lang ang
+        // ── pilion sa employer. ──
+        $inhouseIsOneDay = !$request->filled('inhouse_date_end')
+            || $request->input('inhouse_date_end') === $request->input('inhouse_date');
+
+        $holidays = \App\Support\Holidays::aroundNow();
+        foreach ([
+            'company_interview_date' => $request->input('company_interview_date'),
+            'inhouse_date'           => $inhouseIsOneDay ? $request->input('inhouse_date') : null,
+        ] as $field => $picked) {
+            if ($picked && isset($holidays[$picked])) {
+                return back()->withInput()->withErrors([
+                    $field => 'PESO is closed on ' . $holidays[$picked]
+                              . ' (' . \Carbon\Carbon::parse($picked)->format('M d, Y') . '). Please pick another date.',
+                ]);
+            }
+        }
+
+        // Parehas gyud nga lagda sa gisunod sa employer online — usa ra ka
+        // code ang naghubad niini, tan-awa ang App\Support\InhouseBooking.
+        if ($wantsInhouse) {
+            if ($why = \App\Support\InhouseBooking::blockedWindowError($request->inhouse_date, $request->inhouse_date_end)) {
+                return back()->withInput()->with('error', $why);
+            }
+            if ($request->venue_type === 'peso_office'
+                && $why = \App\Support\InhouseBooking::capacityError($request->inhouse_date, $request->inhouse_date_end)) {
+                return back()->withInput()->with('error', $why);
+            }
+        }
+
+        // ── Ang fair mismo ang mopili.
+        // ──
+        // ── Ang Job Fair desk mag-encode niini ug modiretso na dayon sa fair,
+        // ── mao nga walay approval screen nga makasalikway niini human. Ang
+        // ── samang lagda sa approveJobFairJob gipangutana dinhi, aron ang
+        // ── bakante nga dili modawat ug PWD dili makasulod sa PWD nga fair
+        // ── pinaagi lang sa counter. ──
+        if ($wantsJobFair && $request->job_fair_id) {
+            $fairCheck = \App\Models\JobFairEvent::find($request->job_fair_id);
+            $draft     = new \App\Models\Job([
+                'accepts_disability' => $request->accepts_disability,
+                'industry_group'     => $request->industry_group,
+            ]);
+
+            if ($fairCheck && $why = $fairCheck->postingMismatch($draft)) {
+                return back()->withInput()->withErrors(['job_fair_id' => $why]);
+            }
+        }
+
+        // Ang plaintext gibalik kausa ra sa nag-encode nga staff — wala gyud
+        // kini gitipigan ug wala gi-email. Samang tawag sa HR handover.
+        $tempPassword = \Illuminate\Support\Str::password(12, true, true, true, false);
+        $staffId      = \App\Models\Staff::where('user_id', $staff->users_id)->value('staff_id');
+
+        $documentFields = [
+            'business_permit', 'sec_dti', 'company_profile',
+            'no_pending_case_certificate', 'vacancy_posting',
+        ];
+
+        // Ang file gi-store sa gawas sa transaction: ang disk dili mo-rollback,
+        // ug ang mga path kinahanglan andam na sa dili pa mosulod sa DB.
+        $uploadedDocs = [];
+        foreach ($documentFields as $field) {
+            $uploadedDocs[$field] = $request->file($field)->store('employer_requirements', 'local');
+
+            if ($field === 'business_permit') {
+                $year = (int) $request->input('business_permit_year');
+                $uploadedDocs['business_permit_year']       = $year;
+                $uploadedDocs['business_permit_expires_at'] = \Carbon\Carbon::create($year, 12, 31)->toDateString();
+                continue;
+            }
+
+            $uploadedDocs["{$field}_expires_at"] = $request->input("{$field}_expires_at");
+        }
+
+        if ($request->hasFile('company_logo')) {
+            $uploadedDocs['company_logo'] = $request->file('company_logo')->store('employer_requirements', 'local');
+        }
+
+        try {
+            $employer = \Illuminate\Support\Facades\DB::transaction(function () use (
+                $request, $tempPassword, $staffId, $uploadedDocs, $requestedTypes, $isOverseas, $isJobFairDesk
+            ) {
+                $user = User::create([
+                    'name'                 => $request->company_name,
+                    'email'                => $request->email,
+                    'phone'                => $request->mobile_number,
+                    'password'             => \Illuminate\Support\Facades\Hash::make($tempPassword),
+                    'role'                 => 'company',
+                    'status'               => 'approved',
+                    'must_change_password' => true,
+                ]);
+
+                $employer = \App\Models\EmployerNsrpRegistration::create([
+                    'user_id'                   => $user->users_id,
+                    'company_name'              => $request->company_name,
+                    'contact_person'            => $request->contact_person,
+                    'position_title'            => $request->position_title,
+                    'mobile_number'             => $request->mobile_number,
+                    'employer_type'             => $request->employer_type,
+                    // Ang desk nga nag-encode mao ang mopili: SRA = overseas,
+                    // Job Vacancy = lokal. Ang online nga registration nagbasa
+                    // niini gikan sa employer type; dinhi ang tawo sa counter
+                    // nay nahibalo, ug siya nay tubagon sa iyang listahan.
+                    'is_overseas'               => $isOverseas,
+                    'is_walk_in'                => true,
+                    'trade_name'                => $request->trade_name,
+                    'tin'                       => $request->tin,
+                    'tin_type'                  => $request->tin_type,
+                    'total_workforce'           => $request->total_workforce,
+                    'line_of_business'          => $request->line_of_business,
+                    'industry_group'            => $request->industry_group,
+                    'est_barangay'              => $request->est_barangay,
+                    'est_city_municipality'     => $request->est_city_municipality,
+                    'est_province'              => $request->est_province,
+                    'contact_title'             => $request->contact_title,
+                    'telephone_no'              => $request->telephone_no,
+                    'fax_no'                    => $request->fax_no,
+                    'certification_agreed'      => true,
+                    'certification_date'        => now()->toDateString(),
+                    'initial_vacancy_data'      => [],
+                    'initial_vacancy_confirmed' => true,
+                ]);
+
+                // `user_id` dinhi kay ang employer_nsrp_registrations_id, dili
+                // ang users_id — daan na nga ngalan, tan-awa ang DocumentController.
+                \App\Models\EmployerRequirement::create(array_merge([
+                    'user_id'     => $employer->employer_nsrp_registrations_id,
+                    'status'      => 'approved',
+                    'reviewed_by' => $staffId,
+                    'remarks'     => 'Walk-in registration. Documents presented at the PESO counter and verified by the encoding staff.',
+                ], $uploadedDocs));
+
+                // ── Usa ka job row kada channel, parehas sa gibuhat sa modal
+                // ── sa employer. Ang una nga row mo-turol sa iyang kaugalingon
+                // ── ug ang sunod didto pud mo-turol — mao nay posting_group_id,
+                // ── ug mao nay hinungdan nga ang usa ka posisyon nga gi-post sa
+                // ── tulo ka channel usa ra gihapon ka set sa bakante. ──
+                $groupId  = null;
+                $fairEvent = $request->job_fair_id
+                    ? \App\Models\JobFairEvent::find($request->job_fair_id)
+                    : null;
+
+                foreach ($requestedTypes as $type) {
+                    $scheduleDate = match ($type) {
+                        'inhouse'           => $request->inhouse_date,
+                        'company_interview' => $request->company_interview_date,
+                        // Ang job fair walay pinili nga adlaw: ang adlaw sa
+                        // event mismo ang petsa niini.
+                        'job_fair'          => $fairEvent?->event_date->toDateString(),
+                        default             => null,
+                    };
+
+                    // Sa in-house, ang gitanyag kay window. Ang kataposang adlaw
+                    // niini ang gamiton isip fallback nga deadline — dili mosira
+                    // ang posting samtang mahimo pa ang interview.
+                    $scheduleEnd = $type === 'inhouse'
+                        ? ($request->inhouse_date_end ?: $request->inhouse_date)
+                        : null;
+
+                    $job = \App\Models\Job::create(array_merge([
+                        'company_id'         => $employer->employer_nsrp_registrations_id,
+                        'title'              => $request->title,
+                        'description'        => $request->description,
+                        'location'           => $request->location,
+                        'type'               => $request->type,
+                        'industry_group'     => $request->industry_group,
+                        'slots'              => $request->slots,
+                        'accepts_disability' => $request->accepts_disability,
+                        'disability_types'   => $request->accepts_disability === 'yes'
+                                                    ? array_values((array) $request->input('disability_types', []))
+                                                    : null,
+                        'salary'             => $request->salary,
+                        'deadline'           => $request->deadline ?: ($scheduleEnd ?: $scheduleDate),
+                        'posting_type'       => 'direct',
+                        'schedule_type'      => $type,
+                        'preferred_date'     => $scheduleDate,
+                        'preferred_date_end' => $scheduleEnd,
+                        'venue_type'         => $type === 'inhouse' ? $request->venue_type : null,
+                        'venue_address'      => $type === 'inhouse' && $request->venue_type === 'other'
+                                                    ? $request->venue_address
+                                                    : null,
+                        // Ang in-house natawo nga pending: ang LRA ang tag-iya sa
+                        // kalendaryo sa PESO Office, ug siya gihapon ang mo-accept
+                        // niini bisan ang staff pa ang nag-encode.
+                    ], \App\Support\JobPostingNotice::initialState($type)));
+
+                    $groupId = $groupId ?? $job->job_qualifications_id;
+                    $job->update(['posting_group_id' => $groupId]);
+
+                    if ($type === 'job_fair') {
+                        // Ang deadline nga mas sayo pa kay sa adlaw sa fair
+                        // magpatay sa posting sa dili pa siya magamit.
+                        if ($fairEvent && $job->deadline && $job->deadline->lt($fairEvent->event_date)) {
+                            $job->update(['deadline' => $fairEvent->event_date->toDateString()]);
+                        }
+
+                        $job->update(['requested_job_fair_id' => $request->job_fair_id]);
+
+                        if ($isJobFairDesk && $fairEvent) {
+                            // Ang Job Fair desk mismo ang nag-encode niini sa
+                            // counter, mao nga siya na ang nakadesisyon. Walay
+                            // pulos nga ipadala niya ang iyang kaugalingong
+                            // hangyo ngadto sa iyang kaugalingong pila.
+                            $job->update([
+                                'posting_status' => 'approved',
+                                'status'         => \App\Support\JobFairPostingWindow::opensFor($fairEvent) ? 'open' : 'closed',
+                            ]);
+
+                            \App\Models\JobFairEmploymentRequest::firstOrCreate([
+                                'job_fair_id' => $fairEvent->job_fair_events_id,
+                                'employer_id' => $employer->employer_nsrp_registrations_id,
+                                'job_id'      => $job->job_qualifications_id,
+                            ]);
+
+                            // Parehas sa acceptPostingIntoFair: ang unang
+                            // bakante nga misulod sa fair mao ang nag-anunsyo
+                            // niini sa jobseeker. Ang walk-in laing pultahan
+                            // sa parehas nga lawak.
+                            \App\Support\JobFairInvites::inviteJobseekers($fairEvent);
+                        }
+                    }
+                }
+
+                return $employer;
+            });
+        } catch (\Throwable $e) {
+            // Ang na-upload nga file mabilin nga ilo kung mapakyas ang DB.
+            foreach ($documentFields as $field) {
+                \Illuminate\Support\Facades\Storage::disk('local')->delete($uploadedDocs[$field]);
+            }
+            throw $e;
+        }
+
+        // ── Ang in-house ra ang nagkinahanglan ug tubag gikan sa lain nga lamesa.
+        // ── Ang Company Interview ug Job Fair kay kining maong staff mismo ang
+        // ── nag-encode, walay hinungdan nga belan sila sa ilang kaugalingong
+        // ── buhat. Ang LRA — o ang SRA kung overseas — mao ang tag-iya sa
+        // ── kalendaryo, ug wala siya nakakita niining employer nga niagi sa
+        // ── counter, mao nga ang bell ang mo-abot kaniya. Parehas nga porma sa
+        // ── notice sa online nga posting (CompanyWebController::requestJob).
+        if (in_array('inhouse', $requestedTypes, true)) {
+            $venueLabel  = $request->venue_type === 'other' ? $request->venue_address : 'PESO Office';
+            $windowLabel = ($request->inhouse_date_end && $request->inhouse_date_end !== $request->inhouse_date)
+                ? \Carbon\Carbon::parse($request->inhouse_date)->format('M d') . ' – '
+                  . \Carbon\Carbon::parse($request->inhouse_date_end)->format('M d, Y')
+                : \Carbon\Carbon::parse($request->inhouse_date)->format('M d, Y');
+
+            \App\Models\Announcement::sendToStaff([
+                'type'           => 'job_posted_notice',
+                'title'          => 'New In-house Posting 📅',
+                'message'        => $employer->company_name . ' posted "' . $request->title
+                                    . '" for an in-house interview, ' . $windowLabel . ' at ' . $venueLabel
+                                    . '. Those dates are held while you decide, and the vacancy stays'
+                                    . ' hidden from jobseekers until you accept.',
+                // Walay reference_id: ang in-house modala sa In-house Schedule,
+                // dili sa usa ka job row — parehas sa employer nga path.
+                'reference_type' => 'inhouse_schedule',
+                'reference_id'   => null,
+            ], \App\Models\Staff::where('staff_role', $isOverseas ? 'sra' : 'lra')->pluck('staff_id'));
+        }
+
+        return redirect()->route('staff.employers', ['tab' => 'approved'])
+            ->with('success', $employer->company_name . ' registered. Vacancy posted to '
+                . collect($requestedTypes)->map(fn($type) => match ($type) {
+                    'inhouse'           => 'In-house (waiting for LRA to accept the date)',
+                    'company_interview' => 'Company Interview',
+                    'job_fair'          => 'Job Fair',
+                })->join(', ', ' and ') . '.')
+            ->with('recovery_temp_password', $tempPassword)
+            ->with('recovery_contact', $request->email);
+    }
+
+    // ───────────────────────────────
+    // I-ABLI PAG-USAB ANG DORMANT NGA EMPLOYER
+    // ───────────────────────────────
+    //
+    // Ang account gisira kay walay tubag sa pangutana sa opisina. Ang pag-abli
+    // dili automatic bisan nakatubag na sila: ang tumong sa tibuok butang mao
+    // nga adunay tawo sa opisina nga nakabasa kung unsa ang nahitabo sa
+    // kompanya, ug siya ang mo-desisyon.
+    public function enableDormantEmployer($id)
+    {
+        $staff = $this->authStaff();
+        if (!$staff) return redirect()->route('login');
+
+        // Ang {id} kay ang KOMPANYA. Ang usa ka kompanya sa usa ka account
+        // mahimong patay samtang ang usa buhi pa, mao nga ang pag-abli pag-usab
+        // motumong sa establisemento ug dili sa tibuok account.
+        $employer     = EmployerNsrpRegistration::with('employer')->findOrFail($id);
+        $employerUser = $employer->employer;
+
+        if (!$employerUser || $employerUser->role !== 'company' || !$employer->dormant_at) {
+            return back()->with('error', 'That account is not inactive.');
+        }
+
+        // Samang lagda sa pag-approve sa requirements: ang lokal kay sa Job
+        // Vacancy, ang overseas kay sa SRA.
+        $isOverseas   = (bool) $employer->is_overseas;
+        $allowedRoles = $isOverseas ? ['sra'] : ['job_vacancy'];
+
+        if (!in_array($staff->staff_role, $allowedRoles, true)) {
+            return back()->with('error', $isOverseas
+                ? 'Only SRA staff can reopen an overseas employer account.'
+                : 'Only Job Vacancy staff can reopen a local employer account.');
+        }
+
+        // Parehas gyud sa manual nga switch sa Update modal — usa ra ka lugar
+        // ang naghubad kung unsa ang buksan pag-usab.
+        $reopened = $this->countReopeningPostings($employer);
+
+        \Illuminate\Support\Facades\DB::transaction(
+            fn() => $this->restoreEmployerAccess($employer, $employerUser)
+        );
+
+        $this->mailEmployerReactivated($employer, $employerUser, $staff, $reopened);
+
+        \App\Models\Announcement::sendToEmployers([
+            'type'           => 'employer_account_reopened',
+            'title'          => 'Your account is active again ✅',
+            'message'        => 'PESO staff have reviewed your reply and reopened your account.'
+                                . ' Your job postings are visible to jobseekers again.',
+            'reference_type' => 'employer_inactivity',
+            'reference_id'   => $employer->employer_nsrp_registrations_id,
+        ], $employer->employer_nsrp_registrations_id);
+
+        $this->announceEmployerInactive(
+            $employer,
+            ($employer->company_name ?? 'An employer') . ' was switched back on by '
+                . trim($staff->name) . '.',
+            'Employer switched back on ✅',
+            false
+        );
+
+        return back()->with('success',
+            ($employer->company_name ?? 'The employer') . ' can use their account again.');
+    }
+
+    // ───────────────────────────────
+    // HR HANDOVER — i-ilis ang authorized contact sa usa ka employer account
+    // ───────────────────────────────
+    // PESO interview 2026-08-13: "Kung ang HR sa usa ka employer mo-resign...
+    // pwede gamiton ang password reset basta adunay proper permission ug
+    // verification. Para sa local employer, ang local staff ang mo-handle,
+    // samtang para sa overseas employer, ang SRA ang mo-handle."
+    //
+    // Ang staff WALA gyud makakita o makabutang ug password. Ang gibuhat niya:
+    // i-update ang contact details, dayon mo-padala ug reset code sa bag-ong
+    // email — ang bag-ong HR ra mismo ang mo-set sa iyang password. Parehas
+    // ra ni sa flow sa Forgot Password nga naa nay employer nga naggamit.
+    public function transferEmployerAccount(Request $request, $id)
+    {
+        $staff = $this->authStaff();
+        if (!$staff) return redirect()->route('login');
+
+        $employerUser = User::with('employerNsrp')->where('role', 'company')->findOrFail($id);
+        $nsrp = $employerUser->employerNsrp;
+
+        if (!$nsrp) {
+            return back()->with('error', 'This employer has no NSRP registration record yet.');
+        }
+
+        // Parehas nga bahin sa trabaho sa Employers page mismo: ang local
+        // employer sa lra/job_vacancy, ang overseas sa sra.
+        //
+        // Ang "view only" sa interview sa LRA nagpasabot nga dili sila
+        // mo-approve ug employer — ug wala man gyud sila kaniadto. Ang pag-ilis
+        // sa authorized contact nagpabilin kanila: sila ang gitawagan sa local
+        // nga employer nga nawad-an ug HR.
+        $isOverseas   = (bool) $nsrp->is_overseas;
+        $allowedRoles = $isOverseas ? ['sra'] : ['lra', 'job_vacancy'];
+
+        if (!in_array($staff->staff_role, $allowedRoles, true)) {
+            return back()->with('error', $isOverseas
+                ? 'Only SRA staff can change the contact on an overseas employer account.'
+                : 'Only local staff (LRA or Job Vacancy) can change the contact on a local employer account.');
+        }
+
+        $validated = $request->validate(
+            \App\Support\EmployerAccountRecovery::rules($employerUser->users_id) + [
+                'account_status' => 'nullable|in:active,inactive',
+            ],
+            \App\Support\EmployerAccountRecovery::messages()
+        );
+
+        // ── ANG SWITCH ──
+        // Ang pag-ilis sa contact iya sa tanang lokal nga staff; ang pagpatay sa
+        // account kay sa nag-atiman ra sa maong employer, parehas sa pag-approve
+        // sa requirements ug sa pag-abli sa dormant.
+        $statusRoles   = $isOverseas ? ['sra'] : ['job_vacancy'];
+        $wantsInactive = ($validated['account_status'] ?? null) === 'inactive';
+
+        // Ang `dormant_at` ang tinuod nga timailhan, dili ang `users.status`
+        // lamang: ang employer nga na-restrict tungod sa Business Permit
+        // magpabiling inactive bisan lahi ang iyang status string.
+        $currentlyInactive = $employerUser->status === 'dormant' || (bool) $nsrp->dormant_at;
+        $requestedFlip     = isset($validated['account_status'])
+            && $wantsInactive !== $currentlyInactive;
+
+        if ($requestedFlip && !in_array($staff->staff_role, $statusRoles, true)) {
+            return back()->with('error', $isOverseas
+                ? 'Only SRA staff can switch an overseas employer account on or off.'
+                : 'Only Job Vacancy staff can switch a local employer account on or off.');
+        }
+
+        $contactChanged = \App\Support\EmployerAccountRecovery::contactChanged($employerUser, $validated);
+
+        // Walay giusab bisan usa: ayaw pagpakaaron-ingnon nga naay nahitabo.
+        if (!$contactChanged && !$requestedFlip) {
+            return back()->with('error', 'Nothing was changed on this account.');
+        }
+
+        $result = $contactChanged
+            ? \App\Support\EmployerAccountRecovery::perform($employerUser, $validated, $staff)
+            : null;
+
+        if ($requestedFlip) {
+            $this->setEmployerAccountStatus(
+                $employerUser->fresh('employerNsrp'), $wantsInactive, $validated['reason'], $staff
+            );
+        }
+
+        // Ang contact nga pag-ilis naay kaugalingong tubag — didto ang temporary
+        // password nga makita kausa ra. Ang status idugang ra sa mensahe.
+        if ($contactChanged) {
+            return $this->employerRecoveryResponse($result, $validated, $requestedFlip
+                ? ($wantsInactive
+                    ? ' The account was also switched off, and their vacancies are now hidden.'
+                    : ' The account was also switched back on.')
+                : '');
+        }
+
+        return back()->with('success', ($nsrp->company_name ?? 'The employer')
+            . ($wantsInactive
+                ? ' can no longer sign in, and their open vacancies are hidden from jobseekers.'
+                : ' can sign in again, and their vacancies are back.'));
+    }
+
+    // ───────────────────────────────
+    // I-ON/OFF ANG EMPLOYER ACCOUNT
+    // ───────────────────────────────
+    //
+    // Usa ra gyud ka kahimtang, bisan kinsa ang nagpatay niini: ang inactivity
+    // sweep ug kining manual nga switch parehas og gibutang — `dormant`, uban sa
+    // `dormant_at`, ug ang postings gitago. Mao nga usa ra ka tab ang tan-awon
+    // sa staff, ug ang employer makasulod gihapon aron mo-sulat sa iyang rason,
+    // bisan asa gikan ang pagpatay.
+    //
+    // `deactivated` ang wala gigamit dinhi: kana mo-babag sa login mismo
+    // (UnifiedAuthController), ug ang tumong niini nga bahin mao gyud nga
+    // makasulod sila aron mo-saysay.
+    private function setEmployerAccountStatus(User $employerUser, bool $inactive, string $reason, User $staff): void
+    {
+        $employer = $employerUser->employerNsrp;
+        $reopened = $inactive ? 0 : $this->countReopeningPostings($employer);
+
+        \Illuminate\Support\Facades\DB::transaction(function () use ($employerUser, $employer, $inactive) {
+            if ($inactive) {
+                $employer->update(['dormant_at' => now()]);
+                $employerUser->update(['status' => 'dormant']);
+
+                // Samang marka nga gigamit sa sweep: "gisirado kay gipatay ang
+                // account". Usa ra ka lagda ang nagbantay kung unsa ang buksan
+                // pag-usab, bisan asa gikan ang pagpatay.
+                \App\Models\Job::where('company_id', $employer->employer_nsrp_registrations_id)
+                    ->where('status', 'open')
+                    ->update(['status' => 'closed', 'dormant_closed_at' => now()]);
+
+                return;
+            }
+
+            $this->restoreEmployerAccess($employer, $employerUser);
+        });
+
+        if (!$inactive) {
+            $this->mailEmployerReactivated($employer, $employerUser, $staff, $reopened);
+        }
+
+        // Ang rekord sa gibuhat. Ang `employer_account_transfers` mao nay
+        // nagtipig sa tanang gibuhat sa staff niining account, mao nga ang
+        // pagpatay ug pagbuhi didto pud gitipigan.
+        \App\Models\EmployerAccountTransfer::create([
+            'employer_id'             => $employer->employer_nsrp_registrations_id,
+            'performed_by'            => \App\Models\Staff::where('user_id', $staff->users_id)->value('staff_id'),
+            'performed_by_user_id'    => $staff->users_id,
+            'method'                  => 'status_change',
+            'previous_contact_person' => $employer->contact_person,
+            'previous_email'          => $employerUser->email,
+            'new_contact_person'      => $employer->contact_person ?? $employerUser->name,
+            'new_email'               => $employerUser->email,
+            'reason'                  => $reason,
+        ]);
+
+        \App\Models\Announcement::sendToEmployers([
+            'type'           => $inactive ? 'employer_account_inactive' : 'employer_account_reopened',
+            'title'          => $inactive ? 'Your account is now inactive 🔒' : 'Your account is active again ✅',
+            'message'        => $inactive
+                ? 'PESO staff have set this account to inactive, so your vacancies are hidden from'
+                  . ' jobseekers. Nothing was deleted. Sign in and tell us your status so the office'
+                  . ' can switch it back on. Reason on record: ' . $reason
+                : 'PESO staff have switched your account back on. Your vacancies are visible to'
+                  . ' jobseekers again.',
+            'reference_type' => 'employer_inactivity',
+            'reference_id'   => $employer->employer_nsrp_registrations_id,
+        ], $employer->employer_nsrp_registrations_id);
+
+        // ── Ang tibuok opisina masayod. Ang nag-atiman ra ang makahimo sa
+        // ── pag-abli pag-usab, apan ang uban dili angay makakita sa usa ka
+        // ── employer nga kalit nawala sa listahan nga walay katin-awan. ──
+        $this->announceEmployerInactive(
+            $employer,
+            $inactive
+                ? ($employer->company_name ?? 'An employer') . ' was set to inactive by '
+                  . trim($staff->name) . '. Reason: ' . $reason
+                : ($employer->company_name ?? 'An employer') . ' was switched back on by '
+                  . trim($staff->name) . '.',
+            $inactive ? 'Employer set to inactive 🔒' : 'Employer switched back on ✅',
+            $inactive
+        );
+    }
+
+    // ── Usa ka notice sa nag-atiman nga desk nga naay link ngadto sa Inactive
+    // ── tab, ug usa ka notice nga pahibalo ra para sa duha ka lain nga desk.
+    // ── Ang reference_type gibiyaan nga null sa pahibalo: ang bell mo-fall
+    // ── through ngadto sa notifications page, dili ngadto sa tab nga dili
+    // ── nila maablihan. ──
+    private function announceEmployerInactive(
+        \App\Models\EmployerNsrpRegistration $employer,
+        string $message,
+        string $title,
+        bool $inactive
+    ): void {
+        $ownerRole = $employer->is_overseas ? 'sra' : 'job_vacancy';
+        $ownerName = $employer->is_overseas ? 'SRA' : 'Job Vacancy';
+
+        \App\Models\Announcement::sendToStaff([
+            'type'           => $inactive ? 'employer_account_inactive' : 'employer_account_reopened',
+            'title'          => $title,
+            'message'        => $message,
+            'reference_type' => 'employer_inactivity',
+            'reference_id'   => $employer->employer_nsrp_registrations_id,
+        ], \App\Models\Staff::where('staff_role', $ownerRole)->pluck('staff_id'));
+
+        \App\Models\Announcement::sendToStaff([
+            'type'           => $inactive ? 'employer_account_inactive' : 'employer_account_reopened',
+            'title'          => $title,
+            'message'        => $message . ' ' . $ownerName . ' staff handle this account.',
+            'reference_type' => null,
+            'reference_id'   => null,
+        ], \App\Models\Staff::whereNotIn('staff_role', [$ownerRole])
+            ->whereIn('staff_role', ['job_vacancy', 'sra', 'lra'])
+            ->pluck('staff_id'));
+    }
+
+    // ── Pila ka posting ang mobalik sa jobseekers kung buhion karon ang
+    // ── account. Ihapon kini SA WALA PA ang pagbuhi — human niana wala nay
+    // ── `dormant_closed_at` nga mailhan. Samang lagda sa `restoreEmployerAccess`. ──
+    private function countReopeningPostings(?\App\Models\EmployerNsrpRegistration $employer): int
+    {
+        if (!$employer) return 0;
+
+        return \App\Models\Job::where('company_id', $employer->employer_nsrp_registrations_id)
+            ->whereNotNull('dormant_closed_at')
+            ->where(function ($q) {
+                $q->whereNull('deadline')->orWhereDate('deadline', '>=', today());
+            })
+            ->count();
+    }
+
+    // ── Ang employer nga inactive walay rason mo-adto sa site — mao gyud nay
+    // ── hinungdan nga na-inactive siya. Ang bell maabot ra sa mosulod, mao nga
+    // ── ang balita nga buhi na ang account gi-email, parehas sa pahimangno.
+    // ──
+    // ── Kung mapakyas ang mail server, ang account buhi gihapon: ang pag-email
+    // ── dili angay mo-undang sa gibuhat sa staff, mao nga gi-log ra ang sayop. ──
+    private function mailEmployerReactivated(
+        ?\App\Models\EmployerNsrpRegistration $employer,
+        User $employerUser,
+        User $staff,
+        int $reopenedPostings
+    ): void {
+        if (!$employerUser->email) return;
+
+        try {
+            \Illuminate\Support\Facades\Mail::to($employerUser->email)->send(
+                new \App\Mail\EmployerAccountReactivated(
+                    companyName:      $employer->company_name ?? $employerUser->name,
+                    contactName:      $employer->contact_person ?? $employerUser->name,
+                    staffName:        trim($staff->name),
+                    reopenedPostings: $reopenedPostings,
+                )
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Employer reactivation email failed to send', [
+                'employer_id' => $employer?->employer_nsrp_registrations_id,
+                'error'       => $e->getMessage(),
+            ]);
+        }
+    }
+
+    // ── Ang pagbuhi pag-usab sa usa ka gipatay nga account: ang manual nga
+    // ── switch ug ang Inactive tab parehas gyud og buhaton, mao nga usa ra ka
+    // ── lugar ang naghubad niini. ──
+    private function restoreEmployerAccess(\App\Models\EmployerNsrpRegistration $employer, User $employerUser): void
+    {
+        // Ang orasan sa inactivity gilimpyohan pud: kung magpabilin ang
+        // `inactivity_notified_at`, ang sweep mo-patay pag-usab ugma nga walay
+        // bag-ong email — usa ka semana ang milabay na man.
+        $employer->update([
+            'dormant_at'              => null,
+            'inactivity_notified_at'  => null,
+            'inactivity_responded_at' => null,
+            'inactivity_status'       => null,
+            'inactivity_response'     => null,
+        ]);
+
+        // Ang gisirado sa pagpatay sa account ra ang buksan pag-usab, ug kadto
+        // ra nga wala pa malabyan sa deadline. Ang gisirado sa employer mismo o
+        // sa deadline magpabiling sirado.
+        \App\Models\Job::where('company_id', $employer->employer_nsrp_registrations_id)
+            ->whereNotNull('dormant_closed_at')
+            ->where(function ($q) {
+                $q->whereNull('deadline')->orWhereDate('deadline', '>=', today());
+            })
+            ->update(['status' => 'open', 'dormant_closed_at' => null]);
+
+        // Ang nabilin nga marka sa posting nga expired na, limpyohan pud —
+        // kung dili, mabuhi sila sa sunod nga pag-abli.
+        \App\Models\Job::where('company_id', $employer->employer_nsrp_registrations_id)
+            ->whereNotNull('dormant_closed_at')
+            ->update(['dormant_closed_at' => null]);
+
+        // Kung na-expire ang Business Permit samtang gipatay siya, ang
+        // 'restricted' ang sakto nga balikan — dili ang 'approved'. Kining
+        // switch dili angay makatangtang sa laing block.
+        $requirement = $employerUser->employerRequirement;
+        $employerUser->update([
+            'status' => ($requirement && $requirement->status === 'expired') ? 'restricted' : 'approved',
+        ]);
+    }
+
+    // ── Parehas nga tubag sa staff ug sa admin. Ang temporary password gibalik
+    // ── pinaagi sa flash, mao nga makita kausa ra — mawala kini sa refresh. ──
+    private function employerRecoveryResponse(array $result, array $validated, string $extra = '')
+    {
+        if ($result['method'] === \App\Support\EmployerAccountRecovery::METHOD_TEMP_PASSWORD) {
+            return back()
+                ->with('recovery_temp_password', $result['temp_password'])
+                ->with('recovery_contact', $validated['new_contact_person'])
+                ->with('success',
+                    'Account handed to ' . $validated['new_contact_person']
+                    . '. Read the temporary password below to them now — it is shown only once, '
+                    . 'and they must change it the moment they log in.' . $extra);
+        }
+
+        if ($result['mail_failed']) {
+            return back()->with('error',
+                'The account was handed to ' . $validated['new_contact_person']
+                . ', but the verification email could not be sent. Ask them to use "Forgot Password" on the login page.' . $extra);
+        }
+
+        return back()->with('success',
+            'Account handed to ' . $validated['new_contact_person']
+            . '. A 6-digit verification code was emailed to ' . $validated['new_email']
+            . ' so they can set their own password.' . $extra);
     }
 
     // ───────────────────────────────
     // VIEW EMPLOYER MODAL DATA
     // ───────────────────────────────
-    public function viewEmployer($id)
+    // ── Kinsang industriya kining employer.
+    // ──
+    // ── Bugtong field sa employer nga mausab sa staff. Ang job fair mo-invite
+    // ── pinaagi sa industriya, mao nga ang employer nga walay industriya dili
+    // ── gyud maapil sa fair nga naay gipiling industriya. Ang dropdown naa na
+    // ── sa registration form sukad pa, apan wala siya na-save — mao nga ang
+    // ── mga naka-rehistro na kaniadto dinhi ra ma-klasipika. ──
+    public function updateEmployerIndustry(Request $request, $id)
     {
         $staff = $this->authStaff();
         if (!$staff) return redirect()->route('login');
 
-        $employer = User::with([
-    'employerRequirement',
-    'employerNsrp',
-    'jobs.applications' => fn($q) => $q->where('status', 'hired'),
-    'jobs.applications.jobseeker',
-])->findOrFail($id);
+        // LRA staff, 2026-08-23: view only para nila. Ang industriya gigamit sa
+        // job fair, ug ang Job Fair staff ug ang Job Vacancy staff makabutang
+        // gihapon niini — mao nga walay mawala nga kapabilidad sa opisina.
+        if (!in_array($staff->staff_role, ['job_fair', 'job_vacancy', 'sra'], true)) {
+            return back()->with('error', 'Your role can view employers here but not change them.');
+        }
 
-        $staffRole  = $staff->staff_role;
-        $totalHired = $employer->jobs->flatMap->applications->count();
-        $hiredApps  = $employer->jobs->flatMap->applications;
+        $request->validate([
+            'industry_group' => ['required', Rule::in(EmployerNsrpRegistration::INDUSTRY_GROUPS)],
+        ]);
 
-        return view('staff.employers.show', compact(
-            'employer', 'staffRole', 'totalHired', 'hiredApps'
-        ));
+        // Ang {id} kay ang KOMPANYA, dili ang account: usa ka HR mahimong
+        // maghawid ug duha, ug ang industriya kabtangan sa establisemento.
+        $employer = EmployerNsrpRegistration::findOrFail($id);
+        $employer->update(['industry_group' => $request->industry_group]);
+
+        // ── Ang employer nga wala pay industriya wala maapil sa bisan unsang
+        // ── targeted nga fair. Karon nga naa na siya, ang mga fair nga
+        // ── nangita niini nga industriya angay siyang makuha — kay kung dili,
+        // ── ang staff kinahanglan pa mangita sa matag event ug mag-invite pag-
+        // ── usab pinaagi sa kamot, ug ang usa nga malimtan mao ang bakante nga
+        // ── walay nakadungog. ──
+        $invited = \App\Support\JobFairInvites::inviteToOpenEvents($employer);
+
+        return back()->with('success',
+            $employer->company_name . ' is now classified under ' . $request->industry_group . '.'
+            . ($invited > 0
+                ? ' They were also invited to ' . $invited . ' upcoming job fair event(s) looking for this industry.'
+                : ''));
     }
 
     // ───────────────────────────────
@@ -1070,10 +3012,14 @@ $nsrp = $registration->nsrp;
                 return $s;
             });
 
-        // ── SOURCE 2: Job (job posting + inhouse schedule combined) — pending ra, human ma-approve mabalhin sa Job Vacancies tab ──
+        // ── SOURCE 2: Job (job posting + inhouse schedule combined).
+        // ── Ang posting wala nay gi-approve — buhi na siya pag-post. Gilista
+        // ── gihapon dinhi ang buhi nga in-house nga posting: kinahanglan
+        // ── makita sa staff ang mga petsa nga naka-reserba, ug kung naa'y
+        // ── posting nga dili angay, mahimo pa nila siyang tangtangon. ──
         $jobItems = \App\Models\Job::with('company')
+            ->whereIn('posting_status', ['pending', 'approved'])
             ->where('schedule_type', 'inhouse')
-            ->where('posting_status', 'pending')
             ->where($roleFilter)
             ->when($search, fn($q) => $q->whereHas('company', fn($u) =>
                 $u->where('company_name', 'like', "%{$search}%")
@@ -1087,14 +3033,27 @@ $nsrp = $registration->nsrp;
                         ->where('venue_type', 'peso_office')
                         ->whereDate('preferred_date', $j->preferred_date)
                         ->where('posting_status', 'approved')
-                        ->where('id', '!=', $j->id)
+                        ->where('job_qualifications_id', '!=', $j->job_qualifications_id)
                         ->distinct('company_id')->count('company_id')
                     : 0;
                 return $j;
             });
 
-        // ── MERGE + SORT (latest first) ──
-        $merged = $scheduleItems->concat($jobItems)->sortByDesc('sort_date')->values();
+        // ── MERGE + SORT ──
+        // ── Ang naghulat ug desisyon mo-una, dayon ang pinakabag-o. Kaniadto
+        // ── petsa ra ang basihan, ug walay bisan unsa nga naghulat; karon nga
+        // ── ang in-house mo-agi na usab sa approval, ang request nga gisumite
+        // ── kagahapon malubong unta ubos sa napulo ka gi-approve na. ──
+        $isWaiting = fn($item) => $item->source === 'schedule'
+            ? $item->status === 'pending'
+            : $item->posting_status === 'pending';
+
+        $merged = $scheduleItems->concat($jobItems)
+            ->sortByDesc('sort_date')
+            ->sortByDesc($isWaiting)
+            ->values();
+
+        $awaitingDecision = $merged->filter($isWaiting)->count();
 
         // ── STAT CARDS (Total = tanan In-house ever gikan sa duha ka sources; Pending = parehas sa Total, kay pending ra man permanente ang gipakita dinhi) ──
         $totalAll = \App\Models\InhouseSchedule::where($employerRoleFilter)->count()
@@ -1103,7 +3062,9 @@ $nsrp = $registration->nsrp;
         $totalPending = $merged->count();
 
         // ── MANUAL PAGINATION (kay gi-merge nato ang duha ka sources) ──
-        $perPage   = 10;
+        // ── Tulo ka laray: ang matag laray naay petsa, oras, venue ug usa ka
+        // ── desisyon nga himoon, mao nga ang napulo nahimong taas nga scroll. ──
+        $perPage   = 3;
         $schedules = new \Illuminate\Pagination\LengthAwarePaginator(
             $merged->forPage($page, $perPage)->values(),
             $merged->count(),
@@ -1114,12 +3075,16 @@ $nsrp = $registration->nsrp;
 
         return view('staff.inhouse.index', compact(
             'schedules', 'staffRole',
-            'totalAll', 'totalPending'
+            'totalAll', 'totalPending', 'awaitingDecision'
         ));
     }
 
     // ───────────────────────────────
-    // IN-HOUSE CALENDAR DATA — employers naka-schedule per date (LRA/SRA dashboard calendar)
+    // STAFF ACTIVITY CALENDAR — usa ra ka feed para sa upat ka dashboard.
+    //
+    // Ang App\Support\StaffCalendar mao ang nagbuot kung unsa ang makita kada
+    // role, mao nga dili magkalahi ang upat ka kalendaryo. Ang ngalan sa route
+    // gibilin nga inhouse.calendarData: gigamit na siya sa upat ka blade.
     // ───────────────────────────────
     public function inhouseCalendarData()
     {
@@ -1127,38 +3092,20 @@ $nsrp = $registration->nsrp;
         if (!$staff) return response()->json(['error' => 'Unauthorized'], 401);
 
         $staffRole = $staff->staff_role;
-        if (!in_array($staffRole, ['lra', 'sra'])) return response()->json(['error' => 'Unauthorized'], 401);
+        if (!in_array($staffRole, ['lra', 'sra', 'job_fair', 'job_vacancy'])) return response()->json(['error' => 'Unauthorized'], 401);
 
-        $isOverseas = $staffRole === 'sra';
-
-        $scheduleItems = \App\Models\InhouseSchedule::with('employer')
-            ->where('status', 'accepted')
-            ->whereHas('employer', fn($n) => $n->where('is_overseas', $isOverseas))
-            ->get()
-            ->map(fn($s) => [
-                'date'    => optional($s->confirmed_date)->format('Y-m-d'),
-                'company' => $s->employer->company_name ?? '—',
-                'time'    => $s->confirmed_time ? \Carbon\Carbon::parse($s->confirmed_time)->format('h:i A') : null,
-            ])
-            ->filter(fn($s) => $s['date']);
-
-        $jobItems = \App\Models\Job::with('company')
-            ->where('schedule_type', 'inhouse')
-            ->where('posting_status', 'approved')
-            ->whereHas('company', fn($n) => $n->where('is_overseas', $isOverseas))
-            ->get()
-            ->map(fn($j) => [
-                'date'    => optional($j->preferred_date)->format('Y-m-d'),
-                'company' => $j->company->company_name ?? '—',
-                'time'    => null,
-            ])
-            ->filter(fn($j) => $j['date']);
-
-        $grouped = $scheduleItems->concat($jobItems)->groupBy('date');
-
-        $result = $grouped->map(fn($items) => $items->values())->toArray();
-
-        return response()->json(['dates' => $result]);
+        // Ang holiday gimarkahan ug pula sa kalendaryo — pahimangno ra, dili
+        // pugong. Mangayo gyud ang employer ug in-house o job fair bisan
+        // holiday o weekend, ug mahimo gihapon i-book sa staff.
+        //
+        // Lahi ang `blocked`: kana ang adlaw nga naa'y meeting o training ang
+        // opisina. Dili na siya mabook — anaa sa miting ang staff nga mo-atiman.
+        return response()->json([
+            'dates'    => \App\Support\StaffCalendar::forRole($staffRole),
+            'holidays' => \App\Support\Holidays::aroundNow(),
+            'blocked'  => \App\Support\OfficeCalendar::blockedDates(),
+            'legend'   => \App\Support\StaffCalendar::TYPES,
+        ]);
     }
 
     public function viewInhouseSchedule($id)
@@ -1176,32 +3123,51 @@ $nsrp = $registration->nsrp;
         if (!$staff) return redirect()->route('login');
 
         $request->validate([
-            'confirmed_date' => 'required|date',
             'confirmed_time' => 'required',
         ]);
 
         $schedule = \App\Models\InhouseSchedule::with('employer')->findOrFail($id);
-        $staffRecord = \App\Models\Staff::where('user_id', $staff->id)->first();
+
+        // ── Ang gi-accept kay ang TIBUOK range nga gitanyag sa employer, dili
+        // ── usa ka adlaw nga gipili sa staff. Ang employer na ang mag-desisyon
+        // ── kung sa Aug 13 ba, 14, o 15 sila mag-interview — naka-hold man ang
+        // ── tulo ka adlaw para nila, ug walay laing employer nga makasulod.
+        // ── Ang confirmed_date mao ang sinugdanan sa range: kana ang gigamit sa
+        // ── mga daan nga tan-awonan nga usa ra ka petsa ang gipaabot. ──
+        $confirmedDate = $schedule->preferred_date;
+
+        // ── Kung nagpuliki na ang opisina sulod sa range human ni-request ang
+        // ── employer, dili ni pugngan dinhi — ang range ilaha na. Ang staff
+        // ── makakita sa banggaan sa kalendaryo ug mahimong mo-reject kung
+        // ── kinahanglan gyud. ──
+        $staffRecord = \App\Models\Staff::where('user_id', $staff->users_id)->first();
         $schedule->update([
             'status'           => 'accepted',
-            'reviewed_by'      => $staffRecord->id ?? null,
-            'confirmed_date'   => $request->confirmed_date,
+            'reviewed_by'      => $staffRecord->staff_id ?? null,
+            'confirmed_date'   => optional($confirmedDate)->toDateString(),
             'confirmed_time'   => $request->confirmed_time,
             'rejection_reason' => null,
         ]);
 
+        $schedule->refresh();
+        $windowLabel = $schedule->schedule_window_label;
+        $isRange     = !$schedule->preferred_date_last->isSameDay($schedule->preferred_date);
+
         \App\Models\Announcement::sendToEmployers([
             'type'           => 'inhouse_accepted',
             'title'          => 'In-house Schedule Accepted ✅',
-            'message'        => 'Your in-house interview request has been accepted. Confirmed date: ' . \Carbon\Carbon::parse($request->confirmed_date)->format('M d, Y') . ' at ' . \Carbon\Carbon::parse($request->confirmed_time)->format('h:i A') . ' (' . ($schedule->venue_type === 'custom' ? $schedule->venue_address : 'PESO Office') . ').',
+            'message'        => 'Your in-house interview request has been accepted for '
+                                . $windowLabel . ' at ' . \Carbon\Carbon::parse($request->confirmed_time)->format('h:i A')
+                                . ' (' . ($schedule->venue_type === 'custom' ? $schedule->venue_address : 'PESO Office') . ').'
+                                . ($isRange ? ' Those dates are reserved for you — hold the interview on whichever of them suits you.' : ''),
             'reference_type' => 'inhouse_schedule',
-            'reference_id'   => $schedule->id,
+            'reference_id'   => $schedule->inhouse_schedules_id,
         ], $schedule->employer_id);
 
         // Notify ang tanan jobseekers nga naka-apply sa maong employer
         $venueLabel = match($schedule->venue_type) {
             'peso_office'  => 'PESO Office',
-            'office_based' => 'the employer\'s office',
+            'company_interview' => 'the employer\'s office',
             'custom'       => $schedule->venue_address,
             default        => 'PESO Office',
         };
@@ -1213,9 +3179,14 @@ $nsrp = $registration->nsrp;
         \App\Models\Announcement::sendToJobseekers([
             'type'           => 'inhouse_schedule_confirmed',
             'title'          => 'In-house Interview Schedule 📅',
-            'message'        => ($schedule->employer->company_name ?? 'The employer') . ' has scheduled an in-house interview on ' . \Carbon\Carbon::parse($request->confirmed_date)->format('M d, Y') . ' at ' . \Carbon\Carbon::parse($request->confirmed_time)->format('h:i A') . ' (' . $venueLabel . '). Check your Schedules for details.',
+            'message'        => ($schedule->employer->company_name ?? 'The employer')
+                                . ' has scheduled an in-house interview on ' . $windowLabel
+                                . ' at ' . \Carbon\Carbon::parse($request->confirmed_time)->format('h:i A')
+                                . ' (' . $venueLabel . ').'
+                                . ($isRange ? ' The employer will tell you which of those days to come in.' : '')
+                                . ' Check your Schedules for details.',
             'reference_type' => 'inhouse_schedule',
-            'reference_id'   => $schedule->id,
+            'reference_id'   => $schedule->inhouse_schedules_id,
         ], $userIds);
 
         return redirect()->route('staff.inhouse')
@@ -1230,10 +3201,10 @@ $nsrp = $registration->nsrp;
         $request->validate(['rejection_reason' => 'required|string|max:500']);
 
         $schedule = \App\Models\InhouseSchedule::with('employer')->findOrFail($id);
-        $staffRecord = \App\Models\Staff::where('user_id', $staff->id)->first();
+        $staffRecord = \App\Models\Staff::where('user_id', $staff->users_id)->first();
         $schedule->update([
             'status'           => 'rejected',
-            'reviewed_by'      => $staffRecord->id ?? null,
+            'reviewed_by'      => $staffRecord->staff_id ?? null,
             'rejection_reason' => $request->rejection_reason,
         ]);
 
@@ -1242,7 +3213,7 @@ $nsrp = $registration->nsrp;
             'title'          => 'In-house Schedule Rejected ❌',
             'message'        => 'Your in-house interview request was rejected. Reason: ' . $request->rejection_reason,
             'reference_type' => 'inhouse_schedule',
-            'reference_id'   => $schedule->id,
+            'reference_id'   => $schedule->inhouse_schedules_id,
         ], $schedule->employer_id);
 
         return redirect()->route('staff.inhouse')
@@ -1254,6 +3225,41 @@ $nsrp = $registration->nsrp;
     // ───────────────────────────────
     // JOB VACANCIES
     // ───────────────────────────────
+    // ───────────────────────────────
+    // POSTER SA USA KA POSTING — i-download isip file
+    // ───────────────────────────────
+    //
+    // Ang staff mag-post sa bakante sa social media ug mag-print niini para sa
+    // bulletin board sa gawas sa opisina. Ang poster naa na sa `public` nga
+    // disk ug makita sa browser, apan ang pagtan-aw dili igo — kinahanglan
+    // siya nga file, mao nga gipugos ni nga attachment.
+    public function downloadJobPoster($id)
+    {
+        $staff = $this->authStaff();
+        if (!$staff) return redirect()->route('login');
+
+        $job = \App\Models\Job::with('company')->findOrFail($id);
+
+        // Ang kolum kay libre nga string ug ang download() modawat ug absolute
+        // nga path. Kung dili susihon, ang usa ka sayop nga bili sa database
+        // makapagawas ug bisan unsang file sa server.
+        $path = (string) $job->poster_image;
+        $inPosterFolder = str_starts_with($path, 'job_posters/') || str_starts_with($path, 'job_images/');
+
+        if (!$path || !$inPosterFolder || !\Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+            return back()->with('error', 'This posting has no poster image to download.');
+        }
+
+        $name = \Illuminate\Support\Str::slug(
+            ($job->company->company_name ?? 'employer') . ' ' . $job->title
+        ) . '.' . pathinfo($path, PATHINFO_EXTENSION);
+
+        return response()->download(
+            \Illuminate\Support\Facades\Storage::disk('public')->path($path),
+            $name
+        );
+    }
+
     public function jobVacancies()
     {
         $staff = $this->authStaff();
@@ -1261,7 +3267,26 @@ $nsrp = $registration->nsrp;
 
         $staffRole = $staff->staff_role;
         $search    = request('search');
-        $status    = request('status', 'all');
+
+        // ── Usa ka bulan, dili open/closed ──
+        //
+        // PESO, 2026-08-30: gitangtang ang Open/Closed nga sala. Kining lista
+        // usa ka rekord sa kung unsa ang gi-solicit; ang pagbahin niini sumala
+        // kung modawat pa ba ug aplikante ang posting nagtubag sa pangutana nga
+        // walay nangutana dinhi. Ang bulan mao ang ginagamit sa desk — parehas
+        // sa gitipik sa mga report.
+        //
+        // Ang karon nga bulan ang default. Ang desk moabli niini para sa bulan
+        // nga iyang gitrabaho, dili para sa tanang gi-post sukad — ang tibuok
+        // kasaysayan mao ang taas nga lista nga kanunay niyang salaon pag-abli.
+        // Ang 'all' mao ang tinuyo nga pag-ingon nga tanan: kung ang wala nga
+        // bili ang gigamit para niini, ang default mobalik dayon ug dili gyud
+        // maablihan ang tibuok lista.
+        $month = request('month', now()->format('Y-m'));
+        if ($month !== 'all' && !preg_match('/^\d{4}-\d{2}$/', $month)) {
+            $month = now()->format('Y-m');
+        }
+        $monthFilter = $month === 'all' ? null : $month;
 
         $query = \App\Models\Job::with('company')
             ->when($staffRole === 'lra', function($q) {
@@ -1271,71 +3296,53 @@ $nsrp = $registration->nsrp;
                   ->where('posting_status', 'approved');
             })
             ->when($staffRole === 'job_vacancy', function($q) {
-                // Job Vacancy staff: local, Office Based ra (dili In-house — LRA na ang naga-handle; dili Job Fair — naa na sa Job Fair tab)
-                $q->whereHas('company', fn($n) => $n->where('is_overseas', false))
-                  ->where(function ($q2) {
-                      $q2->whereNull('schedule_type')->orWhere('schedule_type', 'office_based');
-                  });
+                // Job Vacancy staff: local ra, duha ka tab.
+                //
+                // In-house: ang gi-approve na ni LRA. Basa ra ni — ang LRA ang
+                // naghupot sa kalendaryo ug siya ang mo-accept. Ang Job Vacancy
+                // nagkinahanglan makakita niini kay siya ang mo-post sa social
+                // media ug sa bulletin board sa gawas sa opisina.
+                $q->whereHas('company', fn($n) => $n->where('is_overseas', false));
+
+                if (request('type') === 'inhouse') {
+                    $q->where('schedule_type', 'inhouse')->where('posting_status', 'approved');
+                } else {
+                    // Company Interview. Ang Job Fair naa sa kaugalingon niyang tab.
+                    $q->where(function ($q2) {
+                        $q2->whereNull('schedule_type')->orWhere('schedule_type', 'company_interview');
+                    });
+                }
             })
             ->when($staffRole === 'sra', function($q) {
-                // SRA: separate nga tab para sa Office Based ug In-house (query param 'type')
+                // SRA: separate nga tab para sa Company Interview ug In-house (query param 'type')
                 $sraType = request('type', 'inhouse');
                 $q->whereHas('company', fn($n) => $n->where('is_overseas', true));
                 if ($sraType === 'inhouse') {
                     $q->where('schedule_type', 'inhouse')->where('posting_status', 'approved');
                 } else {
                     $q->where(function ($q2) {
-                        $q2->whereNull('schedule_type')->orWhere('schedule_type', 'office_based');
+                        $q2->whereNull('schedule_type')->orWhere('schedule_type', 'company_interview');
                     });
                 }
             })
-            ->when($status !== 'all', fn($q) => $q->where('status', $status))
+            ->when($monthFilter, function ($q) use ($monthFilter) {
+                [$y, $m] = explode('-', $monthFilter);
+                $q->whereYear('created_at', $y)->whereMonth('created_at', $m);
+            })
             ->when($search, fn($q) => $q->where('title', 'like', "%{$search}%")
                 ->orWhereHas('company', fn($u) =>
                     $u->where('company_name', 'like', "%{$search}%")
                 )
             );
 
-        $totalAll    = (clone $query)->count();
-        $totalOpen   = (clone $query)->where('status', 'open')->count();
-        $totalClosed = (clone $query)->where('status', 'closed')->count();
+        $totalAll = (clone $query)->count();
 
-        $jobs = $query->latest()->paginate(3);
+        // Lima kada page. Ang desk mobasa niini usa-usa, ug ang taas nga page
+        // magkinahanglan ug scroll — ang gipangita mahulog sa ubos sa screen.
+        $jobs = $query->latest()->paginate(5)->withQueryString();
 
         return view('staff.jobs.index', compact(
-            'jobs', 'status', 'staffRole',
-            'totalAll', 'totalOpen', 'totalClosed'
-        ));
-    }
-
-    // ───────────────────────────────
-    // ALL JOB POSTINGS (In-house + Office Based, tanan status) — Job Vacancy staff ra, para makita/ma-delete ang expired
-    // ───────────────────────────────
-    public function allJobPostings()
-    {
-        $staff = $this->authStaff();
-        if (!$staff) return redirect()->route('login');
-        if ($staff->staff_role !== 'job_vacancy') return redirect()->route('staff.dashboard');
-
-        $search = request('search');
-        $status = request('status', 'all');
-
-        $query = \App\Models\Job::with('company')
-            ->whereHas('company', fn($n) => $n->where('is_overseas', false))
-            ->when($status !== 'all', fn($q) => $q->where('status', $status))
-            ->when($search, fn($q) => $q->where('title', 'like', "%{$search}%")
-                ->orWhereHas('company', fn($u) => $u->where('company_name', 'like', "%{$search}%"))
-            );
-
-        $totalAll    = (clone $query)->count();
-        $totalOpen   = (clone $query)->where('status', 'open')->count();
-        $totalClosed = (clone $query)->where('status', 'closed')->count();
-
-        $jobs = $query->latest()->paginate(3);
-
-        return view('staff.jobs.all', compact(
-            'jobs', 'status',
-            'totalAll', 'totalOpen', 'totalClosed'
+            'jobs', 'staffRole', 'month', 'totalAll'
         ));
     }
 
@@ -1358,7 +3365,7 @@ $nsrp = $registration->nsrp;
         if (!$staff) return redirect()->route('login');
 
         $request->validate([
-            'company_id'     => 'required|exists:users,id',
+            'company_id'     => 'required|exists:users,users_id',
             'title'          => 'required|string|max:255',
             'description'    => 'required|string',
             'location'       => 'required|string|max:255',
@@ -1371,7 +3378,7 @@ $nsrp = $registration->nsrp;
         $employerNsrp = \App\Models\EmployerNsrpRegistration::where('user_id', $request->company_id)->firstOrFail();
 
         \App\Models\Job::create([
-            'company_id'     => $employerNsrp->id,
+            'company_id'     => $employerNsrp->employer_nsrp_registrations_id,
             'title'          => $request->title,
             'description'    => $request->description,
             'location'       => $request->location,
@@ -1402,9 +3409,9 @@ $nsrp = $registration->nsrp;
                 }
             }
             if ($isMatch) {
-                $matchedIds->push($jsReg->id);
+                $matchedIds->push($jsReg->jobseeker_registrations_id);
             } else {
-                $unmatchedIds->push($jsReg->id);
+                $unmatchedIds->push($jsReg->jobseeker_registrations_id);
             }
         }
 
@@ -1453,7 +3460,7 @@ $nsrp = $registration->nsrp;
         if (!$staff) return redirect()->route('login');
 
         $request->validate([
-            'company_id'  => 'required|exists:users,id',
+            'company_id'  => 'required|exists:users,users_id',
             'title'       => 'required|string|max:255',
             'description' => 'required|string',
             'location'    => 'required|string|max:255',
@@ -1466,7 +3473,7 @@ $nsrp = $registration->nsrp;
         $job = \App\Models\Job::findOrFail($id);
         $employerNsrp = \App\Models\EmployerNsrpRegistration::where('user_id', $request->company_id)->firstOrFail();
         $job->update([
-            'company_id'  => $employerNsrp->id,
+            'company_id'  => $employerNsrp->employer_nsrp_registrations_id,
             'title'       => $request->title,
             'description' => $request->description,
             'location'    => $request->location,
@@ -1479,50 +3486,6 @@ $nsrp = $registration->nsrp;
         return redirect()->route('staff.jobs')->with('success', 'Job vacancy updated successfully!');
     }
 
-    public function deleteJobVacancy($id)
-    {
-        $staff = $this->authStaff();
-        if (!$staff) return redirect()->route('login');
-
-        \App\Models\Job::findOrFail($id)->delete();
-        return back()->with('success', 'Job vacancy deleted.');
-    }
-
-    // ───────────────────────────────
-    // JOBSEEKERS — Applications (LRA/SRA)
-    // ───────────────────────────────
-    public function jobseekers()
-    {
-        $staff = $this->authStaff();
-        if (!$staff) return redirect()->route('login');
-
-        $staffRole = $staff->staff_role;
-        $search    = request('search');
-
-        $query = \App\Models\Application::with(['jobseeker', 'job'])
-            ->when($staffRole === 'lra', function($q) {
-    $q->whereHas('jobseeker.nsrp', fn($r) =>
-          $r->whereIn('type', ['local', 'both'])
-      );
-})
-            ->when($staffRole === 'sra', function($q) {
-    $q->whereHas('jobseeker.nsrp', fn($r) =>
-          $r->whereIn('type', ['overseas', 'both'])
-      );
-})
-            ->where('status', 'qualified')
-            ->when($search, fn($q) => $q->whereHas('jobseeker', fn($u) =>
-                $u->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-            ));
-
-        $totalQualified = (clone $query)->count();
-        $applications   = $query->latest()->paginate(10);
-
-        return view('staff.jobseeker.index', compact(
-            'applications', 'staffRole', 'totalQualified'
-        ));
-    }
 
     // ───────────────────────────────
     // WALK-IN NSRP (LRA/SRA) — Staff encodes jobseeker walang account
@@ -1547,87 +3510,166 @@ $nsrp = $registration->nsrp;
         }
 
         $request->validate([
-            'nsrp_image' => 'required|image|mimes:jpg,jpeg,png|max:5120',
+            'nsrp_image'    => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
+            'nsrp_images'   => 'nullable|array|max:2',
+            'nsrp_images.*' => 'image|mimes:jpg,jpeg,png|max:5120',
         ]);
 
-        $image    = $request->file('nsrp_image');
-        $path     = $image->store('nsrp_scans', 'public');
-        $fullPath = storage_path('app/public/' . $path);
+        // ── Usa ka bond paper ang NSRP form, duha ka kilid. Dawaton nato ang
+        // ── duha dungan; ang Python service mismo ang mo-ila kung asa ang
+        // ── atubangan ug asa ang likod, mao nga walay han-ay nga sundon sa
+        // ── staff. Gidawat gihapon ang usa ka hulagway para sa daan nga UI. ──
+        $images = $request->file('nsrp_images') ?: array_filter([$request->file('nsrp_image')]);
 
-        // ── Pre-process image (grayscale + contrast boost) para mo-improve gamay ang OCR readability ──
-        $processedPath = $this->preprocessNsrpImage($fullPath);
-
-        try {
-            $text = (new \thiagoalessio\TesseractOCR\TesseractOCR($processedPath))->run();
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'OCR processing failed. Please fill out the form manually. (' . $e->getMessage() . ')',
-            ], 500);
+        if (empty($images)) {
+            return response()->json(['error' => 'Please choose at least one photo of the form.'], 422);
         }
 
-        $parsed = $this->parseWalkinNsrpText($text);
+        $data       = [];
+        $confidence = [];
+        $pagesRead  = [];
+        $seconds    = 0;
+
+        foreach ($images as $image) {
+            $image->store('nsrp_scans', 'local');
+
+            try {
+                $response = \Illuminate\Support\Facades\Http::timeout(config('services.ocr.timeout'))
+                    ->attach('image', file_get_contents($image->getRealPath()), $image->getClientOriginalName())
+                    ->post(rtrim(config('services.ocr.url'), '/') . '/scan');
+            } catch (\Throwable $e) {
+                \Log::warning('NSRP OCR service unreachable: ' . $e->getMessage());
+
+                return response()->json([
+                    'error' => 'The scanner is not running. Please fill out the form manually.',
+                ], 503);
+            }
+
+            if ($response->failed()) {
+                return response()->json([
+                    'error' => $response->json('error') ?? 'The scan failed. Please fill out the form manually.',
+                ], 422);
+            }
+
+            $result      = $response->json();
+            $pagesRead[] = $result['page'] ?? null;
+            $seconds    += $result['seconds'] ?? 0;
+
+            foreach ($result['fields'] ?? [] as $name => $field) {
+                $data[$name]       = $field['value'];
+                $confidence[$name] = $field['confidence'];
+            }
+
+            $data = array_merge($data, $this->mapNsrpCheckboxes($result['checkboxes'] ?? []));
+        }
 
         return response()->json([
-            'success'  => true,
-            'raw_text' => $text,
-            'data'     => $parsed,
+            'success'    => true,
+            'pages'      => array_values(array_filter($pagesRead)),
+            'seconds'    => round($seconds, 1),
+            'data'       => $data,
+            'confidence' => $confidence,
         ]);
     }
 
-    // ── Pre-process image: grayscale + contrast boost para mas klaro ang text sa OCR ──
-    private function preprocessNsrpImage($fullPath)
+    // ── Ang ticked nga kahon gikan sa scanner, gihubad ngadto sa mga value nga
+    // ── gidawat sa form. Ang ngalan sa checkbox sa map gituyo nga pareho sa
+    // ── option key sa form (new_entrant, skill_driver...), mao nga ang uban
+    // ── deretso ra — ang gilista dinhi mao ra ang tinuod nga magkalahi. ──
+    private function mapNsrpCheckboxes(array $checkboxes): array
     {
-        $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
-
-        $src = match($ext) {
-            'png'          => imagecreatefrompng($fullPath),
-            'jpg', 'jpeg'  => imagecreatefromjpeg($fullPath),
-            default        => null,
-        };
-
-        if (!$src) {
-            return $fullPath; // fallback sa original kung dili ma-open
+        $ticked = [];
+        foreach ($checkboxes as $name => $box) {
+            if (!empty($box['ticked'])) {
+                $ticked[$name] = $box;
+            }
         }
 
-        // Grayscale
-        imagefilter($src, IMG_FILTER_GRAYSCALE);
-        // Contrast boost (negative value = mas taas ang contrast sa GD)
-        imagefilter($src, IMG_FILTER_CONTRAST, -25);
-        // Slight sharpen (convolution)
-        $sharpen = [
-            [0, -1, 0],
-            [-1, 5, -1],
-            [0, -1, 0],
-        ];
-        imageconvolution($src, $sharpen, array_sum(array_map('array_sum', $sharpen)) ?: 1, 0);
+        $first = function (string $group) use ($ticked) {
+            foreach ($ticked as $box) {
+                if (($box['group'] ?? null) === $group) {
+                    return $box['value'];
+                }
+            }
+            return null;
+        };
 
-        $processedPath = storage_path('app/public/nsrp_scans/processed_' . basename($fullPath));
-        imagejpeg($src, $processedPath, 95);
-        imagedestroy($src);
+        $all = function (string $group) use ($ticked) {
+            $values = [];
+            foreach ($ticked as $box) {
+                if (($box['group'] ?? null) === $group) {
+                    $values[] = $box['value'];
+                }
+            }
+            return $values;
+        };
 
-        return $processedPath;
-    }
-
-    private function parseWalkinNsrpText($text)
-    {
         $data = [];
 
-        $patterns = [
-            'surname'        => '/Surname\s*[:\-]?\s*([A-Za-z]+(?:\s[A-Za-z]+){0,3})(?=\s|$|\n|FIRST|DATE|SEX|CIVIL)/i',
-            'first_name'     => '/First\s*Name\s*[:\-]?\s*([A-Za-z]+(?:\s[A-Za-z]+){0,3})(?=\s|$|\n|MIDDLE|SUFFIX|DATE)/i',
-            'middle_name'    => '/Middle\s*Name\s*[:\-]?\s*([A-Za-z]+(?:\s[A-Za-z]+){0,3})(?=\s|$|\n|SUFFIX|DATE)/i',
-            'contact_number' => '/Contact\s*Number\/?s?\s*[:\-]?\s*([0-9]{7,15})/i',
-            'religion'       => '/Religion\s*[:\-]?\s*([A-Za-z]+(?:\s[A-Za-z]+){0,2})(?=\s|$|\n|CIVIL|STATUS)/i',
-        ];
+        // Pareho na ang spelling sa form, diretso ra.
+        foreach (['sex', 'civil_status'] as $group) {
+            if ($value = $first($group)) {
+                $data[$group] = $value;
+            }
+        }
 
-        foreach ($patterns as $key => $pattern) {
-            if (preg_match($pattern, $text, $matches)) {
-                $data[$key] = trim(preg_replace('/\s+/', ' ', $matches[1]));
+        if ($disabilities = $all('disabilities')) {
+            $data['disabilities'] = $disabilities;
+        }
+        if ($skills = $all('other_skills')) {
+            $data['other_skills'] = $skills;
+        }
+
+        // Ang form nagagamit ug lowercase key, ang papel ug tinuod nga pulong.
+        if ($employment = $first('employment')) {
+            $data['employment_type'] = strtolower($employment);
+        }
+        if ($work = $first('work_type')) {
+            $data['work_type'] = $work === 'Part-time' ? 'part_time' : 'full_time';
+        }
+        foreach (['employed_sub' => 'employed_sub_type', 'unemployed_reason' => 'unemployed_reason'] as $group => $field) {
+            foreach ($ticked as $name => $box) {
+                if (($box['group'] ?? null) === $group) {
+                    $data[$field] = $name;   // ang checkbox name mao na ang option key
+                    break;
+                }
+            }
+        }
+
+        // Kung parehong Local ug Overseas ang gimarkahan, "both" — kini tinuod
+        // nga mahitabo ug dili ni sayop sa pagbasa.
+        $locations = $all('classification');
+        if (count($locations) === 2) {
+            $data['classification_type'] = 'both';
+        } elseif (count($locations) === 1) {
+            $data['classification_type'] = $locations[0];
+        }
+
+        foreach (['is_ofw', 'is_former_ofw', 'is_4ps', 'currently_in_school'] as $group) {
+            $value = $first($group);
+            if ($value !== null) {
+                $data[$group] = (bool) $value;
+            }
+        }
+
+        foreach (['English', 'Filipino', 'Mandarin'] as $language) {
+            if ($skills = $all($language)) {
+                $data['language_proficiency'][$language] = $skills;
             }
         }
 
         return $data;
     }
+
+    // ── Duha ka helper ang naa kaniadto dinhi: preprocessNsrpImage (grayscale,
+    // ── contrast, sharpen pinaagi sa GD) ug parseWalkinNsrpText (label-matching
+    // ── nga regex). Salin silang duha sa panahon nga ang PHP mismo ang misulay
+    // ── pagbasa sa porma gamit ang Tesseract. Wala nay nagtawag kanila.
+    // ──
+    // ── Ang pag-andam sa hulagway naa na sa align.py — perspective warp ngadto
+    // ── sa usa ka kanunay nga gidak-on — ug ang pagkuha sa mga field naa sa
+    // ── pipeline.py, nga nagbasa gikan sa mapa sa koordinado imbes mangita ug
+    // ── label sa usa ka bugnaw nga string. ──
 
     public function storeWalkinNsrp(Request $request)
     {
@@ -1650,8 +3692,17 @@ $nsrp = $registration->nsrp;
             'barangay'               => 'required|string|max:255',
             'municipality_city'      => 'required|string|max:255',
             'province'               => 'required|string|max:255',
-            'contact_number'    => 'required|string|max:20',
-            'reg_email'         => 'nullable|email|max:255',
+            'contact_number'    => ['required', 'string', new \App\Rules\MobileNumber],
+            // ── Kinahanglanon na, dili na opsyonal.
+            // ──
+            // ── Ang email mao ang usa sa duha ka butang nga makapasumpay niini
+            // ── nga rekord sa account nga himoon sa maong tawo ugma (tan-awa ang
+            // ── UnifiedAuthController::linkWalkInRecord). Kung wala siya, ang
+            // ── bugtong dalan mao ang numero — nga opsyonal pud sa registration
+            // ── form — ug ang tawo mapugos ug sulat pag-usab sa tibuok NSRP,
+            // ── ug duha na ang rekord sa usa ka tawo. Pangayoa siya samtang
+            // ── naa pa ang tawo sa atubangan sa staff. ──
+            'reg_email'         => 'required|email|max:255',
             'employment_type'   => 'required|string',
             'work_type'         => 'required|string',
             'preferred_occupations.0' => 'required|string',
@@ -1699,7 +3750,7 @@ $nsrp = $registration->nsrp;
         // PART 2: NSRP Form Data → jobseeker_nsrp_registrations
         // ══════════════════════════════════════════
         $nsrpData = [
-            'jobseeker_registration_id' => $registration->id,
+            'jobseeker_registration_id' => $registration->jobseeker_registrations_id,
             'type'               => $staff->staff_role === 'sra' ? 'overseas' : 'local',
             'employment_type'   => $request->employment_type,
             'is_ofw'            => $request->is_ofw ?? false,
@@ -1737,7 +3788,7 @@ $nsrp = $registration->nsrp;
         if ($request->hasFile('training_certificates')) {
             foreach ($request->file('training_certificates') as $idx => $file) {
                 if ($file && $file->isValid()) {
-                    $path = $file->store('certificates', 'public');
+                    $path = $file->store('certificates', 'local');
                     $uploadedCerts[$idx] = $path;
                 }
             }
@@ -1753,7 +3804,7 @@ $nsrp = $registration->nsrp;
         foreach ($workExperiences as $exp) {
             if (!empty($exp['company_name']) && !empty($exp['position'])) {
                 \App\Models\JobseekerWorkExperience::create([
-                    'jobseeker_nsrp_registration_id' => $nsrp->id,
+                    'jobseeker_nsrp_registration_id' => $nsrp->jobseeker_nsrp_registrations_id,
                     'company_name'      => $exp['company_name'],
                     'position'          => $exp['position'],
                     'industry'          => $exp['industry'] ?? null,
@@ -1780,7 +3831,7 @@ $nsrp = $registration->nsrp;
         foreach ($request->eligibilities ?? [] as $e) {
             if (!empty($e['name'])) {
                 \App\Models\JobseekerCertification::create([
-                    'jobseeker_nsrp_registration_id' => $nsrp->id,
+                    'jobseeker_nsrp_registration_id' => $nsrp->jobseeker_nsrp_registrations_id,
                     'category'    => 'eligibility',
                     'name'        => $e['name'],
                     'date_taken'  => $safeParseDate($e['date_taken'] ?? null),
@@ -1791,7 +3842,7 @@ $nsrp = $registration->nsrp;
         foreach ($request->licenses ?? [] as $l) {
             if (!empty($l['name'])) {
                 \App\Models\JobseekerCertification::create([
-                    'jobseeker_nsrp_registration_id' => $nsrp->id,
+                    'jobseeker_nsrp_registration_id' => $nsrp->jobseeker_nsrp_registrations_id,
                     'category'     => 'license',
                     'name'         => $l['name'],
                     'valid_until'  => $safeParseDate($l['valid_until'] ?? null),
@@ -1806,7 +3857,7 @@ $nsrp = $registration->nsrp;
     // ───────────────────────────────
     // APPROVE JOB REQUEST
     // ───────────────────────────────
-    public function approveJob($id)
+    public function approveJob(Request $request, $id)
     {
         $staff = $this->authStaff();
         if (!$staff) return redirect()->route('login');
@@ -1820,7 +3871,7 @@ $nsrp = $registration->nsrp;
         // ── Access control ──
         // Overseas (bisan unsa nga schedule_type): SRA ra
         // Local In-house: LRA ra
-        // Local Office Based / Job Fair: Job Vacancy staff ra
+        // Local Company Interview / Job Fair: Job Vacancy staff ra
         if ($isOverseas) {
             if ($staff->staff_role !== 'sra') {
                 return back()->with('error', 'Only SRA staff can approve overseas job postings.');
@@ -1835,76 +3886,49 @@ $nsrp = $registration->nsrp;
             }
         }
 
-        // ── Job Fair postings: magpabilin nga CLOSED human ma-approve — si Job Fair staff pa ang mo-open niini pag-create og event ──
+        // ── Ang job fair nga posting magpabilin nga CLOSED human ma-approve.
+        // ── Mo-abli siya sa jobfair:open-postings, pila ka adlaw sa dili pa ang
+        // ── fair — gawas kung sulod na sa maong window karon, kay ang command
+        // ── dili na mobalik sa niaging adlaw. ──
+        $windowOpen = $isJobFair && \App\Support\JobFairPostingWindow::isOpen();
+        $goesLive   = !$isJobFair || $windowOpen;
+
+        // ── In-house: ang gi-approve kay ang TIBUOK range nga gitanyag sa
+        // ── employer. Naka-hold kadtong mga adlawa para nila ug ang employer
+        // ── na ang mag-desisyon kung asa gyud didto sila mag-interview — dili
+        // ── ang staff. Ang confirmed_date mao ang sinugdanan sa range. ──
+        $confirmedDate = $isInhouse ? $job->preferred_date : null;
+
         $job->update([
             'posting_status' => 'approved',
-            'status'         => $isJobFair ? 'closed' : 'open',
+            'status'         => $goesLive ? 'open' : 'closed',
             'remarks'        => null,
-        ]);
+        ] + ($confirmedDate ? ['confirmed_date' => $confirmedDate->toDateString()] : []));
 
         \App\Models\Announcement::sendToEmployers([
             'type'           => 'job_approved',
             'title'          => 'Job Posting Approved ✅',
-            'message'        => $isJobFair
-                ? 'Your job posting "' . $job->title . '" has been approved for job fair use. It will go live once PESO opens a job fair event.'
-                : 'Your job posting "' . $job->title . '" has been approved and is now live!',
+            'message'        => match (true) {
+                $isJobFair => 'Your job posting "' . $job->title . '" has been approved for job fair use. '
+                              . \App\Support\JobFairPostingWindow::liveNote(),
+                // Ang employer nagtanyag ug range; kadtong mga adlawa iya na —
+                // kinahanglan niyang mabasa nga naka-hold sila.
+                (bool) $confirmedDate => 'Your job posting "' . $job->title . '" has been approved and is now live. '
+                              . 'Your in-house interview dates are confirmed for ' . $job->schedule_window_label . '.',
+                default    => 'Your job posting "' . $job->title . '" has been approved and is now live!',
+            },
             'reference_type' => 'job',
-            'reference_id'   => $job->id,
+            'reference_id'   => $job->job_qualifications_id,
         ], $job->company_id);
 
-        // ── Job Fair postings dili pa i-post sa jobseekers hangtod ma-open sa Job Fair staff ──
-        if (!$isJobFair) {
-            // ── Find jobseekers whose preferred_occupations match the job title ──
-            $allJobseekerRegs = \App\Models\JobseekerRegistration::whereHas('user', fn($q) => $q->where('status', 'approved'))
-                ->with('nsrp')
-                ->get();
-
-            $matchedIds = collect();
-            $unmatchedIds = collect();
-            $jobTitleLower = strtolower($job->title);
-
-            foreach ($allJobseekerRegs as $jsReg) {
-                $nsrp = $jsReg->nsrp;
-                $preferred = $nsrp->preferred_occupations ?? [];
-                $isMatch = false;
-                foreach ($preferred as $occ) {
-                    if (strtolower(trim($occ)) === $jobTitleLower) {
-                        $isMatch = true;
-                        break;
-                    }
-                }
-                if ($isMatch) {
-                    $matchedIds->push($jsReg->id);
-                } else {
-                    $unmatchedIds->push($jsReg->id);
-                }
-            }
-
-            // ── Personalized notification for matched jobseekers ──
-            if ($matchedIds->isNotEmpty()) {
-                \App\Models\Announcement::sendToJobseekers([
-                    'type'           => 'job_match',
-                    'title'          => 'Matching Job Vacancy Found! 💼',
-                    'message'        => 'A job vacancy matching your preferred position "' . $job->title . '" from ' . ($job->company->company_name ?? 'an employer') . ' is now available. Would you like to apply?',
-                    'reference_type' => 'job',
-                    'reference_id'   => $job->id,
-                ], $matchedIds);
-            }
-
-            // ── Generic notification for non-matched jobseekers ──
-            if ($unmatchedIds->isNotEmpty()) {
-                \App\Models\Announcement::sendToJobseekers([
-                    'type'           => 'job_posted',
-                    'title'          => 'New Job Vacancy Posted 💼',
-                    'message'        => 'A new job vacancy "' . $job->title . '" from ' . ($job->company->company_name ?? 'an employer') . ' is now available!',
-                    'reference_type' => 'job',
-                    'reference_id'   => $job->id,
-                ], $unmatchedIds);
-            }
+        // ── Ang jobseeker masultihan ra kung tinuod nga makita na niya ang
+        // ── bakante. Ang notice nga dili ma-klik kay wala'y pulos. ──
+        if ($goesLive) {
+            \App\Support\JobPostingNotice::announce($job);
         }
 
         return back()->with('success', $isJobFair
-            ? 'Job fair posting approved. It will be posted once a job fair event is opened.'
+            ? 'Job fair posting approved. ' . \App\Support\JobFairPostingWindow::liveNote()
             : 'Job posting approved and is now live!');
     }
 
@@ -1931,6 +3955,16 @@ $nsrp = $registration->nsrp;
             if ($staff->staff_role !== 'lra') {
                 return back()->with('error', 'Only LRA staff can reject local in-house job postings.');
             }
+
+            // PESO, 2026-08-26: LRA decides the date, not the posting. While the
+            // booking is still pending, rejecting it releases the days and closes
+            // the vacancy that was waiting on them — that is theirs to do. Once
+            // the posting is live it belongs to the employer, and only the
+            // employer takes it down.
+            if ($job->posting_status !== 'pending') {
+                return back()->with('error',
+                    'This posting is already live. LRA decides the in-house date; only the employer can remove the posting.');
+            }
         } else {
             if ($staff->staff_role !== 'job_vacancy') {
                 return back()->with('error', 'Only Job Vacancy staff can reject local job postings.');
@@ -1948,7 +3982,7 @@ $nsrp = $registration->nsrp;
             'title'          => 'Job Posting Rejected ❌',
             'message'        => 'Your job posting "' . $job->title . '" was rejected. Reason: ' . $request->remarks,
             'reference_type' => 'job',
-            'reference_id'   => $job->id,
+            'reference_id'   => $job->job_qualifications_id,
         ], $job->company_id);
 
         return back()->with('success', 'Job posting rejected.');
@@ -1994,6 +4028,58 @@ $nsrp = $registration->nsrp;
     // ───────────────────────────────
     // REPORTS — JOB VACANCY STAFF (Job Vacancies Solicited)
     // ───────────────────────────────
+    // ───────────────────────────────
+    // REPORTS — full details sa usa ka closed nga job posting
+    // ───────────────────────────────
+    public function reportJobDetails($jobId)
+    {
+        $staff = $this->authStaff();
+        if (!$staff) return redirect()->route('login');
+
+        // Rekord sa posting ra — walay applicant data. Ang na-hire naa sa
+        // Placed/Referred nga tabs sa Reports.
+        $job = \App\Models\Job::with('company')
+            ->withCount(['applications as hired_count' => fn($q) => $q->where('status', 'hired')])
+            ->findOrFail($jobId);
+
+        return view('staff.reports.job', compact('job'));
+    }
+
+    // ───────────────────────────────
+    // EMPLOYER REPORT — what came of each in-house interview
+    // ───────────────────────────────
+    // ── LRA staff, 2026-08-23: usa ka semana human sa in-house interview,
+    // ── makita nila ang report sa maong employer ug ang status sa matag
+    // ── jobseeker.
+    // ──
+    // ── LRA ra sa karon. Ugma pa ang interview sa SRA, ug ang paghatag niini
+    // ── kanila karon mao ang pagtag-an sa ilang proseso. ──
+    public function exportInhouseEmployerReport()
+    {
+        $staff = $this->authStaff();
+        if (!$staff) return redirect()->route('login');
+        if ($staff->staff_role !== 'lra') {
+            return redirect()->route('staff.dashboard')
+                ->with('error', 'Only LRA staff can download the employer report.');
+        }
+
+        $search = request('search');
+        $rows   = \App\Support\InhouseEmployerReport::rows(false, $search);
+
+        return \App\Support\ExcelExport::stream(
+            'peso-employer-report-' . now()->format('Ymd') . '.xlsx',
+            \App\Support\InhouseEmployerReport::COLUMNS,
+            $rows,
+            array_filter([
+                ['PESO Cagayan de Oro - Employer Report (In-house Interviews)'],
+                ['Coverage', 'Interviews held at least '
+                    . \App\Support\InhouseEmployerReport::delayDays() . ' days ago'],
+                $search ? ['Search', $search] : null,
+                ['Generated', now()->format('Y-m-d H:i')],
+            ])
+        );
+    }
+
     public function jobVacancyReports()
     {
         $staff = $this->authStaff();
@@ -2009,7 +4095,78 @@ $nsrp = $registration->nsrp;
 
         [$year, $mon] = explode('-', $month);
 
-        $query = \App\Models\Job::with('company')
+        $query = $this->jobVacancyReportQuery($year, $mon, $search);
+
+        // ── Total kay sa TIBUOK filtered set (dili lang sa current page), mao nga clone una ang query ──
+        // ── groupLeaders: ang usa ka position nga gi-post sa daghang schedule
+        // ── type kay usa ra gihapon ka set sa bakante, dili tag-usa kada row. ──
+        $totalVacancies = (clone $query)->groupLeaders()->sum('slots');
+        $jobs = $query->orderBy('title')->paginate(5)->withQueryString();
+
+        // ── TOP 10 EMPLOYERS — kinsa ang naghatag ug pinakadaghang bakante.
+        // ──
+        // ── Kaniadto giihap ang pag-apil sa Company Interview. Ang opisina
+        // ── nangayo sa tinuod nga sukod: pila ka bakante ang gihatag, dili pila
+        // ── ka higayon nga miapil. Ang groupLeaders() gikinahanglan — ang usa
+        // ── ka posisyon nga gi-post sa tulo ka channel usa ra gihapon ka set sa
+        // ── bakante, ug kung wala kini, tulo ka pilo ang ihap.
+        // ──
+        // ── Naka-sort na pag-render, mao nga ang pag-abli sa tab mao na ang
+        // ── pag-sort — walay buton nga pindoton. ──
+        $topEmployers = collect();
+        if ($tab === 'top_employers') {
+            $topQuery = \App\Models\Job::with('company')
+                ->where('posting_status', 'approved')
+                ->whereHas('company', fn($q) => $q->where('is_overseas', false))
+                ->groupLeaders();
+
+            if ($topEmployersFilter === 'yearly') {
+                $selectedYear = $topEmployersYear ?: now()->year;
+                $topQuery->whereYear('updated_at', $selectedYear);
+            } else {
+                $selectedMonth = $topEmployersMonth ?: now()->format('Y-m');
+                [$selectedYear, $selectedMonth] = array_pad(explode('-', $selectedMonth), 2, now()->month);
+                $topQuery->whereYear('updated_at', $selectedYear)
+                    ->whereMonth('updated_at', $selectedMonth);
+            }
+
+            $topEmployers = $topQuery->get()
+                ->groupBy('company_id')
+                ->map(fn($jobs) => [
+                    'employer'        => $jobs->first()->company,
+                    'total_vacancies' => (int) $jobs->sum('slots'),
+                    'posting_count'   => $jobs->count(),
+                ])
+                ->sortByDesc('total_vacancies')
+                ->take(10)
+                ->values();
+        }
+
+        // ── Ang report sa opisina nga gi-upload. Bulag gyud ni sa mga numero sa
+        // ── sistema — walay bisan usa ka laray dinhi nga giapil sa taas. ──
+        $importedReports = collect();
+        if ($tab === 'imported') {
+            $importedReports = \App\Models\JobVacancyImportedReport::latest()->get();
+        }
+
+        // Ang pikas nga bahin sa desk — tan-awa ang App\Support\CompanyInterviewReport.
+        $companyInterviews = $tab === 'company_interview'
+            ? \App\Support\CompanyInterviewReport::paginate($year, $mon, $search)
+            : null;
+
+        return view('staff.job_vacancy.reports', compact(
+            'jobs', 'month', 'totalVacancies', 'search', 'tab',
+            'topEmployers', 'topEmployersFilter', 'topEmployersMonth', 'topEmployersYear',
+            'importedReports', 'companyInterviews'
+        ));
+    }
+
+    // ── Usa ra ka lugar nga naghubad sa "unsa ang sulod sa Job Vacancies nga
+    // ── report", aron ang gipakita nga lamesa ug ang gi-download nga file dili
+    // ── gyud magkalahi ug laray. ──
+    private function jobVacancyReportQuery(string $year, string $mon, ?string $search)
+    {
+        return \App\Models\Job::with('company')
             ->where('posting_status', 'approved')
             ->whereHas('company', fn($q) => $q->where('is_overseas', false))
             ->whereYear('updated_at', $year)
@@ -2017,44 +4174,166 @@ $nsrp = $registration->nsrp;
             ->when($search, fn($q) => $q->where('title', 'like', "%{$search}%")
                 ->orWhereHas('company', fn($u) => $u->where('company_name', 'like', "%{$search}%"))
             );
+    }
 
-        $jobs         = $query->orderBy('title')->get();
-        $totalVacancies = $jobs->sum('slots');
+    /** Ang mga kolum sa Job Vacancies nga report, sa samang han-ay sa lamesa. */
+    private const JOB_VACANCY_REPORT_COLUMNS = [
+        'No.', 'Job Title', 'No. of Vacancies', 'Age', 'Sex', 'Civil Status',
+        'Educational Attainment', 'Work Experience', 'Employer Name',
+    ];
 
-        $topEmployersByOfficeBasedInterviews = collect();
-        if ($tab === 'top_employers') {
-            $officeBasedQuery = \App\Models\Job::with('company')
-                ->where('schedule_type', 'office_based')
-                ->where('posting_status', 'approved')
-                ->whereHas('company', fn($q) => $q->where('is_overseas', false));
+    private function jobVacancyReportRow(\App\Models\Job $job, int $number): array
+    {
+        $sexMap = ['Any' => 'M/F', 'Male' => 'M', 'Female' => 'F'];
 
-            if ($topEmployersFilter === 'yearly') {
-                $selectedYear = $topEmployersYear ?: now()->year;
-                $officeBasedQuery->whereYear('updated_at', $selectedYear);
-            } else {
-                $selectedMonth = $topEmployersMonth ?: now()->format('Y-m');
-                [$selectedYear, $selectedMonth] = array_pad(explode('-', $selectedMonth), 2, now()->month);
-                $officeBasedQuery->whereYear('updated_at', $selectedYear)
-                    ->whereMonth('updated_at', $selectedMonth);
-            }
+        return [
+            $number,
+            strtoupper($job->title),
+            $job->slots,
+            ($job->age_required && $job->age_min && $job->age_max)
+                ? $job->age_min . '-' . $job->age_max
+                : 'None',
+            $sexMap[$job->sex_preference] ?? ($job->sex_preference ?? 'None'),
+            ($job->civil_status && $job->civil_status !== 'Any') ? strtoupper($job->civil_status) : 'None',
+            $job->education_required ? strtoupper($job->education_required) : 'None',
+            $job->experience_months ? $job->experience_months . ' mo/s' : 'None',
+            strtoupper($job->company->company_name ?? 'None'),
+        ];
+    }
 
-            $topEmployersByOfficeBasedInterviews = $officeBasedQuery->get()
-                ->groupBy('company_id')
-                ->map(function ($jobs) {
-                    return [
-                        'employer' => $jobs->first()->company,
-                        'participation_count' => $jobs->count(),
-                    ];
-                })
-                ->sortByDesc('participation_count')
-                ->take(5)
-                ->values();
+    // ── I-download ang report sa sistema isip .xlsx — tan-awa ang nota sa
+    // ── ExcelExport kung ngano. ──
+    public function exportJobVacancyReport()
+    {
+        [$staff, $deny] = $this->assertJobVacancyStaff();
+        if ($deny) return $deny;
+
+        $search = request('search');
+        $month  = request('month', now()->format('Y-m'));
+        [$year, $mon] = array_pad(explode('-', $month), 2, now()->format('m'));
+
+        $jobs = $this->jobVacancyReportQuery($year, $mon, $search)
+            ->orderBy('title')
+            ->get();
+
+        $rows = [];
+        foreach ($jobs as $i => $job) {
+            $rows[] = $this->jobVacancyReportRow($job, $i + 1);
         }
 
-        return view('staff.job_vacancy.reports', compact(
-            'jobs', 'month', 'totalVacancies', 'search', 'tab',
-            'topEmployersByOfficeBasedInterviews', 'topEmployersFilter', 'topEmployersMonth', 'topEmployersYear'
-        ));
+        $totalVacancies = $this->jobVacancyReportQuery($year, $mon, $search)
+            ->groupLeaders()->sum('slots');
+
+        return \App\Support\ExcelExport::stream(
+            'peso-job-vacancies-' . $month . '.xlsx',
+            self::JOB_VACANCY_REPORT_COLUMNS,
+            $rows,
+            array_filter([
+                // Hyphen, dili em-dash — tan-awa ang samang nota sa exportReports.
+                ['PESO Cagayan de Oro - Job Vacancies Solicited'],
+                ['Month', \Carbon\Carbon::createFromFormat('Y-m', $month)->format('F Y')],
+                ['Total no. of vacancies', $totalVacancies],
+                $search ? ['Search', $search] : null,
+                ['Generated', now()->format('Y-m-d H:i')],
+            ])
+        );
+    }
+
+    // ── Ang kaugalingong excel report sa opisina. Gitipigan, gipakita, ug
+    // ── ma-download balik — wala gyud gisagol sa numero sa sistema. ──
+    public function importJobVacancyReport(Request $request)
+    {
+        [$staff, $deny] = $this->assertJobVacancyStaff();
+        if ($deny) return $deny;
+
+        $request->validate([
+            'title'  => 'required|string|max:120',
+            'period' => 'nullable|date_format:Y-m',
+            'file'   => 'required|file|mimes:xlsx,xls,csv,txt|max:5120',
+        ], [
+            'title.required' => 'Give this report a name so you can tell it apart later.',
+            // Ang mimes mo-salikway sad sa file nga walay sulod, kay walay
+            // matag-an nga tipo sa 0 ka byte — mao nga giapil ang duha ka
+            // hinungdan sa usa ka mensahe.
+            'file.mimes'     => 'Only an Excel workbook (.xlsx, .xls) or a CSV file can be read, and it must not be empty.',
+            'file.max'       => 'The file must be 5 MB or smaller.',
+        ]);
+
+        // ── Ang mimes dili kasaligan sa Windows: ang file nga gi-save sa Excel
+        // ── moabot usahay nga text/plain o application/vnd.ms-excel. Ang
+        // ── extension ang kataposang pagsusi, ug ang mensahe nagsulti sa
+        // ── lakang nga kinahanglan buhaton — dili lang "invalid file". ──
+        $file = $request->file('file');
+        if (!in_array(strtolower($file->getClientOriginalExtension()), \App\Support\SpreadsheetImport::ALLOWED, true)) {
+            return back()->withInput()->with('error',
+                'That is a .' . $file->getClientOriginalExtension() . ' file. Upload the report as an '
+                . 'Excel workbook (.xlsx) or a CSV.');
+        }
+
+        $parsed = \App\Support\SpreadsheetImport::read($file);
+
+        if (!$parsed['headers']) {
+            return back()->withInput()->with('error',
+                'That file has no column headings on its first row, so there is nothing to show.');
+        }
+
+        $staffRecord = \App\Models\Staff::where('user_id', $staff->users_id)->first();
+
+        \App\Models\JobVacancyImportedReport::create([
+            'uploaded_by'       => $staffRecord?->staff_id,
+            'title'             => $request->title,
+            'period'            => $request->period,
+            'original_filename' => $file->getClientOriginalName(),
+            'headers'           => $parsed['headers'],
+            'rows'              => $parsed['rows'],
+            'row_count'         => count($parsed['rows']),
+        ]);
+
+        $note = $parsed['truncated']
+            ? ' The file was longer than ' . \App\Support\SpreadsheetImport::MAX_ROWS . ' rows or wider than '
+              . \App\Support\SpreadsheetImport::MAX_COLUMNS . ' columns, so only the first part was read.'
+            : '';
+
+        return redirect()->route('staff.reports.employers', ['tab' => 'imported'])
+            ->with('success', '"' . $request->title . '" imported — ' . count($parsed['rows']) . ' row(s).' . $note);
+    }
+
+    public function downloadJobVacancyImportedReport($id)
+    {
+        [$staff, $deny] = $this->assertJobVacancyStaff();
+        if ($deny) return $deny;
+
+        $report = \App\Models\JobVacancyImportedReport::findOrFail($id);
+
+        return \App\Support\ExcelExport::stream(
+            'peso-imported-' . str($report->title)->slug() . '-' . $report->created_at->format('Ymd') . '.xlsx',
+            $report->headers,
+            $report->rows,
+            array_filter([
+                ['PESO Cagayan de Oro - Imported Report'],
+                ['Report', $report->title],
+                $report->period ? ['Period', $report->period] : null,
+                ['Original file', $report->original_filename],
+                ['Imported', $report->created_at->format('Y-m-d H:i')],
+                // Isulat gyud sa file mismo. Kung dili, ang usa ka kopya niini
+                // nga nagsuroy-suroy mahimong sayop nga basahon nga gikan sa
+                // sistema ang mga numero.
+                ['Source', 'Uploaded by PESO staff. Not generated from system records.'],
+            ])
+        );
+    }
+
+    public function deleteJobVacancyImportedReport($id)
+    {
+        [$staff, $deny] = $this->assertJobVacancyStaff();
+        if ($deny) return $deny;
+
+        $report = \App\Models\JobVacancyImportedReport::findOrFail($id);
+        $title  = $report->title;
+        $report->delete();
+
+        return redirect()->route('staff.reports.employers', ['tab' => 'imported'])
+            ->with('success', '"' . $title . '" removed.');
     }
 
     // ───────────────────────────────
@@ -2076,30 +4355,44 @@ $nsrp = $registration->nsrp;
             $allEvents = \App\Models\JobFairEvent::orderByDesc('event_date')->get();
             $event     = $eventId ? \App\Models\JobFairEvent::find($eventId) : null;
 
-            // Job IDs nga gi-"bring" sa mga employer niini nga event
-            $eventJobIds = $eventId
-                ? \App\Models\JobFairEmploymentRequest::where('job_fair_id', $eventId)->pluck('job_id')
-                : collect();
+            // ── Ang matag listahan sa ubos naa na sa JobFairReport.
+            // ──
+            // ── Dinhi sila kaniadto, ug ang download nga gipangayo sa Job Fair
+            // ── staff kinahanglan mokopya unta sa matag query. Karon usa ra
+            // ── ka lugar ang naghubad: ang page mo-paginate, ang CSV mokuha sa
+            // ── tanan, ug dili gyud sila magkalahi ug ihap. ──
+            $eventJobIds = \App\Support\JobFairReport::eventJobIds($eventId ? (int) $eventId : null);
 
             // ── TAB 1: ATTENDANCE ──
+            // ──
+            // ── Usa ra ka attendance nga tab sa tibuok sistema. Kaniadto duha:
+            // ── usa sa Job Fair Events (ang trabahoan, uban ang Mark Attended)
+            // ── ug usa dinhi (ang rekord, ang miabot ra) — ug managlahi ug ihap
+            // ── ang duha, mao nga nagduha-duha ang staff kung asa ang tinuod.
+            // ──
+            // ── Ang $attendanceState ang nagpuli sa duha ka tab: "joined" mao
+            // ── ang panahon sa fair, "attended" mao ang ipasa sa DOLE. Ang CSV
+            // ── mosunod sa parehas nga pagpili. ──
             $attendanceFilter = request('attendance_filter', 'all');
+            $attendanceState  = request('attendance_state', $isSraJobFairView ? 'attended' : 'joined');
+            if (!array_key_exists($attendanceState, \App\Support\JobFairReport::STATES)) {
+                $attendanceState = 'joined';
+            }
+            $attendanceSearch = request('attendance_search');
             $registrations = null;
-            $totalRegistered = $totalAttended = $totalLocalAttendance = $totalOverseasAttendance = 0;
+            $totalRegistered = $totalAttended = 0;
 
             if ($tab === 'attendance' && $eventId) {
                 if ($isSraJobFairView) $attendanceFilter = 'overseas';
-                $regQuery = \App\Models\JobFairRegistration::with(['jobseeker.nsrp', 'jobseeker.user'])
-                    ->where('job_fair_id', $eventId)
-                    ->when($attendanceFilter !== 'all', function ($q) use ($attendanceFilter) {
-                        return $q->whereHas('jobseeker.nsrp', fn($n) => $n->whereIn('type', [$attendanceFilter, 'both']));
-                    });
-                $registrations = $regQuery->latest()->paginate(10);
 
-                $baseQ = \App\Models\JobFairRegistration::where('job_fair_id', $eventId);
-                $totalRegistered = (clone $baseQ)->count();
-                $totalAttended   = (clone $baseQ)->where('is_attended', true)->count();
-                $totalLocalAttendance    = (clone $baseQ)->whereHas('jobseeker.nsrp', fn($n) => $n->whereIn('type', ['local','both']))->count();
-                $totalOverseasAttendance = (clone $baseQ)->whereHas('jobseeker.nsrp', fn($n) => $n->whereIn('type', ['overseas','both']))->count();
+                $registrations = \App\Support\JobFairReport::attendanceQuery(
+                        (int) $eventId, $attendanceFilter, $attendanceState, $attendanceSearch
+                    )
+                    ->latest()->paginate(10)->withQueryString();
+
+                $totals = \App\Support\JobFairReport::attendanceTotals((int) $eventId);
+                $totalRegistered = $totals['registered'];
+                $totalAttended   = $totals['attended'];
             }
 
             // ── TAB 2: LIST OF LOCAL/OVERSEAS COMPANIES FOR JOB FAIR ──
@@ -2107,10 +4400,7 @@ $nsrp = $registration->nsrp;
             $companiesOverseas = collect();
 
             if ($tab === 'companies' && $eventId) {
-                $confirmed = \App\Models\JobFairParticipant::with('employer')
-                    ->where('job_fair_id', $eventId)
-                    ->where('confirmation_status', 'confirmed')
-                    ->get();
+                $confirmed = \App\Support\JobFairReport::confirmedCompanies((int) $eventId);
 
                 $companiesLocal    = $confirmed->filter(fn($p) => !($p->employer->is_overseas ?? false))->values();
                 $companiesOverseas = $confirmed->filter(fn($p) => $p->employer->is_overseas ?? false)->values();
@@ -2119,23 +4409,15 @@ $nsrp = $registration->nsrp;
             // ── TAB 3: LIST OF FURTHER INTERVIEW (waiting status) ──
             $furtherInterview = null;
             if ($tab === 'further_interview' && $eventId) {
-                $furtherInterview = \App\Models\Application::with(['jobseeker.nsrp', 'job.company'])
-                    ->whereIn('job_id', $eventJobIds)
-                    ->where('status', 'waiting')
-                    ->when($isSraJobFairView, fn($q) => $q->whereHas('job.company', fn($c) => $c->where('is_overseas', true)))
-                    ->latest()
-                    ->paginate(10);
+                $furtherInterview = \App\Support\JobFairReport::furtherInterviewQuery($eventJobIds, $isSraJobFairView)
+                    ->paginate(10)->withQueryString();
             }
 
             // ── TAB 4: HOTS — hired for a job brought to this event (dili na i-match ang eksaktong petsa, kay ang job mismo naka-scope na sa event via eventJobIds) ──
             $hots = null;
             if ($tab === 'hots' && $eventId && $event) {
-                $hots = \App\Models\Application::with(['jobseeker', 'job.company'])
-                    ->whereIn('job_id', $eventJobIds)
-                    ->where('status', 'hired')
-                    ->when($isSraJobFairView, fn($q) => $q->whereHas('job.company', fn($c) => $c->where('is_overseas', true)))
-                    ->latest()
-                    ->paginate(10);
+                $hots = \App\Support\JobFairReport::hotsQuery($eventJobIds, $isSraJobFairView)
+                    ->paginate(10)->withQueryString();
             }
 
             // ── TAB 5: POST JOB FAIR SUMMARY REPORT ──
@@ -2143,31 +4425,8 @@ $nsrp = $registration->nsrp;
             $summaryTotals = ['vacancies' => 0, 'interviewed' => 0, 'male' => 0, 'female' => 0, 'qualified' => 0, 'hired' => 0];
 
             if ($tab === 'summary' && $eventId) {
-                $participants = \App\Models\JobFairParticipant::with('employer')
-                    ->where('job_fair_id', $eventId)
-                    ->where('confirmation_status', 'confirmed')
-                    ->when($isSraJobFairView, fn($q) => $q->whereHas('employer', fn($e) => $e->where('is_overseas', true)))
-                    ->get();
-
-                $summaryParticipants = $participants->map(function ($p) use ($eventId) {
-                    $jobIds = \App\Models\JobFairEmploymentRequest::where('job_fair_id', $eventId)
-                        ->where('employer_id', $p->employer_id)
-                        ->pluck('job_id');
-
-                    $apps = \App\Models\Application::with('jobseeker')->whereIn('job_id', $jobIds)->get();
-
-                    $p->vacancies   = \App\Models\Job::whereIn('id', $jobIds)->sum('slots');
-                    $p->interviewed = $apps->count();
-                    $p->male        = $apps->filter(fn($a) => strtolower($a->jobseeker->sex ?? '') === 'male')->count();
-                    $p->female      = $apps->filter(fn($a) => strtolower($a->jobseeker->sex ?? '') === 'female')->count();
-                    $p->qualified   = $apps->where('status', 'qualified')->count();
-                    $p->hired       = $apps->where('status', 'hired')->count();
-                    return $p;
-                });
-
-                foreach (['vacancies', 'interviewed', 'male', 'female', 'qualified', 'hired'] as $key) {
-                    $summaryTotals[$key] = $summaryParticipants->sum($key);
-                }
+                $summaryParticipants = \App\Support\JobFairReport::summaryRows((int) $eventId, $isSraJobFairView);
+                $summaryTotals       = \App\Support\JobFairReport::summaryTotals($summaryParticipants);
             }
 
             // ── TAB 6: TOTAL COMPANIES WITH VACANCIES (per Industry Group) ──
@@ -2175,70 +4434,63 @@ $nsrp = $registration->nsrp;
             $industryOverseas = collect();
 
             if ($tab === 'industry' && $eventId) {
-                $jobs = \App\Models\Job::with('company')->whereIn('id', $eventJobIds)->get();
-
-                $industryLocal = $jobs->filter(fn($j) => !($j->company->is_overseas ?? false))
-                    ->groupBy('industry_group')
-                    ->map(fn($group) => $group->sum('slots'));
-
-                $industryOverseas = $jobs->filter(fn($j) => $j->company->is_overseas ?? false)
-                    ->groupBy('industry_group')
-                    ->map(fn($group) => $group->sum('slots'));
+                $industryTotals   = \App\Support\JobFairReport::industryTotals($eventJobIds);
+                $industryLocal    = $industryTotals['local'];
+                $industryOverseas = $industryTotals['overseas'];
             }
 
-            // ── TAB: TOP EMPLOYERS (job fair participation count, per employer) — placeholder logic, i-refine pa sa ulahi ──
-            $topEmployersFilter = request('top_employers_filter', 'monthly');
-            $topEmployersMonth  = request('top_employers_month');
-            $topEmployersYear   = request('top_employers_year');
-            $topEmployersByOfficeBasedInterviews = collect();
+            // ── TAB: TOP EMPLOYERS — kinsa ang nagdala ug pinakadaghang bakante
+            // ── niining maong fair. Iya na sa usa ka event, dili na kada bulan:
+            // ── ang pangutana kay kinsa ang nagdala ug trabaho ngadto niini nga
+            // ── fair, ug kana matubag ra kung nahibaw-an unsang fair. ──
+            $topEmployersByCompanyInterviews = collect();
 
-            if ($tab === 'top_employers') {
-                $participantQuery = \App\Models\JobFairParticipant::with('employer')
-                    ->where('confirmation_status', 'confirmed')
-                    ->when($isSraJobFairView, fn($q) => $q->whereHas('employer', fn($e) => $e->where('is_overseas', true)));
-
-                if ($topEmployersFilter === 'yearly') {
-                    $selectedYear = $topEmployersYear ?: now()->year;
-                    $participantQuery->whereYear('created_at', $selectedYear);
-                } else {
-                    $selectedMonth = $topEmployersMonth ?: now()->format('Y-m');
-                    [$selYear, $selMon] = array_pad(explode('-', $selectedMonth), 2, now()->month);
-                    $participantQuery->whereYear('created_at', $selYear)->whereMonth('created_at', $selMon);
-                }
-
-                $topEmployersByOfficeBasedInterviews = $participantQuery->get()
-                    ->groupBy('employer_id')
-                    ->map(fn($group) => [
-                        'employer'             => $group->first()->employer,
-                        'participation_count'  => $group->count(),
-                    ])
-                    ->sortByDesc('participation_count')
-                    ->take(5)
-                    ->values();
+            if ($tab === 'top_employers' && $event) {
+                $topEmployersByCompanyInterviews = \App\Support\JobFairReport::topEmployers(
+                    $event, $isSraJobFairView
+                );
             }
 
             // ── TAB 7: COMPANY PLACEMENT REPORT (local only, hired AFTER event date) ──
             $placementReport = null;
             if ($tab === 'placement' && $eventId && $event) {
-                $placementReport = \App\Models\Application::with(['jobseeker', 'job.company'])
-                    ->whereIn('job_id', $eventJobIds)
-                    ->where('status', 'hired')
-                    ->whereHas('job.company', fn($q) => $q->where('is_overseas', false))
-                    ->whereDate('updated_at', '>', $event->event_date)
-                    ->latest()
-                    ->paginate(15);
+                $placementReport = \App\Support\JobFairReport::placementQuery($eventJobIds, $event)
+                    ->paginate(15)->withQueryString();
             }
+
+            // ── TAB 9: ANG KAUGALINGON NGA REPORT SA STAFF ──
+            // ── Gitipigan lang ug gipakita. Walay bisan usa sa mga numero sa
+            // ── ibabaw nga nagbasa niini. ──
+            $importedReports = collect();
+            if ($tab === 'imported' && $eventId) {
+                $importedReports = \App\Models\JobFairImportedReport::with('uploader')
+                    ->where('job_fair_id', $eventId)
+                    ->latest()
+                    ->get();
+            }
+
+            // ── Nahuman na nga posting — milabay ang deadline o napuno ang
+            // ── slots. Buhi gihapon ang Job row, mao nga bukas ang full details. ──
+            $archivedJobs = \App\Models\Job::with('company')
+                ->inactive()
+                ->withCount([
+                    'applications as hired_count' => fn($q) => $q->where('status', 'hired'),
+                ])
+                ->latest()
+                ->paginate(5, ['*'], 'archived_page')
+                ->withQueryString();
 
             return view('staff.reports.index', compact(
                 'staffRole', 'tab', 'allEvents', 'event', 'eventId',
-                'registrations', 'attendanceFilter', 'totalRegistered', 'totalAttended',
-                'totalLocalAttendance', 'totalOverseasAttendance',
+                'registrations', 'attendanceFilter', 'attendanceState', 'attendanceSearch',
+                'totalRegistered', 'totalAttended',
                 'companiesLocal', 'companiesOverseas',
                 'furtherInterview', 'hots',
                 'summaryParticipants', 'summaryTotals',
                 'industryLocal', 'industryOverseas',
                 'placementReport', 'isSraJobFairView', 'reportView',
-                'topEmployersFilter', 'topEmployersMonth', 'topEmployersYear', 'topEmployersByOfficeBasedInterviews'
+                'topEmployersByCompanyInterviews',
+                'importedReports', 'archivedJobs'
             ));
         }
 
@@ -2246,6 +4498,17 @@ $nsrp = $registration->nsrp;
 
         $search      = request('search');
         $tab         = request('tab', 'registered');
+
+        // Ang Archived Job Postings iya sa nagdumala sa posting — Job Vacancy
+        // staff sa local, SRA sa overseas. Kung moabot ang LRA pinaagi sa daan
+        // nga link, ibalik siya sa iyang unang tab imbes ipakita ang blangko.
+        if ($staffRole === 'lra' && $tab === 'archived') {
+            $tab = 'registered';
+        }
+        // ── PESO interview 2026-08-13: start date / end date sa reports.
+        // ── Ang range gi-apply sa tulo ka listahan sa ubos, ug parehas nga
+        // ── range ang gidala sa CSV ug sa printed nga kopya. ──
+        $range       = \App\Support\DateRange::fromRequest(request());
         $jobseekerType = $staffRole === 'lra' ? ['local', 'both'] : ['overseas', 'both'];
         $isOverseas    = $staffRole === 'sra'; // employer classification: true = overseas (SRA), false = local (LRA)
         $registeredView = request('registered_view', 'all'); // 'all' = tanang registered jobseekers; 'inhouse' = ni-Join sa in-house
@@ -2258,7 +4521,9 @@ $nsrp = $registration->nsrp;
                     ->orWhere('surname', 'like', "%{$search}%")
                     ->orWhereHas('user', fn($u) => $u->where('name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%"));
-            }));
+            }))
+            // Ang petsa sa pag-register ang basihan sa listahan sa registered.
+            ->tap(fn($q) => $range->apply($q, 'jobseeker_registrations.created_at'));
 
         $totalRegisteredAll = (clone $registeredAllQuery)->count();
 
@@ -2270,7 +4535,10 @@ $nsrp = $registration->nsrp;
             ->when($search, fn($q) => $q->whereHas('jobseeker', fn($u) =>
                 $u->where('first_name', 'like', "%{$search}%")
                   ->orWhere('surname', 'like', "%{$search}%")
-            ));
+            ))
+            // Ang updated_at sa job_matching mao ang adlaw nga na-set ang
+            // status — mao nga kana ang tinuod nga petsa sa panghitabo.
+            ->tap(fn($q) => $range->apply($q, 'job_matching.updated_at'));
 
         $totalRegistered = (clone $registeredQuery)->count();
 
@@ -2278,10 +4546,16 @@ $nsrp = $registration->nsrp;
         $placedQuery = \App\Models\Application::with(['jobseeker', 'job.company'])
             ->where('status', 'hired')
             ->whereHas('jobseeker.nsrp', fn($r) => $r->whereIn('type', $jobseekerType))
-            ->when($search, fn($q) => $q->whereHas('jobseeker', fn($u) =>
-                $u->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-            ));
+            ->when($search, fn($q) => $q->whereHas('jobseeker', fn($j) =>
+                // Ang jobseeker_registrations walay `name` ug walay `email`.
+                // Ang pangalan kay first_name + surname, ug ang email tua sa
+                // users. Ang daan nga porma dinhi mo-500 sa matag pagpangita.
+                $j->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('surname', 'like', "%{$search}%")
+                  ->orWhereHas('user', fn($u) => $u->where('name', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%"))
+            ))
+            ->tap(fn($q) => $range->apply($q, 'job_matching.updated_at'));
 
         $totalPlaced = (clone $placedQuery)->count();
 
@@ -2289,10 +4563,16 @@ $nsrp = $registration->nsrp;
         $referredQuery = \App\Models\Application::with(['jobseeker', 'job.company'])
             ->whereIn('status', ['waiting', 'rejected'])
             ->whereHas('jobseeker.nsrp', fn($r) => $r->whereIn('type', $jobseekerType))
-            ->when($search, fn($q) => $q->whereHas('jobseeker', fn($u) =>
-                $u->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-            ));
+            ->when($search, fn($q) => $q->whereHas('jobseeker', fn($j) =>
+                // Ang jobseeker_registrations walay `name` ug walay `email`.
+                // Ang pangalan kay first_name + surname, ug ang email tua sa
+                // users. Ang daan nga porma dinhi mo-500 sa matag pagpangita.
+                $j->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('surname', 'like', "%{$search}%")
+                  ->orWhereHas('user', fn($u) => $u->where('name', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%"))
+            ))
+            ->tap(fn($q) => $range->apply($q, 'job_matching.updated_at'));
 
         $totalReferred = (clone $referredQuery)->count();
 
@@ -2312,7 +4592,7 @@ $nsrp = $registration->nsrp;
                 ->whereMonth('updated_at', $vacancyMonthNumber)
                 ->where(function ($q) {
                     $q->whereNull('schedule_type')
-                      ->orWhere('schedule_type', 'office_based')
+                      ->orWhere('schedule_type', 'company_interview')
                       ->orWhere(function ($q2) {
                           $q2->where('schedule_type', 'inhouse')
                              ->where('posting_status', 'approved');
@@ -2332,11 +4612,22 @@ $nsrp = $registration->nsrp;
         $placedApplications     = $tab === 'placed'     ? $placedQuery->latest()->paginate(10)     : null;
         $referredApplications   = $tab === 'referred'   ? $referredQuery->latest()->paginate(10)   : null;
 
-        // ── TAB: TOP EMPLOYERS (in-house interview participation count, per employer) — placeholder logic, i-refine pa sa ulahi ──
+        // ── TAB: TOP EMPLOYERS — pila ka in-house nga interview ang gidala sa
+        // ── usa ka employer sulod sa gipiling panahon.
+        // ──
+        // ── LRA ra. PESO SRA, 2026-08-26: ang ranggo sa overseas nga employer
+        // ── napulot na ngadto sa job fair nga reports, diin ang giihap mao ang
+        // ── bakante nga ilang gidala sa fair. Gitago ang tab sa screen ug
+        // ── gibalibaran sad dinhi, kay ang tab maabot man pinaagi sa URL. ──
         $topEmployersFilter = request('top_employers_filter', 'monthly');
         $topEmployersMonth  = request('top_employers_month');
         $topEmployersYear   = request('top_employers_year');
-        $topEmployersByOfficeBasedInterviews = collect();
+        $topEmployersByCompanyInterviews = collect();
+
+        if ($tab === 'top_employers' && $staffRole === 'sra') {
+            return redirect()->route('staff.reports')
+                ->with('info', 'Top Employers for overseas is in the Job Fair reports, ranked by the vacancies each agency brings to a fair.');
+        }
 
         if ($tab === 'top_employers') {
             $inhouseQuery = \App\Models\Job::with('company')
@@ -2353,7 +4644,7 @@ $nsrp = $registration->nsrp;
                 $inhouseQuery->whereYear('updated_at', $selYear)->whereMonth('updated_at', $selMon);
             }
 
-            $topEmployersByOfficeBasedInterviews = $inhouseQuery->get()
+            $topEmployersByCompanyInterviews = $inhouseQuery->get()
                 ->groupBy('company_id')
                 ->map(fn($group) => [
                     'employer'        => $group->first()->company,
@@ -2364,13 +4655,392 @@ $nsrp = $registration->nsrp;
                 ->values();
         }
 
+        // ── Nahuman na nga posting — milabay ang deadline o napuno ang
+        // ── slots. Buhi gihapon ang Job row, mao nga bukas ang full details. ──
+        // Walay date range dinhi — walay kontrol sa screen para niini, ug ang
+        // listahan nga hilom nga na-filter sa usa ka URL parameter nga dili
+        // makita kay bakak nga listahan.
+        $archivedJobs = $staffRole === 'lra'
+            ? new \Illuminate\Pagination\LengthAwarePaginator([], 0, 5, 1, ['path' => request()->url()])
+            : \App\Models\Job::with('company')
+                ->inactive()
+                ->withGroupHiredCount()
+                ->withCount([
+                    'applications as hired_count' => fn($q) => $q->where('status', 'hired'),
+                ])
+                ->latest()
+                ->paginate(5, ['*'], 'archived_page')
+                ->withQueryString();
+
+        // ── Chart: pila ka na-placed kada bulan sulod sa gipili nga range.
+        // ── Ang pag-group sa PHP, dili sa SQL — gamay ra ang row ug dili
+        // ── magkalahi ang date function sa MySQL ug sa SQLite. ──
+        $placedChart = (clone $placedQuery)->get(['job_matching.updated_at'])
+            ->groupBy(fn($a) => $a->updated_at->format('M Y'))
+            ->map->count();
+
+        // ── TAB: EMPLOYER REPORT — what came of each in-house interview.
+        // ──
+        // ── LRA staff, 2026-08-23: usa ka semana human sa in-house interview,
+        // ── makita nila ang report sa maong employer ug ang status sa matag
+        // ── jobseeker. LRA ra sa karon; ugma pa ang interview sa SRA. ──
+        $employerPostings = collect();
+        $employerRoomOnly = collect();
+
+        if ($tab === 'employer_report' && $staffRole === 'lra') {
+            $paginate = function (\Illuminate\Support\Collection $rows, int $perPage, string $pageName) {
+                $page = (int) request($pageName, 1);
+
+                return new \Illuminate\Pagination\LengthAwarePaginator(
+                    $rows->forPage($page, $perPage)->values(),
+                    $rows->count(),
+                    $perPage,
+                    $page,
+                    [
+                        'path'     => request()->url(),
+                        'pageName' => $pageName,
+                        'query'    => request()->query(),
+                    ]
+                );
+            };
+
+            // Ang CSV wala mag-paginate — ang tibuok listahan gihapon ang
+            // gi-download, gisala ra sa parehas nga pangita.
+            $employerPostings = $paginate(
+                \App\Support\InhouseEmployerReport::completedPostings(false, $search), 3, 'er_page'
+            );
+            $employerRoomOnly = $paginate(
+                \App\Support\InhouseEmployerReport::completedScheduleOnly(false, $search), 5, 'room_page'
+            );
+        }
+
+        // The two lists the desks were missing: who was given a room and who
+        // was declined, and (SRA only) the interviews employers ran themselves.
+        // Both desks answer for in-house; company interviews overseas are the
+        // SRA's, the local ones belong to the Job Vacancy desk's own report.
+        $inhouseReport = $tab === 'schedules'
+            ? \App\Support\InhouseScheduleReport::paginate($isOverseas, $search)
+            : null;
+
+        $companyInterviews = ($tab === 'company_interview' && $isOverseas)
+            ? \App\Support\CompanyInterviewReport::paginate(null, null, $search, true)
+            : null;
+
         return view('staff.reports.index', compact(
-            'staffRole', 'tab', 'registeredView', 'reportView',
+            'staffRole', 'tab', 'registeredView', 'reportView', 'range', 'placedChart',
             'registeredParticipants', 'registeredAll', 'placedApplications', 'referredApplications',
             'totalRegistered', 'totalRegisteredAll', 'totalPlaced', 'totalReferred',
             'vacancyMonth', 'solicitedJobs', 'totalVacanciesSolicited',
-            'topEmployersFilter', 'topEmployersMonth', 'topEmployersYear', 'topEmployersByOfficeBasedInterviews'
+            'topEmployersFilter', 'topEmployersMonth', 'topEmployersYear', 'topEmployersByCompanyInterviews',
+            'employerPostings', 'employerRoomOnly',
+            'archivedJobs', 'inhouseReport', 'companyInterviews'
         ));
+    }
+
+    // ───────────────────────────────
+    // REPORTS — CSV download ug printable nga kopya (LRA / SRA)
+    // ───────────────────────────────
+    // PESO interview 2026-08-13: "ang AO ang responsable sa pag-submit sa
+    // report... mahimong i-download ug i-print, ug adunay mga report nga
+    // kinahanglan adunay signatory... isumite sa Mayor's Office ug DOL."
+    public function exportReports(Request $request)
+    {
+        $staff = $this->authStaff();
+        if (!$staff) return redirect()->route('login');
+        if (!in_array($staff->staff_role, ['lra', 'sra'], true)) {
+            return redirect()->route('staff.reports');
+        }
+
+        $staffRole     = $staff->staff_role;
+        $range         = \App\Support\DateRange::fromRequest($request);
+        $jobseekerType = $staffRole === 'lra' ? ['local', 'both'] : ['overseas', 'both'];
+        // Ang Archived Job Postings walay export: rekord kadto sa posting mismo,
+        // dili ihap sa tawo sulod sa usa ka panahon.
+        $tab           = in_array($request->input('tab'), ['registered', 'placed', 'referred'], true)
+                         ? $request->input('tab') : 'placed';
+
+        if ($tab === 'registered') {
+            $records = JobseekerRegistration::with(['user', 'nsrp'])
+                ->whereHas('nsrp', fn($q) => $q->whereIn('type', $jobseekerType))
+                ->tap(fn($q) => $range->apply($q, 'jobseeker_registrations.created_at'))
+                ->latest()->get();
+
+            $title   = 'Registered Jobseekers';
+            $columns = ['Name', 'Sex', 'Age', 'Barangay', 'City / Municipality', 'Contact Number', 'Registered'];
+            $rows = $records->map(fn($r) => [
+                trim("{$r->surname}, {$r->first_name} {$r->middle_name}"),
+                $r->sex ?? '',
+                $r->age ?? '',
+                $r->barangay ?? '',
+                $r->municipality_city ?? '',
+                $r->contact_number ?? '',
+                $r->created_at->format('Y-m-d'),
+            ]);
+        } else {
+            $statuses = $tab === 'placed' ? ['hired'] : ['waiting', 'rejected'];
+
+            $records = \App\Models\Application::with(['jobseeker', 'job.company'])
+                ->whereIn('status', $statuses)
+                ->whereHas('jobseeker.nsrp', fn($r) => $r->whereIn('type', $jobseekerType))
+                ->tap(fn($q) => $range->apply($q, 'job_matching.updated_at'))
+                ->latest()->get();
+
+            $title   = $tab === 'placed' ? 'Placed Applicants' : 'Job Applicants Referred';
+            $columns = ['Jobseeker', 'Job Position', 'Employer', 'Status', 'Date'];
+            $rows = $records->map(fn($a) => [
+                trim(($a->jobseeker->surname ?? '') . ', ' . ($a->jobseeker->first_name ?? '')),
+                $a->job->title ?? '',
+                $a->job->company->company_name ?? '',
+                ucfirst($a->status),
+                $a->updated_at->format('Y-m-d'),
+            ]);
+        }
+
+        $unitLabel = $staffRole === 'lra' ? 'Local Employment (LRA)' : 'Overseas Employment (SRA)';
+
+        if ($request->input('format') === 'print') {
+            return view('reports.print', [
+                'title'      => $title,
+                'subtitle'   => $unitLabel,
+                'range'      => $range,
+                'columns'    => $columns,
+                'rows'       => $rows,
+                'totals'     => ['Total records' => $records->count()],
+                'preparedBy' => $staff->name,
+            ]);
+        }
+
+        return \App\Support\ExcelExport::stream(
+            'peso-' . str($title)->slug() . '-' . now()->format('Ymd') . '.xlsx',
+            $columns,
+            $rows,
+            [
+                // Hyphen, dili em-dash — tan-awa ang samang nota sa
+                // CompanyWebController::exportReports.
+                ['PESO Cagayan de Oro - ' . $title],
+                ['Unit', $unitLabel],
+                ['Covering period', $range->label()],
+                ['Generated', now()->format('Y-m-d H:i')],
+            ]
+        );
+    }
+
+    // ───────────────────────────────
+    // JOB FAIR — DOWNLOAD A REPORT TAB
+    // ───────────────────────────────
+    //
+    // PESO Job Fair staff, 2026-08-23: every tab of the job fair report has to
+    // come out as a file they can open in Excel. Until now exportReports() was
+    // the only export in the system and it turns LRA/SRA away at the door
+    // (staff_role check), so the Job Fair staff could download nothing at all.
+    //
+    // Separate from exportReports rather than folded into it: that one is
+    // scoped by a date range for the three lists that go to the Mayor's Office,
+    // this one is scoped by a single job fair event. Sharing a method would
+    // mean one of the two scopes is always being ignored.
+    public function exportJobFairReport(Request $request)
+    {
+        $staff = $this->authStaff();
+        if (!$staff) return redirect()->route('login');
+
+        // Parehas ra sa nakakita sa page: ang Job Fair staff, ug ang SRA kung
+        // anaa siya sa job fair nga panglantaw.
+        $isSraJobFairView = $staff->staff_role === 'sra' && request('report_view') === 'jobfair';
+        if ($staff->staff_role !== 'job_fair' && !$isSraJobFairView) {
+            return redirect()->route('staff.reports');
+        }
+
+        // ── redirect(), dili back(): ang back() sa usa ka link nga walay
+        // ── referer mobalik sa mismong URL sa export, ug malikos siya. ──
+        $refuse = fn(string $why) => redirect()
+            ->route('staff.reports', array_filter([
+                'tab'         => $request->input('tab'),
+                'event_id'    => $request->input('event_id'),
+                'report_view' => $request->input('report_view'),
+            ]))
+            ->with('error', $why);
+
+        $tab = $request->input('tab');
+        if (!array_key_exists($tab, \App\Support\JobFairReport::TABS)) {
+            return $refuse('That report cannot be downloaded.');
+        }
+
+        // ── Ang SRA dili makakita sa Company Placement sa page (local ra siya),
+        // ── mao nga dili sad siya maka-download niini. Kung dili, ang tab nga
+        // ── gitago maabot gihapon pinaagi sa URL. ──
+        if ($isSraJobFairView && $tab === 'placement') {
+            return $refuse('That report cannot be downloaded.');
+        }
+
+        $needsEvent = !in_array($tab, \App\Support\JobFairReport::TABS_WITHOUT_EVENT, true);
+        $event      = $request->filled('event_id')
+            ? \App\Models\JobFairEvent::find($request->input('event_id'))
+            : null;
+
+        if ($needsEvent && !$event) {
+            return $refuse('Select a job fair event before downloading this report.');
+        }
+
+        $dataset = \App\Support\JobFairReport::dataset($event, $tab, $isSraJobFairView, [
+            'attendance_filter'    => $isSraJobFairView ? 'overseas' : $request->input('attendance_filter', 'all'),
+            'attendance_state'     => $request->input('attendance_state', $isSraJobFairView ? 'attended' : 'joined'),
+            'attendance_search'    => $request->input('attendance_search'),
+            'top_employers_filter' => $request->input('top_employers_filter', 'monthly'),
+            'top_employers_month'  => $request->input('top_employers_month'),
+            'top_employers_year'   => $request->input('top_employers_year'),
+        ]);
+
+        // ── Ang ulohan sa file. Kung wala ni, ang usa ka CSV nga naa na sa
+        // ── folder sa staff walay mausulti kung asa nga fair siya gikan. ──
+        // Ang uban nga titulo naay "Job Fair" na sa sulod — ang "Post Job Fair
+        // Summary" mahimong "Job Fair Post Job Fair Summary" kung basta idugtong.
+        $heading = str_contains($dataset['title'], 'Job Fair')
+            ? $dataset['title']
+            : 'Job Fair ' . $dataset['title'];
+
+        $preamble = [
+            // Hyphen, dili em-dash — tan-awa ang samang nota sa exportReports.
+            ['PESO Cagayan de Oro - ' . $heading],
+        ];
+
+        if ($event) {
+            $preamble[] = ['Event', $event->title];
+            $preamble[] = ['Event date', $event->event_date->format('Y-m-d')];
+            $preamble[] = ['Venue', $event->venue];
+        }
+
+
+
+        if ($tab === 'attendance' && !$isSraJobFairView) {
+            $filter = $request->input('attendance_filter', 'all');
+            $preamble[] = ['Jobseekers shown', $filter === 'all' ? 'Local and Overseas' : ucfirst($filter) . ' only'];
+
+            // Ang file kinahanglan mosulti kung tanan ba nga ni-join ang naa
+            // sulod o ang miabot ra — managlahi kaayo ang duha ka numero.
+            $state = $request->input('attendance_state', 'joined');
+            $preamble[] = ['Rows included',
+                \App\Support\JobFairReport::STATES[$state] ?? \App\Support\JobFairReport::STATES['joined']];
+        }
+
+        if ($isSraJobFairView) {
+            $preamble[] = ['Unit', 'Skills Registry Assistant (overseas only)'];
+        }
+
+        $preamble[] = ['Generated', now()->format('Y-m-d H:i')];
+
+        return \App\Support\ExcelExport::stream(
+            'peso-job-fair-' . str($dataset['title'])->slug() . '-' . now()->format('Ymd') . '.xlsx',
+            $dataset['columns'],
+            $dataset['rows'],
+            $preamble
+        );
+    }
+
+    // ───────────────────────────────
+    // JOB FAIR — THE STAFF'S OWN REPORT
+    // ───────────────────────────────
+    //
+    // PESO Job Fair staff, 2026-08-23: they keep a report by hand that the
+    // system does not produce, and they need it inside the system.
+    //
+    // "Ilahi ang report nga gikan sa system ug ang excel report nga gi import."
+    // The two are separate and stay separate — nothing uploaded here is ever
+    // added into a system figure. It is read, shown as a table, and can be
+    // downloaded again.
+    public function importJobFairReport(Request $request)
+    {
+        $staff = $this->authStaff();
+        if (!$staff || $staff->staff_role !== 'job_fair') return redirect()->route('login');
+
+        $request->validate([
+            'job_fair_id' => 'required|exists:job_fair_events,job_fair_events_id',
+            'title'       => 'required|string|max:120',
+            'file'        => 'required|file|mimes:xlsx,xls,csv,txt|max:5120',
+        ], [
+            'title.required' => 'Give this report a name so you can tell it apart later.',
+            // Ang mimes mo-salikway sad sa file nga walay sulod, kay walay
+            // matag-an nga tipo sa 0 ka byte — mao nga giapil ang duha ka
+            // hinungdan sa usa ka mensahe.
+            'file.mimes'     => 'Only an Excel workbook (.xlsx, .xls) or a CSV file can be read, and it must not be empty.',
+            'file.max'       => 'The file must be 5 MB or smaller.',
+        ]);
+
+        // ── Ang mimes dili kasaligan sa Windows: ang file nga gi-save sa Excel
+        // ── moabot usahay nga text/plain o application/vnd.ms-excel. Ang
+        // ── extension ang kataposang pagsusi, ug ang mensahe nagsulti sa
+        // ── lakang nga kinahanglan buhaton — dili lang "invalid file". ──
+        $file = $request->file('file');
+        if (!in_array(strtolower($file->getClientOriginalExtension()), \App\Support\SpreadsheetImport::ALLOWED, true)) {
+            return back()->withInput()->with('error',
+                'That is a .' . $file->getClientOriginalExtension() . ' file. Upload the report as an '
+                . 'Excel workbook (.xlsx) or a CSV.');
+        }
+
+        $parsed = \App\Support\SpreadsheetImport::read($file);
+
+        if (!$parsed['headers']) {
+            return back()->withInput()->with('error',
+                'That file has no column headings on its first row, so there is nothing to show.');
+        }
+
+        $staffRecord = \App\Models\Staff::where('user_id', $staff->users_id)->first();
+
+        \App\Models\JobFairImportedReport::create([
+            'job_fair_id'       => $request->job_fair_id,
+            'uploaded_by'       => $staffRecord?->staff_id,
+            'title'             => $request->title,
+            'original_filename' => $file->getClientOriginalName(),
+            'headers'           => $parsed['headers'],
+            'rows'              => $parsed['rows'],
+            'row_count'         => count($parsed['rows']),
+        ]);
+
+        $note = $parsed['truncated']
+            ? ' The file was longer than ' . \App\Support\SpreadsheetImport::MAX_ROWS . ' rows or wider than '
+              . \App\Support\SpreadsheetImport::MAX_COLUMNS . ' columns, so only the first part was read.'
+            : '';
+
+        return back()->with('success',
+            '"' . $request->title . '" imported — ' . count($parsed['rows']) . ' row(s).' . $note);
+    }
+
+    // ── I-download balik ang gi-import, sa samang porma nga gisulod. ──
+    public function downloadJobFairImportedReport($id)
+    {
+        $staff = $this->authStaff();
+        if (!$staff || $staff->staff_role !== 'job_fair') return redirect()->route('login');
+
+        $report = \App\Models\JobFairImportedReport::with('jobFair')->findOrFail($id);
+
+        return \App\Support\ExcelExport::stream(
+            'peso-imported-' . str($report->title)->slug() . '-' . $report->created_at->format('Ymd') . '.xlsx',
+            $report->headers,
+            $report->rows,
+            [
+                // Hyphen, dili em-dash — tan-awa ang samang nota sa exportReports.
+                ['PESO Cagayan de Oro - Imported Report'],
+                ['Report', $report->title],
+                ['Event', $report->jobFair->title ?? ''],
+                ['Original file', $report->original_filename],
+                ['Imported', $report->created_at->format('Y-m-d H:i')],
+                // Isulat gyud sa file mismo. Kung dili, ang usa ka kopya niini
+                // nga nagsuroy-suroy mahimong sayop nga basahon nga gikan sa
+                // sistema ang mga numero.
+                ['Source', 'Uploaded by PESO staff. Not generated from system records.'],
+            ]
+        );
+    }
+
+    public function deleteJobFairImportedReport($id)
+    {
+        $staff = $this->authStaff();
+        if (!$staff || $staff->staff_role !== 'job_fair') return redirect()->route('login');
+
+        $report = \App\Models\JobFairImportedReport::findOrFail($id);
+        $title  = $report->title;
+        $report->delete();
+
+        return back()->with('success', '"' . $title . '" removed.');
     }
 
     // ───────────────────────────────
@@ -2431,15 +5101,25 @@ $nsrp = $registration->nsrp;
 
         $request->validate([
             'name'  => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $staff->id,
-            'phone' => 'nullable|string|max:20',
+            'email' => 'required|email|unique:users,email,' . $staff->users_id . ',users_id',
+            'phone' => ['nullable', 'string', new \App\Rules\MobileNumber],
+            'profile_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
-        $staff->update([
+        $data = [
             'name'  => $request->name,
             'email' => $request->email,
             'phone' => $request->phone,
-        ]);
+        ];
+
+        if ($request->hasFile('profile_photo')) {
+            if ($staff->profile_photo) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($staff->profile_photo);
+            }
+            $data['profile_photo'] = $request->file('profile_photo')->store('profile_photos', 'public');
+        }
+
+        $staff->update($data);
 
         return back()->with('success', 'Profile updated successfully.');
     }
@@ -2451,7 +5131,7 @@ $nsrp = $registration->nsrp;
 
         $request->validate([
             'current_password' => 'required|string',
-            'new_password'     => 'required|string|min:6|confirmed',
+            'new_password'     => \App\Rules\PasswordPolicy::required(),
         ]);
 
         if (!Hash::check($request->current_password, $staff->password)) {
@@ -2470,8 +5150,8 @@ $nsrp = $registration->nsrp;
         $staffRecord = \App\Models\Staff::where('user_id', Auth::id())->first();
         if (!$staffRecord) return response()->json(['error' => 'Unauthorized'], 401);
 
-        \App\Models\Announcement::where('id', $id)
-            ->where('staff_id', $staffRecord->id)
+        \App\Models\Announcement::where('announcements_id', $id)
+            ->where('staff_id', $staffRecord->staff_id)
             ->update(['is_read' => true]);
         return response()->json(['success' => true]);
     }
@@ -2481,7 +5161,7 @@ $nsrp = $registration->nsrp;
         $staffRecord = \App\Models\Staff::where('user_id', Auth::id())->first();
         if (!$staffRecord) return back();
 
-        \App\Models\Announcement::where('staff_id', $staffRecord->id)
+        \App\Models\Announcement::where('staff_id', $staffRecord->staff_id)
             ->where('is_read', false)
             ->update(['is_read' => true]);
         return back()->with('success', 'All notifications marked as read.');
@@ -2492,11 +5172,40 @@ $nsrp = $registration->nsrp;
         $staff = $this->authStaff();
         if (!$staff) return redirect()->route('login');
 
-        $staffRecord = \App\Models\Staff::where('user_id', $staff->id)->first();
+        $staffRecord = \App\Models\Staff::where('user_id', $staff->users_id)->first();
         $notifications = $staffRecord
-            ? \App\Models\Announcement::where('staff_id', $staffRecord->id)->latest()->get()
+            ? \App\Models\Announcement::where('staff_id', $staffRecord->staff_id)->latest()->get()
             : collect();
 
         return view('staff.notifications.index', compact('notifications'));
+    }
+
+    // ── AJAX — fresh unread count + latest notifications, para live ang bell (dili na kinahanglan i-reload ang page) ──
+    public function notificationsFetch()
+    {
+        $staff = $this->authStaff();
+        if (!$staff) return response()->json(['error' => 'Unauthorized'], 401);
+
+        $staffRecord = \App\Models\Staff::where('user_id', $staff->users_id)->first();
+        if (!$staffRecord) return response()->json(['unread_count' => 0, 'notifications' => []]);
+
+        $unreadCount = \App\Models\Announcement::where('staff_id', $staffRecord->staff_id)->where('is_read', false)->count();
+
+        $notifications = \App\Models\Announcement::where('staff_id', $staffRecord->staff_id)
+            ->latest()
+            ->take(5)
+            ->get()
+            ->map(function ($notif) {
+                return [
+                    'id'       => $notif->announcements_id,
+                    'title'    => $notif->title,
+                    'message'  => $notif->message,
+                    'time_ago' => $notif->created_at->diffForHumans(),
+                    'is_read'  => (bool) $notif->is_read,
+                    'url'      => $notif->staffLinkUrl(),
+                ];
+            });
+
+        return response()->json(['unread_count' => $unreadCount, 'notifications' => $notifications]);
     }
 }

@@ -12,7 +12,7 @@ class AdminReportsJobVacancyTopEmployersTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_job_vacancy_reports_show_top_employers_for_office_based_interviews(): void
+    public function test_job_vacancy_reports_show_top_employers_for_company_interview_interviews(): void
     {
         $admin = User::factory()->create(['role' => 'admin', 'status' => 'approved']);
         $this->actingAs($admin);
@@ -41,11 +41,11 @@ class AdminReportsJobVacancyTopEmployersTest extends TestCase
             'certification_date' => now()->toDateString(),
         ]);
 
-        // Create office-based jobs for employer A (2 jobs)
+        // Create company interview jobs for employer A (2 jobs)
         Job::create([
             'company_id' => $employerA->id,
             'title' => 'Software Engineer',
-            'schedule_type' => 'office_based',
+            'schedule_type' => 'company_interview',
             'posting_status' => 'approved',
             'slots' => 5,
             'updated_at' => now(),
@@ -54,23 +54,23 @@ class AdminReportsJobVacancyTopEmployersTest extends TestCase
         Job::create([
             'company_id' => $employerA->id,
             'title' => 'System Administrator',
-            'schedule_type' => 'office_based',
+            'schedule_type' => 'company_interview',
             'posting_status' => 'approved',
             'slots' => 3,
             'updated_at' => now(),
         ]);
 
-        // Create office-based jobs for employer B (1 job)
+        // Create company interview jobs for employer B (1 job)
         Job::create([
             'company_id' => $employerB->id,
             'title' => 'Network Engineer',
-            'schedule_type' => 'office_based',
+            'schedule_type' => 'company_interview',
             'posting_status' => 'approved',
             'slots' => 4,
             'updated_at' => now(),
         ]);
 
-        // Create a non-office-based job (should not be counted)
+        // Create a non-company-interview job (should not be counted)
         Job::create([
             'company_id' => $employerA->id,
             'title' => 'Remote Developer',
@@ -87,12 +87,12 @@ class AdminReportsJobVacancyTopEmployersTest extends TestCase
         ]));
 
         $response->assertStatus(200);
-        $response->assertSeeText('Top 5 Employers by Office-Based Interview Participation');
+        $response->assertSeeText('Top 5 Employers by Company Interview Interview Participation');
         $response->assertSeeText('Monthly');
         $response->assertSeeText('Yearly');
         $response->assertSeeText('Tech Solutions Inc');
         $response->assertSeeText('Digital Services Ltd');
-        $response->assertSeeText('2'); // Tech Solutions Inc has 2 office-based jobs
+        $response->assertSeeText('2'); // Tech Solutions Inc has 2 company interview jobs
     }
 
     public function test_job_vacancy_reports_top_employers_yearly_filter(): void
@@ -112,11 +112,11 @@ class AdminReportsJobVacancyTopEmployersTest extends TestCase
             'certification_date' => now()->toDateString(),
         ]);
 
-        // Create office-based jobs in current year
+        // Create company interview jobs in current year
         Job::create([
             'company_id' => $employer->id,
             'title' => 'Developer',
-            'schedule_type' => 'office_based',
+            'schedule_type' => 'company_interview',
             'posting_status' => 'approved',
             'slots' => 5,
             'updated_at' => now(),
@@ -125,7 +125,7 @@ class AdminReportsJobVacancyTopEmployersTest extends TestCase
         Job::create([
             'company_id' => $employer->id,
             'title' => 'Analyst',
-            'schedule_type' => 'office_based',
+            'schedule_type' => 'company_interview',
             'posting_status' => 'approved',
             'slots' => 3,
             'updated_at' => now(),

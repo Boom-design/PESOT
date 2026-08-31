@@ -24,16 +24,39 @@ class ApplicationController extends Controller
         $jobseeker = $this->authJobseeker();
         if (!$jobseeker) return redirect()->route('login');
 
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
         if (!$registration) {
             return redirect()->route('jobseeker.nsrp')
                 ->with('info', 'Please complete your NSRP Registration Form first before applying.');
         }
 
-        $job = Job::where('id', $jobId)->where('status', 'open')->firstOrFail();
+        // ── Job::active() ang basihan, dili ang status ra. Tulo ka rason nga
+        // ── dili na dawaton ang aplikasyon, ug ang status ra nakakita sa usa:
+        // ──   1. gisira ang posting
+        // ──   2. milabay na ang deadline — ang row magpabilin nga 'open'
+        // ──      hangtod modagan ang jobs:expire-monthly sa sunod nga buntag
+        // ──   3. napuno na ang slots sa tibuok posting group — walay
+        // ──      nagsira niini, ang scope ra ang nakahibalo
+        // ── Ang 404 dili igo dinhi: ang jobseeker nag-klik ug buton nga iyang
+        // ── nakita, ug angay siyang masultihan kung nganong wala na siya. ──
+        $job = Job::find($jobId);
+
+        if (!$job) {
+            abort(404);
+        }
+
+        if (!Job::active()->where('job_qualifications_id', $jobId)->exists()) {
+            $reason = match (true) {
+                $job->is_expired => 'The deadline for this vacancy has passed.',
+                $job->group_hired >= (int) $job->slots => 'All slots for this vacancy have been filled.',
+                default => 'This vacancy is no longer accepting applications.',
+            };
+
+            return redirect()->route('jobseeker.jobs')->with('error', $reason);
+        }
 
         // Check if already applied
-        $existing = Application::where('jobseeker_id', $registration->id)
+        $existing = Application::where('jobseeker_id', $registration->jobseeker_registrations_id)
             ->where('job_id', $jobId)->first();
 
         if ($existing) {
@@ -42,16 +65,16 @@ class ApplicationController extends Controller
         }
 
         // Compute match percentage
-        $breakdown = $this->evaluateMatch($jobseeker->id, $job);
+        $breakdown = $this->evaluateMatch($jobseeker->users_id, $job);
         $matchPercentage = $breakdown['percentage'];
 
         $application = Application::create([
-            'jobseeker_id'           => $registration->id,
+            'jobseeker_id'           => $registration->jobseeker_registrations_id,
             'job_id'                 => $jobId,
             'status'                 => 'pending',
             'match_percentage'       => $matchPercentage,
             'inhouse_participation'  => $job->schedule_type === 'inhouse' ? 'pending' : null,
-            'office_participation'   => $job->schedule_type === 'office_based' ? 'pending' : null,
+            'company_interview_participation'   => $job->schedule_type === 'company_interview' ? 'pending' : null,
         ]);
 
         // ── Notify ang employer nga naay bag-ong applicant ──
@@ -61,28 +84,27 @@ class ApplicationController extends Controller
             'title'          => 'New Job Applicant 📨',
             'message'        => ($applicantName ?: 'A jobseeker') . ' applied for "' . $job->title . '".',
             'reference_type' => 'job',
-            'reference_id'   => $job->id,
+            'reference_id'   => $job->job_qualifications_id,
         ], $job->company_id);
 
         // ── In-house: prompt DAYON ra kung 5 days na lang o layo pa ang nabilin sa preferred_date; ──
         // ── kung layo pa (>5 days), mag-hulat sa scheduled reminder (5 days before) ──
         if ($job->schedule_type === 'inhouse') {
-            $daysUntil = $job->preferred_date ? now()->diffInDays(\Carbon\Carbon::parse($job->preferred_date), false) : null;
-            if ($daysUntil !== null && $daysUntil >= 0 && $daysUntil <= 5) {
+            if ($job->isInhousePromptDue()) {
                 $application->update(['inhouse_participation_notified_at' => now()]);
                 return redirect()->route('jobseeker.jobs.show', $jobId)
                     ->with('success', 'Application submitted successfully!')
-                    ->with('show_inhouse_prompt', $application->id);
+                    ->with('show_inhouse_prompt', $application->job_matching_id);
             }
             return redirect()->route('jobseeker.jobs.show', $jobId)
                 ->with('success', 'Application submitted successfully!');
         }
 
-        // ── Office Based: prompt dayon, walay 5-day rule — ipakita ang company name + address ──
-        if ($job->schedule_type === 'office_based') {
+        // ── Company Interview: prompt dayon, walay 5-day rule — ipakita ang company name + address ──
+        if ($job->schedule_type === 'company_interview') {
             return redirect()->route('jobseeker.jobs.show', $jobId)
                 ->with('success', 'Application submitted successfully!')
-                ->with('show_office_prompt', $application->id);
+                ->with('show_company_interview_prompt', $application->job_matching_id);
         }
 
         return redirect()->route('jobseeker.jobs.show', $jobId)
@@ -96,29 +118,36 @@ class ApplicationController extends Controller
         if (!$staffUser || $staffUser->role !== 'staff') return redirect()->route('login');
 
         $request->validate([
-            'job_id' => 'required|exists:job_qualifications,id',
+            'job_id' => 'required|exists:job_qualifications,job_qualifications_id',
         ]);
 
         $registration = JobseekerRegistration::findOrFail($registrationId);
-        $job = Job::where('id', $request->job_id)->where('status', 'open')->firstOrFail();
+        // Parehas nga lagda sa walk-in nga gi-apply sa staff: ang nalabyan ug
+        // ang napuno nga bakante dili na dawaton.
+        $job = Job::active()->where('job_qualifications_id', $request->job_id)->first();
 
-        $existing = Application::where('jobseeker_id', $registration->id)
-            ->where('job_id', $job->id)->first();
+        if (!$job) {
+            return back()->with('error',
+                'That vacancy is no longer open — its deadline has passed or every slot is filled.');
+        }
+
+        $existing = Application::where('jobseeker_id', $registration->jobseeker_registrations_id)
+            ->where('job_id', $job->job_qualifications_id)->first();
 
         if ($existing) {
             return back()->with('error', 'This jobseeker has already applied for this job.');
         }
 
-        $breakdown = $this->computeMatchBreakdownByRegistrationId($registration->id, $job);
+        $breakdown = $this->computeMatchBreakdownByRegistrationId($registration->jobseeker_registrations_id, $job);
 
         Application::create([
-            'jobseeker_id'          => $registration->id,
-            'job_id'                => $job->id,
+            'jobseeker_id'          => $registration->jobseeker_registrations_id,
+            'job_id'                => $job->job_qualifications_id,
             'status'                => 'pending',
             'match_percentage'      => $breakdown['percentage'],
             // ── Walk-in jobseekers naa na mismo sa office pag-apply — auto-accepted dayon ang participation, dili na kinahanglan pa i-confirm (kay walay account/paagi sila ma-respond sa prompt) ──
             'inhouse_participation' => $job->schedule_type === 'inhouse' ? 'accepted' : null,
-            'office_participation'  => $job->schedule_type === 'office_based' ? 'accepted' : null,
+            'company_interview_participation'  => $job->schedule_type === 'company_interview' ? 'accepted' : null,
         ]);
 
         $applicantName = trim(($registration->first_name ?? '') . ' ' . ($registration->surname ?? ''));
@@ -127,13 +156,42 @@ class ApplicationController extends Controller
             'title'          => 'New Job Applicant 📨',
             'message'        => ($applicantName ?: 'A jobseeker') . ' applied for "' . $job->title . '".',
             'reference_type' => 'job',
-            'reference_id'   => $job->id,
+            'reference_id'   => $job->job_qualifications_id,
         ], $job->company_id);
 
         return back()->with('success', 'Application submitted for ' . ($applicantName ?: 'the jobseeker') . '!');
     }
 
     // ── RESPOND SA IN-HOUSE INTERVIEW PARTICIPATION PROMPT ──
+    // ── Ang pag-decline dili permanente. Pilot testing 2026-08-13: mahimong
+    // ── namali ra ug click ang jobseeker, o naay klase niadtong adlawa nga
+    // ── nakansela. Ang rekord magpabilin aron makita sa employer kung pila ang
+    // ── ni-decline — mao nay basihan sa opisina sa pag-plano sa venue — apan
+    // ── makabalik gihapon ang tawo samtang buhi pa ang posting. ──
+    private function guardParticipationChange(Application $application, string $response)
+    {
+        if ($response !== 'accepted') {
+            return null;
+        }
+
+        $job = Job::withGroupHiredCount()->find($application->job_id);
+
+        if (!$job) {
+            return back()->with('error', 'This posting is no longer available.');
+        }
+
+        // Kaugalingon nga mensahe: ang lifecycle_block_reason gisulat para sa
+        // employer nga mag-edit, dili para sa jobseeker nga mo-apil.
+        $reason = match ($job->lifecycle_status) {
+            'active', 'waiting' => null,
+            'filled'  => 'All ' . $job->slots . ' slot(s) for this position have been filled.',
+            'expired' => 'This posting closed on ' . optional($job->deadline)->format('M d, Y') . '.',
+            default   => 'The employer has closed this posting.',
+        };
+
+        return $reason ? back()->with('error', $reason) : null;
+    }
+
     public function respondInhouseParticipation(Request $request, $id)
     {
         $jobseeker = $this->authJobseeker();
@@ -143,23 +201,31 @@ class ApplicationController extends Controller
             'response' => 'required|in:accepted,declined',
         ]);
 
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
 
-        $application = Application::where('id', $id)
-            ->where('jobseeker_id', $registration->id ?? 0)
+        $application = Application::where('job_matching_id', $id)
+            ->where('jobseeker_id', $registration->jobseeker_registrations_id ?? 0)
             ->firstOrFail();
+
+        if ($guard = $this->guardParticipationChange($application, $request->response)) {
+            return $guard;
+        }
+
+        $rejoined = $application->inhouse_participation === 'declined' && $request->response === 'accepted';
 
         $application->update(['inhouse_participation' => $request->response]);
 
         $msg = $request->response === 'accepted'
-            ? 'You have confirmed your participation in the in-house interview! Check your Schedules page for details.'
-            : 'You have declined to participate in the in-house interview.';
+            ? ($rejoined
+                ? 'You are back in for the in-house interview. Check your Schedules page for details.'
+                : 'You have confirmed your participation in the in-house interview! Check your Schedules page for details.')
+            : 'You have declined to participate in the in-house interview. You can still change your mind while the posting is open.';
 
         return back()->with('success', $msg);
     }
 
-    // ── RESPOND SA OFFICE BASED PARTICIPATION PROMPT ──
-    public function respondOfficeParticipation(Request $request, $id)
+    // ── RESPOND SA COMPANY INTERVIEW PARTICIPATION PROMPT ──
+    public function respondCompanyInterviewParticipation(Request $request, $id)
     {
         $jobseeker = $this->authJobseeker();
         if (!$jobseeker) return redirect()->route('login');
@@ -168,24 +234,33 @@ class ApplicationController extends Controller
             'response' => 'required|in:accepted,declined',
         ]);
 
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->id)->first();
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
 
-        $application = Application::where('id', $id)
-            ->where('jobseeker_id', $registration->id ?? 0)
+        $application = Application::where('job_matching_id', $id)
+            ->where('jobseeker_id', $registration->jobseeker_registrations_id ?? 0)
             ->firstOrFail();
 
-        if ($request->response === 'declined') {
-            // ── I-delete ang application record — free na siya mo-apply pag-usab sa parehas nga job ──
-            $jobId = $application->job_id;
-            $application->delete();
-
-            return redirect()->route('jobseeker.jobs.show', $jobId)
-                ->with('success', 'You have declined this job posting. You may apply again anytime.');
+        // ── Kaniadto gi-DELETE ang row dinhi. Duha ka sayop kadto: mawala ang
+        // ── rekord nga naay ni-decline (nga gikinahanglan sa employer sa
+        // ── pag-plano), ug lahi kaayo siya sa in-house nga wala mo-delete.
+        // ── Karon parehas na sila: magpabilin ang rekord, ug makabalik ang
+        // ── jobseeker samtang buhi pa ang posting. ──
+        if ($guard = $this->guardParticipationChange($application, $request->response)) {
+            return $guard;
         }
 
-        $application->update(['office_participation' => $request->response]);
+        $rejoined = $application->company_interview_participation === 'declined' && $request->response === 'accepted';
 
-        return back()->with('success', 'You have confirmed your interest in this job posting!');
+        $application->update(['company_interview_participation' => $request->response]);
+
+        if ($request->response === 'declined') {
+            return back()->with('success',
+                'You have declined this job posting. You can still change your mind while it is open.');
+        }
+
+        return back()->with('success', $rejoined
+            ? 'You are back in for this job posting!'
+            : 'You have confirmed your interest in this job posting!');
     }
 
     // ── PUBLIC wrapper — percentage ra (gigamit sa mga listing/table nga wala kinahanglan og breakdown) ──
@@ -315,7 +390,7 @@ class ApplicationController extends Controller
                 if (!empty($education[$lvl]['course']))       $courses[] = $education[$lvl]['course'];
                 if (!empty($education[$lvl]['course_other'])) $courses[] = $education[$lvl]['course_other'];
             }
-            $matched = $this->textListMatches($job->course_major, $courses);
+            $matched = $this->courseMatches($job->course_major, $courses);
             $addCriterion('Course/Major: ' . $job->course_major, 8, $matched,
                 $matched ? null : (empty($courses) ? 'No course on record' : 'Your course: ' . implode(', ', $courses)));
         }
@@ -499,5 +574,73 @@ class ApplicationController extends Controller
             if (str_contains($needle, $hay) || str_contains($hay, $needle)) return true;
         }
         return false;
+    }
+
+    /**
+     * Course/Major match, with the degree wrapper taken off both sides first.
+     *
+     * The two sides of this comparison are not written by the same kind of
+     * person. The jobseeker picks from a fixed dropdown on the NSRP form and
+     * always ends up with the same 47 strings — "BS Nursing". The employer
+     * types the requirement free-hand, and writes it the way their industry
+     * writes it: "Bachelor of Science in Nursing", "Nursing / Caregiving",
+     * "BSc Nursing".
+     *
+     * Compared whole, none of those three contains "BS Nursing" as a run of
+     * characters, so a nurse scored zero on a nursing vacancy. The word
+     * "nursing" is in both every time — it is only the degree wrapper in front
+     * of it that differs, and that wrapper carries no meaning for matching.
+     *
+     * Stripping it is deliberately the smallest fix that works. Splitting into
+     * words and matching any one of them would pair "BS Marine Engineering"
+     * with "BS Marine Transportation" on the word "marine" — two different
+     * professions. Checked against all 47 dropdown courses, this rule pairs no
+     * course with a different course except AB Communication and AB Mass
+     * Communication, which an employer asking for one would accept from the
+     * other anyway.
+     *
+     * Not handled: bare acronyms. "BSN" shares no word with "BS Nursing" and
+     * would need a synonym list, which is a table somebody has to maintain.
+     */
+    private function courseMatches(?string $required, array $courses): bool
+    {
+        if (empty($required) || empty($courses)) return false;
+
+        $needle = $this->stripDegreePrefix($required);
+        if ($needle === '') return false;
+
+        foreach ($courses as $course) {
+            $hay = $this->stripDegreePrefix((string) $course);
+            if ($hay === '') continue;
+            if (str_contains($needle, $hay) || str_contains($hay, $needle)) return true;
+        }
+
+        return false;
+    }
+
+    /** Lowercase, punctuation out, and the leading degree words removed. */
+    private function stripDegreePrefix(string $text): string
+    {
+        $text = strtolower(trim($text));
+        $text = preg_replace('/[^a-z0-9\s]+/', ' ', $text);
+        $text = trim(preg_replace('/\s+/', ' ', $text));
+
+        // Longest first, so "bachelor of science in" is taken before "bachelor of".
+        $prefixes = [
+            'bachelor of science in', 'bachelor of arts in', 'bachelor of science',
+            'bachelor of arts', 'bachelors in', 'bachelors of', 'bachelor in', 'bachelor of',
+            'master of science in', 'master of arts in', 'master of science',
+            'master of arts', 'masters in', 'masters of', 'master in', 'master of',
+            'associate in', 'associate of',
+            'bsc', 'bsed', 'bse', 'bs', 'ab', 'ba',
+        ];
+
+        foreach ($prefixes as $prefix) {
+            if (str_starts_with($text, $prefix . ' ')) {
+                return trim(substr($text, strlen($prefix) + 1));
+            }
+        }
+
+        return $text;
     }
 }

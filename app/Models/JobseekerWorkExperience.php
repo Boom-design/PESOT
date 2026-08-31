@@ -8,6 +8,8 @@ class JobseekerWorkExperience extends Model
 {
     protected $table = 'jobseeker_work_experiences';
 
+    protected $primaryKey = 'jobseeker_work_experiences_id';
+
     protected $fillable = [
         'jobseeker_nsrp_registration_id',
         'company_name',

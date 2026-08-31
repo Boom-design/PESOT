@@ -2,12 +2,13 @@
 
 @section('content')
 
+@include('partials.jobseeker-tabs')
+
+{{-- The Registrations tab above is the way back; the old link here said the
+     same thing twice. --}}
 <div class="mb-4">
-    <a href="{{ route('staff.registrations') }}" style="font-size:13px;color:#4dd9c0;text-decoration:none;">
-        <i class="bi bi-arrow-left me-1"></i> Back to Jobseekers
-    </a>
-    <h5 class="fw-bold mt-2 mb-0" style="color:#2d7a5f;">Walk-in NSRP Registration</h5>
-    <div style="font-size:12px;color:#888;">Encode NSRP form for a walk-in jobseeker (no account)</div>
+    <h5 class="fw-bold mb-0" style="color:var(--g-700);">Walk-in NSRP Registration</h5>
+    <div style="font-size:12px;color:var(--n-500);">Encode NSRP form for a walk-in jobseeker (no account)</div>
 </div>
 
 <div class="card border-0 shadow-sm rounded-3">
@@ -21,19 +22,19 @@
             {{-- ══════════════════════════════════════════ --}}
             <div class="nsrp-step" data-step="1">
                 <div style="text-align:center;padding-left:14px;padding-right:14px;margin-bottom:16px;">
-                    <div style="font-size:10px;color:#888;">Republic of the Philippines</div>
-                    <div style="font-size:10px;color:#888;">Department of Labor and Employment</div>
+                    <div style="font-size:10px;color:var(--n-500);">Republic of the Philippines</div>
+                    <div style="font-size:10px;color:var(--n-500);">Department of Labor and Employment</div>
                     <h6 style="margin:6px 0 0;font-size:13px;line-height:1.4;">
-                        <i class="bi bi-clipboard-check me-2" style="color:#4dd9c0;"></i>
+                        <i class="ph ph-clipboard-text me-2" style="color:var(--g-600);"></i>
                         NATIONAL SKILLS REGISTRATION PROGRAM — JOBSEEKER REGISTRATION FORM
                     </h6>
-                    <div style="font-size:10px;color:#888;margin-top:2px;">NSRP Form 1 — September 2020</div>
+                    <div style="font-size:10px;color:var(--n-500);margin-top:2px;">NSRP Form 1 — September 2020</div>
                 </div>
 
                 <div class="d-flex align-items-start gap-2 p-3 mb-4 rounded-3"
-                    style="background:#f0f9f6; border:1px solid #a8e6cf;">
-                    <i class="bi bi-info-circle-fill" style="color:#4dd9c0; font-size:18px; margin-top:1px;"></i>
-                    <div style="font-size:12px; color:#2d7a5f; line-height:1.6;">
+                    style="background:var(--n-50); border:1px solid var(--n-200);">
+                    <i class="ph-fill ph-info" style="color:var(--g-600); font-size:18px; margin-top:1px;"></i>
+                    <div style="font-size:12px; color:var(--g-700); line-height:1.6;">
                         <strong>INSTRUCTIONS:</strong> Encode the information exactly as written on the walk-in jobseeker's
                         physical NSRP form. Check appropriate boxes. Indicate "NA" if not applicable.
                         All fields marked with <strong>*</strong> are required.
@@ -43,28 +44,29 @@
                 {{-- ══════════════════════════════════════════ --}}
                 {{-- OCR AUTO-FILL — Upload Photo of the Physical NSRP Form --}}
                 {{-- ══════════════════════════════════════════ --}}
-                <div class="p-3 mb-4 rounded-3" style="background:#fff8e1; border:1.5px solid #f0d878;">
+                <div class="p-3 mb-4 rounded-3" style="background:var(--warn-bg); border:1px solid var(--warn-br);">
                     <div class="d-flex align-items-center gap-2 mb-2">
-                        <i class="bi bi-camera-fill" style="color:#e6a817; font-size:18px;"></i>
-                        <div style="font-size:13px;font-weight:700;color:#8a6d00;">
+                        <i class="ph-fill ph-camera" style="color:var(--warn); font-size:18px;"></i>
+                        <div style="font-size:13px;font-weight:700;color:var(--warn);">
                             Optional: Auto-fill Text Fields from a Photo of the Physical Form
                         </div>
                     </div>
-                    <div style="font-size:11.5px; color:#8a6d00; line-height:1.6; margin-bottom:12px;">
-                        <strong>⚠️ Important:</strong> This only reads a few text fields (Name, Contact Number, Religion) —
-                        it does <strong>not</strong> read checkboxes/selections. Accuracy depends heavily on handwriting
-                        legibility. Always review and correct all fields before submitting.
-                        Accepted formats: JPG, PNG. Max file size: 5MB.
+                    <div style="font-size:11.5px; color:var(--warn); line-height:1.6; margin-bottom:12px;">
+                        <strong>⚠️ Important:</strong> Choose <strong>both sides</strong> of the form — front and back.
+                        The order does not matter. Checkboxes are read reliably; handwritten names are often wrong,
+                        so confirm them with the applicant. Fields the scanner was unsure about are highlighted.
+                        <strong>Always review every field before submitting.</strong>
+                        Lay the paper flat, keep all four corners in the photo. JPG or PNG, max 5MB each.
                     </div>
                     <div class="d-flex flex-wrap align-items-center gap-2">
-                        <input type="file" id="ocrImageInput" accept=".jpg,.jpeg,.png"
+                        <input type="file" id="ocrImageInput" accept=".jpg,.jpeg,.png" multiple
                             class="form-control peso-input" style="max-width:320px;">
                         <button type="button" id="ocrScanBtn" class="btn btn-sm fw-semibold"
-                                style="background:linear-gradient(90deg,#f0d878,#e6a817);color:#5c4600;border:none;border-radius:8px;font-size:12px;padding:8px 16px;"
+                                style="background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-br);border-radius:8px;font-size:12px;padding:8px 16px;"
                                 onclick="scanNsrpImage()">
-                            <i class="bi bi-search me-1"></i> Scan & Auto-fill
+                            <i class="ph ph-magnifying-glass me-1"></i> Scan & Auto-fill
                         </button>
-                        <span id="ocrStatus" style="font-size:11.5px;color:#8a6d00;"></span>
+                        <span id="ocrStatus" style="font-size:11.5px;color:var(--warn);"></span>
                     </div>
                 </div>
             </div>
@@ -75,11 +77,11 @@
             <div class="nsrp-step" data-step="2" style="display:none;">
 
                 <div class="mb-4">
-                    <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid #e8f5f0;">
-                        <div style="width:28px;height:28px;background:linear-gradient(135deg,#90d870,#4dd9c0);border-radius:8px;display:flex;align-items:center;justify-content:center;">
-                            <i class="bi bi-person" style="color:#fff;font-size:13px;"></i>
+                    <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid var(--n-200);">
+                        <div style="width:28px;height:28px;background:var(--g-600);border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                            <i class="ph ph-user" style="color:#fff;font-size:13px;"></i>
                         </div>
-                        <h6 style="margin:0;font-size:13px;font-weight:700;color:#2d7a5f;">I. Personal Information</h6>
+                        <h6 style="margin:0;font-size:13px;font-weight:700;color:var(--g-700);">I. Personal Information</h6>
                     </div>
                     <div class="row g-3">
                         <div class="col-md-3">
@@ -113,7 +115,7 @@
                             <label class="peso-label">Age *</label>
                             <input type="number" name="age" id="age_field" class="form-control peso-input"
                                 value="{{ old('age') }}" required min="1" readonly
-                                style="background:#f0f9f6;cursor:not-allowed;">
+                                style="background:var(--n-50);cursor:not-allowed;">
                         </div>
                         <div class="col-md-2">
                             <label class="peso-label">Sex *</label>
@@ -150,11 +152,16 @@
                         </div>
                         <div class="col-md-3">
                             <label class="peso-label">Contact Number/s *</label>
-                            <input type="text" name="contact_number" class="form-control peso-input" value="{{ old('contact_number') }}" required>
+                            <input type="text" name="contact_number" class="form-control peso-input"
+                                inputmode="numeric" maxlength="11" pattern="09[0-9]{9}"
+                                placeholder="09171234567" value="{{ old('contact_number') }}" required>
                         </div>
+                        {{-- Required: kini ang magsumpay niini nga rekord sa account
+                             nga himoon sa maong tawo ugma. Kung wala, mapugos siyag
+                             sulat pag-usab sa tibuok porma. --}}
                         <div class="col-md-2">
-                            <label class="peso-label">Email</label>
-                            <input type="email" name="reg_email" class="form-control peso-input" value="{{ old('reg_email') }}">
+                            <label class="peso-label">Email *</label>
+                            <input type="email" name="reg_email" class="form-control peso-input" value="{{ old('reg_email') }}" required>
                         </div>
 
                         <div class="col-12">
@@ -168,7 +175,7 @@
                                         id="dis_{{ Str::slug($dis) }}"
                                         {{ in_array($dis, $disabilities) ? 'checked' : '' }}>
                                     <label class="form-check-label" for="dis_{{ Str::slug($dis) }}"
-                                        style="font-size:12px;color:#2d7a5f;">{{ $dis }}</label>
+                                        style="font-size:12px;color:var(--g-700);">{{ $dis }}</label>
                                 </div>
                                 @endforeach
                             </div>
@@ -179,9 +186,9 @@
                         </div>
 
                         <div class="col-12 mt-2">
-                            <div style="font-size:12px;font-weight:700;color:#2d7a5f;margin-bottom:8px;">
-                                <i class="bi bi-house-fill me-1" style="color:#4dd9c0;"></i> Permanent Address
-                                <span style="font-size:11px;font-weight:400;color:#888;">(Fill this first if different from present address)</span>
+                            <div style="font-size:12px;font-weight:700;color:var(--g-700);margin-bottom:8px;">
+                                <i class="ph-fill ph-house me-1" style="color:var(--g-600);"></i> Permanent Address
+                                <span style="font-size:11px;font-weight:400;color:var(--n-500);">(Fill this first if different from present address)</span>
                             </div>
                         </div>
                         <div class="col-md-3">
@@ -208,12 +215,12 @@
                         </div>
 
                         <div class="col-12 mt-3">
-                            <div style="font-size:12px;font-weight:700;color:#2d7a5f;margin-bottom:8px;">
-                                <i class="bi bi-geo-alt me-1" style="color:#4dd9c0;"></i> Present Address
+                            <div style="font-size:12px;font-weight:700;color:var(--g-700);margin-bottom:8px;">
+                                <i class="ph ph-map-pin me-1" style="color:var(--g-600);"></i> Present Address
                             </div>
                             <div class="form-check mb-2">
                                 <input class="form-check-input" type="checkbox" name="same_as_permanent" id="same_as_permanent" value="1" onchange="toggleSameAsPermanent()">
-                                <label class="form-check-label" for="same_as_permanent" style="font-size:12px;color:#2d7a5f;">Same as Permanent Address</label>
+                                <label class="form-check-label" for="same_as_permanent" style="font-size:12px;color:var(--g-700);">Same as Permanent Address</label>
                             </div>
                         </div>
                         <div class="col-md-3">
@@ -242,11 +249,11 @@
                 </div>
 
                 <div class="mb-2">
-                    <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid #e8f5f0;">
-                        <div style="width:28px;height:28px;background:linear-gradient(135deg,#90d870,#4dd9c0);border-radius:8px;display:flex;align-items:center;justify-content:center;">
-                            <i class="bi bi-briefcase" style="color:#fff;font-size:13px;"></i>
+                    <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid var(--n-200);">
+                        <div style="width:28px;height:28px;background:var(--g-600);border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                            <i class="ph ph-briefcase" style="color:#fff;font-size:13px;"></i>
                         </div>
-                        <h6 style="margin:0;font-size:13px;font-weight:700;color:#2d7a5f;">Employment Status / Type</h6>
+                        <h6 style="margin:0;font-size:13px;font-weight:700;color:var(--g-700);">Employment Status / Type</h6>
                     </div>
                     <div class="row g-3">
                         <div class="col-md-4">
@@ -264,7 +271,7 @@
                                 @foreach(['wage_employed' => 'Wage Employed', 'self_employed' => 'Self-Employed (please specify)'] as $val => $label)
                                 <div class="form-check">
                                     <input class="form-check-input" type="radio" name="employed_sub_type" value="{{ $val }}" id="emp_{{ $val }}" onchange="toggleSelfEmployed()">
-                                    <label class="form-check-label" for="emp_{{ $val }}" style="font-size:12px;color:#2d7a5f;">{{ $label }}</label>
+                                    <label class="form-check-label" for="emp_{{ $val }}" style="font-size:12px;color:var(--g-700);">{{ $label }}</label>
                                 </div>
                                 @endforeach
                             </div>
@@ -295,7 +302,7 @@
                                         ] as $val => $label)
                                         <div class="form-check">
                                             <input class="form-check-input" type="radio" name="unemployed_reason" value="{{ $val }}" id="unemp_{{ $val }}" onchange="toggleUnemployedOther()">
-                                            <label class="form-check-label" for="unemp_{{ $val }}" style="font-size:12px;color:#2d7a5f;">{{ $label }}</label>
+                                            <label class="form-check-label" for="unemp_{{ $val }}" style="font-size:12px;color:var(--g-700);">{{ $label }}</label>
                                         </div>
                                         @endforeach
                                     </div>
@@ -363,11 +370,11 @@
             {{-- STEP 3: II. JOB PREFERENCE --}}
             {{-- ══════════════════════════════════════════ --}}
             <div class="nsrp-step" data-step="3" style="display:none;">
-                <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid #e8f5f0;">
-                    <div style="width:28px;height:28px;background:linear-gradient(135deg,#90d870,#4dd9c0);border-radius:8px;display:flex;align-items:center;justify-content:center;">
-                        <i class="bi bi-search" style="color:#fff;font-size:13px;"></i>
+                <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid var(--n-200);">
+                    <div style="width:28px;height:28px;background:var(--g-600);border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                        <i class="ph ph-magnifying-glass" style="color:#fff;font-size:13px;"></i>
                     </div>
-                    <h6 style="margin:0;font-size:13px;font-weight:700;color:#2d7a5f;">II. Job Preference</h6>
+                    <h6 style="margin:0;font-size:13px;font-weight:700;color:var(--g-700);">II. Job Preference</h6>
                 </div>
                 <div class="row g-3">
                     <div class="col-md-4">
@@ -415,29 +422,29 @@
             {{-- STEP 4: III. LANGUAGE / DIALECT PROFICIENCY --}}
             {{-- ══════════════════════════════════════════ --}}
             <div class="nsrp-step" data-step="4" style="display:none;">
-                <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid #e8f5f0;">
-                    <div style="width:28px;height:28px;background:linear-gradient(135deg,#90d870,#4dd9c0);border-radius:8px;display:flex;align-items:center;justify-content:center;">
-                        <i class="bi bi-translate" style="color:#fff;font-size:13px;"></i>
+                <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid var(--n-200);">
+                    <div style="width:28px;height:28px;background:var(--g-600);border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                        <i class="ph ph-translate" style="color:#fff;font-size:13px;"></i>
                     </div>
-                    <h6 style="margin:0;font-size:13px;font-weight:700;color:#2d7a5f;">III. Language / Dialect Proficiency</h6>
+                    <h6 style="margin:0;font-size:13px;font-weight:700;color:var(--g-700);">III. Language / Dialect Proficiency</h6>
                 </div>
                 @php $languages = ['English', 'Filipino', 'Mandarin']; @endphp
                 <div class="table-responsive">
                     <table class="table" style="font-size:12px;min-width:600px;" id="languageTable">
                         <thead>
-                            <tr style="background:#f0f9f6;">
-                                <th style="color:#2d7a5f;padding:10px 12px;">Language/Dialect</th>
-                                <th style="color:#2d7a5f;padding:10px 12px;text-align:center;">Read</th>
-                                <th style="color:#2d7a5f;padding:10px 12px;text-align:center;">Write</th>
-                                <th style="color:#2d7a5f;padding:10px 12px;text-align:center;">Speak</th>
-                                <th style="color:#2d7a5f;padding:10px 12px;text-align:center;">Understand</th>
+                            <tr style="background:var(--n-50);">
+                                <th style="color:var(--g-700);padding:10px 12px;">Language/Dialect</th>
+                                <th style="color:var(--g-700);padding:10px 12px;text-align:center;">Read</th>
+                                <th style="color:var(--g-700);padding:10px 12px;text-align:center;">Write</th>
+                                <th style="color:var(--g-700);padding:10px 12px;text-align:center;">Speak</th>
+                                <th style="color:var(--g-700);padding:10px 12px;text-align:center;">Understand</th>
                                 <th></th>
                             </tr>
                         </thead>
                         <tbody id="languageTableBody">
                             @foreach($languages as $lang)
                             <tr>
-                                <td style="padding:8px 12px;font-weight:600;color:#2d7a5f;">{{ $lang }}</td>
+                                <td style="padding:8px 12px;font-weight:600;color:var(--g-700);">{{ $lang }}</td>
                                 @foreach(['read','write','speak','understand'] as $skill)
                                 <td style="padding:8px 12px;text-align:center;">
                                     <input class="form-check-input" type="checkbox" name="language_proficiency[{{ $lang }}][{{ $skill }}]" value="1">
@@ -461,9 +468,9 @@
                     </table>
                 </div>
                 <button type="button" class="btn btn-sm fw-semibold"
-                    style="border:1.5px dashed #a8e6cf;color:#2d7a5f;background:#fff;border-radius:8px;font-size:12px;"
+                    style="border:1px dashed var(--n-200);color:var(--g-700);background:#fff;border-radius:8px;font-size:12px;"
                     onclick="addLanguageRow()">
-                    <i class="bi bi-plus-circle me-1"></i> Add Other Language
+                    <i class="ph ph-plus-circle me-1"></i> Add Other Language
                 </button>
             </div>
 
@@ -471,11 +478,11 @@
             {{-- STEP 5: IV. EDUCATIONAL BACKGROUND --}}
             {{-- ══════════════════════════════════════════ --}}
             <div class="nsrp-step" data-step="5" style="display:none;">
-                <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid #e8f5f0;">
-                    <div style="width:28px;height:28px;background:linear-gradient(135deg,#90d870,#4dd9c0);border-radius:8px;display:flex;align-items:center;justify-content:center;">
-                        <i class="bi bi-mortarboard" style="color:#fff;font-size:13px;"></i>
+                <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid var(--n-200);">
+                    <div style="width:28px;height:28px;background:var(--g-600);border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                        <i class="ph ph-graduation-cap" style="color:#fff;font-size:13px;"></i>
                     </div>
-                    <h6 style="margin:0;font-size:13px;font-weight:700;color:#2d7a5f;">IV. Educational Background</h6>
+                    <h6 style="margin:0;font-size:13px;font-weight:700;color:var(--g-700);">IV. Educational Background</h6>
                 </div>
                 @php
                     $eduLevels = ['Elementary','Junior High School','Senior High School','Tertiary / College','Graduate Studies/Post-graduate/Masters'];
@@ -514,11 +521,11 @@
                     <div class="d-flex gap-3 mt-1">
                         <div class="form-check">
                             <input class="form-check-input" type="radio" name="currently_in_school" value="1" id="inschool_yes">
-                            <label class="form-check-label" for="inschool_yes" style="font-size:12px;color:#2d7a5f;">Yes</label>
+                            <label class="form-check-label" for="inschool_yes" style="font-size:12px;color:var(--g-700);">Yes</label>
                         </div>
                         <div class="form-check">
                             <input class="form-check-input" type="radio" name="currently_in_school" value="0" id="inschool_no" checked>
-                            <label class="form-check-label" for="inschool_no" style="font-size:12px;color:#2d7a5f;">No</label>
+                            <label class="form-check-label" for="inschool_no" style="font-size:12px;color:var(--g-700);">No</label>
                         </div>
                     </div>
                 </div>
@@ -526,13 +533,13 @@
                 <div class="table-responsive" style="min-width:0;">
                     <table class="table" style="font-size:12px;min-width:800px;">
                         <thead>
-                            <tr style="background:#f0f9f6;">
-                                <th style="color:#2d7a5f;padding:10px 12px;">Level</th>
-                                <th style="color:#2d7a5f;padding:10px 12px;">School Name</th>
-                                <th style="color:#2d7a5f;padding:10px 12px;">Course / Strand</th>
-                                <th style="color:#2d7a5f;padding:10px 12px;">Year Graduated / Level Reached</th>
-                                <th style="color:#2d7a5f;padding:10px 12px;">Level Reached<br><span style="font-weight:400;">(if undergrad)</span></th>
-                                <th style="color:#2d7a5f;padding:10px 12px;">Year Last Attended<br><span style="font-weight:400;">(if undergrad)</span></th>
+                            <tr style="background:var(--n-50);">
+                                <th style="color:var(--g-700);padding:10px 12px;">Level</th>
+                                <th style="color:var(--g-700);padding:10px 12px;">School Name</th>
+                                <th style="color:var(--g-700);padding:10px 12px;">Course / Strand</th>
+                                <th style="color:var(--g-700);padding:10px 12px;">Year Graduated / Level Reached</th>
+                                <th style="color:var(--g-700);padding:10px 12px;">Level Reached<br><span style="font-weight:400;">(if undergrad)</span></th>
+                                <th style="color:var(--g-700);padding:10px 12px;">Year Last Attended<br><span style="font-weight:400;">(if undergrad)</span></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -549,14 +556,14 @@
                                 else                $yearGradOptions = $grad_year_grad;
                             @endphp
                             <tr>
-                                <td style="padding:8px 12px;font-weight:600;color:#2d7a5f;white-space:nowrap;">{{ $level }}</td>
+                                <td style="padding:8px 12px;font-weight:600;color:var(--g-700);white-space:nowrap;">{{ $level }}</td>
                                 <td style="padding:6px 8px;">
                                     <input type="text" name="education[{{ $level }}][school_name]" class="form-control peso-input" style="font-size:12px;">
                                 </td>
                                 <td style="padding:6px 8px;">
                                     @if($isElem || $isJHS)
                                         <input type="hidden" name="education[{{ $level }}][course]" value="N/A">
-                                        <input type="text" class="form-control peso-input" style="font-size:12px;background:#f0f9f6;color:#aaa;cursor:not-allowed;" value="N/A" disabled>
+                                        <input type="text" class="form-control peso-input" style="font-size:12px;background:var(--n-50);color:var(--n-400);cursor:not-allowed;" value="N/A" disabled>
                                     @elseif($isSHS)
                                         <select name="education[{{ $level }}][course]" class="form-select peso-input" style="font-size:12px;">
                                             <option value="">Select Strand</option>
@@ -601,28 +608,28 @@
             {{-- STEP 6: V. TECHNICAL/VOCATIONAL TRAINING --}}
             {{-- ══════════════════════════════════════════ --}}
             <div class="nsrp-step" data-step="6" style="display:none;">
-                <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid #e8f5f0;">
-                    <div style="width:28px;height:28px;background:linear-gradient(135deg,#90d870,#4dd9c0);border-radius:8px;display:flex;align-items:center;justify-content:center;">
-                        <i class="bi bi-journal-bookmark" style="color:#fff;font-size:13px;"></i>
+                <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid var(--n-200);">
+                    <div style="width:28px;height:28px;background:var(--g-600);border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                        <i class="ph ph-notebook" style="color:#fff;font-size:13px;"></i>
                     </div>
-                    <h6 style="margin:0;font-size:13px;font-weight:700;color:#2d7a5f;">V. Technical/Vocational and Other Training</h6>
+                    <h6 style="margin:0;font-size:13px;font-weight:700;color:var(--g-700);">V. Technical/Vocational and Other Training</h6>
                 </div>
                 <div class="table-responsive">
                     <table class="table" style="font-size:12px;min-width:700px;" id="trainingTable">
                         <thead>
-                            <tr style="background:#f0f9f6;">
-                                <th style="color:#2d7a5f;padding:10px 12px;">#</th>
-                                <th style="color:#2d7a5f;padding:10px 12px;">Training/Vocational Course</th>
-                                <th style="color:#2d7a5f;padding:10px 12px;">Hours of Training</th>
-                                <th style="color:#2d7a5f;padding:10px 12px;">Duration (mm/yyyy to mm/yyyy)</th>
-                                <th style="color:#2d7a5f;padding:10px 12px;">Training Institution</th>
-                                <th style="color:#2d7a5f;padding:10px 12px;">Certificate Upload</th>
+                            <tr style="background:var(--n-50);">
+                                <th style="color:var(--g-700);padding:10px 12px;">#</th>
+                                <th style="color:var(--g-700);padding:10px 12px;">Training/Vocational Course</th>
+                                <th style="color:var(--g-700);padding:10px 12px;">Hours of Training</th>
+                                <th style="color:var(--g-700);padding:10px 12px;">Duration (mm/yyyy to mm/yyyy)</th>
+                                <th style="color:var(--g-700);padding:10px 12px;">Training Institution</th>
+                                <th style="color:var(--g-700);padding:10px 12px;">Certificate Upload</th>
                             </tr>
                         </thead>
                         <tbody id="trainingTableBody">
                             @for($i = 0; $i < 3; $i++)
                             <tr>
-                                <td style="padding:8px 12px;color:#888;">{{ $i + 1 }}</td>
+                                <td style="padding:8px 12px;color:var(--n-500);">{{ $i + 1 }}</td>
                                 <td style="padding:6px 8px;">
                                     <input type="text" name="trainings[{{ $i }}][course]" class="form-control peso-input" style="font-size:12px;">
                                 </td>
@@ -637,7 +644,7 @@
                                 </td>
                                 <td style="padding:6px 8px;">
                                     <input type="file" name="training_certificates[{{ $i }}]" class="form-control peso-input" style="font-size:11px;" accept=".jpg,.jpeg,.png,.pdf">
-                                    <div style="font-size:10px;color:#888;margin-top:4px;">JPG, PNG, PDF only</div>
+                                    <div style="font-size:10px;color:var(--n-500);margin-top:4px;">JPG, PNG, PDF only</div>
                                 </td>
                             </tr>
                             @endfor
@@ -645,9 +652,9 @@
                     </table>
                 </div>
                 <button type="button" class="btn btn-sm fw-semibold"
-                    style="border:1.5px dashed #a8e6cf;color:#2d7a5f;background:#fff;border-radius:8px;font-size:12px;"
+                    style="border:1px dashed var(--n-200);color:var(--g-700);background:#fff;border-radius:8px;font-size:12px;"
                     onclick="addTrainingRow()">
-                    <i class="bi bi-plus-circle me-1"></i> Add Training
+                    <i class="ph ph-plus-circle me-1"></i> Add Training
                 </button>
             </div>
 
@@ -655,15 +662,15 @@
             {{-- STEP 7: VI. ELIGIBILITY / PROFESSIONAL LICENSE --}}
             {{-- ══════════════════════════════════════════ --}}
             <div class="nsrp-step" data-step="7" style="display:none;">
-                <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid #e8f5f0;">
-                    <div style="width:28px;height:28px;background:linear-gradient(135deg,#90d870,#4dd9c0);border-radius:8px;display:flex;align-items:center;justify-content:center;">
-                        <i class="bi bi-award" style="color:#fff;font-size:13px;"></i>
+                <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid var(--n-200);">
+                    <div style="width:28px;height:28px;background:var(--g-600);border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                        <i class="ph ph-medal" style="color:#fff;font-size:13px;"></i>
                     </div>
-                    <h6 style="margin:0;font-size:13px;font-weight:700;color:#2d7a5f;">VI. Eligibility / Professional License</h6>
+                    <h6 style="margin:0;font-size:13px;font-weight:700;color:var(--g-700);">VI. Eligibility / Professional License</h6>
                 </div>
                 <div class="row g-3">
                     <div class="col-md-6">
-                        <div style="font-size:12px;font-weight:700;color:#2d7a5f;margin-bottom:8px;">Eligibility (Civil Service)</div>
+                        <div style="font-size:12px;font-weight:700;color:var(--g-700);margin-bottom:8px;">Eligibility (Civil Service)</div>
                         @for($i = 0; $i < 2; $i++)
                         <div class="row g-2 mb-2">
                             <div class="col-12 col-sm-7">
@@ -676,7 +683,7 @@
                         @endfor
                     </div>
                     <div class="col-md-6">
-                        <div style="font-size:12px;font-weight:700;color:#2d7a5f;margin-bottom:8px;">Professional License (PRC)</div>
+                        <div style="font-size:12px;font-weight:700;color:var(--g-700);margin-bottom:8px;">Professional License (PRC)</div>
                         @for($i = 0; $i < 2; $i++)
                         <div class="row g-2 mb-2">
                             <div class="col-12 col-sm-7">
@@ -695,22 +702,22 @@
             {{-- STEP 8: VII. WORK EXPERIENCE --}}
             {{-- ══════════════════════════════════════════ --}}
             <div class="nsrp-step" data-step="8" style="display:none;">
-                <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid #e8f5f0;">
-                    <div style="width:28px;height:28px;background:linear-gradient(135deg,#90d870,#4dd9c0);border-radius:8px;display:flex;align-items:center;justify-content:center;">
-                        <i class="bi bi-building" style="color:#fff;font-size:13px;"></i>
+                <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid var(--n-200);">
+                    <div style="width:28px;height:28px;background:var(--g-600);border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                        <i class="ph ph-buildings" style="color:#fff;font-size:13px;"></i>
                     </div>
-                    <h6 style="margin:0;font-size:13px;font-weight:700;color:#2d7a5f;">VII. Work Experience</h6>
+                    <h6 style="margin:0;font-size:13px;font-weight:700;color:var(--g-700);">VII. Work Experience</h6>
                 </div>
-                <p style="font-size:11px;color:#888;">Limit to 10 year period, start with the most recent employment.</p>
+                <p style="font-size:11px;color:var(--n-500);">Limit to 10 year period, start with the most recent employment.</p>
 
                 <div id="workExpContainer">
-                    <div class="work-exp-row p-3 mb-3 rounded-3" style="border:1px solid #e8f5f0;background:#fafffe;">
+                    <div class="work-exp-row p-3 mb-3 rounded-3" style="border:1px solid var(--n-200);background:var(--n-0);">
                         <div class="d-flex justify-content-between align-items-center mb-2">
-                            <div style="font-size:12px;font-weight:700;color:#2d7a5f;">
+                            <div style="font-size:12px;font-weight:700;color:var(--g-700);">
                                 Work Experience #<span class="exp-num">1</span>
                             </div>
                             <button type="button" class="btn btn-sm btn-danger" style="border-radius:8px;font-size:11px;" disabled>
-                                <i class="bi bi-trash-fill"></i> Remove
+                                <i class="ph-fill ph-trash"></i> Remove
                             </button>
                         </div>
                         <div class="row g-2">
@@ -746,7 +753,7 @@
                             <div class="col-md-3 d-flex align-items-end">
                                 <div class="form-check mb-2">
                                     <input class="form-check-input current-job-check" type="checkbox" name="work_experiences[0][is_current]" value="1" id="current_0" onchange="toggleCurrentJob(this, 0)">
-                                    <label class="form-check-label" for="current_0" style="font-size:12px;color:#2d7a5f;">Currently working here</label>
+                                    <label class="form-check-label" for="current_0" style="font-size:12px;color:var(--g-700);">Currently working here</label>
                                 </div>
                             </div>
                         </div>
@@ -755,11 +762,11 @@
 
                 <div class="d-flex align-items-center gap-2 mt-2">
                     <button type="button" class="btn btn-sm fw-semibold"
-                        style="border:1.5px solid #a8e6cf;color:#2d7a5f;background:#fff;border-radius:8px;font-size:12px;"
+                        style="border:1px solid var(--n-200);color:var(--g-700);background:#fff;border-radius:8px;font-size:12px;"
                         onclick="addWorkExp()">
-                        <i class="bi bi-plus-circle me-1"></i> Add Work Experience
+                        <i class="ph ph-plus-circle me-1"></i> Add Work Experience
                     </button>
-                    <span style="font-size:11px;color:#888;">Leave blank if no work experience</span>
+                    <span style="font-size:11px;color:var(--n-500);">Leave blank if no work experience</span>
                 </div>
             </div>
 
@@ -769,11 +776,11 @@
             <div class="nsrp-step" data-step="9" style="display:none;">
 
                 <div class="mb-4">
-                    <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid #e8f5f0;">
-                        <div style="width:28px;height:28px;background:linear-gradient(135deg,#90d870,#4dd9c0);border-radius:8px;display:flex;align-items:center;justify-content:center;">
-                            <i class="bi bi-tools" style="color:#fff;font-size:13px;"></i>
+                    <div class="d-flex align-items-center gap-2 mb-3 pb-2" style="border-bottom:2px solid var(--n-200);">
+                        <div style="width:28px;height:28px;background:var(--g-600);border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                            <i class="ph ph-wrench" style="color:#fff;font-size:13px;"></i>
                         </div>
-                        <h6 style="margin:0;font-size:13px;font-weight:700;color:#2d7a5f;">VIII. Other Skills Acquired Without Certificate</h6>
+                        <h6 style="margin:0;font-size:13px;font-weight:700;color:var(--g-700);">VIII. Other Skills Acquired Without Certificate</h6>
                     </div>
                     @php
                         $allSkills = ['Auto Mechanic','Beautician','Carpentry Work','Computer Literate','Domestic Chores','Driver','Electrician','Embroidery','Gardening','Masonry','Painter/Artist','Painting Jobs','Photography','Plumbing','Sewing Dresses','Stenography','Tailoring'];
@@ -783,21 +790,21 @@
                         <div class="col-md-3 col-6">
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" name="other_skills[]" value="{{ $skill }}" id="skill_{{ Str::slug($skill) }}">
-                                <label class="form-check-label" for="skill_{{ Str::slug($skill) }}" style="font-size:12px;color:#2d7a5f;">{{ $skill }}</label>
+                                <label class="form-check-label" for="skill_{{ Str::slug($skill) }}" style="font-size:12px;color:var(--g-700);">{{ $skill }}</label>
                             </div>
                         </div>
                         @endforeach
                         <div class="col-md-6 mt-2">
                             <div class="d-flex align-items-center gap-2">
-                                <span style="font-size:12px;color:#2d7a5f;font-weight:600;">Others:</span>
+                                <span style="font-size:12px;color:var(--g-700);font-weight:600;">Others:</span>
                                 <input type="text" name="other_skills_specify" class="form-control peso-input" style="font-size:12px;" placeholder="Please specify">
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="p-3 rounded-3 mb-4" style="background:#f0f9f6; border:1px solid #a8e6cf;">
-                    <div style="font-size:12px;color:#2d7a5f;line-height:1.6;">
+                <div class="p-3 rounded-3 mb-4" style="background:var(--n-50); border:1px solid var(--n-200);">
+                    <div style="font-size:12px;color:var(--g-700);line-height:1.6;">
                         <strong>Certification/Authorization:</strong> This is to certify that all data/information
                         provided in this form are true to the best of the applicant's knowledge, as encoded from
                         their submitted walk-in NSRP form. This authorizes DOLE to include the profile in the PESO
@@ -807,7 +814,7 @@
                         <div class="col-md-4">
                             <label class="peso-label">Signature of Applicant (as written)</label>
                             <div id="signature_display" class="form-control peso-input"
-                                style="background:#fff;font-style:italic;color:#2d7a5f;font-weight:600;">&nbsp;</div>
+                                style="background:#fff;font-style:italic;color:var(--g-700);font-weight:600;">&nbsp;</div>
                         </div>
                         <div class="col-md-4">
                             <label class="peso-label">Date Signed *</label>
@@ -816,7 +823,7 @@
                     </div>
                     <div class="form-check mt-2">
                         <input class="form-check-input" type="checkbox" name="certification_agreed" value="1" id="certAgree" required>
-                        <label class="form-check-label" for="certAgree" style="font-size:12px;color:#2d7a5f;font-weight:600;">
+                        <label class="form-check-label" for="certAgree" style="font-size:12px;color:var(--g-700);font-weight:600;">
                             Applicant agreed to the certification and authorization (as marked on the physical form) *
                         </label>
                     </div>
@@ -824,7 +831,7 @@
 
                 <div class="d-flex justify-content-end gap-2">
                     <button type="submit" class="btn btn-peso px-4" onclick="debugSubmit(event, this)">
-                        <i class="bi bi-send me-1"></i> Save Walk-in NSRP Registration
+                        <i class="ph ph-paper-plane-tilt me-1"></i> Save Walk-in NSRP Registration
                     </button>
                 </div>
 
@@ -841,15 +848,15 @@
 <div class="d-flex align-items-center gap-3"
     style="position:fixed; bottom:24px; right:24px; z-index:500;
             background:#fff; padding:10px 16px; border-radius:14px;
-            box-shadow:0 8px 24px rgba(0,0,0,0.15); border:1px solid #e8f5f0;">
+            box-shadow:0 8px 24px rgba(0,0,0,0.15); border:1px solid var(--n-200);">
     <button type="button" id="nsrpStepPrev" class="btn btn-sm"
-        style="border:1.5px solid #a8e6cf;border-radius:8px;color:#2d7a5f;padding:6px 14px;">
-        <i class="bi bi-chevron-left"></i>
+        style="border:1px solid var(--n-200);border-radius:8px;color:var(--g-700);padding:6px 14px;">
+        <i class="ph ph-caret-left"></i>
     </button>
-    <span id="nsrpStepInfo" style="font-size:13px;color:#2d7a5f;font-weight:600;white-space:nowrap;">Step 1 of 9</span>
+    <span id="nsrpStepInfo" style="font-size:13px;color:var(--g-700);font-weight:600;white-space:nowrap;">Step 1 of 9</span>
     <button type="button" id="nsrpStepNext" class="btn btn-sm fw-semibold"
-        style="border:none;border-radius:8px;color:#fff;padding:6px 14px;background:linear-gradient(90deg,#90d870,#4dd9c0);">
-        Next <i class="bi bi-chevron-right ms-1"></i>
+        style="border:none;border-radius:8px;color:#fff;padding:6px 14px;background:var(--g-600);">
+        Next <i class="ph ph-caret-right ms-1"></i>
     </button>
 </div>
 
@@ -922,7 +929,7 @@ function addLanguageRow() {
         <td style="padding:8px 12px;text-align:center;"><input class="form-check-input" type="checkbox" name="language_proficiency[other][${idx}][speak]" value="1"></td>
         <td style="padding:8px 12px;text-align:center;"><input class="form-check-input" type="checkbox" name="language_proficiency[other][${idx}][understand]" value="1"></td>
         <td style="padding:8px 12px;">
-            <button type="button" class="btn btn-sm text-danger" onclick="this.closest('tr').remove()"><i class="bi bi-trash"></i></button>
+            <button type="button" class="btn btn-sm text-danger" onclick="this.closest('tr').remove()"><i class="ph ph-trash"></i></button>
         </td>
     </tr>`;
     tbody.insertAdjacentHTML('beforeend', html);
@@ -934,14 +941,14 @@ function addTrainingRow() {
     const idx = trainingCount;
     const html = `
     <tr>
-        <td style="padding:8px 12px;color:#888;">${idx + 1}</td>
+        <td style="padding:8px 12px;color:var(--n-500);">${idx + 1}</td>
         <td style="padding:6px 8px;"><input type="text" name="trainings[${idx}][course]" class="form-control peso-input" style="font-size:12px;"></td>
         <td style="padding:6px 8px;"><input type="text" name="trainings[${idx}][hours]" class="form-control peso-input" style="font-size:12px;" placeholder="e.g. 40"></td>
         <td style="padding:6px 8px;"><input type="text" name="trainings[${idx}][duration]" class="form-control peso-input" style="font-size:12px;" placeholder="01/2023 to 03/2023"></td>
         <td style="padding:6px 8px;"><input type="text" name="trainings[${idx}][institution]" class="form-control peso-input" style="font-size:12px;"></td>
         <td style="padding:6px 8px;">
             <input type="file" name="training_certificates[${idx}]" class="form-control peso-input" style="font-size:11px;" accept=".jpg,.jpeg,.png,.pdf">
-            <div style="font-size:10px;color:#888;margin-top:4px;">JPG, PNG, PDF only</div>
+            <div style="font-size:10px;color:var(--n-500);margin-top:4px;">JPG, PNG, PDF only</div>
         </td>
     </tr>`;
     tbody.insertAdjacentHTML('beforeend', html);
@@ -954,15 +961,33 @@ function scanNsrpImage() {
 
     if (!fileInput.files || fileInput.files.length === 0) {
         statusEl.textContent = 'Please choose an image first.';
-        statusEl.style.color = '#c62828';
+        statusEl.style.color = 'var(--danger)';
         return;
     }
 
-    statusEl.textContent = 'Scanning... this may take a few seconds.';
-    statusEl.style.color = '#8a6d00';
+    // Roughly a minute per side on the office machine, so the old "a few
+    // seconds" read as a hang. Counting up is the honest version: the staff can
+    // see it is still working instead of wondering whether to click again.
+    const pageCount = fileInput.files.length;
+    const started = Date.now();
+
+    statusEl.style.color = 'var(--warn)';
+    statusEl.textContent = `Scanning ${pageCount} page(s)... about ${pageCount} minute(s). Please wait.`;
+
+    const ticker = setInterval(() => {
+        const elapsed = Math.round((Date.now() - started) / 1000);
+        statusEl.textContent =
+            `Scanning ${pageCount} page(s)... ${elapsed}s elapsed. ` +
+            `This takes about a minute per page — please do not close the page.`;
+    }, 1000);
 
     const formData = new FormData();
-    formData.append('nsrp_image', fileInput.files[0]);
+    for (const file of fileInput.files) {
+        formData.append('nsrp_images[]', file);
+    }
+
+    const button = document.getElementById('ocrScanBtn');
+    button.disabled = true;
 
     fetch('{{ route('staff.nsrp.scan') }}', {
         method: 'POST',
@@ -975,42 +1000,121 @@ function scanNsrpImage() {
     .then(data => {
         if (data.error) {
             statusEl.textContent = data.error;
-            statusEl.style.color = '#c62828';
+            statusEl.style.color = 'var(--danger)';
             return;
         }
 
-        const f = data.data || {};
-        let filledCount = 0;
-
-        if (f.surname) { document.getElementById('surname_input').value = f.surname; filledCount++; }
-        if (f.first_name) { document.getElementById('first_name_input').value = f.first_name; filledCount++; }
-        if (f.middle_name) { document.getElementById('middle_name_input').value = f.middle_name; filledCount++; }
-        if (f.contact_number) {
-            const contactField = document.querySelector('input[name="contact_number"]');
-            if (contactField) { contactField.value = f.contact_number; filledCount++; }
-        }
-        if (f.religion) {
-            const religionField = document.querySelector('input[name="religion"]');
-            if (religionField) { religionField.value = f.religion; filledCount++; }
-        }
+        const filled = applyScanResult(data.data || {}, data.confidence || {});
 
         updateSignature();
+        if (typeof toggleEmploymentFields === 'function') toggleEmploymentFields();
+        if (typeof toggleSelfEmployed === 'function') toggleSelfEmployed();
+        if (typeof toggleUnemployedOther === 'function') toggleUnemployedOther();
 
-        if (filledCount > 0) {
-            statusEl.textContent = `Auto-filled ${filledCount} field(s). Please review carefully before submitting.`;
-            statusEl.style.color = '#2d7a5f';
+        if (filled > 0) {
+            const pages = (data.pages || []).join(' and ');
+            statusEl.textContent =
+                `Filled ${filled} field(s) from page ${pages} in ${data.seconds}s. ` +
+                `Highlighted fields were uncertain — confirm them with the applicant.`;
+            statusEl.style.color = 'var(--g-700)';
         } else {
-            statusEl.textContent = 'Could not detect any fields clearly. Please fill out the form manually.';
-            statusEl.style.color = '#c62828';
+            statusEl.textContent = 'Nothing could be read. Please fill out the form manually.';
+            statusEl.style.color = 'var(--danger)';
         }
-
-        console.log('=== OCR RAW TEXT (copy this) ===');
-        console.log(data.raw_text);
     })
     .catch(() => {
         statusEl.textContent = 'Scan failed. Please fill out the form manually.';
-        statusEl.style.color = '#c62828';
+        statusEl.style.color = 'var(--danger)';
+    })
+    .finally(() => {
+        clearInterval(ticker);
+        button.disabled = false;
     });
+}
+
+// Anything the scanner read below this is shown highlighted. It is not an error
+// bar — a low score means "look at this one", and the applicant is standing
+// right there to be asked.
+const OCR_UNSURE_BELOW = 0.6;
+
+function applyScanResult(values, confidence) {
+    let filled = 0;
+
+    for (const [name, value] of Object.entries(values)) {
+        if (value === null || value === '' || (Array.isArray(value) && !value.length)) continue;
+
+        // language_proficiency arrives as {English: ['read','write']}, which is
+        // the shape the form stores rather than a single input to write into.
+        if (name === 'language_proficiency' && typeof value === 'object') {
+            for (const [language, skills] of Object.entries(value)) {
+                for (const skill of skills) {
+                    const cell = document.querySelector(
+                        `input[name="language_proficiency[${language}][]"][value="${skill}"]`);
+                    if (cell) { cell.checked = true; filled++; }
+                }
+            }
+            continue;
+        }
+
+        if (Array.isArray(value)) {
+            for (const item of value) {
+                const box = document.querySelector(`input[name="${name}[]"][value="${item}"]`);
+                if (box) { box.checked = true; filled++; }
+            }
+            continue;
+        }
+
+        if (setField(name, value, confidence[name])) filled++;
+    }
+
+    return filled;
+}
+
+function setField(name, value, score) {
+    const nodes = document.querySelectorAll(`[name="${name}"]`);
+    if (!nodes.length) return false;
+
+    const first = nodes[0];
+
+    if (first.type === 'radio') {
+        for (const node of nodes) {
+            if (node.value === String(value)) { node.checked = true; markUncertain(node, score); return true; }
+        }
+        return false;
+    }
+
+    if (first.type === 'checkbox') {
+        first.checked = value === true || value === 'true' || value === 1;
+        return true;
+    }
+
+    if (first.tagName === 'SELECT') {
+        const wanted = String(value).toLowerCase();
+        for (const option of first.options) {
+            if (option.value.toLowerCase() === wanted) {
+                first.value = option.value;
+                first.dispatchEvent(new Event('change'));
+                markUncertain(first, score);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    first.value = value;
+    markUncertain(first, score);
+    return true;
+}
+
+function markUncertain(node, score) {
+    const target = node.type === 'radio' ? node.closest('.form-check') : node;
+    if (!target) return;
+
+    if (score !== undefined && score < OCR_UNSURE_BELOW) {
+        target.style.background = 'var(--warn-bg, #fff8e1)';
+        target.style.borderColor = 'var(--warn-br, #ffc107)';
+        target.title = `Scanner was unsure (${score}). Please confirm.`;
+    }
 }
 
 function toggleEmploymentFields() {
@@ -1044,11 +1148,11 @@ function addWorkExp() {
     const container = document.getElementById('workExpContainer');
     const idx = workExpCount;
     const html = `
-    <div class="work-exp-row p-3 mb-3 rounded-3" style="border:1px solid #e8f5f0;background:#fafffe;">
+    <div class="work-exp-row p-3 mb-3 rounded-3" style="border:1px solid var(--n-200);background:var(--n-0);">
         <div class="d-flex justify-content-between align-items-center mb-2">
-            <div style="font-size:12px;font-weight:700;color:#2d7a5f;">Work Experience #<span class="exp-num">${idx + 1}</span></div>
+            <div style="font-size:12px;font-weight:700;color:var(--g-700);">Work Experience #<span class="exp-num">${idx + 1}</span></div>
             <button type="button" class="btn btn-sm btn-danger" style="border-radius:8px;font-size:11px;" onclick="removeWorkExp(this)">
-                <i class="bi bi-trash-fill"></i> Remove
+                <i class="ph-fill ph-trash"></i> Remove
             </button>
         </div>
         <div class="row g-2">
@@ -1070,7 +1174,7 @@ function addWorkExp() {
             <div class="col-md-3 d-flex align-items-end">
                 <div class="form-check mb-2">
                     <input class="form-check-input current-job-check" type="checkbox" name="work_experiences[${idx}][is_current]" value="1" id="current_${idx}" onchange="toggleCurrentJob(this, ${idx})">
-                    <label class="form-check-label" for="current_${idx}" style="font-size:12px;color:#2d7a5f;">Currently working here</label>
+                    <label class="form-check-label" for="current_${idx}" style="font-size:12px;color:var(--g-700);">Currently working here</label>
                 </div>
             </div>
         </div>
