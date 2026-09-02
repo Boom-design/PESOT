@@ -16,6 +16,9 @@ class JobFairParticipant extends Model
         'invited_at',
         'invited_by',
         'permission_note',
+        'sra_decided_by',
+        'sra_decided_at',
+        'sra_decision_note',
         'responded_at',
         'total_interviewed',
         'total_vacancies',
@@ -25,14 +28,38 @@ class JobFairParticipant extends Model
     ];
 
     protected $casts = [
-        'invited_at'   => 'datetime',
-        'responded_at' => 'datetime',
+        'invited_at'     => 'datetime',
+        'responded_at'   => 'datetime',
+        'sra_decided_at' => 'datetime',
     ];
 
     /** Ang staff nga nagpili niini nga employer. Null kung ang sistema ang nag-invite. */
     public function invitedBy()
     {
         return $this->belongsTo(Staff::class, 'invited_by', 'staff_id');
+    }
+
+    /** Ang staff nga nagpasulod o nagpalta niini sa fair. Null kung wala pa siya nadesisyonan. */
+    public function sraDecidedBy()
+    {
+        return $this->belongsTo(Staff::class, 'sra_decided_by', 'staff_id');
+    }
+
+    /**
+     * Mitubag na ang employer, apan wala pa mopili ang SRA.
+     *
+     * Overseas ra ang mahulog dinhi. Ang lokal walay tawo nga nagpili sa iyang
+     * imbitasyon, mao nga ang iyang oo kay oo dayon.
+     */
+    public function awaitingSelection(): bool
+    {
+        return $this->confirmation_status === 'accepted';
+    }
+
+    /** Mitubag ang employer ug oo, apan wala siya gidala sa opisina sa fair. */
+    public function wasNotSelected(): bool
+    {
+        return $this->confirmation_status === 'not_selected';
     }
 
     /**
@@ -78,6 +105,12 @@ class JobFairParticipant extends Model
      *
      * An event with no cutoff stamped has not reached that day yet, so every
      * confirmation still counts as in time.
+     *
+     * Ang petsa nga giihap mao ang adlaw nga nahimo siyang apil, dili ang adlaw
+     * nga siya mitubag. Para sa lokal parehas ra sila. Para sa overseas dili:
+     * mahimong mitubag siya ug oo sa ikatulo nga adlaw ug gipili sa SRA sa
+     * ikanapulog-duha — ug ang naa sa listahan nga gipasa sa DOLE mao ang
+     * gipili, mao nga ang ulahing petsa mao ang tinuod nga tubag.
      */
     public function confirmedBeforeCutoff(): bool
     {
@@ -85,9 +118,10 @@ class JobFairParticipant extends Model
             return false;
         }
 
-        $cutoff = $this->jobFair?->dole_cutoff_at;
+        $cutoff  = $this->jobFair?->dole_cutoff_at;
+        $enteredAt = $this->sra_decided_at ?: $this->responded_at;
 
-        return !$cutoff || !$this->responded_at || $this->responded_at->lte($cutoff->copy()->endOfDay());
+        return !$cutoff || !$enteredAt || $enteredAt->lte($cutoff->copy()->endOfDay());
     }
 
     public function jobFair()

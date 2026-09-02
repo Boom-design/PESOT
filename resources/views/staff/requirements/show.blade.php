@@ -73,7 +73,17 @@
         {{-- DOCUMENTS --}}
         <div class="card border-0 shadow-sm rounded-3 mt-3">
             <div class="card-body p-4">
-                <h6 class="fw-bold mb-3" style="color:var(--g-700);">Submitted Documents</h6>
+                <h6 class="fw-bold mb-1" style="color:var(--g-700);">Submitted Documents</h6>
+
+                {{-- Duha ka buton ang gitawag ug Approve sa kini nga pahina: ang
+                     usa dinhi para sa usa ka papel, ang usa sa tuo para sa
+                     tibuok kompanya. Ang linya sa ubos ang nagsulti kung asa
+                     magsugod, aron ang desk dili mag-una sa tuo. --}}
+                <p style="font-size:11.5px;color:var(--n-500);margin-bottom:14px;">
+                    Review each document below — <strong style="color:var(--g-600);">Approve</strong> or
+                    <strong style="color:var(--danger);">Reject</strong> one at a time. The employer moves to
+                    Approved Employers only from the button on the right, after all five are done.
+                </p>
 
                 {{-- Logo first, and set apart: it is not reviewed, cannot be
                      rejected, and never expires. It is here so the desk can see
@@ -107,10 +117,15 @@
                     ];
                 @endphp
                 @foreach($docs as $field => $label)
-                <div class="d-flex justify-content-between align-items-center py-2"
-                    style="border-bottom:1px solid var(--n-50);">
+                <div style="border-bottom:1px solid var(--n-50);">
+                <div class="d-flex justify-content-between align-items-center py-2">
                     <div>
                         <span style="font-size:13px;color:var(--g-700);">{{ $label }}</span>
+                        @if($requirement->isFieldRejected($field) && $requirement->fieldRejectionNote($field))
+                            <div style="font-size:10.5px;color:var(--danger);font-weight:600;">
+                                Rejected — {{ $requirement->fieldRejectionNote($field) }}
+                            </div>
+                        @endif
                         @php $expiresAt = $requirement->{$field.'_expires_at'}; @endphp
                         @if($field === 'business_permit' && $requirement->business_permit_year)
                             {{-- The permit is judged by the year it covers plus the
@@ -142,16 +157,83 @@
                     </div>
                     @if($requirement->$field)
                         @php $ext = pathinfo($requirement->$field, PATHINFO_EXTENSION); @endphp
-                        <button type="button"
-                           class="btn btn-sm fw-semibold"
-                           style="background:var(--g-600);
-                                  color:#fff;border:none;border-radius:8px;font-size:11px;"
-                           onclick="openDocModal('{{ route('documents.requirement', [$requirement->employer_requirements_id, $field]) }}', '{{ $label }}', '{{ $ext }}')">
-                            <i class="ph ph-eye me-1"></i>View
-                        </button>
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button"
+                               class="btn btn-sm fw-semibold"
+                               style="background:var(--g-600);
+                                      color:#fff;border:none;border-radius:8px;font-size:11px;"
+                               onclick="openDocModal('{{ route('documents.requirement', [$requirement->employer_requirements_id, $field]) }}', '{{ $label }}', '{{ $ext }}')">
+                                <i class="ph ph-eye me-1"></i>View
+                            </button>
+
+                            {{-- Usa ka papel, usa ka hukom. Walay pindot dinhi
+                                 nga magdala sa kompanya sa Approved Employers ug
+                                 walay pindot dinhi nga mopadala ug mensahe sa
+                                 employer — ang duha ka buton sa tuo ang mobuhat
+                                 niana, human mahukman ang lima. --}}
+                            @if($requirement->status === 'pending' && $staffRole === 'job_vacancy')
+                                @if($requirement->isFieldAccepted($field))
+                                    <span class="fw-semibold" style="color:var(--g-600);font-size:11px;">
+                                        <i class="ph-fill ph-check-circle me-1"></i>Approved
+                                    </span>
+                                    @include('staff.requirements._undo_document', ['field' => $field])
+                                @elseif($requirement->isFieldRejected($field))
+                                    <span class="fw-semibold" style="color:var(--danger);font-size:11px;">
+                                        <i class="ph-fill ph-x-circle me-1"></i>Rejected
+                                    </span>
+                                    @include('staff.requirements._undo_document', ['field' => $field])
+                                @else
+                                    <form action="{{ route('staff.requirements.documents.accept', [$requirement->employer_requirements_id, $field]) }}"
+                                          method="POST" class="d-inline">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm fw-semibold"
+                                            style="border:1px solid var(--g-600);color:var(--g-600);background:#fff;
+                                                   border-radius:8px;font-size:11px;">
+                                            <i class="ph ph-check me-1"></i>Approve
+                                        </button>
+                                    </form>
+                                    <button type="button" class="btn btn-sm fw-semibold"
+                                        style="border:1px solid var(--danger-br);color:var(--danger);background:#fff;
+                                               border-radius:8px;font-size:11px;"
+                                        data-bs-toggle="collapse" data-bs-target="#rejDoc_{{ $field }}">
+                                        <i class="ph ph-x me-1"></i>Reject
+                                    </button>
+                                @endif
+                            @elseif($requirement->isFieldAccepted($field))
+                                <span class="fw-semibold" style="color:var(--g-600);font-size:11px;">
+                                    <i class="ph-fill ph-check-circle me-1"></i>Approved
+                                </span>
+                            @elseif($requirement->isFieldRejected($field))
+                                <span class="fw-semibold" style="color:var(--danger);font-size:11px;">
+                                    <i class="ph-fill ph-x-circle me-1"></i>Rejected
+                                </span>
+                            @endif
+                        </div>
                     @else
                         <span style="font-size:12px;color:var(--n-400);">Not submitted</span>
                     @endif
+                </div>
+
+                {{-- Ang hinungdan gipangayo dayon. Ang papel nga gibalibaran nga
+                     walay hinungdan mobalik sa employer nga wala mahibalo unsay
+                     ayohon. --}}
+                @if($requirement->$field && $requirement->status === 'pending'
+                    && $staffRole === 'job_vacancy' && !$requirement->isFieldDecided($field))
+                    <div class="collapse" id="rejDoc_{{ $field }}">
+                        <form action="{{ route('staff.requirements.documents.reject', [$requirement->employer_requirements_id, $field]) }}"
+                              method="POST" class="d-flex gap-2 pb-2">
+                            @csrf
+                            <input type="text" name="reason" maxlength="255" required
+                                class="form-control form-control-sm"
+                                style="border:1px solid var(--danger-br);border-radius:8px;font-size:12px;"
+                                placeholder="What is wrong with this document?">
+                            <button type="submit" class="btn btn-sm btn-danger fw-semibold"
+                                style="border-radius:8px;font-size:11px;white-space:nowrap;">
+                                Reject
+                            </button>
+                        </form>
+                    </div>
+                @endif
                 </div>
                 @endforeach
             </div>
@@ -185,19 +267,58 @@
         <div class="card border-0 shadow-sm rounded-3 mb-3">
             <div class="card-body p-4">
                 <h6 class="fw-bold mb-3" style="color:var(--g-700);">
-                    <i class="ph-fill ph-check-circle me-2" style="color:var(--g-600);"></i>Approve Requirements
+                    <i class="ph-fill ph-check-circle me-2" style="color:var(--g-600);"></i>Final Step
                 </h6>
                 <p style="font-size:13px;color:var(--n-500);">
-                    Approving will allow this employer to request in-house interviews and post job vacancies.
+                    Moving this employer to Approved Employers lets them request in-house interviews
+                    and post job vacancies. Review the five documents on the left first.
                 </p>
+
+                {{-- Pila na ang nahukman. Ang buton sirado hangtod mahukman
+                     ang lima, ug sirado gihapon kung naay usa nga gibalibaran —
+                     ang folder nga naay sayop mobalik sa employer, dili moadto
+                     sa Approved Employers. --}}
+                @php
+                    $docLabels     = \App\Models\EmployerRequirement::DOCUMENT_LABELS;
+                    $decidedCount  = $requirement->decidedDocumentCount();
+                    $stillToReview = $requirement->documentsNotYetDecided();
+                    $rejectedNow   = array_values(array_intersect(
+                        \App\Models\EmployerRequirement::REVIEWED_DOCUMENTS,
+                        (array) $requirement->rejected_fields
+                    ));
+                    $hasRejected    = $requirement->hasRejectedDocuments();
+                    $readyToApprove = $requirement->allDocumentsDecided() && !$hasRejected;
+                @endphp
+
+                <div class="p-3 rounded-3 mb-3"
+                     style="background:{{ $hasRejected ? 'var(--danger-bg)' : ($readyToApprove ? 'var(--g-50, #f2f7f3)' : 'var(--warn-bg)') }};
+                            border:1px solid {{ $hasRejected ? 'var(--danger-br)' : ($readyToApprove ? 'var(--g-600)' : 'var(--warn-br)') }};">
+                    <div class="fw-semibold" style="font-size:12.5px;color:{{ $hasRejected ? 'var(--danger)' : ($readyToApprove ? 'var(--g-700)' : 'var(--warn)') }};">
+                        {{ $decidedCount }} of {{ count($docLabels) }} documents reviewed
+                    </div>
+                    @if($stillToReview)
+                        <div style="font-size:11.5px;color:var(--n-500);margin-top:4px;">
+                            Still to review:
+                            {{ collect($stillToReview)->map(fn($f) => $docLabels[$f] ?? $f)->implode(', ') }}
+                        </div>
+                    @endif
+                    @if($hasRejected)
+                        <div style="font-size:11.5px;color:var(--danger);margin-top:4px;">
+                            Rejected: {{ collect($rejectedNow)->map(fn($f) => $docLabels[$f] ?? $f)->implode(', ') }}.
+                            Send the folder back to the employer below.
+                        </div>
+                    @endif
+                </div>
+
                 <form id="approveForm" action="{{ route('staff.requirements.approve', $requirement->employer_requirements_id) }}" method="POST">
                     @csrf
                     <button type="button" class="btn w-100 fw-semibold"
-                        style="background:var(--g-600);
-                               color:#fff;border:none;border-radius:10px;
-                               padding:10px;font-size:13px;"
+                        style="background:{{ $readyToApprove ? 'var(--g-600)' : 'var(--n-200)' }};
+                               color:{{ $readyToApprove ? '#fff' : 'var(--n-500)' }};border:none;border-radius:10px;
+                               padding:10px;font-size:13px;{{ $readyToApprove ? '' : 'cursor:not-allowed;' }}"
+                        {{ $readyToApprove ? '' : 'disabled' }}
                         onclick="confirmApprove()">
-                        <i class="ph-fill ph-check-circle me-2"></i>Approve Requirements
+                        <i class="ph-fill ph-check-circle me-2"></i>Move to Approved Employers
                     </button>
                 </form>
             </div>
@@ -220,6 +341,10 @@
                             'vacancy_posting'             => 'Vacancy Posting',
                         ];
                     @endphp
+                    {{-- Ang gi-check dinhi mao ang gibalibaran na sa taas. Ang
+                         desk makadugang o makakuha pa dinhi sa katapusang gutlo
+                         — kining porma gihapon ang usa ka mensahe nga makaabot
+                         sa employer. --}}
                     <div class="mb-3">
                         <label class="form-label fw-semibold small" style="color:var(--g-700);">
                             Which document(s) are incorrect or missing? <span class="text-danger">*</span>
@@ -228,9 +353,13 @@
                             @foreach($rejectDocs as $field => $label)
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox"
-                                    name="rejected_fields[]" value="{{ $field }}" id="rej_{{ $field }}">
+                                    name="rejected_fields[]" value="{{ $field }}" id="rej_{{ $field }}"
+                                    {{ $requirement->isFieldRejected($field) ? 'checked' : '' }}>
                                 <label class="form-check-label" for="rej_{{ $field }}" style="font-size:13px;color:var(--danger);">
                                     {{ $label }}
+                                    @if($requirement->fieldRejectionNote($field))
+                                        <span style="font-weight:400;">— {{ $requirement->fieldRejectionNote($field) }}</span>
+                                    @endif
                                 </label>
                             </div>
                             @endforeach

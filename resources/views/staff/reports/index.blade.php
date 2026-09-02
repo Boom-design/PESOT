@@ -25,6 +25,7 @@ $tabs = [
     'companies'          => ['icon' => 'ph-fill ph-buildings', 'label' => $staffRole === 'sra' ? 'Overseas Companies' : 'Local Companies'],
     'further_interview'  => ['icon' => 'ph-fill ph-user-list', 'label' => 'Further Interview'],
     'hots'               => ['icon' => 'ph-fill ph-lightning', 'label' => 'Hired on the Spot'],
+    'vacancy_list'       => ['icon' => 'ph-fill ph-list-numbers', 'label' => 'Local Job Vacancies'],
     'summary'            => ['icon' => 'ph-fill ph-clipboard-text', 'label' => 'Post Job Fair Summary'],
     'industry'           => ['icon' => 'ph-fill ph-tree-structure', 'label' => 'Companies w/ Vacancies'],
 ];
@@ -112,10 +113,21 @@ if ($staffRole !== 'sra') {
 {{-- JOB FAIR STAFF — 7 TABS (SRA: overseas-filtered, walay Placement tab) --}}
 @if($staffRole === 'job_fair' || ($staffRole === 'sra' && ($reportView ?? 'staff') === 'jobfair'))
 
-{{-- EVENT SELECTOR --}}
-<div class="mb-3">
+{{-- ── THE TWO ROWS ──
+
+     Top row: the fair being read, and beside it the three reports that are not
+     about a fair at all. Bottom row: the tabs of the chosen fair.
+
+     They were one row before, with the three sitting after Company Placement,
+     which read as seven tabs of the same kind — and the desk had no way to see
+     that three of them ignore the dropdown entirely. Beside the dropdown they
+     are plainly the other thing: the reports you open without choosing. --}}
+@php $tabNeedsEvent = !in_array($tab, ['top_employers', 'imported', 'archived'], true); @endphp
+
+<div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+    @if($tabNeedsEvent)
     <select id="eventSelector" class="form-select form-select-sm"
-        style="max-width:320px;width:100%;border-color:var(--n-200);font-size:13px;"
+        style="max-width:320px;border-color:var(--n-200);font-size:13px;"
         onchange="changeEvent(this.value)">
         <option value="">— Select Job Fair Event —</option>
         @foreach($allEvents as $ev)
@@ -124,9 +136,60 @@ if ($staffRole !== 'sra') {
         </option>
         @endforeach
     </select>
+    @else
+    {{-- Ang tab nga giablihan wala nagbasa ug fair, mao nga walay dropdown
+         dinhi — usa ka pilianan nga walay giusab mabasa isip guba.
+
+         Ang gipulihan usa ka Back nga buton. Kining tulo ka report nagtago sa
+         tab row sa fair, mao nga kung walay agianan pabalik, ang desk kinahanglan
+         mo-Back sa browser o mopislit sa sidebar — ug ang sidebar mobalik sa
+         ulohan sa Reports, dili sa tab nga iyang gibiyaan. --}}
+    <a href="{{ route($reportRouteName ?? 'staff.reports', ['tab' => 'attendance']) }}"
+       class="btn btn-sm fw-semibold"
+       style="border:1px solid var(--n-200);color:var(--g-700);background:#fff;
+              border-radius:8px;font-size:12px;padding:5px 14px;white-space:nowrap;">
+        <i class="ph ph-arrow-left me-1"></i> Back to job fair reports
+    </a>
+    <span style="font-size:12px;color:var(--n-500);">
+        <i class="ph ph-info me-1" style="color:var(--g-600);"></i>
+        This report is not read against one fair.
+    </span>
+    @endif
+
+    <div class="d-flex gap-2 flex-wrap ms-auto">
+        <a href="{{ route($reportRouteName ?? 'staff.reports', ['tab' => 'top_employers']) }}"
+           class="btn btn-sm fw-semibold"
+           style="{{ $tab === 'top_employers'
+               ? 'background:var(--g-600);color:#fff;border:none;'
+               : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
+               border-radius:8px;font-size:11px;padding:5px 12px;white-space:nowrap;flex-shrink:0;">
+            <i class="ph-fill ph-buildings me-1"></i>Top 10 Employers
+        </a>
+        {{-- Ang kaugalingon nga report sa staff. Job Fair staff ra — dili siya
+             bahin sa panglantaw sa SRA ug wala siya sa admin nga kopya. --}}
+        @if($staffRole === 'job_fair' && ($reportRouteName ?? 'staff.reports') === 'staff.reports')
+        <a href="{{ route('staff.reports', ['tab' => 'imported']) }}"
+           class="btn btn-sm fw-semibold"
+           style="{{ $tab === 'imported'
+               ? 'background:var(--g-600);color:#fff;border:none;'
+               : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
+               border-radius:8px;font-size:11px;padding:5px 12px;white-space:nowrap;flex-shrink:0;">
+            <i class="ph-fill ph-upload-simple me-1"></i>My Imported Reports
+        </a>
+        @endif
+        <a href="{{ route($reportRouteName ?? 'staff.reports', ['tab' => 'archived']) }}"
+           class="btn btn-sm fw-semibold"
+           style="{{ $tab === 'archived'
+               ? 'background:var(--warn);color:#fff;border:none;'
+               : 'border:1px solid var(--warn-br);color:var(--warn);background:#fff;' }}
+               border-radius:8px;font-size:11px;padding:5px 12px;white-space:nowrap;flex-shrink:0;">
+            <i class="ph-fill ph-archive me-1"></i>Archived Job Postings
+        </a>
+    </div>
 </div>
 
-{{-- TABS NAV --}}
+{{-- TABS NAV — ang tab sa gipiling fair. --}}
+@if($tabNeedsEvent)
 <div class="d-flex gap-2 mb-4" style="flex-wrap:wrap;">
     @foreach($tabs as $key => $t)
     <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->query(), ['tab' => $key, 'event_id' => $eventId])) }}"
@@ -138,35 +201,8 @@ if ($staffRole !== 'sra') {
         <i class="{{ $t['icon'] }} me-1"></i>{{ $t['label'] }}
     </a>
     @endforeach
-    <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->query(), ['tab' => 'top_employers', 'event_id' => $eventId])) }}"
-       class="btn btn-sm fw-semibold"
-       style="{{ $tab === 'top_employers'
-           ? 'background:var(--g-600);color:#fff;border:none;'
-           : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
-           border-radius:8px;font-size:11px;padding:5px 12px;white-space:nowrap;flex-shrink:0;">
-        <i class="ph-fill ph-buildings me-1"></i>Top 10 Employers
-    </a>
-    {{-- Ang kaugalingon nga report sa staff. Job Fair staff ra — dili siya
-         bahin sa panglantaw sa SRA ug wala siya sa admin nga kopya. --}}
-    @if($staffRole === 'job_fair' && ($reportRouteName ?? 'staff.reports') === 'staff.reports')
-    <a href="{{ route('staff.reports', array_merge(request()->query(), ['tab' => 'imported', 'event_id' => $eventId])) }}"
-       class="btn btn-sm fw-semibold"
-       style="{{ $tab === 'imported'
-           ? 'background:var(--g-600);color:#fff;border:none;'
-           : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
-           border-radius:8px;font-size:11px;padding:5px 12px;white-space:nowrap;flex-shrink:0;">
-        <i class="ph-fill ph-upload-simple me-1"></i>My Imported Reports
-    </a>
-    @endif
-    <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->query(), ['tab' => 'archived', 'event_id' => $eventId])) }}"
-       class="btn btn-sm fw-semibold"
-       style="{{ $tab === 'archived'
-           ? 'background:var(--warn);color:#fff;border:none;'
-           : 'border:1px solid var(--warn-br);color:var(--warn);background:#fff;' }}
-           border-radius:8px;font-size:11px;padding:5px 12px;white-space:nowrap;flex-shrink:0;">
-        <i class="ph-fill ph-archive me-1"></i>Archived Job Postings
-    </a>
 </div>
+@endif
 
 {{-- ── DOWNLOAD ──
      PESO Job Fair staff, 2026-08-23: every tab has to come out as a file that
@@ -210,7 +246,10 @@ if ($staffRole !== 'sra') {
         </div>
     @endif
 
-@elseif(!$eventId)
+{{-- Ang "pagpili ug event" nga pahimangno para sa tab nga nagsalig gyud sa usa
+     ka fair. Ang Top 10 Employers wala niini: kung walay gipili, ang ranggo sa
+     tanang fair, ug kana ang tubag nga gipangita. --}}
+@elseif(!$eventId && $tab !== 'top_employers')
     <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
         <i class="ph ph-calendar-dots" style="font-size:48px;color:var(--n-300);"></i>
         <div class="mt-3 fw-semibold" style="color:var(--g-700);">Select a job fair event to view reports</div>
@@ -391,68 +430,201 @@ if ($staffRole !== 'sra') {
         </div>
 
     {{-- ── TAB 2: LOCAL/OVERSEAS COMPANIES ── --}}
+    {{-- ── TAB 2: PARTICIPATING COMPANIES ──
+
+         Gikopya gikan sa papel nga gipasa sa PESO sa DOLE. Ang kolum didto:
+         NO. | NAME OF AGENCY | NAME OF REPRESENTATIVES | ADDRESS | CONTACT INFO
+         | NO. OF VACANCIES, ug ang TOTAL sa ubos.
+
+         Kaniadto tulo ka kolum ra dinhi — kompanya ug address — mao nga ang
+         desk kinahanglan pa mangita sa representative ug sa numero sa lain nga
+         page sa dili pa niya masulat ang papel. --}}
     @elseif($tab === 'companies')
 
-        <div class="row g-2 mb-3">
-            @if($staffRole !== 'sra')
-            <div class="col-12 col-md-6">
-                <h6 class="fw-bold" style="color:var(--g-700);font-size:13px;">Local Companies</h6>
-                <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead>
-                                <tr>
-                                    <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:10px 14px;">#</th>
-                                    <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:10px 14px;">Company</th>
-                                    <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:10px 14px;">Address</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($companiesLocal as $i => $p)
-                                <tr style="font-size:12px;">
-                                    <td style="padding:10px 14px;color:var(--n-500);">{{ $i+1 }}</td>
-                                    <td style="padding:10px 14px;font-weight:600;color:var(--g-700);">{{ $p->employer->company_name ?? 'None' }}</td>
-                                    <td style="padding:10px 14px;color:var(--n-700);">{{ $p->employer->est_barangay ?? '' }} {{ $p->employer->est_city_municipality ?? '' }}</td>
-                                </tr>
-                                @empty
-                                <tr><td colspan="3" class="text-center py-3" style="color:var(--n-500);font-size:12px;">None yet</td></tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
+    @php
+        // Usa ka kopya sa lamesa para sa duha ka listahan. Ang han-ay sa kolum
+        // parehas gyud sa papel, mao nga ang pag-encode usa ka pagbasa gikan sa
+        // wala paingon sa tuo.
+        $companyTable = function ($rows, string $heading) {
+            return [$rows, $heading];
+        };
+    @endphp
+
+    {{-- Usa ka lamesa, dili duha.
+
+         Ang papel usa ka porma kada klase — ang gihatag sa PESO naay "(FOR
+         LOCAL)" sa taas — mao nga usa ra ang gipangayo niini nga tab. Ang
+         Job Fair desk nagbasa sa lokal; ang SRA nagbasa sa overseas, ug ang
+         iyang tab ginganlan na niana sa taas. Ang duha ka lamesa sa usa ka
+         tab mao ang naghimo sa ngalan nga bakak: "Local Companies" nga naay
+         overseas sa sulod. --}}
+    @php
+        $companyRows  = $isSraJobFairView ? $companiesOverseas : $companiesLocal;
+        $heading      = $isSraJobFairView ? 'Overseas Companies' : 'Local Companies';
+        $vacancyTotal = $isSraJobFairView ? $companyVacancyTotals['overseas'] : $companyVacancyTotals['local'];
+        $rows         = $companyRows;
+    @endphp
+    <div class="mb-4">
+        <h6 class="fw-bold mb-2" style="color:var(--g-700);font-size:13px;">
+            {{ $heading }}
+            <span style="font-weight:400;color:var(--n-500);font-size:12px;">
+                — {{ $rows->total() }} compan{{ $rows->total() === 1 ? 'y' : 'ies' }}
+            </span>
+        </h6>
+        <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:10px 14px;width:50px;">NO.</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:10px 14px;">NAME OF AGENCY</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:10px 14px;">NAME OF REPRESENTATIVE</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:10px 14px;">ADDRESS</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:10px 14px;">CONTACT INFO</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:10px 14px;text-align:center;">NO. OF VACANCIES</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($rows as $i => $p)
+                        @php
+                            $company = $p->employer;
+                            $rowNumber = $rows->firstItem() + $i;
+                            $address = collect([
+                                $company->est_barangay ?? null,
+                                $company->est_city_municipality ?? null,
+                                $company->est_province ?? null,
+                            ])->filter()->implode(', ');
+                        @endphp
+                        <tr style="font-size:12px;">
+                            <td style="padding:10px 14px;color:var(--n-500);">{{ $rowNumber }}</td>
+                            <td style="padding:10px 14px;font-weight:600;color:var(--g-700);">
+                                {{ $company->company_name ?? 'None' }}
+                            </td>
+                            <td style="padding:10px 14px;color:var(--n-700);">
+                                {{ $company->contact_person ?? 'None' }}
+                                @if($company->position_title ?? null)
+                                    <div style="font-size:10.5px;color:var(--n-500);">{{ $company->position_title }}</div>
+                                @endif
+                            </td>
+                            <td style="padding:10px 14px;color:var(--n-700);">{{ $address ?: 'None' }}</td>
+                            <td style="padding:10px 14px;color:var(--n-700);">
+                                {{ $company->mobile_number ?? $company->telephone_no ?? 'None' }}
+                            </td>
+                            <td style="padding:10px 14px;text-align:center;color:var(--g-700);font-weight:600;">
+                                {{ $p->vacancies ?? 0 }}
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="6" class="text-center" style="padding:22px 14px;color:var(--n-500);font-size:12.5px;">
+                                No company has confirmed for this fair yet.
+                            </td>
+                        </tr>
+                        @endforelse
+
+                        {{-- Ang TOTAL nga laray sa papel. Gisulat gihapon bisan
+                             walay laray: ang zero usa ka tubag, ug ang porma
+                             kinahanglan parehas kada bulan aron siya matandi. --}}
+                        {{-- Ang TOTAL sa TIBUOK listahan, dili sa panid nga
+                             giablihan. Ang kinatibuk-an sa lima ka laray dili
+                             mao ang gipangayo sa papel. --}}
+                        <tr style="font-size:12.5px;border-top:2px solid var(--n-200);">
+                            <td colspan="5" class="fw-bold" style="padding:10px 14px;color:var(--g-700);">
+                                TOTAL
+                                <span style="font-weight:400;color:var(--n-500);font-size:11px;">
+                                    — all {{ $rows->total() }} compan{{ $rows->total() === 1 ? 'y' : 'ies' }}
+                                </span>
+                            </td>
+                            <td class="fw-bold" style="padding:10px 14px;text-align:center;color:var(--g-700);">
+                                {{ number_format($vacancyTotal) }}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            @if($rows->hasPages())
+            <div class="d-flex justify-content-between align-items-center px-3 py-3" style="border-top:1px solid var(--n-50);">
+                <div style="font-size:12px;color:var(--n-500);">
+                    Showing {{ $rows->firstItem() }}–{{ $rows->lastItem() }} of {{ $rows->total() }}
                 </div>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0 gap-1">
+                        <li class="page-item {{ $rows->onFirstPage() ? 'disabled' : '' }}">
+                            <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);"
+                               href="{{ $rows->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
+                        </li>
+                        @foreach($rows->getUrlRange(1, $rows->lastPage()) as $page => $url)
+                        <li class="page-item {{ $page == $rows->currentPage() ? 'active' : '' }}">
+                            <a class="page-link rounded-2"
+                               style="{{ $page == $rows->currentPage()
+                                    ? 'background:var(--g-600);border-color:transparent;color:#fff;'
+                                    : 'border-color:var(--n-200);color:var(--g-700);' }}"
+                               href="{{ $url }}">{{ $page }}</a>
+                        </li>
+                        @endforeach
+                        <li class="page-item {{ !$rows->hasMorePages() ? 'disabled' : '' }}">
+                            <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);"
+                               href="{{ $rows->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
+                        </li>
+                    </ul>
+                </nav>
             </div>
             @endif
-            <div class="col-12 col-md-6">
-                <h6 class="fw-bold" style="color:var(--g-700);font-size:13px;">Overseas Companies</h6>
-                <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead>
-                                <tr>
-                                    <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:10px 14px;">#</th>
-                                    <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:10px 14px;">Company</th>
-                                    <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:10px 14px;">Address</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($companiesOverseas as $i => $p)
-                                <tr style="font-size:12px;">
-                                    <td style="padding:10px 14px;color:var(--n-500);">{{ $i+1 }}</td>
-                                    <td style="padding:10px 14px;font-weight:600;color:var(--g-700);">{{ $p->employer->company_name ?? 'None' }}</td>
-                                    <td style="padding:10px 14px;color:var(--n-700);">{{ $p->employer->est_barangay ?? '' }} {{ $p->employer->est_city_municipality ?? '' }}</td>
-                                </tr>
-                                @empty
-                                <tr><td colspan="3" class="text-center py-3" style="color:var(--n-500);font-size:12px;">None yet</td></tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+        </div>
+    </div>
+
+    {{-- ── TAB: LIST OF LOCAL JOB VACANCIES ──
+
+         Ang kopya sa siyudad. Tulo ka kolum ra: kompanya, address, pila ka
+         bakante — walay representative ug walay contact, kay dili man kini
+         hikapan nga listahan. Ang kopya sa DOLE naa sa Participating
+         Companies nga tab. --}}
+    @elseif($tab === 'vacancy_list')
+
+        <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th style="background:var(--g-600);color:#fff;font-size:11.5px;border:none;padding:10px 14px;width:60px;">No.</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:11.5px;border:none;padding:10px 14px;">NAME OF COMPANY/OFFICE</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:11.5px;border:none;padding:10px 14px;">ADDRESS</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:11.5px;border:none;padding:10px 14px;text-align:center;width:150px;">No. of Vacancies</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($vacancyList as $i => $row)
+                        <tr style="font-size:12.5px;">
+                            <td style="padding:10px 14px;color:var(--n-500);">{{ $i + 1 }}</td>
+                            <td style="padding:10px 14px;font-weight:600;color:var(--g-700);">
+                                {{ $row['company'] }}
+                                @if($row['overseas'])
+                                    <span style="color:var(--info);font-size:10px;font-weight:600;">Overseas</span>
+                                @endif
+                            </td>
+                            <td style="padding:10px 14px;color:var(--n-700);">{{ $row['address'] ?: 'None' }}</td>
+                            <td style="padding:10px 14px;text-align:center;color:var(--g-700);font-weight:600;">{{ $row['vacancies'] }}</td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="4" class="text-center" style="padding:22px 14px;color:var(--n-500);font-size:12.5px;">
+                                No vacancy has been brought to this fair yet.
+                            </td>
+                        </tr>
+                        @endforelse
+
+                        <tr style="font-size:13px;border-top:2px solid var(--n-200);">
+                            <td colspan="3" class="fw-bold" style="padding:10px 14px;color:var(--g-700);">TOTAL</td>
+                            <td class="fw-bold" style="padding:10px 14px;text-align:center;color:var(--g-700);">
+                                {{ number_format($vacancyList->sum('vacancies')) }}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
-    {{-- ── TAB 3: FURTHER INTERVIEW ── --}}
     @elseif($tab === 'further_interview')
 
         <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
@@ -460,30 +632,60 @@ if ($staffRole !== 'sra') {
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr>
-                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
-                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Jobseeker</th>
-                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Type</th>
-                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Job Applied</th>
-                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Company</th>
-                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Date</th>
+                            <th rowspan="2" style="background:var(--g-600);color:#fff;font-size:11.5px;border:none;padding:10px 12px;">No.</th>
+                            <th rowspan="2" style="background:var(--g-600);color:#fff;font-size:11.5px;border:none;padding:10px 12px;">Name</th>
+                            <th rowspan="2" style="background:var(--g-600);color:#fff;font-size:11.5px;border:none;padding:10px 12px;text-align:center;">Gender</th>
+                            <th colspan="2" style="background:var(--g-600);color:#fff;font-size:11.5px;border:none;padding:10px 12px;text-align:center;">Contact Details</th>
+                            <th rowspan="2" style="background:var(--g-600);color:#fff;font-size:11.5px;border:none;padding:10px 12px;">Job Position</th>
+                            <th rowspan="2" style="background:var(--g-600);color:#fff;font-size:11.5px;border:none;padding:10px 12px;">Hiring Company</th>
+                            <th rowspan="2" style="background:var(--g-600);color:#fff;font-size:11.5px;border:none;padding:10px 12px;text-align:center;">Local/Overseas</th>
+                            {{-- Blangko sa print, tinuyo.
+
+                                 Ang tubag moabot usa ka bulan human sa fair, sa
+                                 telepono ug sa employer — ug walay gutlo sa
+                                 sistema nga makadakop niini. Ang papel gi-print
+                                 ug gisulatan sa kamot, mao nga ang kolum naa
+                                 dinhi ug blangko. --}}
+                            <th colspan="2" style="background:var(--g-600);color:#fff;font-size:11.5px;border:none;padding:10px 12px;text-align:center;">
+                                Status After One (1) Month (Put ✓)
+                            </th>
+                        </tr>
+                        <tr>
+                            <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:8px 12px;">Address</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:8px 12px;">Tel/Cellphone Number</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:8px 12px;text-align:center;width:70px;">Hired</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:8px 12px;text-align:center;width:80px;">Not Hired</th>
                         </tr>
                     </thead>
                     <tbody>
                         @forelse($furtherInterview as $i => $app)
                         <tr style="font-size:13px;">
-                            <td style="padding:12px 16px;color:var(--n-500);">{{ $furtherInterview->firstItem() + $i }}</td>
-                            <td style="padding:12px 16px;font-weight:600;color:var(--g-700);">
-                                {{ trim(($app->jobseeker->first_name ?? '').' '.($app->jobseeker->surname ?? '')) ?: 'None' }}
+                            @php
+                                $seeker = $app->jobseeker;
+                                $seekerAddress = collect([
+                                    $seeker->present_barangay ?? null,
+                                    $seeker->present_city_municipality ?? null,
+                                ])->filter()->implode(', ');
+                            @endphp
+                            <td style="padding:10px 12px;color:var(--n-500);">{{ $furtherInterview->firstItem() + $i }}</td>
+                            <td style="padding:10px 12px;font-weight:600;color:var(--g-700);">
+                                {{ trim(($seeker->first_name ?? '').' '.($seeker->surname ?? '')) ?: 'None' }}
                             </td>
-                            <td style="padding:12px 16px;text-align:center;color:var(--n-700);">
-                                {{ ucfirst($app->jobseeker->nsrp->type ?? 'None') }}
+                            <td style="padding:10px 12px;text-align:center;color:var(--n-700);">
+                                {{ $seeker->sex ? mb_substr($seeker->sex, 0, 1) : 'None' }}
                             </td>
-                            <td style="padding:12px 16px;color:var(--n-700);">{{ $app->job->title ?? 'None' }}</td>
-                            <td style="padding:12px 16px;color:var(--n-700);">{{ $app->job->company->company_name ?? 'None' }}</td>
-                            <td style="padding:12px 16px;text-align:center;color:var(--n-500);">{{ $app->updated_at->format('M d, Y') }}</td>
+                            <td style="padding:10px 12px;color:var(--n-700);">{{ $seekerAddress ?: 'None' }}</td>
+                            <td style="padding:10px 12px;color:var(--n-700);">{{ $seeker->contact_number ?? 'None' }}</td>
+                            <td style="padding:10px 12px;color:var(--n-700);">{{ $app->job->title ?? 'None' }}</td>
+                            <td style="padding:10px 12px;color:var(--n-700);">{{ $app->job->company->company_name ?? 'None' }}</td>
+                            <td style="padding:10px 12px;text-align:center;color:var(--n-700);">
+                                {{ ($app->job->company->is_overseas ?? false) ? 'Overseas' : 'Local' }}
+                            </td>
+                            <td style="padding:10px 12px;background:var(--n-50);"></td>
+                            <td style="padding:10px 12px;background:var(--n-50);"></td>
                         </tr>
                         @empty
-                        <tr><td colspan="6" class="text-center py-4" style="color:var(--n-500);font-size:13px;">No applicants on waiting list</td></tr>
+                        <tr><td colspan="10" class="text-center py-4" style="color:var(--n-500);font-size:13px;">No applicant is waiting for a further interview.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -522,12 +724,17 @@ if ($staffRole !== 'sra') {
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr>
-                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
-                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Name</th>
-                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Gender</th>
-                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Position</th>
-                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Hiring Company</th>
-                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Local/Overseas</th>
+                            <th rowspan="2" style="background:var(--g-600);color:#fff;font-size:11.5px;border:none;padding:10px 12px;">No.</th>
+                            <th rowspan="2" style="background:var(--g-600);color:#fff;font-size:11.5px;border:none;padding:10px 12px;">Name</th>
+                            <th rowspan="2" style="background:var(--g-600);color:#fff;font-size:11.5px;border:none;padding:10px 12px;text-align:center;">Gender</th>
+                            <th colspan="2" style="background:var(--g-600);color:#fff;font-size:11.5px;border:none;padding:10px 12px;text-align:center;">Contact Details</th>
+                            <th rowspan="2" style="background:var(--g-600);color:#fff;font-size:11.5px;border:none;padding:10px 12px;">Job Position</th>
+                            <th rowspan="2" style="background:var(--g-600);color:#fff;font-size:11.5px;border:none;padding:10px 12px;">Hiring Company</th>
+                            <th rowspan="2" style="background:var(--g-600);color:#fff;font-size:11.5px;border:none;padding:10px 12px;text-align:center;">Local/Overseas</th>
+                        </tr>
+                        <tr>
+                            <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:8px 12px;">Address</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:8px 12px;">Tel/Cellphone Number</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -537,7 +744,18 @@ if ($staffRole !== 'sra') {
                             <td style="padding:12px 16px;font-weight:600;color:var(--g-700);">
                                 {{ trim(($app->jobseeker->first_name ?? '').' '.($app->jobseeker->surname ?? '')) ?: 'None' }}
                             </td>
-                            <td style="padding:12px 16px;text-align:center;color:var(--n-700);">{{ $app->jobseeker->sex ?? 'None' }}</td>
+                            @php
+                                $seeker = $app->jobseeker;
+                                $seekerAddress = collect([
+                                    $seeker->present_barangay ?? null,
+                                    $seeker->present_city_municipality ?? null,
+                                ])->filter()->implode(', ');
+                            @endphp
+                            <td style="padding:12px 16px;text-align:center;color:var(--n-700);">
+                                {{ $seeker->sex ? mb_substr($seeker->sex, 0, 1) : 'None' }}
+                            </td>
+                            <td style="padding:12px 16px;color:var(--n-700);">{{ $seekerAddress ?: 'None' }}</td>
+                            <td style="padding:12px 16px;color:var(--n-700);">{{ $seeker->contact_number ?? 'None' }}</td>
                             <td style="padding:12px 16px;color:var(--n-700);">{{ $app->job->title ?? 'None' }}</td>
                             <td style="padding:12px 16px;color:var(--n-700);">{{ $app->job->company->company_name ?? 'None' }}</td>
                             <td style="padding:12px 16px;text-align:center;color:var(--n-700);">
@@ -545,7 +763,7 @@ if ($staffRole !== 'sra') {
                             </td>
                         </tr>
                         @empty
-                        <tr><td colspan="6" class="text-center py-4" style="color:var(--n-500);font-size:13px;">No one hired on the spot yet</td></tr>
+                        <tr><td colspan="8" class="text-center py-4" style="color:var(--n-500);font-size:13px;">No one was hired on the spot at this fair.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -594,7 +812,7 @@ if ($staffRole !== 'sra') {
             </div>
             <div class="col-4 col-md-2">
                 <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
-                    <div class="fs-4 fw-bold" style="color:var(--warn);">{{ $summaryTotals['male'] }}</div>
+                    <div class="fs-4 fw-bold" style="color:var(--warn);">{{ $summaryTotals['female'] }}</div>
                     <div class="text-muted small">Male</div>
                 </div>
             </div>
@@ -623,14 +841,16 @@ if ($staffRole !== 'sra') {
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr>
-                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
-                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Employer</th>
-                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Vacancies</th>
-                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Interviewed</th>
-                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Male</th>
-                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Female</th>
-                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Qualified</th>
-                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Hired</th>
+                            <th rowspan="2" style="background:var(--g-600);color:#fff;font-size:11.5px;border:none;padding:10px 12px;">NO</th>
+                            <th rowspan="2" style="background:var(--g-600);color:#fff;font-size:11.5px;border:none;padding:10px 12px;">NAME OF EMPLOYER</th>
+                            <th rowspan="2" style="background:var(--g-600);color:#fff;font-size:11.5px;border:none;padding:10px 12px;text-align:center;">NO. OF VACANCIES</th>
+                            <th colspan="2" style="background:var(--g-600);color:#fff;font-size:11.5px;border:none;padding:10px 12px;text-align:center;">NO. OF APPLICANTS</th>
+                            <th rowspan="2" style="background:var(--g-600);color:#fff;font-size:11.5px;border:none;padding:10px 12px;text-align:center;">CLUSTER QUALIFIED</th>
+                            <th rowspan="2" style="background:var(--g-600);color:#fff;font-size:11.5px;border:none;padding:10px 12px;text-align:center;">HIRED ON THE SPOT</th>
+                        </tr>
+                        <tr>
+                            <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:8px 12px;text-align:center;width:90px;">Total</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:11px;border:none;padding:8px 12px;text-align:center;width:90px;">Female</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -640,16 +860,39 @@ if ($staffRole !== 'sra') {
                             <td style="padding:12px 16px;font-weight:600;color:var(--g-700);">{{ $p->employer->company_name ?? 'None' }}</td>
                             <td style="padding:12px 16px;text-align:center;color:var(--n-700);">{{ $p->vacancies }}</td>
                             <td style="padding:12px 16px;text-align:center;color:var(--n-700);">{{ $p->interviewed }}</td>
-                            <td style="padding:12px 16px;text-align:center;color:var(--n-700);">{{ $p->male }}</td>
                             <td style="padding:12px 16px;text-align:center;color:var(--n-700);">{{ $p->female }}</td>
                             <td style="padding:12px 16px;text-align:center;color:var(--n-700);">{{ $p->qualified }}</td>
                             <td style="padding:12px 16px;text-align:center;color:var(--g-700);font-weight:600;">{{ $p->hired }}</td>
                         </tr>
                         @empty
-                        <tr><td colspan="8" class="text-center py-4" style="color:var(--n-500);font-size:13px;">No confirmed employers for this event</td></tr>
+                        <tr><td colspan="7" class="text-center py-4" style="color:var(--n-500);font-size:13px;">No employer has confirmed for this fair.</td></tr>
                         @endforelse
+
+                        {{-- Ang TOTAL nga laray sa papel, ug ang Total No. of
+                             Registrants sa ubos niini. Kining ulahi mao ang
+                             tanang jobseeker nga niapil sa fair — dili siya
+                             kinatibuk-an sa kolum sa ibabaw, mao nga lain siya
+                             nga linya sama sa papel. --}}
+                        <tr style="font-size:13px;border-top:2px solid var(--n-200);">
+                            <td colspan="2" class="fw-bold" style="padding:10px 12px;color:var(--g-700);">TOTAL:</td>
+                            <td class="fw-bold" style="padding:10px 12px;text-align:center;color:var(--g-700);">{{ number_format($summaryTotals['vacancies']) }}</td>
+                            <td class="fw-bold" style="padding:10px 12px;text-align:center;color:var(--g-700);">{{ number_format($summaryTotals['interviewed']) }}</td>
+                            <td class="fw-bold" style="padding:10px 12px;text-align:center;color:var(--g-700);">{{ number_format($summaryTotals['female']) }}</td>
+                            <td class="fw-bold" style="padding:10px 12px;text-align:center;color:var(--g-700);">{{ number_format($summaryTotals['qualified']) }}</td>
+                            <td class="fw-bold" style="padding:10px 12px;text-align:center;color:var(--g-700);">{{ number_format($summaryTotals['hired']) }}</td>
+                        </tr>
                     </tbody>
                 </table>
+            </div>
+
+            {{-- Ang linya sa ubos sa papel. Ang gi-ihap kay ang tawo nga
+                 niapil sa fair, dili ang aplikasyon: usa ka tawo nga miduol sa
+                 tulo ka employer usa ra gihapon ka registrant. --}}
+            <div class="px-3 py-3" style="border-top:1px solid var(--n-50);font-size:12.5px;color:var(--n-700);">
+                <span style="color:var(--n-500);">Total No. of Registrants:</span>
+                <strong style="color:var(--g-700);">LOCAL: {{ number_format($summaryRegistrants['local']) }}</strong>
+                <span class="mx-2" style="color:var(--n-200);">|</span>
+                <strong style="color:var(--g-700);">OVERSEAS: {{ number_format($summaryRegistrants['overseas']) }}</strong>
             </div>
         </div>
 
@@ -711,52 +954,164 @@ if ($staffRole !== 'sra') {
             </div>
         </div>
 
-    {{-- ── TAB 7: TOP EMPLOYERS ── --}}
+    {{-- ── TAB 7: TOP 10 OCCUPATION, AND THE INDUSTRY SHARE ──
+
+         Gikopya gikan sa papel nga gipasa sa PESO sa DOLE. Duha ka lamesa, ug
+         walay usa nila naghisgot ug employer: ang trabaho nga gipangita, ug
+         ang bahin sa matag industriya. Ang "Top 10 Employers" nga naa dinhi
+         kaniadto tubag sa lain nga pangutana. --}}
     @elseif($tab === 'top_employers')
 
+        {{-- ── ANG RUN DOWN ──
+             Ang linya sa ulohan sa papel: "46 COMPANIES WITH 1,990 VACANCIES",
+             dayon gibahin sa lokal ug overseas. --}}
+        @if($runDown)
+        <div class="card border-0 shadow-sm rounded-3 p-3 mb-3">
+            <div class="fw-semibold" style="color:var(--g-700);font-size:13.5px;">
+                <i class="ph-fill ph-clipboard-text me-2" style="color:var(--g-600);"></i>
+                Total: {{ number_format($runDown['companies']) }} compan{{ $runDown['companies'] === 1 ? 'y' : 'ies' }}
+                with {{ number_format($runDown['vacancies']) }} vacanc{{ $runDown['vacancies'] === 1 ? 'y' : 'ies' }}
+            </div>
+            <div class="d-flex gap-4 flex-wrap mt-2" style="font-size:12.5px;color:var(--n-700);">
+                <div>
+                    <span style="color:var(--n-500);">Local:</span>
+                    <strong style="color:var(--g-700);">{{ number_format($runDown['local_companies']) }}</strong>
+                    with <strong style="color:var(--g-700);">{{ number_format($runDown['local_vacancies']) }}</strong> vacancies
+                </div>
+                <div>
+                    <span style="color:var(--n-500);">Overseas:</span>
+                    <strong style="color:var(--g-700);">{{ number_format($runDown['overseas_companies']) }}</strong>
+                    with <strong style="color:var(--g-700);">{{ number_format($runDown['overseas_vacancies']) }}</strong> vacancies
+                </div>
+            </div>
+            <div class="mt-2" style="font-size:11px;color:var(--n-500);">
+                {{ $event ? $event->title . ' — ' . $event->event_date->format('M d, Y') : 'Every job fair so far.' }}
+                The run down of vacancies and companies is what establishes the top 10 occupation and the industry share.
+            </div>
+        </div>
+        @endif
+
+        {{-- ── LAMESA 1: TOP 10 OCCUPATION ── --}}
         <div class="card border-0 shadow-sm rounded-3 p-3 mb-3">
             <div class="fw-semibold mb-2" style="color:var(--g-700);font-size:14px;">
-                <i class="ph-fill ph-buildings me-2"></i>Top 10 Employers by Vacancies Offered
+                <i class="ph-fill ph-briefcase me-2"></i>Top 10 Occupation
             </div>
             <div style="font-size:12px;color:var(--n-500);" class="mb-3">
-                Ranked by the number of vacancies each employer brought to
-                <strong style="color:var(--g-700);">{{ $event->title ?? 'this fair' }}</strong>.
-                The count comes from the postings themselves, so it needs nobody to type it in.
+                The ten occupations with the most vacancies. The number is the vacancies asked for,
+                counted from the postings themselves, so nobody types it in.
             </div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th style="background:var(--n-50);color:var(--g-700);border:none;padding:8px 10px;width:60px;">NO.</th>
+                            <th style="background:var(--n-50);color:var(--g-700);border:none;padding:8px 10px;">OCCUPATION</th>
+                            <th style="background:var(--n-50);color:var(--g-700);border:none;padding:8px 10px;text-align:center;width:120px;">NUMBER</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($topOccupations as $index => $row)
+                        <tr style="font-size:13px;">
+                            <td style="padding:8px 10px;color:var(--n-500);">{{ $index + 1 }}</td>
+                            <td style="padding:8px 10px;color:var(--g-700);font-weight:600;">
+                                {{ $row['occupation'] }}
+                                <span style="font-size:10.5px;font-weight:400;color:var(--n-500);">
+                                    · {{ $row['postings'] }} posting(s)
+                                </span>
+                            </td>
+                            <td style="padding:8px 10px;text-align:center;color:var(--g-700);font-weight:600;">{{ $row['number'] }}</td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="3" class="text-center" style="padding:20px 10px;color:var(--n-500);font-size:12.5px;">
+                                No vacancy has been brought to a job fair yet.
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-            {{-- Block form, dili ang inline nga @php(...): ang inline nga porma
-                 mo-pares gihapon sa sunod nga @endphp bisan asa kini sa file,
-                 mao nga ang bisan unsang bag-ong @php block sa ubos mo-guba sa
-                 tibuok page. --}}
-            @php
-                $topEmployers = $topEmployersByCompanyInterviews ?? collect();
-            @endphp
-            @if($topEmployers->isEmpty())
-                <div class="text-muted small">No postings were brought to this job fair yet.</div>
-            @else
-                <div class="table-responsive">
-                    <table class="table table-sm mb-0">
-                        <thead>
-                            <tr>
-                                <th style="background:var(--n-50);color:var(--g-700);border:none;padding:8px 10px;">#</th>
-                                <th style="background:var(--n-50);color:var(--g-700);border:none;padding:8px 10px;">Employer</th>
-                                <th style="background:var(--n-50);color:var(--g-700);border:none;padding:8px 10px;text-align:center;">Postings Brought</th>
-                                <th style="background:var(--n-50);color:var(--g-700);border:none;padding:8px 10px;text-align:center;">Vacancies Offered</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($topEmployers as $index => $entry)
-                                <tr style="font-size:13px;">
-                                    <td style="padding:8px 10px;color:var(--n-500);">{{ $index + 1 }}</td>
-                                    <td style="padding:8px 10px;color:var(--g-700);font-weight:600;">{{ $entry['employer']->company_name ?? 'Unknown Employer' }}</td>
-                                    <td style="padding:8px 10px;text-align:center;color:var(--n-700);">{{ $entry['posting_count'] }}</td>
-                                    <td style="padding:8px 10px;text-align:center;color:var(--g-700);font-weight:600;">{{ $entry['total_vacancies'] }}</td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            @endif
+        {{-- ── LAMESA 2: MAJOR INDUSTRY GROUP ──
+
+             Gilista ang TANANG grupo, apil ang zero. Ang papel usa ka porma nga
+             naay nakaimprinta nga laray, ug ang blangko usa ka tubag: walay
+             Construction niini nga fair. Kung tagoon ang zero, lain ang porma
+             sa report kada bulan ug dili na siya matandi. --}}
+        @php
+            // Ang upat ka ulohan sa papel gikan na sa JobFairReport, aron ang
+            // page ug ang download dili gyud magkalahi ug han-ay.
+            $industrySections = \App\Support\JobFairReport::INDUSTRY_SECTIONS;
+        @endphp
+        <div class="card border-0 shadow-sm rounded-3 p-3 mb-3">
+            <div class="fw-semibold mb-2" style="color:var(--g-700);font-size:14px;">
+                <i class="ph-fill ph-tree-structure me-2"></i>Major Industry Group
+            </div>
+            <div style="font-size:12px;color:var(--n-500);" class="mb-3">
+                The vacancies of this run down, split by the industry each posting belongs to.
+                The share is of {{ number_format($industryShares['total']) }} vacanc{{ $industryShares['total'] === 1 ? 'y' : 'ies' }}.
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th style="background:var(--n-50);color:var(--g-700);border:none;padding:8px 10px;">MAJOR INDUSTRY GROUP</th>
+                            <th style="background:var(--n-50);color:var(--g-700);border:none;padding:8px 10px;text-align:center;width:120px;">QUANTITY</th>
+                            <th style="background:var(--n-50);color:var(--g-700);border:none;padding:8px 10px;text-align:center;width:120px;">% SHARE</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($industrySections as $section => $groups)
+                        <tr>
+                            <td colspan="3" class="fw-bold"
+                                style="background:#FEF3C7;color:var(--g-700);padding:6px 10px;font-size:12px;letter-spacing:0.3px;">
+                                {{ $section }}
+                            </td>
+                        </tr>
+                        @foreach($groups as $group)
+                        @php $row = $industryShares['rows'][$group] ?? ['quantity' => 0, 'share' => 0]; @endphp
+                        <tr style="font-size:12.5px;">
+                            <td style="padding:7px 10px;color:var(--n-700);">{{ $group }}</td>
+                            <td style="padding:7px 10px;text-align:center;color:{{ $row['quantity'] ? 'var(--g-700)' : 'var(--n-400)' }};font-weight:{{ $row['quantity'] ? '600' : '400' }};">
+                                {{ $row['quantity'] ?: '' }}
+                            </td>
+                            <td style="padding:7px 10px;text-align:center;color:{{ $row['quantity'] ? 'var(--g-700)' : 'var(--n-400)' }};">
+                                {{ $row['quantity'] ? number_format($row['share'], 2) . '%' : '' }}
+                            </td>
+                        </tr>
+                        @endforeach
+                        @endforeach
+
+                        {{-- Ang employer nga walay industriya nga naka-set. Kung
+                             itago siya, ang % share dili moabot sa 100 ug walay
+                             makasulti ngano. --}}
+                        @if($industryShares['unclassified']['quantity'] > 0)
+                        <tr style="font-size:12.5px;">
+                            <td style="padding:7px 10px;color:var(--warn);">
+                                <i class="ph-fill ph-warning-circle me-1"></i>No industry group set
+                            </td>
+                            <td style="padding:7px 10px;text-align:center;color:var(--warn);font-weight:600;">
+                                {{ $industryShares['unclassified']['quantity'] }}
+                            </td>
+                            <td style="padding:7px 10px;text-align:center;color:var(--warn);">
+                                {{ number_format($industryShares['unclassified']['share'], 2) }}%
+                            </td>
+                        </tr>
+                        @endif
+
+                        <tr style="font-size:13px;border-top:2px solid var(--n-200);">
+                            <td class="fw-bold" style="padding:8px 10px;color:var(--g-700);">TOTAL</td>
+                            <td class="fw-bold" style="padding:8px 10px;text-align:center;color:var(--g-700);">
+                                {{ number_format($industryShares['total']) }}
+                            </td>
+                            <td class="fw-bold" style="padding:8px 10px;text-align:center;color:var(--g-700);">
+                                {{ $industryShares['total'] > 0 ? '100.00%' : '' }}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
     {{-- ── TAB 8: COMPANY PLACEMENT REPORT ── --}}
@@ -960,12 +1315,6 @@ if ($staffRole !== 'sra') {
                 'label' => 'Download Excel',
                 'icon'  => 'ph-download-simple',
             ],
-            [
-                'url'    => route('staff.reports.export', array_merge($range->queryParams(), ['tab' => $exportTab, 'format' => 'print'])),
-                'label'  => 'Print',
-                'icon'   => 'ph-printer',
-                'newTab' => true,
-            ],
         ],
     ])
 @endif
@@ -989,12 +1338,10 @@ if ($staffRole !== 'sra') {
 
     @if(($registeredView ?? 'all') === 'all')
 
-        @if(($registeredAll ?? collect())->isEmpty())
-            <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-                <i class="ph ph-tray" style="font-size:48px;color:var(--n-300);"></i>
-                <div class="mt-3 fw-semibold" style="color:var(--g-700);">No registered jobseekers found</div>
-            </div>
-        @else
+            {{-- The table is drawn whether or not it has rows. The columns
+                 are the answer to what this tab reports on, and a page that
+                 changes shape when there is nothing to show gives the desk
+                 nothing to read that result against. --}}
             <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
@@ -1007,7 +1354,7 @@ if ($staffRole !== 'sra') {
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($registeredAll as $i => $reg)
+                            @forelse($registeredAll ?? collect() as $i => $reg)
                             <tr style="font-size:13px;">
                                 <td style="padding:12px 16px;color:var(--n-500);">{{ $registeredAll->firstItem() + $i }}</td>
                                 <td style="padding:12px 16px;font-weight:600;color:var(--g-700);">
@@ -1020,7 +1367,14 @@ if ($staffRole !== 'sra') {
                                     {{ $reg->created_at->format('M d, Y') }}
                                 </td>
                             </tr>
-                            @endforeach
+                            @empty
+                            <tr>
+                                <td colspan="4" class="text-center"
+                                    style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                                    No registered jobseeker in this range.
+                                </td>
+                            </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
@@ -1049,14 +1403,7 @@ if ($staffRole !== 'sra') {
                 </div>
                 @endif
             </div>
-        @endif
 
-    @elseif($registeredParticipants->isEmpty())
-        <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-            <i class="ph ph-tray" style="font-size:48px;color:var(--n-300);"></i>
-            <div class="mt-3 fw-semibold" style="color:var(--g-700);">No registered applicants found</div>
-            <div class="text-muted small mt-1">Jobseekers who accepted a confirmed in-house interview will appear here.</div>
-        </div>
     @else
         <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
             <div class="table-responsive">
@@ -1071,7 +1418,7 @@ if ($staffRole !== 'sra') {
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($registeredParticipants as $i => $p)
+                        @forelse($registeredParticipants as $i => $p)
                         <tr style="font-size:13px;">
                             <td style="padding:12px 16px;color:var(--n-500);">{{ $registeredParticipants->firstItem() + $i }}</td>
                             <td style="padding:12px 16px;">
@@ -1088,7 +1435,14 @@ if ($staffRole !== 'sra') {
                                 {{ $p->updated_at?->format('M d, Y h:i A') ?? 'None' }}
                             </td>
                         </tr>
-                        @endforeach
+                        @empty
+                        <tr>
+                            <td colspan="5" class="text-center"
+                                style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                                A jobseeker appears here once they accept a confirmed in-house interview.
+                            </td>
+                        </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
@@ -1129,12 +1483,6 @@ if ($staffRole !== 'sra') {
         ])
     @endif
 
-    @if($placedApplications->isEmpty())
-        <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-            <i class="ph ph-tray" style="font-size:48px;color:var(--n-300);"></i>
-            <div class="mt-3 fw-semibold" style="color:var(--g-700);">No placed applicants found</div>
-        </div>
-    @else
         <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
@@ -1151,7 +1499,7 @@ if ($staffRole !== 'sra') {
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($placedApplications as $i => $app)
+                        @forelse($placedApplications as $i => $app)
                         <tr style="font-size:13px;">
                             <td style="padding:12px 16px;color:var(--n-500);">{{ $placedApplications->firstItem() + $i }}</td>
                             <td style="padding:12px 16px;">
@@ -1167,7 +1515,14 @@ if ($staffRole !== 'sra') {
                             <td style="padding:12px 16px;color:var(--n-700);">{{ $app->job->company->company_name ?? 'None' }}</td>
                             <td style="padding:12px 16px;text-align:center;color:var(--n-500);">{{ $app->updated_at->format('M d, Y') }}</td>
                         </tr>
-                        @endforeach
+                        @empty
+                        <tr>
+                            <td colspan="6" class="text-center"
+                                style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                                No placed applicant in this range.
+                            </td>
+                        </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
@@ -1196,7 +1551,6 @@ if ($staffRole !== 'sra') {
             </div>
             @endif
         </div>
-    @endif
 
 {{-- ── TAB 3: TOP EMPLOYERS ── --}}
 @elseif(request('tab') === 'top_employers')
@@ -1227,9 +1581,6 @@ if ($staffRole !== 'sra') {
         @php
             $topEmployers = $topEmployersByCompanyInterviews ?? collect();
         @endphp
-        @if($topEmployers->isEmpty())
-            <div class="text-muted small">No in-house interview data found for this period.</div>
-        @else
             <div class="table-responsive">
                 <table class="table table-sm mb-0">
                     <thead>
@@ -1240,17 +1591,23 @@ if ($staffRole !== 'sra') {
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($topEmployers as $index => $entry)
+                        @forelse($topEmployers as $index => $entry)
                             <tr style="font-size:13px;">
                                 <td style="padding:8px 10px;color:var(--n-500);">{{ $index + 1 }}</td>
                                 <td style="padding:8px 10px;color:var(--g-700);font-weight:600;">{{ $entry['employer']->company_name ?? 'Unknown Employer' }}</td>
                                 <td style="padding:8px 10px;text-align:center;color:var(--n-700);">{{ $entry['interview_count'] }}</td>
                             </tr>
-                        @endforeach
+                        @empty
+                            <tr>
+                                <td colspan="3" class="text-center"
+                                    style="padding:20px 10px;color:var(--n-500);font-size:12.5px;">
+                                    No in-house interview in this period.
+                                </td>
+                            </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
-        @endif
     </div>
 
 {{-- ── TAB: JOB VACANCIES SOLICITED (SRA ra) ── --}}
@@ -1325,12 +1682,6 @@ if ($staffRole !== 'sra') {
 
 @elseif(request('tab') === 'referred')
 
-    @if(($referredApplications ?? collect())->isEmpty())
-        <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-            <i class="ph ph-tray" style="font-size:48px;color:var(--n-300);"></i>
-            <div class="mt-3 fw-semibold" style="color:var(--g-700);">No referred applicants found</div>
-        </div>
-    @else
         <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
@@ -1345,7 +1696,7 @@ if ($staffRole !== 'sra') {
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($referredApplications ?? collect() as $i => $app)
+                        @forelse($referredApplications ?? collect() as $i => $app)
                         <tr style="font-size:13px;">
                             <td style="padding:12px 16px;color:var(--n-500);">{{ ($referredApplications ?? collect())->firstItem() + $i }}</td>
                             <td style="padding:12px 16px;">
@@ -1361,7 +1712,14 @@ if ($staffRole !== 'sra') {
                             </td>
                             <td style="padding:12px 16px;text-align:center;color:var(--n-500);">{{ $app->updated_at->format('M d, Y') }}</td>
                         </tr>
-                        @endforeach
+                        @empty
+                        <tr>
+                            <td colspan="6" class="text-center"
+                                style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                                No referred applicant in this range.
+                            </td>
+                        </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
@@ -1390,7 +1748,6 @@ if ($staffRole !== 'sra') {
             </div>
             @endif
         </div>
-    @endif
 
 {{-- ── TAB 5: ARCHIVED JOB POSTINGS ── --}}
 {{-- ── IN-HOUSE SCHEDULES ──
@@ -1400,12 +1757,9 @@ if ($staffRole !== 'sra') {
 
     @php $ihRows = $inhouseReport ?? null; @endphp
 
-    @if(!$ihRows || $ihRows->total() === 0)
-        <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-            <i class="ph ph-calendar-x" style="font-size:48px;color:var(--n-300);"></i>
-            <div class="mt-3 fw-semibold" style="color:var(--g-700);">No in-house schedule request yet</div>
-        </div>
-    @else
+    {{-- Drawn empty as well as full: the columns say what an in-house
+         schedule record holds, and that is worth showing before the first
+         request arrives. --}}
     <div class="card border-0 shadow-sm rounded-3">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0" id="inhouseReportTable">
@@ -1422,7 +1776,7 @@ if ($staffRole !== 'sra') {
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($ihRows as $i => $sc)
+                    @forelse($ihRows ?? collect() as $i => $sc)
                     <tr>
                         <td style="font-size:13px;padding:12px 14px;color:var(--n-500);">{{ $ihRows->firstItem() + $i }}</td>
                         <td style="font-size:13px;padding:12px 14px;font-weight:600;color:var(--g-700);">
@@ -1464,11 +1818,19 @@ if ($staffRole !== 'sra') {
                             @endif
                         </td>
                     </tr>
-                    @endforeach
+                    @empty
+                    <tr>
+                        <td colspan="8" class="text-center"
+                            style="padding:26px 14px;color:var(--n-500);font-size:13px;">
+                            No in-house schedule request in this range.
+                        </td>
+                    </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
     </div>
+    @if($ihRows && $ihRows->total() > 0)
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
         <div style="font-size:12px;color:var(--n-500);">
             Showing {{ $ihRows->firstItem() }}–{{ $ihRows->lastItem() }} of {{ $ihRows->total() }} request(s)

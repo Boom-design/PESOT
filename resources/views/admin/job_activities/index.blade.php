@@ -120,26 +120,33 @@
                         <tr>
                             <td data-row-number style="font-size:13px;padding:12px 16px;color:var(--n-500);">{{ $i + 1 }}</td>
                             <td style="font-size:13px;padding:12px 16px;font-weight:600;color:var(--g-700);">
-                                {{ $schedule->employer->company_name ?? $schedule->employer->name ?? 'None' }}
+                                {{ $schedule->company->company_name ?? 'None' }}
+                                {{-- Which door this came through. Both are in-house
+                                     interviews at the same office; only the paperwork
+                                     the employer filled in differs. --}}
+                                <div style="font-size:10.5px;font-weight:500;color:var(--n-500);margin-top:2px;">
+                                    {{ $schedule->source_label }}
+                                </div>
                             </td>
                             <td style="font-size:13px;padding:12px 16px;color:var(--n-700);">
-                                {{ $schedule->confirmed_date
-                                    ? $schedule->confirmed_date->format('M d, Y')
-                                    : $schedule->schedule_window_label }}
+                                {{ $schedule->window_label ?: 'Not set' }}
                             </td>
                             <td style="font-size:13px;padding:12px 16px;color:var(--n-700);">
-                                {{ \Carbon\Carbon::parse($schedule->preferred_time)->format('h:i A') }}
+                                {{ $schedule->time_label ?: 'Not set' }}
                             </td>
                             <td style="font-size:13px;padding:12px 16px;color:var(--n-700);">
-                                {{ $schedule->num_applicants }}
+                                {{ $schedule->applicant_count }}
                             </td>
                             <td style="font-size:13px;padding:12px 16px;color:var(--n-700);">
-                                {{ $schedule->job_offers }}
+                                {{ $schedule->offer_count }}
                             </td>
                             <td style="font-size:13px;padding:12px 16px;">
-                                @if($schedule->employer && $schedule->employer->employerNsrp)
-                                    <span style="color:{{ $schedule->employer->employerNsrp->is_overseas ? 'var(--warn)' : 'var(--g-600)' }};font-weight:600;font-size:11px;">
-                                        {{ $schedule->employer->employerNsrp->is_overseas ? 'SRA' : 'LRA' }}
+                                {{-- The desk that owns this request. It used to be read
+                                     through a relation the NSRP row does not have, so
+                                     every line said None. --}}
+                                @if($schedule->company)
+                                    <span style="color:{{ $schedule->company->is_overseas ? 'var(--warn)' : 'var(--g-600)' }};font-weight:600;font-size:11px;">
+                                        {{ $schedule->company->is_overseas ? 'SRA' : 'LRA' }}
                                     </span>
                                 @else
                                     <span style="color:var(--n-400);font-size:12px;">None</span>
@@ -153,20 +160,18 @@
                                     // refuse one, or not answer yet, so the cell
                                     // says that and shows the date it landed on.
                                     $ihConfirmed = $schedule->confirmed_date
-                                        ? \Carbon\Carbon::parse($schedule->confirmed_date)->format('M d, Y')
-                                          . ($schedule->confirmed_time
-                                              ? ' at ' . \Carbon\Carbon::parse($schedule->confirmed_time)->format('h:i A')
-                                              : '')
+                                        ? $schedule->confirmed_date
+                                          . ($schedule->confirmed_time ? ' at ' . $schedule->confirmed_time : '')
                                         : null;
 
-                                    [$ihLabel, $ihColor, $ihIcon, $ihNote] = match ($schedule->status) {
+                                    [$ihLabel, $ihColor, $ihIcon, $ihNote] = match ($schedule->state) {
                                         'accepted' => [
                                             'Schedule confirmed', 'var(--g-600)', 'ph-check-circle',
                                             $ihConfirmed ?: 'No date recorded',
                                         ],
                                         'rejected' => [
                                             'Request declined', 'var(--danger)', 'ph-x-circle',
-                                            $schedule->rejection_reason ?: 'No reason given',
+                                            $schedule->decline_reason ?: 'No reason given',
                                         ],
                                         default => [
                                             'Waiting for a date', 'var(--warn)', 'ph-clock',
@@ -181,7 +186,7 @@
                             </td>
                             <td style="font-size:13px;padding:12px 16px;">
                                 <button type="button" class="btn btn-sm fw-semibold"
-                                    data-bs-toggle="modal" data-bs-target="#inhouseModal{{ $schedule->inhouse_schedules_id }}"
+                                    data-bs-toggle="modal" data-bs-target="#inhouseModal{{ $schedule->row_key }}"
                                     style="border:1px solid var(--n-200);border-radius:8px;color:var(--g-700);background:#fff;font-size:12px;padding:5px 14px;">
                                     <i class="ph ph-eye me-1"></i>View Details
                                 </button>
@@ -205,15 +210,13 @@
          number. --}}
     @foreach($inhouseSchedules as $schedule)
     @php
-        $emp      = $schedule->employer;
-        $ihVenue  = $schedule->venue_type === 'other'
-            ? ($schedule->venue_address ?: 'Other venue')
-            : 'PESO Office';
+        $emp      = $schedule->company;
+        $ihVenue  = $schedule->venue_label;
         $ihPlace  = collect([$emp->est_barangay ?? null, $emp->est_city_municipality ?? null, $emp->est_province ?? null])
             ->filter()->implode(', ');
-        $ihOffers = collect($schedule->job_positions ?? [])->filter()->values();
+        $ihOffers = $schedule->positions;
     @endphp
-    <div class="modal fade" id="inhouseModal{{ $schedule->inhouse_schedules_id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="inhouseModal{{ $schedule->row_key }}" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content" style="border-radius:16px;border:none;overflow:hidden;">
                 <div class="modal-header border-0" style="background:var(--g-600);padding:16px 20px;">
@@ -247,18 +250,19 @@
                         <i class="ph-fill ph-calendar-check me-1"></i>Schedule
                     </div>
                     <div class="row g-3 mb-4">
-                        <div class="col-md-6"><strong>Requested Date</strong><div class="text-muted">{{ $schedule->schedule_window_label ?? ($schedule->preferred_date?->format('M d, Y') ?? 'Not set') }}</div></div>
-                        <div class="col-md-6"><strong>Requested Time</strong><div class="text-muted">{{ $schedule->preferred_time ? \Carbon\Carbon::parse($schedule->preferred_time)->format('h:i A') : 'Not set' }}</div></div>
-                        <div class="col-md-6"><strong>Confirmed Date</strong><div class="text-muted">{{ $schedule->confirmed_date ? \Carbon\Carbon::parse($schedule->confirmed_date)->format('M d, Y') : 'None' }}</div></div>
-                        <div class="col-md-6"><strong>Confirmed Time</strong><div class="text-muted">{{ $schedule->confirmed_time ? \Carbon\Carbon::parse($schedule->confirmed_time)->format('h:i A') : 'None' }}</div></div>
+                        <div class="col-md-6"><strong>Request Type</strong><div class="text-muted">{{ $schedule->source_label }}</div></div>
+                        <div class="col-md-6"><strong>Requested Date</strong><div class="text-muted">{{ $schedule->requested_label ?: 'Not set' }}</div></div>
+                        <div class="col-md-6"><strong>Requested Time</strong><div class="text-muted">{{ $schedule->time_label ?: 'Not set' }}</div></div>
+                        <div class="col-md-6"><strong>Confirmed Date</strong><div class="text-muted">{{ $schedule->confirmed_date ?: 'None' }}</div></div>
+                        <div class="col-md-6"><strong>Confirmed Time</strong><div class="text-muted">{{ $schedule->confirmed_time ?: 'None' }}</div></div>
                         <div class="col-md-6"><strong>Venue</strong><div class="text-muted">{{ $ihVenue }}</div></div>
-                        <div class="col-md-6"><strong>Number of Applicants</strong><div class="text-muted">{{ $schedule->num_applicants }}</div></div>
+                        <div class="col-md-6"><strong>Number of Applicants</strong><div class="text-muted">{{ $schedule->applicant_count }}</div></div>
                         <div class="col-md-6"><strong>Schedule Status</strong>
-                            <div class="text-muted">{{ ['accepted' => 'Accepted', 'rejected' => 'Declined'][$schedule->status] ?? 'Waiting for a date' }}</div>
+                            <div class="text-muted">{{ ['accepted' => 'Accepted', 'rejected' => 'Declined'][$schedule->state] ?? 'Waiting for a date' }}</div>
                         </div>
-                        <div class="col-md-6"><strong>Job Offers Made</strong><div class="text-muted">{{ $schedule->job_offers }}</div></div>
-                        @if($schedule->status === 'rejected')
-                        <div class="col-12"><strong>Reason for Declining</strong><div class="text-muted">{{ $schedule->rejection_reason ?: 'No reason given' }}</div></div>
+                        <div class="col-md-6"><strong>Job Offers Made</strong><div class="text-muted">{{ $schedule->offer_count }}</div></div>
+                        @if($schedule->state === 'rejected')
+                        <div class="col-12"><strong>Reason for Declining</strong><div class="text-muted">{{ $schedule->decline_reason ?: 'No reason given' }}</div></div>
                         @endif
                         @if($schedule->notes)
                         <div class="col-12"><strong>Employer Notes</strong><div class="text-muted">{{ $schedule->notes }}</div></div>
@@ -294,7 +298,7 @@
                                     // where it does not, the name still gets a row —
                                     // a position with no posting is exactly the sort
                                     // of gap this report is meant to expose.
-                                    $match = ($schedule->postings ?? collect())
+                                    $match = $schedule->postings
                                         ->first(fn($j) => strcasecmp(trim($j->title), trim($offer)) === 0);
                                 @endphp
                                 <tr>
@@ -461,10 +465,19 @@
                                     // "Waiting" is not a third answer — it is the
                                     // absence of one. The employer has the
                                     // invitation and has pressed neither button.
+                                    //
+                                    // An overseas agency has two more places to
+                                    // stand: it answered and PESO has not yet
+                                    // picked, or it answered and PESO did not
+                                    // take it. Neither is "Waiting", and calling
+                                    // the second one that would show the head of
+                                    // the office an open question that is closed.
                                     $status = $participant->confirmation_status;
                                     $look   = [
-                                        'confirmed' => ['Confirmed', 'var(--g-600)', 'ph-check-circle'],
-                                        'declined'  => ['Declined',  'var(--danger)', 'ph-x-circle'],
+                                        'confirmed'    => ['Confirmed',        'var(--g-600)',  'ph-check-circle'],
+                                        'declined'     => ['Declined',         'var(--danger)', 'ph-x-circle'],
+                                        'accepted'     => ['Accepted — with SRA', 'var(--warn)', 'ph-hourglass-medium'],
+                                        'not_selected' => ['Not selected',     'var(--n-500)',  'ph-minus-circle'],
                                     ][$status] ?? ['Waiting', 'var(--warn)', 'ph-clock'];
                                 @endphp
                                 <tr>

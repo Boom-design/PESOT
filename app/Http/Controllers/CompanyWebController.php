@@ -1620,6 +1620,10 @@ class CompanyWebController extends Controller
                 $url = null;
                 if ($notif->type === 'new_applicant' && $notif->reference_id) {
                     $url = route('company.jobs.qualified', $notif->reference_id);
+                } elseif ($notif->reference_type === 'employer_inactivity') {
+                    // Ang pagpost ug bag-ong bakante mao ang tubag nga giila sa
+                    // sweep; didto siya modala. Parehas sa dropdown sa layout.
+                    $url = route('company.jobs.create');
                 } else {
                     $url = match ($notif->reference_type) {
                         'job'                  => route('company.jobseekers'),
@@ -1793,12 +1797,31 @@ class CompanyWebController extends Controller
 
         $afterSubmission = $participant->jobFair->pastDoleCutoff();
 
+        // ── Ang oo sa overseas nga ahensya usa ka pangayo, dili pa pagsulod.
+        // ──
+        // ── PESO SRA, 2026-09-01: si SRA ang nagdala niining ahensya sa
+        // ── imbitasyon, human siya mangayo ug permiso sa pangulo sa PESO. Kung
+        // ── ang oo mismo sa ahensya mao nay makapasulod niya, ang pagpili sa
+        // ── desk mahimong walay bili — mananghid siya kinsa ang pangutan-on,
+        // ── unya lain ang mutubag kung kinsa ang mosulod. Mao nga ang oo
+        // ── mohunong sa 'accepted', ug si SRA ang mopili gikan didto.
+        // ──
+        // ── Ang lokal wala giusab: walay tawo nga nagpili kaniya — ang lagda
+        // ── sa event mismo ang nag-invite — mao nga ang iyang oo kay oo dayon.
+        $isOverseas = (bool) $company->activeCompany()->is_overseas;
+        $needsSelection = $isOverseas && $request->response === 'confirmed';
+        $newStatus = $needsSelection ? 'accepted' : $request->response;
+
         $participant->update([
-            'confirmation_status' => $request->response,
+            'confirmation_status' => $newStatus,
             'responded_at'        => now(),
         ]);
 
-        if ($request->response === 'confirmed') {
+        // Ang jobseeker giingnan lang kung apil na gyud ang kompanya. Ang
+        // naghulat pa sa SRA dili pa siya — ug ang pagsulti sa jobseeker nga
+        // moadto siya para sa usa ka kompanya nga wala diay didto mas grabe pa
+        // kaysa wala gyoy gisulti.
+        if ($newStatus === 'confirmed') {
             $userIds = \App\Models\Application::whereHas('job', fn($q) =>
                 $q->where('company_id', $company->activeCompany()->employer_nsrp_registrations_id)
             )->pluck('jobseeker_id')->unique();
@@ -1812,21 +1835,67 @@ class CompanyWebController extends Controller
             ], $userIds);
         }
 
-        $msg = $request->response === 'confirmed'
-            ? 'You have confirmed the job fair invitation! Please post a job vacancy for this event.'
-            : 'You have declined the job fair invitation.';
+        // ── Ang gibalibaran nga imbitasyon modala sa bakante niini.
+        // ──
+        // ── PESO Job Fair staff, 2026-09-01: ang employer nga nagpadala ug
+        // ── bakante para niining fair, unya miingon ug dili, wala nay bakante
+        // ── nga naghulat — apan nagpabilin siya sa listahan sa desk isip
+        // ── naghulat, ug ang usa ka buton nga mo-post sa tanan modala kaniya
+        // ── ngadto sa fair nga iyang gibalibaran.
+        // ──
+        // ── Ang gipangayo niini nga fair ra ang gitangtang. Ang bakante nga
+        // ── nangayo ug laing fair, o wala gyud nangayo, wala gihilabti: dili
+        // ── siya bahin niining tubaga. ──
+        if ($newStatus === 'declined') {
+            \App\Models\Job::where('company_id', $company->activeCompany()->employer_nsrp_registrations_id)
+                ->where('schedule_type', 'job_fair')
+                ->where('posting_status', 'pending')
+                ->where('requested_job_fair_id', $participant->job_fair_id)
+                ->update([
+                    'posting_status' => 'rejected',
+                    'status'         => 'closed',
+                    'remarks'        => 'Withdrawn — the employer declined the invitation to '
+                                        . $participant->jobFair->title . '.',
+                ]);
+        }
+
+        // Kung walay mosulti sa SRA nga naay mitubag, ang ahensya maghulat sa
+        // usa ka desisyon nga wala gani nahibaw-i nga naghulat.
+        if ($needsSelection) {
+            \App\Models\Announcement::sendToStaff([
+                'type'           => 'job_fair_selection_pending',
+                'title'          => 'Overseas Agency Accepted 📋',
+                'message'        => $company->activeCompany()->company_name . ' accepted the invitation to '
+                                    . $participant->jobFair->title . ' on '
+                                    . $participant->jobFair->event_date->format('M d, Y')
+                                    . '. Choose whether to bring them to this fair.',
+                'reference_type' => 'job_fair_selection',
+                'reference_id'   => $participant->job_fair_id,
+            ], \App\Models\Staff::where('staff_role', 'sra')->pluck('staff_id'));
+        }
+
+        $msg = match (true) {
+            $needsSelection => 'Your acceptance has been sent to PESO. The office will confirm'
+                               . ' your slot for this job fair — you will be notified once it does.',
+            $request->response === 'confirmed'
+                            => 'You have confirmed the job fair invitation! Please post a job vacancy for this event.',
+            default         => 'You have declined the job fair invitation.',
+        };
 
         // Ang opisina nagpasa sa listahan sa DOLE napulo ka adlaw sa dili pa ang
         // fair. Ang mi-confirm human niana wala sa gipasa nga listahan, ug mas
         // maayo nga masayod siya karon kaysa sa adlaw sa fair.
-        if ($afterSubmission && $request->response === 'confirmed') {
+        if ($afterSubmission && $newStatus === 'confirmed') {
             $msg .= ' Note: the office already submitted its list of participating'
                   . ' companies to DOLE on '
                   . $participant->jobFair->dole_cutoff_at->format('M d, Y')
                   . ', so please coordinate with PESO about your booth.';
         }
 
-        if ($request->response === 'confirmed') {
+        // Ang modal sa pag-post ug bakante moabli lang kung apil na gyud siya.
+        // Ang naghulat pa sa SRA walay ma-post — ug ang pag-abli sa porma kay
+        // saad nga wala pa gihatag.
+        if ($newStatus === 'confirmed') {
             return redirect()->route('company.jobseekers', ['tab' => 'invitations'])
                 ->with('success', $msg)
                 ->with('open_job_fair_modal', $participant->job_fair_id);
@@ -2025,16 +2094,21 @@ class CompanyWebController extends Controller
         // ── madawat gihapon hangtod sa adlaw sa fair, mao nga aksyonable pa
         // ── siya — ang pagtago niya sa collapsed nga listahan mao ang pagsulti
         // ── nga wala nay mahimo, nga bakak. ──
+        // ── Apil ang 'accepted' dinhi, dili sa Past. Mitubag na ang ahensya,
+        // ── apan wala pa siya nahibaw-i kung apil ba siya — ug ang pagtago
+        // ── niini sa collapsed nga listahan mao ang pagsulti nga tapos na ang
+        // ── asunto. Walay buton dinhi para niya, usa ka linya ra nga nagsulti
+        // ── nga ang opisina pa ang mopili. ──
         $pendingInvitations = \App\Models\JobFairParticipant::with('jobFair')
             ->where('employer_id', $employerId)
-            ->whereIn('confirmation_status', ['pending', 'expired'])
+            ->whereIn('confirmation_status', ['pending', 'expired', 'accepted'])
             ->latest()
             ->paginate(5, ['*'], 'pending_page')
             ->withQueryString();
 
         $pastInvitations = \App\Models\JobFairParticipant::with('jobFair')
             ->where('employer_id', $employerId)
-            ->whereIn('confirmation_status', ['confirmed', 'declined'])
+            ->whereIn('confirmation_status', ['confirmed', 'declined', 'not_selected'])
             ->latest()
             ->paginate(5, ['*'], 'past_page')
             ->withQueryString();
@@ -2042,6 +2116,10 @@ class CompanyWebController extends Controller
         $pendingInvitationsCount = \App\Models\JobFairParticipant::where('employer_id', $employerId)
             ->whereIn('confirmation_status', ['pending', 'expired'])
             ->count();
+
+        // Pila untay makit-an nga tawo kung mo-oo siya. Suhestiyon ra — tan-awa
+        // ang jobFairPotentialApplicants para sa kung ngano.
+        $potentialApplicants = $this->jobFairPotentialApplicants($employerId, $pendingInvitations);
 
         $invitations = \App\Models\JobFairParticipant::with('jobFair')
             ->where('employer_id', $employerId)
@@ -2102,8 +2180,67 @@ class CompanyWebController extends Controller
 
         return compact(
             'pendingInvitations', 'pastInvitations', 'pendingInvitationsCount',
-            'applicants', 'jobFairByJobId', 'isConfirmed', 'jfSearch', 'confirmedCountsPerEvent'
+            'applicants', 'jobFairByJobId', 'isConfirmed', 'jfSearch', 'confirmedCountsPerEvent',
+            'potentialApplicants'
         );
+    }
+
+    /**
+     * How many registered jobseekers this employer's vacancies would match,
+     * per fair they have been invited to.
+     *
+     * PESO Job Fair staff, 2026-09-02: an employer asked to join a fair has
+     * nothing to weigh the invitation against. This is that: the number of
+     * jobseekers registered today whose NSRP form lines up with the vacancies
+     * they would bring.
+     *
+     * It is a suggestion, and it is written as one on screen. No names, no
+     * promise anyone turns up, and no promise anyone is hired — the real
+     * applicant list only exists after they confirm and the vacancy goes live.
+     * The tiers are the same 75 / 50 boundaries every other screen uses, so a
+     * jobseeker sits in the same band wherever they are counted.
+     */
+    private function jobFairPotentialApplicants(int $employerId, $invitations): array
+    {
+        if ($invitations->isEmpty()) {
+            return [];
+        }
+
+        $fairIds = $invitations->pluck('job_fair_id')->unique();
+
+        $jobs = Job::withCount([
+                'applications as highly_count'    => fn($q) => $q->where('match_percentage', '>=', 75),
+                'applications as qualified_count' => fn($q) => $q->whereBetween('match_percentage', [50, 74.99]),
+            ])
+            ->where('schedule_type', 'job_fair')
+            ->where('company_id', $employerId)
+            ->get()
+            ->keyBy('job_qualifications_id');
+
+        // Gipili na ba niya kung asa nga bakante ang dad-on sa maong fair? Kung
+        // wala pa, ang tanan niyang job fair nga bakante ang gibasehan — mao
+        // gyud kana ang gipangutana: pila untay madala niya.
+        $attached = \App\Models\JobFairEmploymentRequest::where('employer_id', $employerId)
+            ->whereIn('job_fair_id', $fairIds)
+            ->get()
+            ->groupBy('job_fair_id');
+
+        $out = [];
+        foreach ($invitations as $invitation) {
+            $fairId = $invitation->job_fair_id;
+
+            $rows = isset($attached[$fairId])
+                ? $attached[$fairId]->map(fn($request) => $jobs->get($request->job_id))->filter()
+                : $jobs;
+
+            $out[$fairId] = [
+                'vacancies' => $rows->count(),
+                'highly'    => $rows->sum('highly_count'),
+                'qualified' => $rows->sum('qualified_count'),
+            ];
+        }
+
+        return $out;
     }
 
     // ───────────────────────────────

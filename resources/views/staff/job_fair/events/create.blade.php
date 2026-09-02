@@ -8,6 +8,13 @@
      instead of the form hugging the left edge. --}}
 <div style="max-width:640px;margin:0 auto;">
 
+    {{-- Back, not Cancel. Cancel sits at the bottom of a long form and reads
+         as throwing the form away; this is the way out from the top. --}}
+    <a href="{{ route('staff.jobfair.events') }}" class="text-decoration-none d-inline-block mb-3"
+       style="font-size:12px;color:var(--g-700);">
+        <i class="ph ph-arrow-left me-1"></i> Back to List of Job Fair Events
+    </a>
+
     <div class="mb-4 text-center">
         <h5 class="fw-bold mb-1" style="color:var(--g-700);">
             <i class="ph-fill ph-calendar-plus me-2" style="color:var(--g-600);"></i>Create Job Fair Event
@@ -41,10 +48,14 @@
                     <label class="form-label fw-semibold small" style="color:var(--g-700);">
                         Event Date <span class="text-danger">*</span>
                     </label>
-                    <input type="date" name="event_date" class="form-control"
+                    <input type="date" name="event_date" id="eventDateField" class="form-control"
                         style="border:1px solid var(--n-200);border-radius:10px;font-size:13px;"
                         value="{{ old('event_date') }}"
                         min="{{ $earliest->format('Y-m-d') }}" required>
+                    <div id="eventDateTaken" class="mt-1" style="display:none;font-size:11.5px;color:var(--danger);font-weight:600;">
+                        <i class="ph-fill ph-x-circle me-1"></i>
+                        A job fair is already scheduled on this date. Choose another day.
+                    </div>
                     <div class="mt-1" style="font-size:11px;color:var(--n-500);">
                         <i class="ph ph-info me-1"></i>
                         Event date must be at least {{ $leadDays }} days from today
@@ -61,14 +72,55 @@
                     <label class="form-label fw-semibold small" style="color:var(--g-700);">
                         Event Time <span class="text-danger">*</span>
                     </label>
-                    <input type="time" name="event_time" class="form-control"
-                        style="border:1px solid var(--n-200);border-radius:10px;font-size:13px;"
-                        value="{{ old('event_time') }}" min="09:00" max="17:00" required>
+                    {{-- A list, not a clock.
+
+                         `<input type="time">` with min and max still lets the
+                         desk pick 6 PM and only argues about it on save. The
+                         office day is 8 AM to 5 PM, so those are the only
+                         times offered — there is nothing else to choose. --}}
+                    @php $timeSlots = \App\Support\JobFairEventHours::slots(); @endphp
+                    <select name="event_time" class="form-select"
+                        style="border:1px solid var(--n-200);border-radius:10px;font-size:13px;" required>
+                        <option value="">— Select time —</option>
+                        @foreach($timeSlots as $value => $label)
+                            <option value="{{ $value }}" {{ old('event_time') === $value ? 'selected' : '' }}>
+                                {{ $label }}
+                            </option>
+                        @endforeach
+                    </select>
                     <div class="mt-1" style="font-size:11px;color:var(--n-500);">
                         <i class="ph ph-info me-1"></i>
-                        Must be between 9:00 AM and 5:00 PM.
+                        The office day runs 8:00 AM to 5:00 PM.
                     </div>
                     @error('event_time')
+                        <div class="text-danger small mt-1">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small" style="color:var(--g-700);">
+                        Venue <span class="text-danger">*</span>
+                    </label>
+                    <input type="text" name="venue" class="form-control"
+                        style="border:1px solid var(--n-200);border-radius:10px;font-size:13px;"
+                        placeholder="e.g. SM City CDO Event Center"
+                        value="{{ old('venue') }}" required>
+                    @error('venue')
+                        <div class="text-danger small mt-1">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                {{-- Ang ngalan sa lugar dili igo para sa tawo nga paadtoon
+                     didto. Lain nga linya, mao nga lain pud nga field. --}}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small" style="color:var(--g-700);">
+                        Venue Address
+                    </label>
+                    <input type="text" name="venue_address" class="form-control"
+                        style="border:1px solid var(--n-200);border-radius:10px;font-size:13px;"
+                        placeholder="e.g. Masterson Ave, Upper Balulang, Cagayan de Oro City"
+                        value="{{ old('venue_address') }}">
+                    @error('venue_address')
                         <div class="text-danger small mt-1">{{ $message }}</div>
                     @enderror
                 </div>
@@ -78,7 +130,10 @@
                         Employers to Invite <span class="text-danger">*</span>
                     </label>
                     @php
-                        $checkedCater = old('cater', ['local', 'overseas']);
+                        // Walay na-tsek pag-abli. Ang gi-tsek nga default
+                        // usa ka tubag nga wala gihatag sa desk, ug ang porma
+                        // dili angay motubag para niya.
+                        $checkedCater = (array) old('cater', []);
                     @endphp
                     <div class="p-3 rounded-3" style="background:var(--n-50);">
                         @foreach([
@@ -99,7 +154,7 @@
                                 style="max-width:130px;border:1px solid var(--n-200);border-radius:8px;font-size:13px;"
                                 placeholder="{{ $ph }}" value="{{ old($field) }}"
                                 {{ $isChecked ? '' : 'disabled' }}>
-                            <span style="font-size:12px;color:var(--n-500);">target (optional)</span>
+                            <span style="font-size:12px;color:var(--n-500);">target <span class="text-danger">*</span></span>
                         </div>
                         @error($field)
                             <div class="text-danger small mb-2">{{ $message }}</div>
@@ -108,9 +163,10 @@
                     </div>
                     <div class="mt-1" style="font-size:11px;color:var(--n-500);">
                         <i class="ph ph-info me-1"></i>
-                        Check at least one — only checked type(s) receive the invitation.
-                        The target is a note to yourself: how many the fair is closed at is
-                        the sponsor's call, so nobody is turned away when it is reached.
+                        Check at least one — only checked type(s) receive the invitation, and
+                        each checked type needs its target. The target is how many the fair is
+                        aiming for; nobody is turned away when it is reached, since how many
+                        actually fit is the sponsor's call.
                     </div>
                     @error('cater')
                         <div class="text-danger small mt-1">{{ $message }}</div>
@@ -129,7 +185,7 @@
                     </label>
 
                     @php
-                        $allIndustries    = old('all_industries', '1') && !old('target_industries');
+                        $allIndustries    = (bool) old('all_industries');
                         $checkedIndustries = (array) old('target_industries', []);
                     @endphp
 
@@ -207,21 +263,8 @@
                     </div>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label fw-semibold small" style="color:var(--g-700);">
-                        Venue <span class="text-danger">*</span>
-                    </label>
-                    <input type="text" name="venue" class="form-control"
-                        style="border:1px solid var(--n-200);border-radius:10px;font-size:13px;"
-                        placeholder="e.g. SM City CDO Event Center"
-                        value="{{ old('venue') }}" required>
-                    @error('venue')
-                        <div class="text-danger small mt-1">{{ $message }}</div>
-                    @enderror
-                </div>
-
                 <div class="d-flex gap-2 justify-content-center">
-                    <button type="submit" class="btn fw-semibold"
+                    <button type="submit" id="eventSubmit" class="btn fw-semibold"
                         style="background:var(--g-600);
                                color:#fff;border:none;border-radius:10px;
                                padding:10px 24px;font-size:14px;">
@@ -245,6 +288,31 @@
 
 @push('scripts')
 <script>
+    // ── Ang adlaw nga naay fair na.
+    // ──
+    // ── Usa ka fair kada adlaw: usa ra ka grupo sa staff ang opisina. Ang
+    // ── lagda naa na sa unique nga kolum, apan makabalo ka lang niini human
+    // ── nimo pun-a ang tibuok porma. Karon mopula ang field sa gutlo nga
+    // ── mapili ang adlaw, ug ang Create dili molihok samtang pula pa siya. ──
+    const takenDates = @json($takenDates ?? []);
+    const dateField  = document.getElementById('eventDateField');
+    const dateWarn   = document.getElementById('eventDateTaken');
+    const submitBtn  = document.getElementById('eventSubmit');
+
+    function checkTakenDate() {
+        const taken = takenDates.includes(dateField.value);
+        dateField.style.border = taken ? '1px solid var(--danger)' : '1px solid var(--n-200)';
+        dateField.style.background = taken ? 'var(--danger-bg)' : '';
+        dateWarn.style.display = taken ? 'block' : 'none';
+        submitBtn.disabled = taken;
+        submitBtn.style.opacity = taken ? '0.55' : '';
+        submitBtn.style.cursor = taken ? 'not-allowed' : '';
+    }
+
+    dateField.addEventListener('change', checkTakenDate);
+    dateField.addEventListener('input', checkTakenDate);
+    checkTakenDate();
+
     // The target only applies to a type that is actually being invited, so
     // the input follows its checkbox rather than sitting there enabled.
     document.querySelectorAll('.cater-box').forEach(function (box) {

@@ -200,7 +200,10 @@ class JobFairAudience
             ->values();
     }
 
-    private static function jobseekerRow(JobseekerRegistration $registration): array
+    // ── Publiko kay ang Fair Vacancies nga page nagtukod pud ug listahan
+    // ── gikan sa mga applicant sa usa ka bakante. Usa ra ang porma sa
+    // ── tawo, bisan asa gikan ang listahan. ──
+    public static function jobseekerRow(JobseekerRegistration $registration): array
     {
         return [
             'kind'       => 'jobseeker',

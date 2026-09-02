@@ -6,11 +6,13 @@
     <a href="{{ route('staff.jobs') }}" style="font-size:13px;color:var(--g-600);text-decoration:none;">
         <i class="ph ph-arrow-left me-1"></i> Back to Job Vacancies
     </a>
-    <h5 class="fw-bold mt-2 mb-1" style="color:var(--g-700);">
+    {{-- The title stays where every other page keeps it. Only the vacancy is
+         centred, with a gap above it, so the two lines are not read as one. --}}
+    <h5 class="fw-bold mt-2 mb-2" style="color:var(--g-700);">
         <i class="ph-fill ph-user-list me-2" style="color:var(--g-600);"></i>
         Qualified Applicants
     </h5>
-    <p class="mb-0" style="font-size:13px;color:var(--n-500);">
+    <p class="mb-0 text-center" style="font-size:13px;color:var(--n-500);">
         {{ $job->title }} — {{ $job->company->company_name ?? 'None' }}
     </p>
 </div>

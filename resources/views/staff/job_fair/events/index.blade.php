@@ -2,25 +2,10 @@
 
 @section('content')
 
-{{-- TABS --}}
-<div class="d-flex gap-2 mb-4 flex-wrap">
-    <a href="{{ route('staff.jobfair.events', array_merge(request()->query(), ['view' => 'events'])) }}"
-       class="btn btn-sm fw-semibold"
-       style="{{ request('view','events') === 'events'
-           ? 'background:var(--g-600);color:#fff;border:none;'
-           : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
-           border-radius:8px;font-size:12px;padding:5px 16px;">
-        <i class="ph-fill ph-calendar-dots me-1"></i> Events
-    </a>
-    <a href="{{ route('staff.jobfair.events', array_merge(request()->query(), ['view' => 'participants'])) }}"
-       class="btn btn-sm fw-semibold"
-       style="{{ request('view') === 'participants'
-           ? 'background:var(--g-600);color:#fff;border:none;'
-           : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
-           border-radius:8px;font-size:12px;padding:5px 16px;">
-        <i class="ph-fill ph-users-three me-1"></i> Employer Participants
-    </a>
-</div>
+{{-- Walay tab row dinhi. Ang Employer Participants dili lain nga lugar —
+     unsa may sulod sa usa ka event — ug ang laray sa event mismo ang mo-abli
+     niini. Isip tab kinahanglan siya mangutana usa kung asa nga event, nga
+     natubag na sa laray. --}}
 
 {{-- Walay Attendance nga tab dinhi. Naa siya sa Reports, tab nga Attendance —
      usa ra ka listahan, usa ra ka ihap, uban ang Mark Attended. --}}
@@ -65,76 +50,15 @@
     </div>
 
     @if(request('event_id') && isset($participants))
-        {{-- STAT CARDS --}}
-        <div class="row g-3 mb-4">
-            <div class="col-md-3">
-                <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
-                    <div class="fs-2 fw-bold" style="color:var(--g-600);">{{ $participants->total() }}</div>
-                    <div class="text-muted small">Total Invited</div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
-                    <div class="fs-2 fw-bold" style="color:var(--g-700);">{{ $confirmedCount }}</div>
-                    <div class="text-muted small">Confirmed</div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
-                    <div class="fs-2 fw-bold" style="color:var(--warn);">{{ $pendingCount }}</div>
-                    <div class="text-muted small">Pending</div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
-                    <div class="fs-2 fw-bold" style="color:var(--danger);">{{ $declinedCount }}</div>
-                    <div class="text-muted small">Declined</div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
-                    <div class="fs-2 fw-bold" style="color:var(--n-500);">{{ $expiredCount }}</div>
-                    <div class="text-muted small">Lapsed (no reply)</div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
-                    <div class="fs-2 fw-bold" style="color:var(--g-600);">{{ $participantLocal }}</div>
-                    <div class="text-muted small">Local</div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
-                    <div class="fs-2 fw-bold" style="color:var(--info);">{{ $participantOverseas }}</div>
-                    <div class="text-muted small">Overseas</div>
-                </div>
-            </div>
-        </div>
 
-        {{-- No send buttons on this page any more.
+        {{-- No send buttons and no confirmed-count line here any more.
 
              The reminder to employers who have not responded is sent by
              jobfair:send-confirmation-reminders once the event is within the
-             reminder window, so there is nothing here for staff to press and
-             no way to forget. The one manual send left in the system is SMS,
-             and it lives on its own page under Notification in the sidebar.
-
-             What stays is the line below: it is the only thing on this page
-             that explains why jobseekers have not been told about the event
-             yet, and staff need to be able to read that at a glance. --}}
-        @php $jobFairThreshold = config('peso.jobfair.min_confirmed_employers'); @endphp
-        <div class="mb-3">
-            <span style="font-size:12px;color:{{ $confirmedCount >= $jobFairThreshold ? 'var(--g-700)' : 'var(--warn)' }};">
-                @if($confirmedCount >= $jobFairThreshold)
-                    <i class="ph-fill ph-check-circle me-1"></i>Jobseekers can now be notified.
-                @else
-                    <i class="ph-fill ph-lock-simple me-1"></i>
-                    {{ $confirmedCount }} of {{ $jobFairThreshold }} employers confirmed — jobseekers cannot be notified yet.
-                    Employers who have not responded are reminded automatically
-                    {{ config('peso.jobfair.reminder_days_before') }} days before their invitation lapses.
-                @endif
-            </span>
-        </div>
+             reminder window, so there is nothing for staff to press and no way
+             to forget. The count against the threshold reads as a warning on a
+             list that is not about the ones being counted — this table holds
+             the employers who accepted. --}}
 
         {{-- ── THE ROSTER, AGAINST THE CALENDAR ──
 
@@ -279,17 +203,20 @@
                     <thead>
                         <tr style="background:var(--g-600);">
                             <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">#</th>
-                            <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Company</th>
-                            <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Email</th>
-                            <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;text-align:center;">Type</th>
-                            <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Employer Type</th>
+                            <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Company Name</th>
+                            <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Company Email</th>
+                            {{-- Duha ka "type" ang naa niini nga laray, mao nga
+                                 ginganlan gyud ang matag usa. Ang "Type" lang
+                                 nagpangutana kung asa niini. --}}
+                            <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;text-align:center;">Local or Overseas</th>
+                            <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Establishment Type</th>
                             <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Industry</th>
                             <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Job Offers</th>
-                            <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;text-align:center;">Status</th>
+                            <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;text-align:center;">Invitation Status</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($participants as $p)
+                        @forelse($participants as $p)
                         <tr style="font-size:13px;">
                             <td style="padding:12px 16px;color:var(--n-500);">
                                 {{ $participants->firstItem() + $loop->index }}
@@ -344,46 +271,37 @@
                                     @endif
                                 @endforelse
                             </td>
+                            {{-- Ang duha ka oo managlahi: ang lokal nga oo kay
+                                 oo dayon, ang overseas nga oo naghulat pa sa
+                                 pagpili sa SRA. Parehas silang naa niini nga
+                                 lamesa, mao nga kinahanglan mailhan. --}}
                             <td style="padding:12px 16px;text-align:center;">
                                 @php
-                                    $colors = [
-                                        'confirmed' => 'var(--g-700)',
-                                        'pending'   => 'var(--warn)',
-                                        'declined'  => 'var(--danger)',
-                                        'expired'   => 'var(--n-500)',
-                                    ];
-                                    $labels = [
-                                        'confirmed' => 'Interested ✓',
-                                        'pending'   => 'Pending',
-                                        'declined'  => 'Not Interested',
-                                        'expired'   => 'No reply — lapsed',
-                                    ];
+                                    $statusColor = $p->confirmation_status === 'confirmed'
+                                        ? 'var(--g-700)' : 'var(--warn)';
+                                    $statusLabel = $p->confirmation_status === 'confirmed'
+                                        ? 'Confirmed ✓' : 'Accepted — with SRA';
                                 @endphp
-                                <span class="fw-semibold"
-                                    style="color:{{ $colors[$p->confirmation_status] ?? 'var(--n-500)' }};font-size:12px;">
-                                    {{ $labels[$p->confirmation_status] ?? ucfirst($p->confirmation_status) }}
+                                <span class="fw-semibold" style="color:{{ $statusColor }};font-size:12px;">
+                                    {{ $statusLabel }}
                                 </span>
-
-                                {{-- Pila pa ka adlaw, o unsang adlawa siya mi-lapse.
-                                     Kung walay petsa, ang staff dili masayod kung
-                                     angay na ba siyang mangita ug lain. --}}
-                                @php $pDays = $p->daysToRespond(); @endphp
-                                @if($p->confirmation_status === 'pending' && $pDays !== null)
-                                    <div style="font-size:10.5px;color:{{ $pDays <= 2 ? 'var(--warn)' : 'var(--n-400)' }};">
-                                        {{ $pDays }} day{{ $pDays === 1 ? '' : 's' }} left to reply
-                                    </div>
-                                @elseif($p->confirmation_status === 'expired' && $p->expiresAt())
-                                    <div style="font-size:10.5px;color:var(--n-400);">
-                                        lapsed {{ $p->expiresAt()->format('M d') }}
-                                    </div>
-                                @elseif($p->confirmation_status === 'confirmed' && !$p->confirmedBeforeCutoff())
+                                @if($p->confirmation_status === 'confirmed' && !$p->confirmedBeforeCutoff())
                                     <div style="font-size:10.5px;color:var(--warn);">
                                         after DOLE submission
                                     </div>
                                 @endif
                             </td>
                         </tr>
-                        @endforeach
+                        @empty
+                        <tr>
+                            <td colspan="8" class="text-center"
+                                style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                                <i class="ph ph-users-three me-1"
+                                   style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                                No employer has accepted the invitation to this fair yet.
+                            </td>
+                        </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
@@ -437,10 +355,9 @@
     {{-- EVENTS VIEW --}}
     <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>
-            <h5 class="fw-bold mb-1" style="color:var(--g-700);">
-                <i class="ph-fill ph-calendar-dots me-2" style="color:var(--g-600);"></i>Job Fair Events
+            <h5 class="fw-bold mb-0" style="color:var(--g-700);">
+                <i class="ph-fill ph-calendar-dots me-2" style="color:var(--g-600);"></i>List of Job Fair Events
             </h5>
-            <p class="mb-0" style="font-size:13px;color:var(--n-500);">Manage job fair schedules and venues</p>
         </div>
         <a href="{{ route('staff.jobfair.events.create') }}"
            class="btn btn-sm fw-semibold"
@@ -448,22 +365,6 @@
                   color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;">
             <i class="ph-fill ph-plus-circle me-1"></i> Create Event
         </a>
-    </div>
-
-    {{-- STAT CARDS --}}
-    <div class="row g-3 mb-4">
-        <div class="col-md-6">
-            <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
-                <div class="fs-2 fw-bold" style="color:var(--g-600);">{{ $totalUpcoming }}</div>
-                <div class="text-muted small">Upcoming</div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
-                <div class="fs-2 fw-bold" style="color:var(--warn);">{{ $totalOngoing }}</div>
-                <div class="text-muted small">Ongoing</div>
-            </div>
-        </div>
     </div>
 
     {{-- FILTER + SEARCH --}}
@@ -508,7 +409,7 @@
                             <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Title</th>
                             <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Date</th>
                             <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Venue</th>
-                            <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;text-align:center;">Confirmed</th>
+                            <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;text-align:center;">Employer Confirmed Invitation</th>
                             <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;text-align:center;">Status</th>
                             <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;text-align:center;">Actions</th>
                         </tr>
@@ -572,19 +473,17 @@
                                 <a href="{{ route('staff.jobfair.events.edit', $event->job_fair_events_id) }}"
                                    class="btn btn-sm fw-semibold me-1"
                                    style="border:1px solid var(--n-200);color:var(--g-700);
-                                          background:#fff;border-radius:8px;font-size:12px;">
+                                          background:#fff;border-radius:8px;font-size:12px;"
+                                   title="Update">
                                     <i class="ph-fill ph-pencil-simple"></i>
                                 </a>
-                                <form action="{{ route('staff.jobfair.events.delete', $event->job_fair_events_id) }}"
-                                      method="POST" class="d-inline"
-                                      onsubmit="return confirm('Delete this event?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-danger fw-semibold"
-                                        style="border-radius:8px;font-size:12px;">
-                                        <i class="ph-fill ph-trash"></i>
-                                    </button>
-                                </form>
+                                {{-- Walay Delete dinhi.
+
+                                     Ang event nagdala ug imbitasyon, ug ang
+                                     employer nga mitubag na. Ang pagpapas
+                                     niini usa ka pindot ra ang gilay-on gikan
+                                     sa Update, ug ang gipapas dili na
+                                     mabalik. --}}
                             </td>
                         </tr>
                         @endforeach

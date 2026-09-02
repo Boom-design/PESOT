@@ -49,11 +49,51 @@
                                 This invitation lapsed on {{ $invitation->expiresAt()?->format('M d, Y') ?? 'an earlier date' }},
                                 so PESO is inviting other employers. You may still confirm below if you want to join.
                             </div>
+                        @elseif($invitation->awaitingSelection())
+                            <div style="font-size:11.5px;color:var(--warn);margin-top:3px;">
+                                <i class="ph-fill ph-hourglass-medium me-1"></i>
+                                You accepted this invitation on
+                                {{ $invitation->responded_at?->format('M d, Y') ?? 'an earlier date' }}.
+                                PESO is confirming which agencies this fair can hold — you will be
+                                notified once your slot is confirmed.
+                            </div>
                         @elseif($daysLeft !== null)
                             <div style="font-size:11.5px;color:{{ $daysLeft <= 2 ? 'var(--warn)' : 'var(--n-500)' }};margin-top:3px;">
                                 <i class="ph ph-clock me-1"></i>
                                 Please confirm by {{ $invitation->expiresAt()->format('M d, Y') }}
                                 ({{ $daysLeft }} day{{ $daysLeft === 1 ? '' : 's' }} left).
+                            </div>
+                        @endif
+
+                        {{-- Something to weigh the invitation against.
+
+                             How many jobseekers registered today line up with
+                             the vacancies this company would bring. A count, not
+                             a list: no names are shown, and none of it is a
+                             promise — the real applicants only exist once the
+                             vacancy is live at the fair. Written plainly as a
+                             suggestion so it is not read as a booking. --}}
+                        @php $potential = $potentialApplicants[$invitation->job_fair_id] ?? null; @endphp
+                        @if($potential && $potential['vacancies'] > 0)
+                            <div class="mt-2 p-2 rounded-3"
+                                 style="background:var(--n-50);border:1px dashed var(--n-200);max-width:460px;">
+                                <div style="font-size:11.5px;color:var(--g-700);font-weight:600;">
+                                    <i class="ph-fill ph-user-list me-1" style="color:var(--g-600);"></i>
+                                    @if($potential['highly'] + $potential['qualified'] > 0)
+                                        Around {{ $potential['highly'] + $potential['qualified'] }} jobseeker(s)
+                                        may suit your {{ $potential['vacancies'] }} vacancy(s)
+                                        — {{ $potential['highly'] }} highly qualified,
+                                        {{ $potential['qualified'] }} qualified.
+                                    @else
+                                        No registered jobseeker matches your
+                                        {{ $potential['vacancies'] }} vacancy(s) yet.
+                                    @endif
+                                </div>
+                                <div style="font-size:10.5px;color:var(--n-500);margin-top:2px;">
+                                    A suggestion based on jobseekers registered today, not a guaranteed
+                                    turnout. Names are not shown here — you see your applicants once the
+                                    vacancy is live at the fair.
+                                </div>
                             </div>
                         @endif
                     </div>
@@ -73,6 +113,15 @@
                             {{ $eventConfirmedCount }} employer(s) confirmed so far
                         </div>
                     @endif
+
+                    {{-- Mitubag na siya. Ang Confirm ug Decline nga buton dinhi
+                         mao untay pagtanyag ug pagpili nga wala na — ang sunod
+                         nga pagpili sa opisina na. --}}
+                    @if($invitation->awaitingSelection())
+                        <span class="fw-semibold" style="color:var(--warn);font-size:11px;">
+                            <i class="ph-fill ph-hourglass-medium me-1"></i>Waiting for PESO
+                        </span>
+                    @else
                     <form action="{{ route('company.jobfair.respond', $invitation->job_fair_participants_id) }}"
                           method="POST" class="d-inline" id="confirmForm{{ $invitation->job_fair_participants_id }}">
                         @csrf
@@ -90,6 +139,7 @@
                             <i class="ph ph-x me-1"></i>Decline
                         </button>
                     </form>
+                    @endif
                 </div>
             </div>
         </div>
@@ -137,6 +187,12 @@
                         @if($invitation->confirmation_status === 'confirmed')
                             <span class="fw-semibold" style="color:var(--g-700);font-size:10.5px;">
                                 <i class="ph-fill ph-check-circle me-1"></i>Confirmed
+                            </span>
+                        @elseif($invitation->wasNotSelected())
+                            {{-- Dili "Declined". Mitubag siyag oo; ang opisina
+                                 ang wala midala kaniya, ug ang duha managlahi. --}}
+                            <span class="fw-semibold" style="color:var(--n-500);font-size:10.5px;">
+                                <i class="ph-fill ph-minus-circle me-1"></i>Not selected by PESO
                             </span>
                         @elseif($invitation->confirmation_status === 'expired')
                             <span class="fw-semibold" style="color:var(--n-500);font-size:10.5px;">

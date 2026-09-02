@@ -221,11 +221,13 @@
         Route::get('/staff/requirements/{id}',                [StaffWebController::class, 'viewEmployerRequirement'])->name('staff.requirements.view');
         Route::post('/staff/requirements/{id}/approve',       [StaffWebController::class, 'approveRequirement'])->name('staff.requirements.approve');
         Route::post('/staff/requirements/{id}/reject',        [StaffWebController::class, 'rejectRequirement'])->name('staff.requirements.reject');
+        // Usa ka papel matag pindot. Ang pag-approve sa tibuok folder magpabilin
+        // sa taas nga route, ug mobalibad siya hangtod mahurot kining lima.
+        Route::post('/staff/requirements/{id}/documents/{field}/accept', [StaffWebController::class, 'acceptRequirementDocument'])->whereNumber('id')->name('staff.requirements.documents.accept');
+        Route::post('/staff/requirements/{id}/documents/{field}/reject', [StaffWebController::class, 'rejectRequirementDocument'])->whereNumber('id')->name('staff.requirements.documents.reject');
+        Route::post('/staff/requirements/{id}/documents/{field}/undo',   [StaffWebController::class, 'undoRequirementDocument'])->whereNumber('id')->name('staff.requirements.documents.undo');
 
         // ── STAFF JOB FAIR ──
-        Route::get('/staff/jobfair/send',                     [StaffWebController::class, 'showJobFairSend'])->name('staff.jobfair.send');
-        Route::post('/staff/jobfair/send/preview',            [StaffWebController::class, 'previewJobFairNotification'])->name('staff.jobfair.send.preview');
-        Route::post('/staff/jobfair/send',                    [StaffWebController::class, 'sendJobFairNotification'])->name('staff.jobfair.send.post');
         Route::get('/staff/jobfair/events',                   [StaffWebController::class, 'jobFairEvents'])->name('staff.jobfair.events');
         Route::get('/staff/jobfair/events/create',            [StaffWebController::class, 'createJobFairEvent'])->name('staff.jobfair.events.create');
         Route::post('/staff/jobfair/events',                  [StaffWebController::class, 'storeJobFairEvent'])->name('staff.jobfair.events.store');
@@ -234,11 +236,19 @@
         Route::delete('/staff/jobfair/events/{id}',           [StaffWebController::class, 'deleteJobFairEvent'])->name('staff.jobfair.events.delete');
         Route::post('/staff/jobfair/events/{id}/invite-more', [StaffWebController::class, 'inviteMoreEmployers'])->whereNumber('id')->name('staff.jobfair.events.inviteMore');
         Route::get('/staff/jobfair/postings',                 [StaffWebController::class, 'jobFairPostings'])->name('staff.jobfair.postings');
-        Route::post('/staff/jobfair/postings/{id}/approve',   [StaffWebController::class, 'approveJobFairJob'])->name('staff.jobfair.postings.approve');
-        // Ang tinapok nga pag-post: salaan sa industriya, tsekan ang tanan, usa
-        // ra ka buton. Parehas gyud nga lagda sa usa-usa nga Accept.
-        Route::post('/staff/jobfair/postings/post-selected', [StaffWebController::class, 'bulkApproveJobFairJobs'])->name('staff.jobfair.postings.bulk');
-        Route::post('/staff/jobfair/postings/{id}/reject',    [StaffWebController::class, 'rejectJobFairJob'])->name('staff.jobfair.postings.reject');
+        // Usa ra ka buton. Ang fair mismo ang nagsala: ang naghulat nga bakante
+        // nga sakop niini mosulod, ang uban maghulat sa fair nga modawat nila.
+        Route::post('/staff/jobfair/postings/post-fitting',  [StaffWebController::class, 'approveFittingJobFairJobs'])->name('staff.jobfair.postings.postFitting');
+        // Ang pagpakita sa bakante ngadto sa jobseeker. Manual: ang desk ang
+        // nagbuot kung kanus-a mobuto ang listahan, sagad lima ka adlaw sa
+        // dili pa ang fair.
+        Route::post('/staff/jobfair/postings/open-all',      [StaffWebController::class, 'openJobFairPostings'])->name('staff.jobfair.postings.openAll');
+
+        // Ang applicant sa usa ka bakante nga gidala sa fair, gibahin sa marka.
+        // Ang text gikan dinhi ug dili gikan sa usa ka kinatibuk-ang blast page:
+        // ang staff makakita kinsa ang padad-an sa dili pa siya mopadala.
+        Route::get('/staff/jobfair/postings/{id}/applicants', [StaffWebController::class, 'jobFairApplicants'])->whereNumber('id')->name('staff.jobfair.postings.applicants');
+        Route::post('/staff/jobfair/postings/{id}/notify',    [StaffWebController::class, 'notifyJobFairApplicants'])->whereNumber('id')->name('staff.jobfair.postings.notify');
 
         // ── STAFF IN-HOUSE ──
         Route::get('/staff/inhouse/jobfair',                  [StaffWebController::class, 'jobFairViewOnly'])->name('staff.inhouse.jobfair');
@@ -246,6 +256,9 @@
         // ── fair. Si SRA ang mopili, human siya mangayo ug permiso sa pangulo
         // ── sa PESO — mao nga ang lihok naay ngalan ug petsa nga nahibilin. ──
         Route::post('/staff/jobfair/overseas/{id}/invite',    [StaffWebController::class, 'inviteOverseasToJobFair'])->name('staff.jobfair.overseas.invite');
+        // Ang ikaduhang pultahan: mitubag na ug oo ang ahensya, si SRA na ang
+        // mopili kung dad-on ba siya sa fair.
+        Route::post('/staff/jobfair/overseas/{id}/decide',     [StaffWebController::class, 'decideOverseasSelection'])->whereNumber('id')->name('staff.jobfair.overseas.decide');
         // ── Kinsa ang niapil: ang mga jobseeker nga niduyog sa in-house ug
         // ── ang naka-rehistro sa job fair. LRA/SRA ra, ug bahin sila sumala
         // ── sa classification sa jobseeker mismo. ──

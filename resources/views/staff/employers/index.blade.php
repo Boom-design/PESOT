@@ -4,21 +4,38 @@
 
 @include('partials.temp-password-banner')
 
+@php
+    // The five requirement documents, named once. Two modals and a decline
+    // form read this list, and they no longer open on the same tabs, so a
+    // copy defined inside one of them left the others without it.
+    $docs = [
+        'business_permit'             => 'CDO Business Permit',
+        'sec_dti'                     => 'SEC / DTI',
+        'company_profile'             => 'Company Profile',
+        'no_pending_case_certificate' => 'Certificate of No Pending Case',
+        'vacancy_posting'             => 'Vacancy Posting',
+    ];
+@endphp
+
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <div>
+        {{-- The LRA is given the name of the one list it has. The desks that
+             decide on employers keep the general title, because their page
+             holds three lists and no single one of them names it. --}}
         <h5 class="fw-bold mb-1" style="color:var(--g-700);">
             <i class="ph ph-buildings me-2" style="color:var(--g-600);"></i>
-            Employers
+            {{ $staffRole === 'lra' ? 'List of Employers' : 'Employers' }}
         </h5>
+        {{-- No line under the LRA's title: it would only say the title again. --}}
+        @if($staffRole !== 'lra')
         <p class="mb-0" style="font-size:13px;color:var(--n-500);">
             @if($staffRole === 'sra')
                 Manage overseas employer accounts
-            @elseif($staffRole === 'lra')
-                View local employer accounts
             @else
                 Manage local employer accounts and requirements
             @endif
         </p>
+        @endif
     </div>
 
     {{-- Walk-in: ang employer nga miadto sa opisina. Ang Job Vacancy para sa
@@ -77,9 +94,13 @@
     }
 </style>
 
-{{-- TABS --}}
+{{-- TABS
+
+     The LRA has no tabs. It never had more than one — Pre-Employer and
+     Inactive belong to the desks that decide on them — and a single tab is not
+     a choice, only a heading repeated under the heading it repeats. --}}
+@if($staffRole !== 'lra')
 <div class="d-flex gap-2 mb-4" style="overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;padding-bottom:4px;">
-    @if($staffRole !== 'lra')
     <a href="{{ route('staff.employers', ['tab' => 'pre']) }}"
        class="btn btn-sm fw-semibold"
        style="{{ $tab === 'pre'
@@ -90,7 +111,6 @@
         Pre-Employer
         <span class="ms-1 fw-bold">({{ $totalPre }})</span>
     </a>
-    @endif
     <a href="{{ route('staff.employers', ['tab' => 'approved']) }}"
        class="btn btn-sm fw-semibold"
        style="{{ $tab === 'approved'
@@ -98,7 +118,7 @@
            : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
            border-radius:8px;font-size:12px;padding:5px 16px;white-space:nowrap;flex-shrink:0;">
         <i class="ph ph-check-circle me-1"></i>
-        {{ $staffRole === 'lra' ? 'List of Employers' : 'Approved Employers' }}
+        Approved Employers
         <span class="ms-1 fw-bold">({{ $totalApproved }})</span>
     </a>
     {{-- Ang gipatay nga account, awtomatiko man o gipatay sa staff. Ang LRA
@@ -117,6 +137,7 @@
     </a>
     @endif
 </div>
+@endif
 
 {{-- ── SORT AND SEARCH ──
      PESO, 2026-08-26: ang desk kinahanglan makatan-aw sa Manufacturing lang, o
@@ -462,19 +483,17 @@
                                         Submitted Documents
                                     </h6>
                                     <div class="mb-3">
-                                        @php
-                                            $docs = [
-                                                'business_permit'             => 'CDO Business Permit',
-                                                'sec_dti'                     => 'SEC / DTI',
-                                                'company_profile'             => 'Company Profile',
-                                                'no_pending_case_certificate' => 'Certificate of No Pending Case',
-                                                'vacancy_posting'             => 'Vacancy Posting',
-                                            ];
-                                        @endphp
                                         @foreach($docs as $field => $label)
                                         <div class="d-flex justify-content-between align-items-center px-3 py-2 mb-1 rounded-3"
                                             style="background:var(--n-50);">
-                                            <span style="font-size:13px;color:var(--g-700);font-weight:500;">{{ $label }}</span>
+                                            <span style="font-size:13px;color:var(--g-700);font-weight:500;">
+                                                {{ $label }}
+                                                @if($req->isFieldAccepted($field))
+                                                    <i class="ph-fill ph-check-circle" style="color:var(--g-600);" title="Approved"></i>
+                                                @elseif($req->isFieldRejected($field))
+                                                    <i class="ph-fill ph-x-circle" style="color:var(--danger);" title="Rejected"></i>
+                                                @endif
+                                            </span>
                                             @if($req->{$field})
                                                 {{-- Opens the review modal on this document. It used to
                                                      be a link with target="_blank": the desk lost the
@@ -548,8 +567,16 @@
                          One modal per company, not one shared modal, so the Approve and
                          Decline forms are rendered by Blade with this employer's own route.
                          A shared modal would have to be rewired by JavaScript on every open,
-                         and a mis-wire there posts a decision against the wrong company. --}}
-                    @if($tab === 'pre' && $req)
+                         and a mis-wire there posts a decision against the wrong company.
+
+                         Rendered wherever the documents are listed, not on the Pre-Employer
+                         tab alone. The View button beside each document is drawn on every
+                         tab, but this window was not: on Approved — the only list the LRA
+                         has — the button pointed at a modal that was never on the page, so
+                         pressing it did nothing and the document could not be seen at all.
+                         Approve and Decline stay behind $canDecide, so a decided folder
+                         opens read-only. --}}
+                    @if($req)
                     @php
                         // Only the documents actually uploaded are offered, and the modal
                         // opens on the first of them.
@@ -617,14 +644,32 @@
 
                                     <div class="peso-req-side p-3">
                                         @if($canDecide)
+                                        {{-- Ang hukom sa matag papel una, ang paglihok sa kompanya
+                                             ulahi. Ang SRA wala giapil: usa ka pindot ang iyaha sa
+                                             tibuok folder, walay per-document nga lakang didto. --}}
+                                        @php
+                                            $perDoc = $staffRole === 'job_vacancy' && !($companyRow->is_overseas ?? false);
+                                            $readyToMove = !$perDoc
+                                                || ($req->allDocumentsDecided() && !$req->hasRejectedDocuments());
+                                        @endphp
+
+                                        @if($perDoc)
+                                            @include('staff.requirements._document_decisions', [
+                                                'requirement' => $req,
+                                                'perDoc'      => true,
+                                            ])
+                                        @endif
+
                                         <form action="{{ route('staff.requirements.approve', $reqId) }}"
                                               method="POST" class="mb-2">
                                             @csrf
                                             <button type="submit" class="btn btn-sm w-100 fw-semibold"
-                                                style="background:var(--g-600);
-                                                       color:#fff;border:none;border-radius:8px;font-size:12.5px;padding:8px;">
+                                                style="background:{{ $readyToMove ? 'var(--g-600)' : 'var(--n-200)' }};
+                                                       color:{{ $readyToMove ? '#fff' : 'var(--n-500)' }};border:none;
+                                                       border-radius:8px;font-size:12.5px;padding:8px;{{ $readyToMove ? '' : 'cursor:not-allowed;' }}"
+                                                {{ $readyToMove ? '' : 'disabled' }}>
                                                 <i class="ph-fill ph-check-circle me-1"></i>
-                                                Approve Requirements
+                                                {{ $perDoc ? 'Move to Approved Employers' : 'Approve Requirements' }}
                                             </button>
                                         </form>
 
@@ -653,10 +698,14 @@
                                                     <div class="form-check" style="margin-bottom:2px;">
                                                         <input class="form-check-input" type="checkbox"
                                                             name="rejected_fields[]" value="{{ $field }}"
-                                                            id="dec_{{ $field }}_{{ $reqId }}">
+                                                            id="dec_{{ $field }}_{{ $reqId }}"
+                                                            {{ $req->isFieldRejected($field) ? 'checked' : '' }}>
                                                         <label class="form-check-label" for="dec_{{ $field }}_{{ $reqId }}"
                                                             style="font-size:11.5px;color:var(--warn);line-height:1.4;">
                                                             {{ $label }}
+                                                            @if($req->fieldRejectionNote($field))
+                                                                <span style="color:var(--danger);">— {{ $req->fieldRejectionNote($field) }}</span>
+                                                            @endif
                                                         </label>
                                                     </div>
                                                     @endforeach

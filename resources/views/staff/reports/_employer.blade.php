@@ -157,13 +157,35 @@ $erPager = function ($rows, string $label) {
 </div>
 @empty
 @if($employerRoomOnly->isEmpty())
-<div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-    <i class="ph ph-clipboard-text" style="font-size:48px;color:var(--n-300);"></i>
-    <div class="mt-3 fw-semibold" style="color:var(--g-700);">
-        {{ request('search') ? 'No employer matches that search' : 'No in-house interview has reached its report yet' }}
-    </div>
-    <div style="font-size:12px;color:var(--n-500);">
-        An interview appears here {{ config('peso.schedule.report_delay_days') }} days after it is held.
+{{-- The columns of an interview report, drawn before there is one to fill
+     them. A blank panel says the tab is empty; this says what the tab holds
+     and that nothing has reached it yet. --}}
+<div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    @foreach(['Employer', 'Interview Date', 'Venue', 'Job Position', 'Interviewed', 'Hired'] as $heading)
+                    <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;white-space:nowrap;">
+                        {{ $heading }}
+                    </th>
+                    @endforeach
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="6" class="text-center"
+                        style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                        {{ request('search')
+                            ? 'No employer matches that search.'
+                            : 'No in-house interview has reached its report yet.' }}
+                        <div style="font-size:11.5px;margin-top:4px;">
+                            An interview appears here {{ config('peso.schedule.report_delay_days') }} days after it is held.
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
     </div>
 </div>
 @endif

@@ -31,9 +31,34 @@
                 <label class="form-label fw-semibold small" style="color:var(--g-700);">
                     Event Date <span class="text-danger">*</span>
                 </label>
-                <input type="date" name="event_date" class="form-control"
-                    style="border:1px solid var(--n-200);border-radius:10px;font-size:13px;"
-                    value="{{ old('event_date', $event->event_date->format('Y-m-d')) }}" required>
+                {{-- Locked until the desk says it is moving the fair.
+
+                     A job fair date is not an ordinary field: employers were
+                     invited against it, some have already confirmed, and
+                     jobseekers were told when to turn up. It moves when the
+                     office has a reason to move it — a typhoon, a venue pulling
+                     out — so changing it is a deliberate act, not a stray click
+                     on a form opened to fix a typo in the title. --}}
+                <div class="d-flex align-items-center gap-2">
+                    <input type="date" name="event_date" id="eventDateField" class="form-control"
+                        style="border:1px solid var(--n-200);border-radius:10px;font-size:13px;background:var(--n-50);"
+                        value="{{ old('event_date', $event->event_date->format('Y-m-d')) }}" required readonly>
+                    <button type="button" id="rescheduleBtn"
+                        class="btn btn-sm fw-semibold flex-shrink-0"
+                        style="border:1px solid var(--n-200);color:var(--g-700);background:#fff;
+                               border-radius:8px;font-size:12px;padding:8px 14px;white-space:nowrap;">
+                        <i class="ph-fill ph-calendar-x me-1"></i> Reschedule
+                    </button>
+                </div>
+                <div id="rescheduleNote" class="mt-1" style="display:none;font-size:11.5px;color:var(--warn);font-weight:600;">
+                    <i class="ph-fill ph-warning-circle me-1"></i>
+                    Pick the new date. Everyone already invited to this fair keeps their
+                    invitation, so tell them the day has moved.
+                </div>
+                <div id="eventDateTaken" class="mt-1" style="display:none;font-size:11.5px;color:var(--danger);font-weight:600;">
+                    <i class="ph-fill ph-x-circle me-1"></i>
+                    Another job fair is already scheduled on this date. Choose another day.
+                </div>
                 @error('event_date')
                     <div class="text-danger small mt-1">{{ $message }}</div>
                 @enderror
@@ -46,15 +71,55 @@
                 <label class="form-label fw-semibold small" style="color:var(--g-700);">
                     Event Time <span class="text-danger">*</span>
                 </label>
-                <input type="time" name="event_time" class="form-control"
-                    style="border:1px solid var(--n-200);border-radius:10px;font-size:13px;"
-                    value="{{ old('event_time', \Illuminate\Support\Str::substr($event->event_time, 0, 5)) }}"
-                    min="09:00" max="17:00" required>
+                {{-- A list, not a clock — the same one the create form offers.
+                     An event saved at an odd time before this existed keeps its
+                     own time in the list, so opening the form does not quietly
+                     move it. --}}
+                @php
+                    $currentTime = old('event_time', \Illuminate\Support\Str::substr($event->event_time, 0, 5));
+                    $timeSlots   = \App\Support\JobFairEventHours::slots($currentTime ?: null);
+                @endphp
+                <select name="event_time" class="form-select"
+                    style="border:1px solid var(--n-200);border-radius:10px;font-size:13px;" required>
+                    <option value="">— Select time —</option>
+                    @foreach($timeSlots as $value => $label)
+                        <option value="{{ $value }}" {{ $currentTime === $value ? 'selected' : '' }}>
+                            {{ $label }}
+                        </option>
+                    @endforeach
+                </select>
                 <div class="mt-1" style="font-size:11px;color:var(--n-500);">
                     <i class="ph ph-info me-1"></i>
-                    Must be between 9:00 AM and 5:00 PM.
+                    The office day runs 8:00 AM to 5:00 PM.
                 </div>
                 @error('event_time')
+                    <div class="text-danger small mt-1">{{ $message }}</div>
+                @enderror
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold small" style="color:var(--g-700);">
+                    Venue <span class="text-danger">*</span>
+                </label>
+                <input type="text" name="venue" class="form-control"
+                    style="border:1px solid var(--n-200);border-radius:10px;font-size:13px;"
+                    value="{{ old('venue', $event->venue) }}" required>
+                @error('venue')
+                    <div class="text-danger small mt-1">{{ $message }}</div>
+                @enderror
+            </div>
+
+            {{-- Ang ngalan sa lugar dili igo para sa tawo nga paadtoon didto.
+                 Lain nga linya, mao nga lain pud nga field. --}}
+            <div class="mb-3">
+                <label class="form-label fw-semibold small" style="color:var(--g-700);">
+                    Venue Address
+                </label>
+                <input type="text" name="venue_address" class="form-control"
+                    style="border:1px solid var(--n-200);border-radius:10px;font-size:13px;"
+                    placeholder="e.g. Masterson Ave, Upper Balulang, Cagayan de Oro City"
+                    value="{{ old('venue_address', $event->venue_address) }}">
+                @error('venue_address')
                     <div class="text-danger small mt-1">{{ $message }}</div>
                 @enderror
             </div>
@@ -94,7 +159,7 @@
                             style="max-width:130px;border:1px solid var(--n-200);border-radius:8px;font-size:13px;"
                             value="{{ old($field, $stored ?: '') }}"
                             {{ $isChecked ? '' : 'disabled' }}>
-                        <span style="font-size:12px;color:var(--n-500);">target (optional)</span>
+                        <span style="font-size:12px;color:var(--n-500);">target <span class="text-danger">*</span></span>
                     </div>
                     @error($field)
                         <div class="text-danger small mb-2">{{ $message }}</div>
@@ -202,34 +267,16 @@
                 </div>
             </div>
 
-            <div class="mb-3">
-                <label class="form-label fw-semibold small" style="color:var(--g-700);">
-                    Venue <span class="text-danger">*</span>
-                </label>
-                <input type="text" name="venue" class="form-control"
-                    style="border:1px solid var(--n-200);border-radius:10px;font-size:13px;"
-                    value="{{ old('venue', $event->venue) }}" required>
-                @error('venue')
-                    <div class="text-danger small mt-1">{{ $message }}</div>
-                @enderror
-            </div>
+            {{-- Walay Status nga pilianan dinhi.
 
-            <div class="mb-4">
-                <label class="form-label fw-semibold small" style="color:var(--g-700);">
-                    Status <span class="text-danger">*</span>
-                </label>
-                <select name="status" class="form-select"
-                    style="border:1px solid var(--n-200);border-radius:10px;font-size:13px;">
-                    @foreach(['upcoming' => 'Upcoming', 'ongoing' => 'Ongoing', 'completed' => 'Completed'] as $val => $label)
-                    <option value="{{ $val }}" {{ old('status', $event->status) === $val ? 'selected' : '' }}>
-                        {{ $label }}
-                    </option>
-                    @endforeach
-                </select>
-            </div>
+                 Ang kahimtang sa event gikan sa iyang petsa, ug ang
+                 UpdateJobFairEventStatuses nga command mao ang nagbutang niini
+                 kada adlaw. Ang pagpapili sa desk niini nagtugot nga ang usa ka
+                 fair mahimong "Completed" samtang nagpadayon pa siya, ug ang
+                 command mo-usab ra pud niini pagkasunod adlaw. --}}
 
             <div class="d-flex gap-2">
-                <button type="submit" class="btn fw-semibold"
+                <button type="submit" id="eventSubmit" class="btn fw-semibold"
                     style="background:var(--g-600);
                            color:#fff;border:none;border-radius:10px;
                            padding:10px 24px;font-size:14px;">
@@ -252,6 +299,71 @@
 @push('scripts')
 <script>
     // Parehas sa create form: ang target alang ra sa tipo nga tinuod nga
+    // ── Ang adlaw nga naay lain nga fair na. Ang kaugalingon nga petsa
+    // ── niini nga event wala sa listahan, mao nga ang pag-save nga walay
+    // ── pag-usab sa petsa dili mababagan. ──
+    const takenDates = @json($takenDates ?? []);
+    const dateField  = document.getElementById('eventDateField');
+    const dateWarn   = document.getElementById('eventDateTaken');
+    const submitBtn  = document.getElementById('eventSubmit');
+
+    const rescheduleBtn  = document.getElementById('rescheduleBtn');
+    const rescheduleNote = document.getElementById('rescheduleNote');
+
+    // A form that came back with an error keeps the date the desk had already
+    // typed, so it must come back open — locking it again would leave a date on
+    // screen that no longer matches the event and no way to correct it.
+    const alreadyRescheduling = @json(
+        old('event_date') !== null && old('event_date') !== $event->event_date->format('Y-m-d')
+    );
+
+    function checkTakenDate() {
+        const taken = takenDates.includes(dateField.value);
+        const open  = !dateField.readOnly;
+
+        dateField.style.border = taken
+            ? '1px solid var(--danger)'
+            : (open ? '1px solid var(--warn)' : '1px solid var(--n-200)');
+        dateField.style.background = taken
+            ? 'var(--danger-bg)'
+            : (open ? '#fff' : 'var(--n-50)');
+
+        dateWarn.style.display = taken ? 'block' : 'none';
+        if (submitBtn) {
+            submitBtn.disabled = taken;
+            submitBtn.style.opacity = taken ? '0.55' : '';
+            submitBtn.style.cursor = taken ? 'not-allowed' : '';
+        }
+    }
+
+    // Reschedule opens the field and lights it up, so the desk can see which
+    // one field it just took responsibility for.
+    function openReschedule(focus) {
+        dateField.readOnly = false;
+        rescheduleNote.style.display = 'block';
+        rescheduleBtn.disabled = true;
+        rescheduleBtn.style.opacity = '0.55';
+        rescheduleBtn.style.cursor = 'not-allowed';
+        checkTakenDate();
+        if (focus) {
+            dateField.focus();
+            if (dateField.showPicker) dateField.showPicker();
+        }
+    }
+
+    rescheduleBtn.addEventListener('click', function () {
+        openReschedule(true);
+    });
+
+    dateField.addEventListener('change', checkTakenDate);
+    dateField.addEventListener('input', checkTakenDate);
+
+    if (alreadyRescheduling) {
+        openReschedule(false);
+    } else {
+        checkTakenDate();
+    }
+
     // gi-invite, mao nga ang input mosunod sa iyang checkbox.
     document.querySelectorAll('.cater-box').forEach(function (box) {
         box.addEventListener('change', function () {

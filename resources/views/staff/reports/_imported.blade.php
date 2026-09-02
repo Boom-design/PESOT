@@ -18,16 +18,13 @@
     </div>
 </div>
 
-@if(!$eventId)
+{{-- Ang upload ang nagkinahanglan ug fair, dili ang listahan.
 
-    <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-        <i class="ph ph-calendar-dots" style="font-size:48px;color:var(--n-300);"></i>
-        <div class="mt-3 fw-semibold" style="color:var(--g-700);">
-            Select a job fair event to import a report
-        </div>
-    </div>
-
-@else
+     Ang gi-import nga report gi-file batok sa usa ka fair, mao nga ang porma
+     nangutana kung asa. Ang listahan sa ubos wala nagkinahanglan niini: ang
+     pangutana didto kay "unsa ang akong gi-upload", ug ang ngalan sa fair naa
+     sa matag laray. --}}
+@php $importEvents = $allEvents ?? collect(); @endphp
 
     {{-- ── UPLOAD ── --}}
     <div class="card border-0 shadow-sm rounded-3 p-3 mb-4">
@@ -38,7 +35,22 @@
         <form method="POST" action="{{ route('staff.reports.jobfair.import') }}"
               enctype="multipart/form-data" class="row g-2 align-items-start">
             @csrf
-            <input type="hidden" name="job_fair_id" value="{{ $eventId }}">
+            <div class="col-12 col-md-4">
+                <label class="form-label fw-semibold mb-1" style="font-size:11px;color:var(--n-500);">
+                    Job fair event
+                </label>
+                <select name="job_fair_id" class="form-select form-select-sm"
+                        style="border-color:var(--n-200);font-size:12.5px;border-radius:8px;" required>
+                    <option value="">— Select the fair this report is for —</option>
+                    @foreach($importEvents as $importEvent)
+                        <option value="{{ $importEvent->job_fair_events_id }}"
+                            {{ (string) $eventId === (string) $importEvent->job_fair_events_id ? 'selected' : '' }}>
+                            {{ $importEvent->title }} ({{ $importEvent->event_date->format('M d, Y') }})
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
 
             <div class="col-12 col-md-4">
                 <label class="form-label fw-semibold mb-1" style="font-size:11px;color:var(--n-500);">
@@ -174,12 +186,10 @@
     <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
         <i class="ph ph-file-csv" style="font-size:48px;color:var(--n-300);"></i>
         <div class="mt-3 fw-semibold" style="color:var(--g-700);">
-            No report imported for this event yet
+            No report imported yet
         </div>
         <div style="font-size:12px;color:var(--n-500);">
             Use the form above to bring in the report you keep yourself.
         </div>
     </div>
     @endforelse
-
-@endif
