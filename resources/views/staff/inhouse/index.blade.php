@@ -15,36 +15,11 @@
     <div>
         <h5 class="fw-bold mb-1" style="color:var(--g-700);">
             <i class="ph-fill ph-calendar-check me-2" style="color:var(--g-600);"></i>
-            In-house Interview Schedules
+            Pending In-house Schedules
         </h5>
         <p class="mb-0" style="font-size:13px;color:var(--n-500);">
-            Manage employer in-house interview requests
+            In-house interview requests waiting to be accepted or rejected
         </p>
-    </div>
-</div>
-
-{{-- STAT CARDS --}}
-<div class="row g-3 mb-4">
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
-            <div class="fs-2 fw-bold" style="color:var(--g-600);">{{ $totalAll }}</div>
-            <div class="text-muted small">Total (In-house)</div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
-            <div class="fs-2 fw-bold" style="color:var(--n-500);">{{ $totalPending }}</div>
-            <div class="text-muted small">Listed Here</div>
-        </div>
-    </div>
-    {{-- Ang bugtong numero nga naghangyo ug lihok karon. Gilain siya sa
-         "Listed Here", nga naglakip sa gi-approve na. --}}
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm rounded-3 p-3 text-center"
-             style="{{ $awaitingDecision > 0 ? 'border-left:3px solid var(--warn) !important;' : '' }}">
-            <div class="fs-2 fw-bold" style="color:{{ $awaitingDecision > 0 ? 'var(--warn)' : 'var(--n-300)' }};">{{ $awaitingDecision }}</div>
-            <div class="text-muted small">Awaiting Your Decision</div>
-        </div>
     </div>
 </div>
 
@@ -52,9 +27,9 @@
     <i class="ph-fill ph-info me-1"></i>
     An in-house request waits for you. The dates the employer picked are held while you decide,
     and the vacancy stays hidden from jobseekers until you accept — so a rejection stops the
-    interview before anyone has applied to it. Company-interview and job fair postings are not
-    reviewed here; they go live on submit. Anything already accepted can still be taken down
-    with a reason.
+    interview before anyone has applied to it. Once you accept, the request leaves this page and
+    the vacancy is listed under In-house Job Vacancy. Company-interview and job fair postings are
+    not reviewed here; they go live on submit.
 </div>
 
 {{-- SEARCH --}}
@@ -74,7 +49,10 @@
 @if($schedules->isEmpty())
     <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
         <i class="ph ph-calendar-x" style="font-size:48px;color:var(--n-300);"></i>
-        <div class="mt-3 fw-semibold" style="color:var(--g-700);">No schedule requests yet</div>
+        <div class="mt-3 fw-semibold" style="color:var(--g-700);">Nothing waiting for a decision</div>
+        <div class="text-muted small mt-1">
+            Accepted requests are listed under In-house Job Vacancy.
+        </div>
     </div>
 @else
     <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
@@ -84,9 +62,9 @@
                     <tr style="background:var(--g-600);">
                         <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">#</th>
                         <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Company</th>
-                        <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Type</th>
-                        <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Date</th>
-                        <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Time</th>
+                        <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Job Type</th>
+                        <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">In-house Date</th>
+                        <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">In-house Time</th>
                         <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;text-align:center;">Vacancies Offered</th>
                         <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Venue</th>
                         <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;text-align:center;">Status</th>

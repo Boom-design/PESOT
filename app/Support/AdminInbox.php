@@ -40,12 +40,21 @@ class AdminInbox
         'companyinterview' => 'company_interview',
     ];
 
-    /** Everything the Registrations page answers for. */
+    /**
+     * Everything the Registrations page answers for.
+     *
+     * PESO admin, 2026-09-01: this list also held the three employer
+     * references, and the sidebar item it counts for is called Jobseekers and
+     * lists jobseeker registrations only. Two employers signing up lit a dot on
+     * a page that had never heard of them, and opening that page marked their
+     * notices seen without ever showing them.
+     *
+     * The employer notices are not lost: the bell counts everything unseen
+     * (`bellCount`) and the notifications page clears them (`markAllSeen`).
+     * They simply no longer claim to belong to a page that cannot show them.
+     */
     private const REGISTRATION_REFERENCES = [
         'jobseeker_registration',
-        'employer_registration',
-        'employer_requirement',
-        'employer_inactivity',
     ];
 
     /** Unseen count per Job Activities tab, keyed the same way as `?tab=`. */

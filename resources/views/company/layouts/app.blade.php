@@ -278,6 +278,17 @@
                             if ($notif->type === 'new_applicant' && $notif->reference_id) {
                                 return route('company.jobs.qualified', $notif->reference_id);
                             }
+                            // ── Ang sulat sa inactivity moabli sa buhat nga makapahunong niini. ──
+                            //
+                            // Ang pagpost ug bag-ong bakante mao ang tubag nga
+                            // giila sa sweep, mao nga didto siya modala. Kaniadto
+                            // walay padulngan kini nga notice: ang employer
+                            // makabasa nga ang iyang account hapit na ma-inactive
+                            // ug walay ma-click.
+                            if ($notif->reference_type === 'employer_inactivity') {
+                                return route('company.jobs.create');
+                            }
+
                             return match($notif->reference_type) {
                                 'job'                     => route('company.jobseekers'),
                                 'employer_requirement'    => route('company.requirements'),

@@ -55,6 +55,11 @@ class Announcement extends Model
             'job'                    => route('staff.jobs'),
             'inhouse_schedule'       => route('staff.inhouse'),
             'job_fair'               => route('staff.jobfair.events'),
+            // Ang pagpili sa SRA. Dili ni mahimong 'job_fair': kana nga route
+            // Job Fair desk ra ang makasulod, ug ang SRA nga mo-klik mabalibad
+            // ngadto sa login. Ang iyang trabaho naa sa Invite nga panel sa
+            // Job Fair nga tab.
+            'job_fair_selection'     => route('staff.inhouse.jobfair', ['panel' => 'invite']),
             default                  => route('staff.notifications.index'),
         };
     }

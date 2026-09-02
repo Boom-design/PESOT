@@ -2,13 +2,17 @@
 
 @section('content')
 
-<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-    <div>
+{{-- Ang teksto naay max-width ug ang buton naay ms-auto. Kung wala, ang
+     paragrapo mokaon sa tibuok laray ug ang buton mahulog sa sunod nga linya —
+     mao nga makita siya sa wala imbis sa tuong ngilit. --}}
+<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-2">
+    <div style="max-width:640px;">
         <h5 class="fw-bold mb-1" style="color:var(--g-700);">
-            <i class="ph-fill ph-briefcase me-2" style="color:var(--g-600);"></i>Job Fair Postings
+            <i class="ph-fill ph-briefcase me-2" style="color:var(--g-600);"></i>Job Fair Vacancies
         </h5>
         <p class="mb-0" style="font-size:13px;color:var(--n-500);">
-            Accept a vacancy into a fair, or turn it away. An accepted posting goes live
+            The employers invited to a fair, by what they answered, and the vacancies each
+            would bring. Pick a fair and post everything it takes — a posted vacancy goes live
             {{ \App\Support\JobFairPostingWindow::daysBefore() }} days before that fair.
         </p>
     </div>
@@ -17,38 +21,31 @@
          iyang bakante. Naa siya dinhi ug dili sa Employers kay usa ra ang
          gibuhat sa Job Fair desk sa employer: ang pagdala kaniya sa fair. --}}
     <a href="{{ route('staff.employers.walkin') }}"
-       class="btn btn-sm fw-semibold"
+       class="btn btn-sm fw-semibold ms-auto flex-shrink-0"
        style="background:var(--g-600);color:#fff;border:none;border-radius:8px;
               font-size:12px;padding:8px 16px;white-space:nowrap;">
         <i class="ph-fill ph-storefront me-1"></i> Walk-in Employer
     </a>
 </div>
 
-<div class="row g-3 mb-4">
-    <div class="col-md-6">
-        <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
-            <div class="fs-2 fw-bold" style="color:var(--warn);">{{ $totalClosed }}</div>
-            <div class="text-muted small">Closed (Waiting for Event)</div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card border-0 shadow-sm rounded-3 p-3 text-center">
-            <div class="fs-2 fw-bold" style="color:var(--g-700);">{{ $totalOpen }}</div>
-            <div class="text-muted small">Open (Live)</div>
-        </div>
-    </div>
-</div>
-
 <div class="d-flex align-items-center mb-3 flex-wrap gap-2">
     <div class="d-flex gap-2">
-        @foreach(['closed' => 'Closed', 'open' => 'Open'] as $val => $label)
-        <a href="{{ route('staff.jobfair.postings', array_merge(request()->query(), ['status' => $val, 'page' => 1])) }}"
+        {{-- Ang tab mao ang tubag sa employer, dili ang kahimtang sa
+             bakante. "Waiting for a fair" ug "Posted" nagtubag sa lain nga
+             pangutana kay sa gipangutana sa desk dinhi. --}}
+        @foreach([
+            'pending'  => 'Pending Invitation',
+            'accepted' => 'Accepted Invitation',
+            'declined' => 'Declined Invitation',
+        ] as $val => $label)
+        <a href="{{ route('staff.jobfair.postings', array_merge(request()->query(), ['invite' => $val, 'page' => 1])) }}"
            class="btn btn-sm fw-semibold"
-           style="{{ request('status','closed') === $val
+           style="{{ $invite === $val
                ? 'background:var(--g-600);color:#fff;border:none;'
                : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
                border-radius:8px;font-size:12px;padding:5px 16px;">
             {{ $label }}
+            <span class="ms-1 fw-bold">({{ $inviteCounts[$val] ?? 0 }})</span>
         </a>
         @endforeach
     </div>
@@ -64,23 +61,10 @@
             @endforeach
         </select>
 
-        {{-- Duha ka pill, dili dropdown: ang gipili makita gikan sa layo, ug
-             ang pag-klik pag-usab sa aktibo mao ang pagpalong niini. Walay
-             "any" nga linya nga labangan, ug walay Clear nga buton. --}}
-        @foreach(['yes' => 'Accepts PWD', 'no' => 'Does not accept PWD'] as $val => $label)
-        <a href="{{ route('staff.jobfair.postings', array_merge(request()->query(), [
-                'pwd'  => $pwd === $val ? null : $val,
-                'page' => 1,
-           ])) }}"
-           class="btn btn-sm fw-semibold"
-           title="{{ $pwd === $val ? 'Showing these only — click to show every posting again' : 'Show only these' }}"
-           style="{{ $pwd === $val
-               ? 'background:var(--g-600);color:#fff;border:1px solid var(--g-600);'
-               : 'background:#fff;color:var(--g-700);border:1px solid var(--n-200);' }}
-               border-radius:8px;font-size:12px;padding:5px 14px;white-space:nowrap;">
-            <i class="ph {{ $pwd === $val ? 'ph-check' : 'ph-wheelchair' }} me-1"></i>{{ $label }}
-        </a>
-        @endforeach
+        {{-- Ang duha ka PWD nga pill gitangtang. Ang lamesa naay Accepts PWD
+             nga kolum, mao nga ang tubag makita na sa matag laray nga
+             gisalaan — usa ka sala nga nagtago ug mga laray aron ipakita ang
+             butang nga makita na sa nawala nga laray. --}}
     </div>
 
     {{-- Ang search sa tuong ngilit gyud. Ang ms-auto mao ang nagtulak kaniya:
@@ -97,291 +81,241 @@
     </div>
 </div>
 
-@if($jobs->isEmpty())
-    <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-        <i class="ph ph-briefcase" style="font-size:48px;color:var(--n-300);"></i>
-        <div class="mt-3 fw-semibold" style="color:var(--g-700);">No job fair postings found</div>
+{{-- ── USA KA BUTON ──
+     Ang fair mismo ang nagsala. Gihimo na ang desisyon sa dihang gihimo ang
+     event — industriya, PWD, lokal o overseas — mao nga ang desk dili na
+     magbasa ug usa-usa nga bakante. Pilia ang fair, tan-awa pila ang mosulod,
+     ug i-post silang tanan. Ang wala mohaom maghulat sa fair nga modawat nila;
+     wala silay nadawat nga pagbalibad ug walay nahibaw-an ang employer. --}}
+@if($invite === 'pending' && $waitingTotal > 0 && $events->isEmpty())
+{{-- Ang buton nagkinahanglan ug fair nga kasudlan. Kung walay upcoming nga
+     event, ang lugar dili magpabilin nga blangko: ang desk mangita sa buton
+     ug maghunahuna nga nabuak siya, nga ang tinuod nga tubag mao nga wala pa
+     gyud siyay gihimo nga fair. --}}
+<div class="card border-0 shadow-sm rounded-3 p-3 mb-3"
+     style="background:var(--warn-bg);border:1px solid var(--warn-br) !important;">
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+        <i class="ph-fill ph-warning-circle" style="color:var(--warn);font-size:18px;"></i>
+        <div style="font-size:12.5px;color:var(--warn);">
+            <strong>{{ $waitingTotal }} vacancy(s) waiting, but there is no upcoming job fair to post them to.</strong>
+            <div style="color:var(--n-600);margin-top:2px;">
+                Create the event first — the fair decides which of these vacancies it takes,
+                by industry, by PWD, and by local or overseas.
+            </div>
+        </div>
+        <a href="{{ route('staff.jobfair.events') }}" class="btn btn-sm fw-semibold ms-auto"
+           style="background:var(--g-700);color:#fff;border:none;border-radius:8px;font-size:12px;padding:6px 16px;white-space:nowrap;">
+            <i class="ph ph-plus-circle me-1"></i> Create a job fair event
+        </a>
     </div>
-@else
-<form method="POST" action="{{ route('staff.jobfair.postings.bulk') }}" id="bulkPostForm">
-    @csrf
+</div>
+@endif
 
-    {{-- ── ANG TINAPOK NGA PAG-POST ──
-         Walay bakante nga mosulod sa fair nga siya ra. Ang desk mosala sa
-         listahan, motsek, ug mo-post — usa ka desisyon, usa ka buton.
-         Ang fair nga wala modawat sa usa ka posting mopatay sa tsek niini,
-         mao nga ang gipadala mao ra gyud ang mahimong modawat. --}}
-    @if($status === 'closed' && $events->isNotEmpty())
-    <div class="card border-0 shadow-sm rounded-3 p-3 mb-3">
+@if($invite === 'pending' && $events->isNotEmpty() && $waitingTotal > 0)
+<form method="POST" action="{{ route('staff.jobfair.postings.postFitting') }}" id="postFittingForm" class="mb-3">
+    @csrf
+    <div class="card border-0 shadow-sm rounded-3 p-3">
         <div class="d-flex align-items-center gap-2 flex-wrap">
             <label class="fw-semibold mb-0" style="color:var(--g-700);font-size:12.5px;white-space:nowrap;">
-                <i class="ph ph-flag-banner me-1" style="color:var(--g-600);"></i>Post the ticked vacancies to
+                <i class="ph ph-flag-banner me-1" style="color:var(--g-600);"></i>Post the waiting vacancies to
             </label>
-            <select name="job_fair_id" id="bulkEventSelect" class="form-select form-select-sm"
+            <select name="job_fair_id" id="fitEventSelect" class="form-select form-select-sm"
                     style="max-width:340px;border-color:var(--n-200);font-size:12.5px;border-radius:8px;" required>
                 @foreach($events as $event)
-                    <option value="{{ $event->job_fair_events_id }}">
+                    <option value="{{ $event->job_fair_events_id }}" data-fit="{{ $fitCounts[$event->job_fair_events_id] ?? 0 }}">
                         {{ $event->title }} — {{ $event->event_date->format('M d, Y') }}{{ $event->pwd_only ? ' · PWD only' : '' }}
                     </option>
                 @endforeach
             </select>
-            <span id="bulkHint" style="font-size:11.5px;color:var(--n-500);"></span>
 
-            {{-- Ang buton sa tuong ngilit, parehas sa search sa taas. Siya ang
-                 kataposang lihok sa linya, mao nga didto siya matapos. --}}
-            <button type="submit" id="bulkPostButton" class="btn btn-sm fw-semibold ms-auto" disabled
+            <span id="fitHint" style="font-size:11.5px;color:var(--n-500);"></span>
+
+            <button type="submit" id="postFittingButton" class="btn btn-sm fw-semibold ms-auto"
                 style="background:var(--g-700);color:#fff;border:none;border-radius:8px;font-size:12px;padding:6px 16px;">
-                <i class="ph ph-check-circle me-1"></i> Post Selected (<span id="bulkCount">0</span>)
+                <i class="ph ph-check-circle me-1"></i> Post <span id="fitCount">0</span> vacancy(s)
             </button>
         </div>
-    </div>
-    @endif
-
-    <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr style="background:var(--g-600);">
-                        @if($status === 'closed' && $events->isNotEmpty())
-                        <th style="border:none;padding:12px 16px;width:40px;">
-                            <input type="checkbox" class="form-check-input" id="bulkCheckAll"
-                                   title="Select all on this page">
-                        </th>
-                        @endif
-                        <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">#</th>
-                        <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Job Title</th>
-                        <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Company</th>
-                        <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Slots</th>
-                        <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Accepts PWD</th>
-                        <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Industry</th>
-                        <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;text-align:center;">Posting Status</th>
-                        <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;text-align:center;">Status</th>
-                        <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;text-align:center;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($jobs as $i => $job)
-                    <tr style="font-size:13px;">
-                        @if($status === 'closed' && $events->isNotEmpty())
-                        <td style="padding:12px 16px;">
-                            @if($job->posting_status === 'pending')
-                            <input type="checkbox" class="form-check-input bulk-check" name="job_ids[]"
-                                   value="{{ $job->job_qualifications_id }}"
-                                   data-job-id="{{ $job->job_qualifications_id }}">
-                            @endif
-                        </td>
-                        @endif
-                        <td style="padding:12px 16px;color:var(--n-500);">{{ $jobs->firstItem() + $i }}</td>
-                        <td style="padding:12px 16px;font-weight:600;color:var(--g-700);">{{ $job->title }}</td>
-                        <td style="padding:12px 16px;color:var(--n-700);">
-                            {{ $job->company->company_name ?? 'None' }}
-                            @if($job->company->is_overseas ?? false)
-                                <span style="color:var(--info);font-size:10px;font-weight:600;">Overseas</span>
-                            @endif
-                        </td>
-                        <td style="padding:12px 16px;color:var(--n-700);">{{ $job->slots }}</td>
-                        {{-- Ang timailhan nga gigamit sa pagpili: ang fair para sa
-                             PWD modawat sa posting nga modawat kanila. Gisulat
-                             ang "No" sad, dili lang ang "Yes" — kung ang "No" ra
-                             ang gisala, kinahanglan makita nga mao gyud sila. --}}
-                        <td style="padding:12px 16px;">
-                            @if($job->acceptsPwd())
-                                <span class="fw-semibold" style="color:var(--g-700);font-size:11px;">Yes</span>
-                                @if($job->disability_types)
-                                    <div style="font-size:10.5px;color:var(--n-500);">
-                                        {{ implode(', ', $job->disability_types) }}
-                                    </div>
-                                @endif
-                            @else
-                                <span class="fw-semibold" style="color:var(--n-400);font-size:11px;">No</span>
-                            @endif
-                        </td>
-                        {{-- Ang industriya sa posting, dili sa employer: usa ka
-                             establisemento mahimong naay bakante sa lain-laing
-                             industriya, ug ang fair mopili base sa posting. --}}
-                        <td style="padding:12px 16px;color:var(--n-700);font-size:12px;">
-                            @if($job->industry_group)
-                                {{ $job->industry_group }}
-                            @else
-                                <span style="color:var(--n-400);">Not set</span>
-                            @endif
-                        </td>
-                        <td style="padding:12px 16px;text-align:center;">
-                            @if($job->posting_status === 'pending')
-                                <span class="fw-semibold" style="color:var(--warn);font-size:11px;">Pending</span>
-                            @elseif($job->posting_status === 'approved')
-                                <span class="fw-semibold" style="color:var(--g-700);font-size:11px;">Approved</span>
-                            @else
-                                <span class="fw-semibold" style="color:var(--danger);font-size:11px;">Rejected</span>
-                            @endif
-                        </td>
-                        <td style="padding:12px 16px;text-align:center;">
-                            @if($job->status === 'open')
-                                <span class="fw-semibold" style="color:var(--g-700);font-size:11px;">Open</span>
-                            @else
-                                <span class="fw-semibold" style="color:var(--warn);font-size:11px;">Closed</span>
-                            @endif
-                        </td>
-                        <td style="padding:12px 16px;text-align:center;">
-                            @if($job->posting_status === 'pending')
-                                <div class="d-flex gap-1 justify-content-center">
-                                    <button type="button" class="btn btn-sm fw-semibold"
-                                        style="background:var(--g-700);color:#fff;border:none;border-radius:6px;font-size:11px;padding:4px 12px;"
-                                        onclick="openAcceptModal({{ $job->job_qualifications_id }}, @js($job->title), {{ $job->requested_job_fair_id ?? 'null' }})">
-                                        <i class="ph ph-check me-1"></i>Accept
-                                    </button>
-                                    <button type="button" class="btn btn-sm fw-semibold"
-                                        style="background:var(--danger);color:#fff;border:none;border-radius:6px;font-size:11px;padding:4px 12px;"
-                                        onclick="openRejectModal({{ $job->job_qualifications_id }}, '{{ addslashes($job->title) }}')">
-                                        <i class="ph ph-x me-1"></i>Reject
-                                    </button>
-                                </div>
-                            @elseif($job->posting_status === 'approved')
-                                <span style="font-size:11px;color:var(--n-500);">None</span>
-                            @else
-                                @if($job->remarks)
-                                    <span style="font-size:11px;color:var(--danger);" title="{{ $job->remarks }}">
-                                        <i class="ph ph-warning-circle"></i> Rejected
-                                    </span>
-                                @else
-                                    <span style="font-size:11px;color:var(--n-500);">None</span>
-                                @endif
-                            @endif
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-
-        @if($jobs->hasPages())
-        <div class="d-flex justify-content-between align-items-center px-3 py-3" style="border-top:1px solid var(--n-50);">
-            <div style="font-size:12px;color:var(--n-500);">
-                Showing {{ $jobs->firstItem() }}–{{ $jobs->lastItem() }} of {{ $jobs->total() }} results
-            </div>
-            <nav>
-                <ul class="pagination pagination-sm mb-0 gap-1">
-                    <li class="page-item {{ $jobs->onFirstPage() ? 'disabled' : '' }}">
-                        <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $jobs->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
-                    </li>
-                    @foreach($jobs->getUrlRange(1, $jobs->lastPage()) as $page => $url)
-                    <li class="page-item {{ $page == $jobs->currentPage() ? 'active' : '' }}">
-                        <a class="page-link rounded-2"
-                           style="{{ $page == $jobs->currentPage() ? 'background:var(--g-600);border-color:transparent;color:#fff;' : 'border-color:var(--n-200);color:var(--g-700);' }}"
-                           href="{{ $url }}">{{ $page }}</a>
-                    </li>
-                    @endforeach
-                    <li class="page-item {{ !$jobs->hasMorePages() ? 'disabled' : '' }}">
-                        <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $jobs->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
-                    </li>
-                </ul>
-            </nav>
-        </div>
-        @endif
     </div>
 </form>
 @endif
 
-{{-- ── ACCEPT MODAL ── --}}
-{{-- Ang pag-dawat sa posting mao ang pagpili sa fair. Wala nay kalainan ang
-     duha: ang bakante buhi ra kung naa siya sa usa ka fair, ug ang fair mao
-     ang nagsulti kung kanus-a siya makita sa jobseeker. --}}
-<div class="modal fade" id="acceptModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="border-radius:16px;border:none;box-shadow:0 8px 32px rgba(0,0,0,0.12);">
-            <div class="modal-header" style="background:var(--g-600);">
-                <h6 class="modal-title fw-bold text-white">
-                    <i class="ph ph-check-circle me-2"></i>Accept into a Job Fair
-                </h6>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="acceptForm" method="POST">
-                @csrf
-                <div class="modal-body p-4">
-                    <p style="font-size:13px;color:var(--n-700);margin-bottom:12px;">
-                        <strong id="acceptJobTitle" style="color:var(--g-700);"></strong>
-                        will be listed at the fair you choose, and the jobseekers it reaches are the ones
-                        registered for that fair.
-                    </p>
+{{-- ── SHOW THE VACANCIES TO JOBSEEKERS ──
 
-                    @if($events->isEmpty())
-                        <div class="p-3 rounded-3" style="background:var(--warn-bg);border:1px solid var(--warn-br);font-size:12.5px;color:var(--n-700);">
-                            <i class="ph-fill ph-warning-circle me-1" style="color:var(--warn);"></i>
-                            There is no upcoming job fair to accept this into. Create the event first, then come back.
-                        </div>
-                    @else
-                        <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Job Fair *</label>
-                        <select name="job_fair_id" id="acceptEventSelect" class="form-select" required
-                                style="border-color:var(--n-200);font-size:13px;border-radius:8px;">
-                            @foreach($events as $event)
-                                <option value="{{ $event->job_fair_events_id }}">
-                                    {{ $event->title }} — {{ $event->event_date->format('M d, Y') }}{{ $event->pwd_only ? ' · PWD only' : '' }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <div id="acceptRequestedNote" style="font-size:11px;color:var(--g-600);margin-top:6px;display:none;">
-                            <i class="ph ph-info me-1"></i>Pre-selected: this is the fair the employer asked for.
-                        </div>
-                        {{-- Ang fair nga dili modawat niining bakante gitago sa
-                             listahan, ug ang hinungdan gisulat dinhi aron dili
-                             magtuo ang staff nga nawala lang siya. --}}
-                        <div id="acceptBlockedNote" style="font-size:11px;color:var(--n-500);margin-top:6px;display:none;"></div>
-                    @endif
-                </div>
-                <div class="modal-footer" style="border-top:1px solid var(--n-50);">
-                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    @if($events->isNotEmpty())
-                    <button type="submit" id="acceptSubmit" class="btn btn-sm fw-semibold"
-                        style="background:var(--g-700);color:#fff;border:none;border-radius:8px;padding:8px 20px;">
-                        <i class="ph ph-check-circle me-1"></i> Accept
-                    </button>
-                    @endif
-                </div>
-            </form>
+     PESO Job Fair staff, 2026-09-02: the desk decides the moment the list goes
+     public, normally {{ $openDaysBefore }} days before the fair, once the
+     employers that are coming have answered. Until then the vacancies sit
+     closed — a vacancy announced a month before the day it can be applied for
+     is buried under everything posted since.
+
+     It sits on Accepted Invitation because that is the tab that answers the
+     question the desk asks first: who is actually coming. --}}
+@if($invite === 'accepted' && $openable->isNotEmpty())
+<form method="POST" action="{{ route('staff.jobfair.postings.openAll') }}" id="openAllForm" class="mb-3">
+    @csrf
+    <div class="card border-0 shadow-sm rounded-3 p-3">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <label class="fw-semibold mb-0" style="color:var(--g-700);font-size:12.5px;white-space:nowrap;">
+                <i class="ph ph-megaphone me-1" style="color:var(--g-600);"></i>Show the vacancies of
+            </label>
+            <select name="job_fair_id" id="openAllSelect" class="form-select form-select-sm"
+                    style="max-width:340px;border-color:var(--n-200);font-size:12.5px;border-radius:8px;" required>
+                @foreach($openable as $option)
+                    <option value="{{ $option['id'] }}"
+                            data-waiting="{{ $option['waiting'] }}"
+                            data-inrange="{{ $option['inRange'] ? '1' : '0' }}"
+                            data-title="{{ $option['title'] }}">
+                        {{ $option['title'] }} — {{ $option['date']->format('M d, Y') }}
+                    </option>
+                @endforeach
+            </select>
+
+            <span id="openAllHint" style="font-size:11.5px;color:var(--n-500);"></span>
+
+            <button type="button" id="openAllButton" class="btn btn-sm fw-semibold ms-auto"
+                style="background:var(--g-600);color:#fff;border:none;border-radius:8px;font-size:12px;padding:6px 16px;">
+                <i class="ph-fill ph-megaphone me-1"></i> Post All Job Vacancies
+                (<span id="openAllCount">0</span>)
+            </button>
+        </div>
+        <div id="openAllEarly" class="mt-2" style="display:none;font-size:11.5px;color:var(--warn);">
+            <i class="ph-fill ph-warning-circle me-1"></i>
+            This fair is more than {{ $openDaysBefore }} days away. Posting now means jobseekers
+            see these vacancies well before the day they can act on them.
         </div>
     </div>
-</div>
+</form>
+@endif
 
-{{-- ── REJECT MODAL ── --}}
-<div class="modal fade" id="rejectModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="border-radius:16px;border:none;box-shadow:0 8px 32px rgba(0,0,0,0.12);">
-            <div class="modal-header" style="background:var(--danger-bg);border-bottom:1px solid var(--danger-br);">
-                <h6 class="modal-title fw-bold text-white">
-                    <i class="ph ph-x-circle me-2"></i>Reject Job Posting
-                </h6>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="rejectForm" method="POST">
-                @csrf
-                <div class="modal-body p-4">
-                    <p style="font-size:13px;color:var(--n-700);margin-bottom:12px;">
-                        You are about to reject <strong id="rejectJobTitle" style="color:var(--g-700);"></strong> for job fair use.
-                    </p>
-                    <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Reason for Rejection *</label>
-                    <textarea name="remarks" class="form-control" rows="3" required
-                        placeholder="Enter the reason for rejecting this job posting..."
-                        style="border-color:var(--n-200);font-size:13px;border-radius:8px;"></textarea>
-                </div>
-                <div class="modal-footer" style="border-top:1px solid var(--n-50);">
-                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-sm fw-semibold"
-                        style="background:var(--danger);color:#fff;border:none;border-radius:8px;padding:8px 20px;">
-                        <i class="ph ph-x-circle me-1"></i> Reject
-                    </button>
-                </div>
-            </form>
-        </div>
+{{-- ── ONE ROW PER EMPLOYER, NOT PER VACANCY ──
+
+     The tab asks what the employer answered, so the employer is the row. The
+     vacancies they would bring are listed inside it, each with how many
+     jobseekers it would match.
+
+     That match count is a suggestion and nothing more. It says who is
+     registered today whose NSRP form lines up with the vacancy — no names, no
+     promise that any of them will turn up or be hired. It is there so the
+     employer weighing an invitation can see there are people to meet, and so
+     the desk can see which invitation is worth chasing. --}}
+<div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr style="background:var(--g-600);">
+                    <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">#</th>
+                    <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Company</th>
+                    <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Job Fair</th>
+                    <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Industry</th>
+                    <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Vacancies</th>
+                    <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;text-align:center;">Potential Applicants</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($invitations as $i => $row)
+                @php
+                    $company   = $row->employer;
+                    $vacancies = $vacanciesFor[$row->employer_id . ':' . $row->job_fair_id] ?? collect();
+                    $highly    = $vacancies->sum('highly_count');
+                    $qualified = $vacancies->sum('qualified_count');
+                @endphp
+                <tr style="font-size:13px;">
+                    <td style="padding:12px 16px;color:var(--n-500);">{{ $invitations->firstItem() + $i }}</td>
+                    <td style="padding:12px 16px;font-weight:600;color:var(--g-700);">
+                        {{ $company->company_name ?? 'None' }}
+                        @if($company->is_overseas ?? false)
+                            <span style="color:var(--info);font-size:10px;font-weight:600;">Overseas</span>
+                        @endif
+                        <div style="font-size:11px;font-weight:400;color:var(--n-500);">
+                            {{ $company->employer->email ?? 'None' }}
+                        </div>
+                    </td>
+                    <td style="padding:12px 16px;color:var(--n-700);">
+                        {{ $row->jobFair->title ?? 'None' }}
+                        @if($row->jobFair?->event_date)
+                            <div style="font-size:11px;color:var(--n-500);">
+                                {{ $row->jobFair->event_date->format('M d, Y') }}
+                            </div>
+                        @endif
+                    </td>
+                    <td style="padding:12px 16px;color:var(--n-700);font-size:12px;">
+                        {{ $company->industry_group ?? 'Not set' }}
+                    </td>
+                    <td style="padding:12px 16px;color:var(--n-700);">
+                        @forelse($vacancies as $vacancy)
+                            <div style="font-size:12px;">
+                                <a href="{{ route('staff.jobfair.postings.applicants', $vacancy->job_qualifications_id) }}"
+                                   class="fw-semibold text-decoration-none" style="color:var(--g-700);">
+                                    {{ $vacancy->title }}
+                                </a>
+                                <span style="color:var(--n-500);font-size:11px;">
+                                    · {{ $vacancy->slots }} slot(s)@if($vacancy->acceptsPwd()) · accepts PWD @endif
+                                </span>
+                            </div>
+                        @empty
+                            <span style="font-size:11.5px;color:var(--n-400);">No job fair vacancy posted</span>
+                        @endforelse
+                    </td>
+                    <td style="padding:12px 16px;text-align:center;">
+                        @if($vacancies->isEmpty())
+                            <span style="font-size:11.5px;color:var(--n-400);">None</span>
+                        @else
+                            <span class="fw-semibold" style="font-size:12px;color:var(--g-700);">
+                                {{ $highly }} highly · {{ $qualified }} qualified
+                            </span>
+                            <div style="font-size:10.5px;color:var(--n-500);">
+                                suggestion only — not a guaranteed turnout
+                            </div>
+                        @endif
+                    </td>
+                </tr>
+                @empty
+                <tr>
+                    <td colspan="6" class="text-center"
+                        style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                        <i class="ph ph-envelope-simple me-1"
+                           style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                        @if($invite === 'pending')
+                            No employer is waiting to answer an invitation.
+                        @elseif($invite === 'accepted')
+                            No employer has accepted an invitation yet.
+                        @else
+                            No employer has declined an invitation.
+                        @endif
+                    </td>
+                </tr>
+                @endforelse
+            </tbody>
+        </table>
     </div>
+
+    @if($invitations->hasPages())
+    <div class="d-flex justify-content-between align-items-center px-3 py-3" style="border-top:1px solid var(--n-50);">
+        <div style="font-size:12px;color:var(--n-500);">
+            Showing {{ $invitations->firstItem() }}–{{ $invitations->lastItem() }} of {{ $invitations->total() }} results
+        </div>
+        <nav>
+            <ul class="pagination pagination-sm mb-0 gap-1">
+                <li class="page-item {{ $invitations->onFirstPage() ? 'disabled' : '' }}">
+                    <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $invitations->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
+                </li>
+                @foreach($invitations->getUrlRange(1, $invitations->lastPage()) as $page => $url)
+                <li class="page-item {{ $page == $invitations->currentPage() ? 'active' : '' }}">
+                    <a class="page-link rounded-2"
+                       style="{{ $page == $invitations->currentPage() ? 'background:var(--g-600);border-color:transparent;color:#fff;' : 'border-color:var(--n-200);color:var(--g-700);' }}"
+                       href="{{ $url }}">{{ $page }}</a>
+                </li>
+                @endforeach
+                <li class="page-item {{ !$invitations->hasMorePages() ? 'disabled' : '' }}">
+                    <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $invitations->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+    @endif
 </div>
 
 @push('scripts')
 <script>
-    // Kada posting: ang fair id ngadto sa hinungdan nga dili siya modawat, o
-    // null kung modawat siya. Ang server ang nagkwenta, mao nga ang gitago
-    // dinhi ug ang gisalikway sa pag-save parehas gyud.
-    const EVENT_FIT = @js($eventFit);
-
     let searchTimer;
     document.getElementById('searchInput')?.addEventListener('input', function() {
         clearTimeout(searchTimer);
@@ -406,136 +340,94 @@
         goToFilter('industry', this.value);
     });
 
-    // ── ANG TINAPOK NGA PAG-POST ──
-    // Ang tsek sa posting nga dili dawaton sa piniling fair gipatay, ug ang
-    // hinungdan gisulat sa tapad. Gipugngan sad kini sa server: ang usa ka
-    // posting nga wala mohaom ginganlan sa balik ug wala gi-post.
+    // ── POST ALL JOB VACANCIES ──
+    // The count is the server's, so the button and the actual open cannot
+    // disagree. A fair with nothing waiting kills the button — there is
+    // nothing to show. The press asks first: the employers are told their
+    // posting is live and the matching jobseekers are notified, and neither
+    // message can be taken back.
     (function () {
-        const form   = document.getElementById('bulkPostForm');
-        const select = document.getElementById('bulkEventSelect');
-        if (!form || !select) return;
+        const select = document.getElementById('openAllSelect');
+        if (!select) return;
 
-        const all    = document.getElementById('bulkCheckAll');
-        const button = document.getElementById('bulkPostButton');
-        const count  = document.getElementById('bulkCount');
-        const hint   = document.getElementById('bulkHint');
-        const boxes  = Array.prototype.slice.call(form.querySelectorAll('.bulk-check'));
+        const button = document.getElementById('openAllButton');
+        const count  = document.getElementById('openAllCount');
+        const hint   = document.getElementById('openAllHint');
+        const early  = document.getElementById('openAllEarly');
+        const form   = document.getElementById('openAllForm');
 
         function refresh() {
-            let   blocked = 0;
-            let   ticked  = 0;
+            const option  = select.options[select.selectedIndex];
+            const waiting = parseInt(option?.dataset.waiting || '0', 10);
+            const inRange = option?.dataset.inrange === '1';
 
-            boxes.forEach(function (box) {
-                const why = (EVENT_FIT[box.dataset.jobId] || {})[select.value] || null;
-                box.disabled = !!why;
-                box.title    = why || '';
-                if (why) {
-                    box.checked = false;
-                    blocked++;
-                }
-                if (box.checked) ticked++;
-            });
+            count.textContent = waiting;
+            button.disabled = waiting === 0;
+            button.style.opacity = waiting === 0 ? '0.55' : '';
+            button.style.cursor  = waiting === 0 ? 'not-allowed' : '';
 
-            if (count)  count.textContent = ticked;
-            if (button) button.disabled = ticked === 0;
-            if (all) {
-                const usable = boxes.filter(function (b) { return !b.disabled; });
-                all.disabled = usable.length === 0;
-                all.checked  = usable.length > 0 && usable.every(function (b) { return b.checked; });
-            }
-            if (hint) {
-                hint.textContent = blocked
-                    ? blocked + ' on this page cannot join this fair — hover a greyed box for the reason.'
-                    : '';
-            }
+            hint.textContent = waiting === 0
+                ? 'Every vacancy on this fair is already visible to jobseekers.'
+                : waiting + ' vacancy(s) on this fair are still hidden from jobseekers.';
+
+            early.style.display = waiting > 0 && !inRange ? 'block' : 'none';
         }
 
-        boxes.forEach(function (box) { box.addEventListener('change', refresh); });
         select.addEventListener('change', refresh);
-
-        if (all) {
-            all.addEventListener('change', function () {
-                const on = this.checked;
-                boxes.forEach(function (box) {
-                    if (!box.disabled) box.checked = on;
-                });
-                refresh();
-            });
-        }
-
         refresh();
+
+        button.addEventListener('click', function () {
+            const option  = select.options[select.selectedIndex];
+            const waiting = parseInt(option?.dataset.waiting || '0', 10);
+
+            Swal.fire({
+                title: 'Post these vacancies?',
+                html: '<div style="font-size:14px;">This makes <strong>' + waiting + '</strong> vacancy(s) on '
+                      + '<strong>' + (option?.dataset.title || 'this fair') + '</strong> visible to every jobseeker. '
+                      + 'The employers are told their posting is live and the matching jobseekers are notified. '
+                      + 'This cannot be taken back.</div>',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Post them now',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: '#2e7d32',
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    button.disabled = true;
+                    form.submit();
+                }
+            });
+        });
     })();
 
-    function openAcceptModal(jobId, jobTitle, requestedFairId) {
-        document.getElementById('acceptJobTitle').textContent = '"' + jobTitle + '"';
-        document.getElementById('acceptForm').action = '{{ url("staff/jobfair/postings") }}/' + jobId + '/approve';
+    // ── PILA ANG MOSULOD SA PINILING FAIR ──
+    // Ang numero gikwenta sa server para sa matag fair, mao nga ang gipakita
+    // sa buton ug ang tinuod nga i-post parehas gyud. Ang fair nga walay
+    // sakop nga bakante mopatay sa buton — walay ipadala.
+    (function () {
+        const select = document.getElementById('fitEventSelect');
+        if (!select) return;
 
-        const select  = document.getElementById('acceptEventSelect');
-        const note    = document.getElementById('acceptRequestedNote');
-        const blocked = document.getElementById('acceptBlockedNote');
-        const submit  = document.getElementById('acceptSubmit');
-        if (!select) {
-            new bootstrap.Modal(document.getElementById('acceptModal')).show();
-            return;
-        }
+        const button = document.getElementById('postFittingButton');
+        const count  = document.getElementById('fitCount');
+        const hint   = document.getElementById('fitHint');
 
-        const fit     = EVENT_FIT[jobId] || {};
-        const reasons = [];
+        function refresh() {
+            const option = select.options[select.selectedIndex];
+            const fits   = parseInt(option?.dataset.fit || '0', 10);
 
-        // Ang fair nga mosalikway niining bakante gitago, dili gi-disable ra:
-        // ang gi-disable nga option makita gihapon ug basahon isip "pilia ni
-        // ug e-ayo", nga dili man mahimo sa staff.
-        Array.prototype.forEach.call(select.options, function (option) {
-            const why = fit[option.value] || null;
-            option.hidden   = !!why;
-            option.disabled = !!why;
-            if (why) reasons.push(why);
-        });
-
-        const usable = Array.prototype.filter.call(select.options, function (o) { return !o.disabled; });
-
-        if (usable.length) {
-            // Ang gipangayo sa employer gipili nang daan, apan mausab \u2014
-            // hangyo siya, dili reserbasyon.
-            const hasRequested = requestedFairId && usable.some(function (o) {
-                return o.value === String(requestedFairId);
-            });
-            select.value = hasRequested ? String(requestedFairId) : usable[0].value;
-            if (note) note.style.display = hasRequested ? '' : 'none';
-        } else if (note) {
-            note.style.display = 'none';
-        }
-
-        select.disabled = usable.length === 0;
-        if (submit) submit.disabled = usable.length === 0;
-
-        if (blocked) {
-            blocked.innerHTML = '';
-            blocked.style.display = reasons.length ? '' : 'none';
-
-            if (reasons.length) {
-                const lead = document.createElement('div');
-                lead.textContent = usable.length
-                    ? reasons.length + ' fair(s) hidden \u2014 they will not take this vacancy:'
-                    : 'No upcoming fair will take this vacancy:';
-                blocked.appendChild(lead);
-
-                reasons.forEach(function (why) {
-                    const line = document.createElement('div');
-                    line.textContent = '\u2022 ' + why;
-                    blocked.appendChild(line);
-                });
+            if (count)  count.textContent = fits;
+            if (button) button.disabled = fits === 0;
+            if (hint) {
+                hint.textContent = fits === 0
+                    ? 'No waiting vacancy belongs to this fair.'
+                    : fits + ' of the waiting vacancies belong to this fair.';
             }
         }
 
-        new bootstrap.Modal(document.getElementById('acceptModal')).show();
-    }
-
-    function openRejectModal(jobId, jobTitle) {
-        document.getElementById('rejectJobTitle').textContent = '"' + jobTitle + '"';
-        document.getElementById('rejectForm').action = '{{ url("staff/jobfair/postings") }}/' + jobId + '/reject';
-        new bootstrap.Modal(document.getElementById('rejectModal')).show();
-    }
+        select.addEventListener('change', refresh);
+        refresh();
+    })();
 </script>
 @endpush
 

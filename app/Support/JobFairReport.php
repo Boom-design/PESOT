@@ -33,13 +33,17 @@ class JobFairReport
         'summary'           => 'Post Job Fair Summary',
         'industry'          => 'Companies with Vacancies by Industry',
         'placement'         => 'Company Placement',
-        'top_employers'     => 'Top 10 Employers',
+        'top_employers'     => 'Top 10 Occupation and Industry Share',
+        'vacancy_list'      => 'List of Local Job Vacancies',
     ];
 
-    // Wala nay tab nga makadagan nga walay event. Ang Top Employers kay
-    // kada-bulan kaniadto; karon ang ranggo iya sa usa ka fair, mao nga
-    // kinahanglan gyud ug event sama sa uban.
-    public const TABS_WITHOUT_EVENT = [];
+    // Ang tab nga dili nagsalig sa pagpili ug event.
+    //
+    // PESO Job Fair staff, 2026-09-02: ang Top 10 Employers, ang My Imported
+    // Reports ug ang Archived Job Postings dili bahin sa usa ka fair — sila
+    // ang naa dayon pag-abli sa page. Ang uban nga tab walay masulti kung
+    // walay event nga gipili, apan kining tulo naay tubag kanunay.
+    public const TABS_WITHOUT_EVENT = ['top_employers'];
 
     // ── Ang mga posting nga gidala sa mga employer niini nga event. Lima ka
     // ── tab ang nagsukad niini, mao nga usa ra ka kuha. ──
@@ -125,10 +129,61 @@ class JobFairReport
     {
         // Ang jobFair gikinahanglan sa confirmedBeforeCutoff(): kung wala, ang
         // matag laray mo-query pag-usab para sa parehas nga event.
-        return JobFairParticipant::with(['employer', 'jobFair'])
+        $companies = JobFairParticipant::with(['employer', 'jobFair'])
             ->where('job_fair_id', $eventId)
             ->where('confirmation_status', 'confirmed')
             ->get();
+
+        // ── Pila ka bakante ang gidala sa matag kompanya.
+        // ──
+        // ── Ang papel nga gipasa sa DOLE naay NO. OF VACANCIES nga kolum ug
+        // ── TOTAL sa ubos, mao nga ang numero kinahanglan naa sa laray. Usa
+        // ── ka query para sa tibuok lamesa, dili usa kada kompanya. ──
+        $vacancies = JobFairEmploymentRequest::where('job_fair_id', $eventId)
+            ->get()
+            ->groupBy('employer_id')
+            ->map(fn($requests) => (int) Job::whereIn('job_qualifications_id', $requests->pluck('job_id'))->sum('slots'));
+
+        return $companies->each(function (JobFairParticipant $participant) use ($vacancies) {
+            $participant->vacancies = (int) ($vacancies[$participant->employer_id] ?? 0);
+        });
+    }
+
+    // ───────────────────────────────
+    // TAB — LIST OF LOCAL JOB VACANCIES
+    // ───────────────────────────────
+    //
+    // Ang ikaduha nga papel sa kompanya, ug lahi siya sa una.
+    //
+    // Ang una (LIST OF AGENCIES) para sa DOLE: naay representative ug contact
+    // info. Kini para sa Cagayan de Oro City Jobs Placement Bureau, ug tulo ka
+    // kolum ra: kompanya, address, pila ka bakante. Duha ka opisina, duha ka
+    // pangutana, mao nga duha ka lamesa — dili nila mahulip ang usag usa.
+
+    /** Usa ka laray kada kompanya: ngalan, address, ug pila ka bakante. */
+    public static function localVacancyList(?JobFairEvent $event, bool $overseasOnly): Collection
+    {
+        return self::reportJobs($event, $overseasOnly)
+            ->filter(fn($job) => $job->company !== null)
+            ->groupBy('company_id')
+            ->map(function ($jobs) {
+                $company = $jobs->first()->company;
+
+                return [
+                    'company'   => $company->company_name ?? 'None',
+                    'address'   => collect([
+                        $company->est_barangay ?? null,
+                        $company->est_city_municipality ?? null,
+                        $company->est_province ?? null,
+                    ])->filter()->implode(', '),
+                    'vacancies' => (int) $jobs->sum('slots'),
+                    'overseas'  => (bool) ($company->is_overseas ?? false),
+                ];
+            })
+            // Alpabeto, sama sa papel — mao ni ang han-ay nga gipangita sa
+            // desk kung mangita siyag usa ka ngalan sa gi-print nga listahan.
+            ->sortBy('company')
+            ->values();
     }
 
     // ───────────────────────────────
@@ -183,6 +238,29 @@ class JobFairReport
             });
     }
 
+    /**
+     * Pila ka tawo ang niapil sa fair, gibahin sa lokal ug overseas.
+     *
+     * Ang "Total No. of Registrants" sa ubos sa papel. Lahi siya sa kolum sa
+     * ibabaw: didto ang aplikasyon ang gi-ihap, mao nga ang usa ka tawo nga
+     * miduol sa tulo ka employer tulo didto — dinhi usa ra gihapon siya.
+     *
+     * Ang "both" nga jobseeker giihap sa duha, sama sa gibuhat sa tibuok
+     * sistema: naa siya sa duha ka merkado, ug duha ka desk ang nagtubag para
+     * niya.
+     */
+    public static function registrantTotals(int $eventId): array
+    {
+        $base = JobFairRegistration::where('job_fair_id', $eventId);
+
+        return [
+            'local' => (clone $base)->whereHas('jobseeker.nsrp',
+                fn($n) => $n->whereIn('type', ['local', 'both']))->count(),
+            'overseas' => (clone $base)->whereHas('jobseeker.nsrp',
+                fn($n) => $n->whereIn('type', ['overseas', 'both']))->count(),
+        ];
+    }
+
     public static function summaryTotals(Collection $rows): array
     {
         $totals = [];
@@ -232,7 +310,12 @@ class JobFairReport
      */
     public static function topEmployers(?JobFairEvent $event, bool $overseasOnly, int $limit = 10): Collection
     {
-        $jobIds = self::eventJobIds($event?->job_fair_events_id);
+        // Walay event nga gipili: ang ranggo sa tanang fair, nga mao ang
+        // gipangayo — "kinsa ang pinakadako nga nagdala ug bakante sa PESO",
+        // dili "kinsa ang pinakadako sa Oktubre nga fair".
+        $jobIds = $event
+            ? self::eventJobIds($event->job_fair_events_id)
+            : JobFairEmploymentRequest::pluck('job_id');
 
         if ($jobIds->isEmpty()) {
             return collect();
@@ -252,6 +335,191 @@ class JobFairReport
             ->sortByDesc('total_vacancies')
             ->take($limit)
             ->values();
+    }
+
+    // ───────────────────────────────
+    // TAB 7 — TOP 10 OCCUPATION, AND THE INDUSTRY SHARE
+    // ───────────────────────────────
+    //
+    // Ang papel nga gipasa sa PESO sa DOLE (Post JF, MARCH 2026) naay duha ka
+    // lamesa niini nga panid, ug walay usa nila nga naghisgot ug employer:
+    //
+    //   NO. | OCCUPATION | NUMBER          — top 10 nga gipangita nga trabaho
+    //   MAJOR INDUSTRY GROUP | QUANTITY | % SHARE
+    //
+    // Ang "Top 10 Employers" nga naa kaniadto tubag sa lain nga pangutana. Ang
+    // gipangayo sa DOLE mao ang TRABAHO ug ang INDUSTRIYA, dili kinsa ang
+    // nagdala niini.
+
+    /** Ang gipangita nga trabaho, gi-ranggo sa gidaghanon sa bakante. */
+    public static function topOccupations(?JobFairEvent $event, bool $overseasOnly, int $limit = 10): Collection
+    {
+        return self::reportJobs($event, $overseasOnly)
+            // Ang titulo mao ang trabaho. Gi-normalize ang guhit ug ang
+            // kaso, kay ang "Production Worker" ug ang "PRODUCTION WORKER"
+            // usa ra ka trabaho ug dili duha ka laray sa report.
+            ->groupBy(fn($job) => mb_strtoupper(trim(preg_replace('/\s+/', ' ', (string) $job->title))))
+            ->map(fn($jobs, $title) => [
+                'occupation' => $title,
+                'number'     => (int) $jobs->sum('slots'),
+                'postings'   => $jobs->count(),
+            ])
+            ->filter(fn($row) => $row['occupation'] !== '')
+            ->sortByDesc('number')
+            ->take($limit)
+            ->values();
+    }
+
+    /**
+     * Ang bakante kada major industry group, uban ang bahin niini sa tibuok.
+     *
+     * Gibalik ang TANANG grupo, apil ang zero. Ang papel usa ka porma nga
+     * naay nakaimprinta nga laray, ug ang blangko usa ka tubag: walay
+     * Construction niini nga fair. Ang pagtago sa zero maghimo sa report nga
+     * lain ang porma kada bulan.
+     */
+    public static function industryShares(?JobFairEvent $event, bool $overseasOnly): array
+    {
+        $jobs  = self::reportJobs($event, $overseasOnly);
+        $total = (int) $jobs->sum('slots');
+
+        $byGroup = $jobs->groupBy(fn($job) => $job->industry_group ?: 'Unclassified')
+            ->map(fn($rows) => (int) $rows->sum('slots'));
+
+        $rows = [];
+        foreach (\App\Models\EmployerNsrpRegistration::INDUSTRY_GROUPS as $group) {
+            $quantity = (int) ($byGroup[$group] ?? 0);
+            $rows[$group] = [
+                'group'    => $group,
+                'quantity' => $quantity,
+                'share'    => $total > 0 ? round($quantity / $total * 100, 2) : 0.0,
+            ];
+        }
+
+        // Ang wala na-classify nga employer dili itago: kung wala siya
+        // gilista, ang % share dili moabot sa 100 ug walay makasulti ngano.
+        $unclassified = (int) ($byGroup['Unclassified'] ?? 0);
+
+        return [
+            'rows'         => $rows,
+            'total'        => $total,
+            'unclassified' => [
+                'quantity' => $unclassified,
+                'share'    => $total > 0 ? round($unclassified / $total * 100, 2) : 0.0,
+            ],
+        ];
+    }
+
+    /**
+     * Ang ulohan sa papel: pila ka kompanya ug pila ka bakante, gibahin sa
+     * lokal ug overseas.
+     */
+    public static function runDownTotals(?JobFairEvent $event, bool $overseasOnly): array
+    {
+        $jobs = self::reportJobs($event, $overseasOnly);
+
+        $split = fn(bool $overseas) => $jobs->filter(
+            fn($job) => (bool) ($job->company->is_overseas ?? false) === $overseas
+        );
+
+        $local    = $split(false);
+        $overseas = $split(true);
+
+        return [
+            'companies'          => $jobs->pluck('company_id')->unique()->count(),
+            'vacancies'          => (int) $jobs->sum('slots'),
+            'local_companies'    => $local->pluck('company_id')->unique()->count(),
+            'local_vacancies'    => (int) $local->sum('slots'),
+            'overseas_companies' => $overseas->pluck('company_id')->unique()->count(),
+            'overseas_vacancies' => (int) $overseas->sum('slots'),
+        ];
+    }
+
+    /**
+     * Ang Major Industry Group nga lamesa, gipatag para sa spreadsheet.
+     *
+     * Parehas nga upat ka ulohan sa papel, ug ang zero gisulat gihapon: ang
+     * blangko usa ka tubag — walay Construction niini nga fair — ug ang report
+     * kinahanglan parehas ug porma kada bulan aron siya matandi.
+     */
+    public static function industryShareRows(?JobFairEvent $event, bool $overseasOnly): Collection
+    {
+        $shares = self::industryShares($event, $overseasOnly);
+        $rows   = collect();
+
+        foreach (self::INDUSTRY_SECTIONS as $section => $groups) {
+            $rows->push([$section, '', '']);
+
+            foreach ($groups as $group) {
+                $row = $shares['rows'][$group] ?? ['quantity' => 0, 'share' => 0];
+                $rows->push([
+                    $group,
+                    $row['quantity'] ?: '',
+                    $row['quantity'] ? number_format($row['share'], 2) . '%' : '',
+                ]);
+            }
+        }
+
+        if ($shares['unclassified']['quantity'] > 0) {
+            $rows->push([
+                'No industry group set',
+                $shares['unclassified']['quantity'],
+                number_format($shares['unclassified']['share'], 2) . '%',
+            ]);
+        }
+
+        return $rows->push([
+            'TOTAL',
+            $shares['total'],
+            $shares['total'] > 0 ? '100.00%' : '',
+        ]);
+    }
+
+    /**
+     * Ang upat ka ulohan sa papel, ug kung unsang grupo ang naa sa matag usa.
+     *
+     * Ang atoa nga INDUSTRY_GROUPS mao gyud ang listahan sa DOLE — usa ra ang
+     * kalainan: gihiusa nato ang Agriculture ug ang Fishing sa usa ka linya.
+     */
+    public const INDUSTRY_SECTIONS = [
+        'AGRICULTURE' => ['Agriculture, Hunting and Forestry, Fishing'],
+        'INDUSTRY'    => ['Mining and Quarrying', 'Manufacturing', 'Construction'],
+        'SERVICES'    => [
+            'Wholesale, Retail Trade, Repair of Motor Vehicles, Motorcycles, & Personal and Household Goods',
+            'Hotel and Restaurants',
+            'Transport, Storage and Communications',
+            'Financial Intermediation',
+            'Real Estate, Renting and Business Activities',
+            'Public Administration and Defense, Compulsory Social Security',
+            'Education',
+            'Health and Social Work',
+            'Other Community, Social and Personal Activities',
+            'Extra-territorial Organization and Bodies',
+        ],
+        'OVERSEAS MANPOWER SERVICES' => ['Overseas Manpower Services'],
+    ];
+
+    /**
+     * Ang posting nga gibasa sa tulo ka lamesa sa ibabaw.
+     *
+     * Kung naay event, kadto ra nga fair. Kung wala, ang tanang posting nga
+     * nadala na sa bisan unsang fair — mao kana ang "run down" nga gipangayo
+     * sa DOLE sa dili pa ang sunod nga fair.
+     */
+    private static function reportJobs(?JobFairEvent $event, bool $overseasOnly): Collection
+    {
+        $jobIds = $event
+            ? self::eventJobIds($event->job_fair_events_id)
+            : JobFairEmploymentRequest::pluck('job_id');
+
+        if ($jobIds->isEmpty()) {
+            return collect();
+        }
+
+        return Job::with('company')
+            ->whereIn('job_qualifications_id', $jobIds)
+            ->when($overseasOnly, fn($q) => $q->whereHas('company', fn($c) => $c->where('is_overseas', true)))
+            ->get();
     }
 
     // ───────────────────────────────
@@ -320,23 +588,28 @@ class JobFairReport
             // "Yes" — walay gipasa nga lain pa.
             'companies' => [
                 'title'   => $title,
-                'columns' => ['#', 'Type', 'Company', 'Address', 'Employer Type', 'Industry Group',
+                // Parehas nga kolum sa papel nga gipasa sa DOLE, ug ang duha
+                // sa tumoy (Confirmed on / On DOLE list) gibilin: rekord sila
+                // sa opisina, ug wala sila makasamok sa gi-print nga porma.
+                'columns' => ['NO.', 'Name of Agency', 'Name of Representative', 'Address',
+                              'Contact Info', 'No. of Vacancies', 'Local/Overseas',
                               'Confirmed on', 'On DOLE list'],
+                // Usa ka klase, parehas sa screen ug sa papel: ang Job Fair
+                // desk mokuha sa lokal, ang SRA sa overseas.
                 'rows'    => self::confirmedCompanies($eventId)
-                    ->filter(fn($p) => !$overseasOnly || ($p->employer->is_overseas ?? false))
-                    // Local una, dayon overseas — parehas sa han-ay sa screen.
-                    ->sortBy(fn($p) => [
-                        (int) ($p->employer->is_overseas ?? 0),
-                        mb_strtolower($p->employer->company_name ?? ''),
-                    ])
+                    ->filter(fn($p) => (bool) ($p->employer->is_overseas ?? false) === $overseasOnly)
+                    ->sortBy(fn($p) => mb_strtolower($p->employer->company_name ?? ''))
                     ->values()
                     ->map(fn($p, $i) => [
                         $i + 1,
-                        ($p->employer->is_overseas ?? false) ? 'Overseas' : 'Local',
                         $p->employer->company_name ?? '',
-                        trim(($p->employer->est_barangay ?? '') . ' ' . ($p->employer->est_city_municipality ?? '')),
-                        $p->employer->employer_type ?? '',
-                        $p->employer->industry_group ?? 'Not set',
+                        $p->employer->contact_person ?? '',
+                        collect([$p->employer->est_barangay ?? null,
+                                 $p->employer->est_city_municipality ?? null,
+                                 $p->employer->est_province ?? null])->filter()->implode(', '),
+                        $p->employer->mobile_number ?? $p->employer->telephone_no ?? '',
+                        $p->vacancies ?? 0,
+                        ($p->employer->is_overseas ?? false) ? 'Overseas' : 'Local',
                         $p->responded_at?->format('Y-m-d') ?? '',
                         $p->confirmedBeforeCutoff() ? 'Yes' : 'No',
                     ]),
@@ -344,32 +617,45 @@ class JobFairReport
 
             'further_interview' => [
                 'title'   => $title,
-                'columns' => ['#', 'Jobseeker', 'Type', 'Job Applied', 'Company', 'Date'],
+                // Parehas nga kolum sa papel. Ang duha sa tumoy blangko sa
+                // tinuyo: ang tubag moabot usa ka bulan human sa fair, ug ang
+                // papel gi-print ug gisulatan sa kamot.
+                'columns' => ['No.', 'Name', 'Gender', 'Address', 'Tel/Cellphone Number',
+                              'Job Position', 'Hiring Company', 'Local/Overseas',
+                              'Status After 1 Month — Hired', 'Status After 1 Month — Not Hired'],
                 'rows'    => self::furtherInterviewQuery($eventJobs, $overseasOnly)->get()
                     ->values()
                     ->map(fn($a, $i) => [
                         $i + 1,
                         $fullName($a->jobseeker),
-                        ucfirst($a->jobseeker->nsrp->type ?? ''),
+                        $a->jobseeker->sex ?? '',
+                        collect([$a->jobseeker->present_barangay ?? null,
+                                  $a->jobseeker->present_city_municipality ?? null])->filter()->implode(', '),
+                        $a->jobseeker->contact_number ?? '',
                         $a->job->title ?? '',
                         $a->job->company->company_name ?? '',
-                        $a->updated_at->format('Y-m-d'),
+                        ($a->job->company->is_overseas ?? false) ? 'Overseas' : 'Local',
+                        '',
+                        '',
                     ]),
             ],
 
             'hots' => [
                 'title'   => $title,
-                'columns' => ['#', 'Name', 'Gender', 'Position', 'Hiring Company', 'Local/Overseas', 'Date Hired'],
+                'columns' => ['No.', 'Name', 'Gender', 'Address', 'Tel/Cellphone Number',
+                              'Job Position', 'Hiring Company', 'Local/Overseas'],
                 'rows'    => self::hotsQuery($eventJobs, $overseasOnly)->get()
                     ->values()
                     ->map(fn($a, $i) => [
                         $i + 1,
                         $fullName($a->jobseeker),
                         $a->jobseeker->sex ?? '',
+                        collect([$a->jobseeker->present_barangay ?? null,
+                                  $a->jobseeker->present_city_municipality ?? null])->filter()->implode(', '),
+                        $a->jobseeker->contact_number ?? '',
                         $a->job->title ?? '',
                         $a->job->company->company_name ?? '',
                         ($a->job->company->is_overseas ?? false) ? 'Overseas' : 'Local',
-                        $a->updated_at->format('Y-m-d'),
                     ]),
             ],
 
@@ -380,7 +666,7 @@ class JobFairReport
                 $lines = $rows->values()->map(fn($p, $i) => [
                     $i + 1,
                     $p->employer->company_name ?? '',
-                    $p->vacancies, $p->interviewed, $p->male, $p->female, $p->qualified, $p->hired,
+                    $p->vacancies, $p->interviewed, $p->female, $p->qualified, $p->hired,
                 ]);
 
                 // Ang screen naay totals sa ibabaw; ang file naay parehas nga
@@ -393,7 +679,7 @@ class JobFairReport
 
                 return [
                     'title'   => $title,
-                    'columns' => ['#', 'Employer', 'Vacancies', 'Interviewed', 'Male', 'Female', 'Qualified', 'Hired'],
+                    'columns' => ['NO', 'Name of Employer', 'No. of Vacancies', 'No. of Applicants (Total)', 'No. of Applicants (Female)', 'Cluster Qualified', 'Hired on the Spot'],
                     'rows'    => $lines,
                 ];
             })(),
@@ -435,18 +721,31 @@ class JobFairReport
                     : collect(),
             ],
 
+            // ── Duha ka lamesa sa usa ka file.
+            // ──
+            // ── Ang papel naay Top 10 Occupation ug Major Industry Group sa
+            // ── parehas nga panid, mao nga ang download pud. Ang blangko nga
+            // ── laray tali nila mao ang nagbulag; ang ikaduhang ulohan gisulat
+            // ── isip laray aron dili siya mawala sa CSV. ──
             'top_employers' => [
                 'title'   => $title,
-                'columns' => ['#', 'Employer', 'Local/Overseas', 'Postings Brought', 'Vacancies Offered'],
-                'rows'    => self::topEmployers($event, $overseasOnly)
+                'columns' => ['NO.', 'OCCUPATION', 'NUMBER'],
+                'rows'    => self::topOccupations($event, $overseasOnly)
                     ->values()
-                    ->map(fn($entry, $i) => [
-                        $i + 1,
-                        $entry['employer']->company_name ?? 'Unknown Employer',
-                        ($entry['employer']->is_overseas ?? false) ? 'Overseas' : 'Local',
-                        $entry['posting_count'],
-                        $entry['total_vacancies'],
-                    ]),
+                    ->map(fn($entry, $i) => [$i + 1, $entry['occupation'], $entry['number']])
+                    ->concat([
+                        ['', '', ''],
+                        ['MAJOR INDUSTRY GROUP', 'QUANTITY', '% SHARE'],
+                    ])
+                    ->concat(self::industryShareRows($event, $overseasOnly)),
+            ],
+
+            'vacancy_list' => [
+                'title'   => $title,
+                'columns' => ['No.', 'Name of Company/Office', 'Address', 'No. of Vacancies'],
+                'rows'    => self::localVacancyList($event, $overseasOnly)
+                    ->map(fn($row, $i) => [$i + 1, $row['company'], $row['address'], $row['vacancies']])
+                    ->push(['', 'TOTAL', '', self::localVacancyList($event, $overseasOnly)->sum('vacancies')]),
             ],
 
             default => ['title' => $title, 'columns' => [], 'rows' => collect()],

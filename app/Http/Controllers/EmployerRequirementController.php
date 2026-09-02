@@ -130,6 +130,22 @@ class EmployerRequirementController extends Controller
             // Kung walay bag-ong file gi-upload, ang naa nang value magpabilin (dili ma-overwrite sa null)
         }
 
+        // ── Ang bag-ong kopya wala pa nabasa.
+        // ──
+        // ── PESO Job Vacancy staff, 2026-09-01: ang desk nagdawat ug papel
+        // ── usa-usa, ug ang gidawat gitipigan sa approved_fields. Kung ang
+        // ── employer mopuli ug bag-ong kopya sa papel nga nadawat na, ang
+        // ── pagdawat kaniadto para sa laing papel — ug kung magpabilin siya,
+        // ── ang bag-o mosulod nga "nabasa na" nga wala pa gyud naablihi. ──
+        $resubmitted = collect($fields)->filter(fn($f) => $request->hasFile($f))->values();
+
+        if ($resubmitted->isNotEmpty()) {
+            $data['approved_fields'] = collect($existing?->approved_fields ?: [])
+                ->reject(fn($f) => $resubmitted->contains($f))
+                ->values()
+                ->all();
+        }
+
         // ── LOGO ── Kept out of the loop above: it is not reviewed, not
         // rejected, and never expires, so none of that machinery applies to it.
         if ($request->hasFile('company_logo')) {

@@ -6,13 +6,8 @@
     </p>
 </div>
 
-@if(($archivedJobs ?? collect())->isEmpty())
-    <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-        <i class="ph ph-archive" style="font-size:48px;color:var(--n-300);"></i>
-        <div class="mt-3 fw-semibold" style="color:var(--g-700);">No archived postings yet</div>
-    </div>
-@else
-    <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+{{-- Drawn empty as well as full, like every other report tab. --}}
+<div class="card border-0 shadow-sm rounded-3 overflow-hidden">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead>
@@ -25,7 +20,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($archivedJobs as $archived)
+                    @forelse($archivedJobs ?? collect() as $archived)
                     <tr style="font-size:13px;">
                         <td style="padding:10px 16px;font-weight:600;color:var(--g-700);">{{ $archived->title }}</td>
                         <td style="padding:10px 16px;color:var(--n-700);">{{ $archived->company->company_name ?? 'None' }}</td>
@@ -44,7 +39,14 @@
                             </a>
                         </td>
                     </tr>
-                    @endforeach
+                    @empty
+                    <tr>
+                        <td colspan="5" class="text-center"
+                            style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                            No closed posting yet.
+                        </td>
+                    </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
@@ -73,5 +75,4 @@
             </nav>
         </div>
         @endif
-    </div>
-@endif
+</div>

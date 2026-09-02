@@ -45,7 +45,10 @@
     @if($tabRole !== 'job_vacancy')
     <a href="{{ route('staff.inhouse') }}" class="btn btn-sm fw-semibold"
        style="{{ $tabRoute === 'staff.inhouse' ? $tabOn : $tabOff }}{{ $tabBase }}">
-        <i class="ph-fill ph-calendar-check me-1"></i> In-house Schedule
+        {{-- Named for what it holds. The tab is where an in-house request is
+             accepted or rejected; once accepted it moves to In-house Job
+             Vacancy, so nothing decided stays behind. --}}
+        <i class="ph-fill ph-calendar-check me-1"></i> Pending In-house Schedule
     </a>
     @endif
 
@@ -72,10 +75,15 @@
     </a>
     @endif
 
+    {{-- Ang LRA: Job Fair. Ang page nagsulti kinsa nga employer ang niapil sa
+         usa ka fair, mao nga ang ngalan sa fair mismo ang husto. Ang SRA naay
+         Job Fair nga tab na sa ibabaw, mao nga ang iyaha Participants gihapon
+         ug wala nausab ang sulod. --}}
     @if(in_array($tabRole, ['lra', 'sra'], true))
     <a href="{{ route('staff.participants') }}" class="btn btn-sm fw-semibold"
        style="{{ $tabRoute === 'staff.participants' ? $tabOn : $tabOff }}{{ $tabBase }}">
-        <i class="ph-fill ph-users-three me-1"></i> Participants
+        <i class="ph-fill ph-{{ $tabRole === 'lra' ? 'calendar-dots' : 'users-three' }} me-1"></i>
+        {{ $tabRole === 'lra' ? 'Job Fair' : 'Participants' }}
     </a>
     @endif
 

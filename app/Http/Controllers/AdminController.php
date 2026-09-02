@@ -638,34 +638,11 @@ if ($type === 'local') {
 
         // Tab 1 — In-house interviews (LRA/SRA)
         //
-        // The NSRP row calls its account `employer`, not `user`; it is loaded
-        // for the e-mail address on the detail modal, the only company field
-        // that does not live on the NSRP row itself.
-        $inhouseSchedules = \App\Models\InhouseSchedule::with('employer.employer')
-            ->latest()
-            ->get();
-
-        // The employer's own postings, so the modal can put slots and pay
-        // beside each position they asked to interview for. One query for the
-        // whole page rather than one per schedule.
-        $inhousePostings = \App\Models\Job::whereIn('company_id', $inhouseSchedules->pluck('employer_id')->unique())
-            ->get()
-            ->groupBy('company_id');
-
-        foreach ($inhouseSchedules as $schedule) {
-            $schedule->postings = $inhousePostings[$schedule->employer_id] ?? collect();
-
-            $schedule->job_offers = \Illuminate\Support\Facades\DB::table('inhouse_participants')
-                ->where('inhouse_schedule_id', $schedule->inhouse_schedules_id)
-                ->whereIn('jobseeker_id', function ($q) use ($schedule) {
-                    $q->select('jobseeker_id')->from('job_matching')
-                      ->where('status', 'hired')
-                      ->whereIn('job_id', function ($jq) use ($schedule) {
-                          $jq->select('job_qualifications_id')->from('job_qualifications')
-                             ->where('company_id', $schedule->employer_id);
-                      });
-                })->count();
-        }
+        // Both doors into the PESO Office: the schedule-only request and the
+        // job posting that books its own days. This page used to read the
+        // first table alone, so an interview LRA had already confirmed left
+        // the tab empty — see App\Support\AdminInhouseRows.
+        $inhouseSchedules = \App\Support\AdminInhouseRows::all();
 
         // The Job Solicitation tab is gone (2026-08-28). Every posting in the
         // system carries posting_type = 'direct', so the tab listed all of

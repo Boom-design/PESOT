@@ -106,9 +106,23 @@ class NavAlerts
                 ->where($scopeCompany)
                 ->count();
 
+            // ── Ang ahensya nga mitubag ug oo ug naghulat sa pagpili sa SRA.
+            // ──
+            // ── Ang tubag sa ahensya walay pahibalo nga makita sa listahan —
+            // ── mohilom lang siya sa Job Fair nga tab hangtod may moabli. Ang
+            // ── tuldok mao ang nagsulti nga naay tawo nga naghulat, ug
+            // ── mawala siya kung nadesisyonan na. Overseas ra: ang lokal
+            // ── walay ing-ani nga lakang. ──
+            $awaitingSelection = $overseas
+                ? JobFairParticipant::where('confirmation_status', 'accepted')
+                    ->where($scopeEmployer)
+                    ->whereHas('jobFair', fn($e) => $e->whereDate('event_date', '>=', today()))
+                    ->count()
+                : 0;
+
             return self::pruned([
                 'employers'      => EmployerRequirement::where('status', 'pending')->where($scopeEmployer)->count(),
-                'job_activities' => $pendingSchedules + $pendingInhouseJobs,
+                'job_activities' => $pendingSchedules + $pendingInhouseJobs + $awaitingSelection,
             ]);
         }
 

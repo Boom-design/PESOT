@@ -2,10 +2,14 @@
 
 @section('content')
 
-@include('partials.jobseeker-tabs')
+{{-- The two tabs are gone. This form is opened from the NSRP Registration
+     list by its own button, so the way back is a link, not a second tab that
+     is always on screen. --}}
+<a href="{{ route('staff.registrations') }}" class="text-decoration-none d-inline-block mb-3"
+   style="font-size:12px;color:var(--g-700);">
+    <i class="ph ph-arrow-left me-1"></i> Back to NSRP Registration
+</a>
 
-{{-- The Registrations tab above is the way back; the old link here said the
-     same thing twice. --}}
 <div class="mb-4">
     <h5 class="fw-bold mb-0" style="color:var(--g-700);">Walk-in NSRP Registration</h5>
     <div style="font-size:12px;color:var(--n-500);">Encode NSRP form for a walk-in jobseeker (no account)</div>

@@ -30,7 +30,11 @@
     $isDash      = request()->routeIs('staff.dashboard');
     $isJobseeker = request()->routeIs('staff.registrations*') || request()->routeIs('staff.nsrp*');
     $isEmployers = request()->is('staff/employers*');
-    $isActivity  = request()->is('staff/inhouse*') || request()->is('staff/jobs') || request()->is('staff/jobs/*') || request()->is('staff/jobfair*');
+    // Ang Job Fair nga tab sa LRA nagpuyo sa staff/participants. Wala siya
+    // dinhi, mao nga ang sidebar walay dan-ag samtang naa ka niini nga tab —
+    // ang tab row nagpakita nga sulod ka sa Manage Job Activities ug ang
+    // sidebar nag-ingon nga wala.
+    $isActivity  = request()->is('staff/inhouse*') || request()->is('staff/jobs') || request()->is('staff/jobs/*') || request()->is('staff/jobfair*') || request()->is('staff/participants*');
     // Ang Job Fair nga tab sa Manage Job Activities naa sa staff/inhouse/jobfair,
     // dili sa staff/jobfair — mao nga kining sala wala siya nadakpan ug walay
     // nagdan-ag sa sidebar samtang naa ka sa maong tab.
@@ -39,7 +43,6 @@
     $isReports   = request()->is('staff/reports*');
     $isEvents    = request()->routeIs('staff.jobfair.events*');
     $isPostings  = request()->routeIs('staff.jobfair.postings*');
-    $isSend      = request()->routeIs('staff.jobfair.send*');
     $isRepEmp    = request()->routeIs('staff.reports.employers*');
 
     // Red dot per nav item — see App\Support\NavAlerts for what counts.
@@ -65,11 +68,11 @@
                         <i class="{{ $isDash ? 'ph-fill' : 'ph' }} ph-gauge"></i> Dashboard
                     </a>
                 </li>
-                {{-- Walk-in encoding and the registered list are two tabs of one
-                     page now, so the sidebar carries one entry. It opens on the
-                     walk-in form, which is the daily job at the counter. --}}
+                {{-- One entry, and it opens on the NSRP Registration list. The
+                     two tabs are gone: encoding a walk-in is one action taken
+                     from that list, so it is a button there. --}}
                 <li>
-                    <a href="{{ route('staff.nsrp') }}" class="nav-link {{ $isJobseeker ? 'active' : '' }}">
+                    <a href="{{ route('staff.registrations') }}" class="nav-link {{ $isJobseeker ? 'active' : '' }}">
                         <i class="{{ $isJobseeker ? 'ph-fill' : 'ph' }} ph-user-list"></i> Jobseekers
                     </a>
                 </li>
@@ -127,13 +130,8 @@
             <ul>
                 <li>
                     <a href="{{ route('staff.jobfair.postings') }}" class="nav-link {{ $isPostings ? 'active' : '' }}">
-                        <i class="{{ $isPostings ? 'ph-fill' : 'ph' }} ph-briefcase"></i> Job Postings
+                        <i class="{{ $isPostings ? 'ph-fill' : 'ph' }} ph-briefcase"></i> Job Fair Vacancies
                         @include('partials.nav-dot', ['navKey' => 'postings'])
-                    </a>
-                </li>
-                <li>
-                    <a href="{{ route('staff.jobfair.send') }}" class="nav-link {{ $isSend ? 'active' : '' }}">
-                        <i class="{{ $isSend ? 'ph-fill' : 'ph' }} ph-megaphone"></i> Notification
                     </a>
                 </li>
                 <li>

@@ -60,6 +60,91 @@
 
     @if($lineupEvent)
 
+        {{-- ── WAITING FOR A DECISION ──
+
+             Ang ahensya nga mitubag ug oo, apan wala pa nadesisyonan. Una siya
+             sa panid kay siya ra ang nagpaabot ug lihok — ang listahan sa ubos
+             basahon, kini aksyonan.
+
+             PESO SRA, 2026-09-01: ang imbitasyon ug ang lugar sa fair duha ka
+             desisyon. Gipangayo ang permiso sa pangulo sa dili pa moadto ang
+             imbitasyon; karon, kung kinsa ang tinuod nga dad-on, ang desk na
+             ang mopili gikan sa mitubag. --}}
+        @if($lineupAwaiting->isNotEmpty())
+        <div class="card border-0 shadow-sm rounded-3 mb-4 overflow-hidden">
+            <div class="card-header border-0 py-2 px-3" style="background:var(--warn);border-radius:12px 12px 0 0;">
+                <h6 class="mb-0 fw-bold text-white" style="font-size:13px;">
+                    <i class="ph ph-hourglass-medium me-2"></i>Waiting for your decision ({{ $lineupAwaiting->count() }})
+                </h6>
+            </div>
+            <div class="card-body p-3 d-flex flex-column gap-2">
+                @foreach($lineupAwaiting as $waiting)
+                <div class="rounded-3 p-3" style="border:1px solid var(--n-200);">
+                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                        <div>
+                            <div class="fw-semibold" style="color:var(--g-700);font-size:14px;">
+                                {{ $waiting->employer->company_name ?? 'None' }}
+                            </div>
+                            <div style="font-size:11.5px;color:var(--n-500);margin-top:2px;">
+                                Accepted {{ optional($waiting->responded_at)->format('M d, Y') ?? 'None' }}
+                                &nbsp;&bull;&nbsp;
+                                Invited by
+                                {{ $waiting->invitedBy->full_name
+                                    ?? $waiting->invitedBy->first_name
+                                    ?? 'the system' }}
+                            </div>
+                            @if($waiting->permission_note)
+                            <div style="font-size:11.5px;color:var(--n-500);margin-top:2px;">
+                                <i class="ph ph-note me-1"></i>{{ $waiting->permission_note }}
+                            </div>
+                            @endif
+                        </div>
+                        <div class="d-flex gap-2 align-items-start">
+                            <form action="{{ route('staff.jobfair.overseas.decide', $waiting->job_fair_participants_id) }}"
+                                  method="POST" class="d-inline">
+                                @csrf
+                                <input type="hidden" name="decision" value="confirmed">
+                                <button type="submit" class="btn btn-sm fw-semibold"
+                                    style="background:var(--g-600);color:#fff;border:none;border-radius:8px;font-size:11.5px;">
+                                    <i class="ph ph-check me-1"></i>Bring to fair
+                                </button>
+                            </form>
+                            <button type="button" class="btn btn-sm fw-semibold"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#dropAgency{{ $waiting->job_fair_participants_id }}"
+                                style="border:1px solid var(--danger);color:var(--danger);background:#fff;border-radius:8px;font-size:11.5px;">
+                                <i class="ph ph-minus-circle me-1"></i>Not selected
+                            </button>
+                        </div>
+                    </div>
+
+                    {{-- Ang rason gikinahanglan. Ang ahensya mitubag ug oo, ug
+                         ang pagbalibad nga walay gisulti mao ang pagpasabot nga
+                         wala siyay angay masayran. --}}
+                    <div class="collapse mt-3" id="dropAgency{{ $waiting->job_fair_participants_id }}">
+                        <form action="{{ route('staff.jobfair.overseas.decide', $waiting->job_fair_participants_id) }}"
+                              method="POST">
+                            @csrf
+                            <input type="hidden" name="decision" value="not_selected">
+                            <label class="form-label fw-semibold" style="color:var(--danger);font-size:12px;">
+                                Why is this agency not being brought to the fair?
+                            </label>
+                            <textarea name="reason" rows="2" required maxlength="255"
+                                class="form-control mb-2"
+                                style="border:1px solid var(--n-200);border-radius:8px;font-size:13px;"
+                                placeholder="The agency is told this reason - write what they should know."></textarea>
+                            <button type="submit" class="btn btn-sm fw-semibold"
+                                style="background:var(--danger);color:#fff;border:none;border-radius:8px;font-size:11.5px;">
+                                <i class="ph ph-minus-circle me-1"></i>Confirm not selected
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
+
         {{-- ── ALREADY ON THE LIST ── --}}
         <div class="card border-0 shadow-sm rounded-3 mb-4 overflow-hidden">
             <div class="card-header border-0 py-2 px-3" style="background:var(--g-600);border-radius:12px 12px 0 0;">
@@ -89,8 +174,40 @@
                                 <td style="padding:10px 16px;font-weight:600;color:var(--g-700);">
                                     {{ $participant->employer->company_name ?? 'None' }}
                                 </td>
-                                <td style="padding:10px 16px;text-transform:capitalize;color:var(--n-700);">
-                                    {{ $participant->confirmation_status }}
+                                {{-- Hilaw nga enum ang gipakita kaniadto, ug ang
+                                     "not_selected" mabasa nga sayop nga pulong.
+                                     Ang matag estado naay pulong nga sabton sa
+                                     desk, ug ang gipili sa SRA nagdala sa iyang
+                                     ngalan ug sa iyang rason. --}}
+                                @php
+                                    $lineupLabels = [
+                                        'pending'      => ['Awaiting reply',       'var(--warn)'],
+                                        'accepted'     => ['Accepted — your call', 'var(--warn)'],
+                                        'confirmed'    => ['In the fair',          'var(--g-700)'],
+                                        'not_selected' => ['Not selected',         'var(--n-500)'],
+                                        'declined'     => ['Agency declined',      'var(--danger)'],
+                                        'expired'      => ['No reply — lapsed',    'var(--n-500)'],
+                                    ];
+                                    [$lineupLabel, $lineupColor] = $lineupLabels[$participant->confirmation_status]
+                                        ?? [ucfirst($participant->confirmation_status), 'var(--n-700)'];
+                                @endphp
+                                <td style="padding:10px 16px;">
+                                    <span class="fw-semibold" style="color:{{ $lineupColor }};font-size:12.5px;">
+                                        {{ $lineupLabel }}
+                                    </span>
+                                    @if($participant->sra_decided_at)
+                                    <div style="font-size:11px;color:var(--n-500);">
+                                        {{ $participant->sraDecidedBy->full_name
+                                            ?? $participant->sraDecidedBy->first_name
+                                            ?? 'PESO' }},
+                                        {{ $participant->sra_decided_at->format('M d, Y') }}
+                                    </div>
+                                    @endif
+                                    @if($participant->sra_decision_note)
+                                    <div style="font-size:11px;color:var(--n-500);">
+                                        {{ $participant->sra_decision_note }}
+                                    </div>
+                                    @endif
                                 </td>
                                 <td style="padding:10px 16px;color:var(--n-700);">
                                     {{ $participant->invitedBy->full_name
