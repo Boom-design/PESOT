@@ -135,7 +135,7 @@ class DisableInactiveEmployers extends Command
                 Announcement::sendToStaff([
                     'type'           => 'employer_inactivity_for_disabling',
                     'title'          => 'Employer ready to be switched off 🔒',
-                    'message'        => $summary . ' Open Employers → Approved Employers, use Update on'
+                    'message'        => $summary . ' Open Employers → Registered Employer, use Update on'
                                         . ' this company and set the account to inactive — or give them'
                                         . ' more time if you know something the system does not.',
                     'reference_type' => 'employer_inactivity',

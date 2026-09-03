@@ -77,12 +77,6 @@
 {{-- ── TAB 1: IN-HOUSE INTERVIEWS ── --}}
 @if(request('tab', 'inhouse') === 'inhouse')
 
-    @if($inhouseSchedules->isEmpty())
-        <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-            <i class="ph ph-calendar-x" style="font-size:48px;color:var(--n-200);"></i>
-            <p class="text-muted mt-3 mb-0">No in-house interview schedules found.</p>
-        </div>
-    @else
         <div class="d-flex justify-content-end mb-2">
             <div class="input-group" style="max-width:280px;">
                 <span class="input-group-text" style="border-color:var(--n-200);background:var(--n-50);">
@@ -116,7 +110,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($inhouseSchedules as $i => $schedule)
+                        @forelse($inhouseSchedules as $i => $schedule)
                         <tr>
                             <td data-row-number style="font-size:13px;padding:12px 16px;color:var(--n-500);">{{ $i + 1 }}</td>
                             <td style="font-size:13px;padding:12px 16px;font-weight:600;color:var(--g-700);">
@@ -192,7 +186,18 @@
                                 </button>
                             </td>
                         </tr>
-                        @endforeach
+                        @empty
+                        {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
+                             gihapon ug ang pahina dili mag-usab ug porma. --}}
+                        <tr>
+                            <td colspan="9" class="text-center"
+                                style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                                <i class="ph ph-calendar-x me-1"
+                                   style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                                No in-house interview schedules found.
+                            </td>
+                        </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
@@ -273,11 +278,6 @@
                         <i class="ph-fill ph-briefcase me-1"></i>Job Vacancies for this Interview
                         <span style="font-weight:400;opacity:.7;">({{ $ihOffers->count() }})</span>
                     </div>
-                    @if($ihOffers->isEmpty())
-                        <div class="text-muted" style="font-size:12.5px;">
-                            The employer did not name the positions for this schedule.
-                        </div>
-                    @else
                     <div class="table-responsive">
                         <table class="table table-sm align-middle mb-0">
                             <thead>
@@ -290,7 +290,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($ihOffers as $k => $offer)
+                                @forelse($ihOffers as $k => $offer)
                                 @php
                                     // The position is a name the employer typed on the
                                     // request. Where a posting of that name exists for
@@ -316,18 +316,27 @@
                                         @endif
                                     </td>
                                 </tr>
-                                @endforeach
+                                @empty
+                                {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
+                                     gihapon ug ang pahina dili mag-usab ug porma. --}}
+                                <tr>
+                                    <td colspan="5" class="text-center"
+                                        style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                                        <i class="ph ph-tray me-1"
+                                           style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                                        The employer did not name the positions for this schedule.
+                                    </td>
+                                </tr>
+                                @endforelse
                             </tbody>
                         </table>
                     </div>
-                    @endif
                 </div>
             </div>
         </div>
     </div>
     @endforeach
 
-    @endif
 
 {{-- ── TAB 2: JOB FAIR ──
      One row per event, not per invitation. The employers on a fair are the
@@ -518,12 +527,6 @@
 {{-- ── TAB 3: COMPANY INTERVIEW ── --}}
 @elseif(request('tab') === 'companyinterview')
 
-    @if($companyInterviewJobs->isEmpty())
-        <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-            <i class="ph ph-video-camera" style="font-size:48px;color:var(--n-200);"></i>
-            <p class="text-muted mt-3 mb-0">No company interview postings found.</p>
-        </div>
-    @else
         <div class="d-flex justify-content-end mb-2">
             <div class="input-group" style="max-width:280px;">
                 <span class="input-group-text" style="border-color:var(--n-200);background:var(--n-50);">
@@ -557,7 +560,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($companyInterviewJobs as $i => $job)
+                        @forelse($companyInterviewJobs as $i => $job)
                         <tr>
                             <td data-row-number style="font-size:13px;padding:12px 16px;color:var(--n-500);">{{ $i + 1 }}</td>
                             <td style="font-size:13px;padding:12px 16px;font-weight:600;color:var(--g-700);">{{ $job->title }}</td>
@@ -586,7 +589,18 @@
                                 @endif
                             </td>
                         </tr>
-                        @endforeach
+                        @empty
+                        {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
+                             gihapon ug ang pahina dili mag-usab ug porma. --}}
+                        <tr>
+                            <td colspan="8" class="text-center"
+                                style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                                <i class="ph ph-video-camera me-1"
+                                   style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                                No company interview postings found.
+                            </td>
+                        </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
@@ -596,7 +610,6 @@
             <span id="companyInterviewPaginationInfo" style="font-size:13px;color:var(--g-700);font-weight:600;"></span>
             <button type="button" id="companyInterviewPaginationNext" class="btn btn-sm" style="border:1px solid var(--n-200);border-radius:8px;color:var(--g-700);padding:6px 14px;"><i class="ph ph-caret-right"></i></button>
         </div>
-    @endif
 
 @endif
 

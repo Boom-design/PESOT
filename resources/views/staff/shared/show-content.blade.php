@@ -1,3 +1,37 @@
+{{-- ── NSRP FORM — ONE SECTION AT A TIME ──
+
+     The ten sections used to sit on top of each other, so reading section VIII
+     meant scrolling past seven others and losing the place. The form is filled
+     in as ten steps; it is read the same way.
+
+     Nothing is fetched again when the step changes — every section is already
+     on the page and only one of them is shown. The staff can move with the
+     numbered pills or with Back/Next, and the numbers say how far along the
+     form they are. --}}
+<div id="nsrpForm">
+
+    {{-- STEP RAIL --}}
+    <div class="card border-0 shadow-sm rounded-3 mb-3">
+        <div class="p-3">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+                @foreach(['I. Personal Information', 'II. Employment Status', 'III. Job Preference', 'IV. Language Proficiency', 'V. Educational Background', 'VI. Technical / Vocational Training', 'VII. Eligibility & License', 'VIII. Work Experience', 'IX. Other Skills', 'X. Certification'] as $i => $nsrpTitle)
+                <button type="button" class="nsrp-pill" data-goto="{{ $i + 1 }}"
+                    title="{{ $nsrpTitle }}"
+                    style="width:32px;height:32px;border-radius:50%;border:1px solid var(--n-200);
+                           background:#fff;color:var(--n-500);font-size:12px;font-weight:700;
+                           line-height:1;cursor:pointer;transition:background .15s,color .15s;">
+                    {{ $i + 1 }}
+                </button>
+                @endforeach
+            </div>
+            <div class="mt-2" style="font-size:12px;color:var(--n-500);">
+                <span id="nsrpStepLabel" style="color:var(--g-700);font-weight:700;"></span>
+                <span id="nsrpStepCount" class="ms-1"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="nsrp-step" data-step="1">
 {{-- ── STEP 1: PERSONAL INFO ── --}}
 <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-3">
     <div style="background:var(--g-600);padding:10px 16px;">
@@ -75,7 +109,9 @@
         </div>
     </div>
 </div>
+    </div>
 
+    <div class="nsrp-step" data-step="2" hidden>
 {{-- ── STEP 2: EMPLOYMENT STATUS ── --}}
 <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-3">
     <div style="background:var(--g-600);padding:10px 16px;">
@@ -122,7 +158,9 @@
         @endif
     </div>
 </div>
+    </div>
 
+    <div class="nsrp-step" data-step="3" hidden>
 {{-- ── STEP 3: JOB PREFERENCE ── --}}
 <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-3">
     <div style="background:var(--g-600);padding:10px 16px;">
@@ -155,7 +193,9 @@
         @endif
     </div>
 </div>
+    </div>
 
+    <div class="nsrp-step" data-step="4" hidden>
 {{-- ── STEP 4: LANGUAGE ── --}}
 <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-3">
     <div style="background:var(--g-600);padding:10px 16px;">
@@ -194,7 +234,9 @@
         @endif
     </div>
 </div>
+    </div>
 
+    <div class="nsrp-step" data-step="5" hidden>
 {{-- ── STEP 5: EDUCATION ── --}}
 <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-3">
     <div style="background:var(--g-600);padding:10px 16px;">
@@ -236,7 +278,9 @@
         @endif
     </div>
 </div>
+    </div>
 
+    <div class="nsrp-step" data-step="6" hidden>
 {{-- ── STEP 6: TRAININGS ── --}}
 <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-3">
     <div style="background:var(--g-600);padding:10px 16px;">
@@ -275,7 +319,9 @@
         @endif
     </div>
 </div>
+    </div>
 
+    <div class="nsrp-step" data-step="7" hidden>
 {{-- ── STEP 7: ELIGIBILITY ── --}}
 <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-3">
     <div style="background:var(--g-600);padding:10px 16px;">
@@ -310,7 +356,9 @@
         </div>
     </div>
 </div>
+    </div>
 
+    <div class="nsrp-step" data-step="8" hidden>
 {{-- ── STEP 8: WORK EXPERIENCE ── --}}
 <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-3">
     <div style="background:var(--g-600);padding:10px 16px;">
@@ -319,6 +367,16 @@
         </span>
     </div>
     <div class="p-3">
+
+        {{-- ── VIII-A: DECLARED BY THE JOBSEEKER ──
+
+             What the person wrote on their own NSRP form. None of it passed
+             through PESO, so nothing here is evidence of anything — it is their
+             account of where they have worked. --}}
+        <div style="color:var(--n-500);font-size:11px;font-weight:700;letter-spacing:0.4px;margin-bottom:6px;">
+            <i class="ph ph-note-pencil me-1"></i> DECLARED BY THE JOBSEEKER
+        </div>
+
         @if($nsrp && $nsrp->workExperiences && $nsrp->workExperiences->count() > 0)
         <div class="table-responsive">
             <table class="table table-sm mb-0" style="font-size:12px;">
@@ -347,9 +405,66 @@
         @else
         <div style="color:var(--n-500);font-size:13px;">None</div>
         @endif
+
+        {{-- ── VIII-B: PLACED THROUGH PESO ──
+
+             A different kind of row, so it is drawn differently rather than
+             mixed into the table above. These are not typed by anybody: the
+             jobseeker applied here, an employer marked the application hired,
+             and the system kept the date. They belong under Work Experience
+             because that is what they are, but the desk has to be able to see
+             at a glance which half PESO can vouch for. --}}
+        <div style="border-top:1px dashed var(--n-200);margin:16px 0 0;"></div>
+        <div style="color:var(--g-600);font-size:11px;font-weight:700;letter-spacing:0.4px;margin:12px 0 6px;">
+            <i class="ph-fill ph-seal-check me-1"></i> PLACED THROUGH PESO
+            <span style="color:var(--n-500);font-weight:500;letter-spacing:0;text-transform:none;">
+                — recorded by the system, not entered by hand
+            </span>
+        </div>
+
+        @if(isset($placements) && $placements->count() > 0)
+        <div class="d-flex flex-column gap-2">
+            @foreach($placements as $p)
+            @php
+                // Which door the job came in through. A posting made before the
+                // schedule types existed has none, and the row still reads
+                // correctly without inventing one.
+                $channel = match ($p->job?->schedule_type) {
+                    'inhouse'           => 'In-house Interview',
+                    'company_interview' => 'Company Interview',
+                    'job_fair'          => 'Job Fair',
+                    default             => null,
+                };
+            @endphp
+            <div style="border-left:3px solid var(--g-600);background:var(--n-50);
+                        border-radius:0 8px 8px 0;padding:10px 14px;">
+                <div class="d-flex flex-wrap align-items-baseline gap-2">
+                    <span style="color:var(--g-700);font-weight:700;font-size:13px;">
+                        {{ $p->job?->title ?? 'None' }}
+                    </span>
+                    <span style="color:var(--n-500);font-size:12px;">
+                        at {{ $p->job?->company?->company_name ?? 'None' }}
+                    </span>
+                </div>
+                <div class="mt-1" style="font-size:11px;color:var(--n-500);">
+                    <i class="ph ph-calendar-check me-1"></i>
+                    Hired {{ $p->hired_at?->format('M d, Y') ?? 'date not recorded' }}
+                    @if($channel)
+                        <span class="mx-1">·</span>
+                        <i class="ph ph-signpost me-1"></i>{{ $channel }}
+                    @endif
+                </div>
+            </div>
+            @endforeach
+        </div>
+        @else
+        <div style="color:var(--n-500);font-size:13px;">None</div>
+        @endif
     </div>
 </div>
+    </div>
 
+    <div class="nsrp-step" data-step="9" hidden>
 {{-- ── STEP 9: OTHER SKILLS ── --}}
 <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-3">
     <div style="background:var(--g-600);padding:10px 16px;">
@@ -379,7 +494,9 @@
         @endif
     </div>
 </div>
+    </div>
 
+    <div class="nsrp-step" data-step="10" hidden>
 {{-- ── STEP 10: CERTIFICATION ── --}}
 <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-3">
     <div style="background:var(--g-600);padding:10px 16px;">
@@ -398,3 +515,76 @@
         </div>
     </div>
 </div>
+    </div>
+
+    {{-- BACK / NEXT --}}
+    <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+        <button type="button" id="nsrpBack" class="btn btn-sm fw-semibold"
+            style="border:1px solid var(--n-200);background:#fff;color:var(--n-700);
+                   border-radius:8px;font-size:12px;padding:8px 18px;">
+            <i class="ph ph-arrow-left me-1"></i> Back
+        </button>
+        <button type="button" id="nsrpNext" class="btn btn-sm fw-semibold"
+            style="background:var(--g-600);color:#fff;border:none;
+                   border-radius:8px;font-size:12px;padding:8px 18px;">
+            Next <i class="ph ph-arrow-right ms-1"></i>
+        </button>
+    </div>
+</div>
+
+<script>
+(function () {
+    var root = document.getElementById('nsrpForm');
+    if (!root) return;
+
+    var steps  = Array.prototype.slice.call(root.querySelectorAll('.nsrp-step'));
+    var pills  = Array.prototype.slice.call(root.querySelectorAll('.nsrp-pill'));
+    var back   = document.getElementById('nsrpBack');
+    var next   = document.getElementById('nsrpNext');
+    var label  = document.getElementById('nsrpStepLabel');
+    var count  = document.getElementById('nsrpStepCount');
+    var total  = steps.length;
+    var current = 1;
+
+    function show(n, scroll) {
+        current = Math.min(Math.max(n, 1), total);
+
+        steps.forEach(function (s) {
+            s.hidden = Number(s.dataset.step) !== current;
+        });
+
+        pills.forEach(function (p) {
+            var on = Number(p.dataset.goto) === current;
+            p.style.background = on ? 'var(--g-600)' : '#fff';
+            p.style.color      = on ? '#fff' : 'var(--n-500)';
+            p.style.borderColor = on ? 'var(--g-600)' : 'var(--n-200)';
+        });
+
+        var active = pills[current - 1];
+        label.textContent = active ? active.getAttribute('title') : '';
+        count.textContent = 'Step ' + current + ' of ' + total;
+
+        // The first and last step have nowhere to go, and a button that does
+        // nothing when pressed is worse than one that says so.
+        back.disabled = current === 1;
+        next.disabled = current === total;
+        back.style.opacity = current === 1 ? '0.45' : '1';
+        next.style.opacity = current === total ? '0.45' : '1';
+        back.style.cursor  = current === 1 ? 'default' : 'pointer';
+        next.style.cursor  = current === total ? 'default' : 'pointer';
+
+        // Back to the top of the rail, so a long section does not open
+        // half-way down. Not on the first paint: the page has only just
+        // loaded, and pulling it down to the form hides the header above it.
+        if (scroll) root.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    pills.forEach(function (p) {
+        p.addEventListener('click', function () { show(Number(p.dataset.goto), true); });
+    });
+    back.addEventListener('click', function () { show(current - 1, true); });
+    next.addEventListener('click', function () { show(current + 1, true); });
+
+    show(1, false);
+})();
+</script>

@@ -75,13 +75,6 @@
         </div>
     </form>
 
-    @if($jobs->isEmpty())
-        <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-            <i class="ph ph-briefcase" style="font-size:48px;color:var(--n-300);"></i>
-            <div class="mt-3 fw-semibold" style="color:var(--g-700);">No job vacancies yet</div>
-            <div class="text-muted small mt-1">Post a job vacancy to start seeing qualified applicants here.</div>
-        </div>
-    @else
         <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
@@ -97,7 +90,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($jobs as $job)
+                        @forelse($jobs as $job)
                         @php
                             $scheduleLabel = \App\Models\Job::scheduleTypeLabel($job->schedule_type);
                         @endphp
@@ -184,7 +177,18 @@
                             </td>
                         </tr>
 
-                        @endforeach
+                        @empty
+                        {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
+                             gihapon ug ang pahina dili mag-usab ug porma. --}}
+                        <tr>
+                            <td colspan="7" class="text-center"
+                                style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                                <i class="ph ph-briefcase me-1"
+                                   style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                                Post a job vacancy to start seeing qualified applicants here.
+                            </td>
+                        </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
@@ -248,7 +252,6 @@
         <div class="d-flex justify-content-center mt-4">
             {{ $jobs->links() }}
         </div>
-    @endif
 
 @elseif($tab === 'invitations')
 

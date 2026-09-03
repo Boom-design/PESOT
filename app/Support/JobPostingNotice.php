@@ -148,13 +148,7 @@ class JobPostingNotice
             return ['posting_status' => 'approved', 'status' => 'open'];
         }
 
-        // PESO Job Fair staff, 2026-08-26: a vacancy does not walk into a fair
-        // on its own. The office decides which fair it belongs to and whether
-        // it belongs there at all - a fair for PWD applicants takes the
-        // postings that accept them, not everything posted that month.
-        //
-        // This used to open as approved, which left the approve screen with
-        // nothing ever in it: the posting had already let itself in.
+       
         return ['posting_status' => 'pending', 'status' => 'closed'];
     }
 

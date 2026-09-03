@@ -3,35 +3,43 @@
 @section('content')
 
 @php
-    // Which of the two lists this is. The In-house one is read-only monitoring —
-    // LRA owns that calendar — so it is named for what it is rather than for
-    // job vacancies, which is what it used to say on both tabs.
-    $isInhouseList = $staffRole === 'lra'
+    $isPending = $isPendingInterview ?? false;
+
+    // Which of the three lists this is. The In-house one is read-only
+    // monitoring — LRA owns that calendar — so it is named for what it is
+    // rather than for job vacancies, which is what it used to say on both tabs.
+    $isInhouseList = !$isPending && (
+        $staffRole === 'lra'
         || request('type') === 'inhouse'
-        || ($staffRole === 'sra' && request('type') === null);
+        || ($staffRole === 'sra' && request('type') === null)
+    );
 @endphp
 
-{{-- The count rides at the end of the tab row instead of sitting in a card of
-     its own. Open and Closed had cards too, for a filter that is gone: these
-     lists are a record of what was solicited, and splitting them by whether the
-     posting is still taking applicants answered a question nobody asked here. --}}
-@include('partials.staff-activity-tabs', ['tabsRight' => '
-    <div class="d-flex align-items-center gap-2" style="border:1px solid var(--n-200);background:#fff;
-         border-radius:8px;padding:5px 14px;white-space:nowrap;">
-        <span style="font-size:12px;color:var(--n-500);">Total Jobs</span>
-        <span class="fw-bold" style="color:var(--g-600);font-size:15px;">' . $totalAll . '</span>
-    </div>
-'])
+{{-- No Total Jobs count at the end of the row any more. It was the same number
+     the table underneath it states by being read, and the question it was
+     really being asked — how many vacancies has each employer offered — is a
+     per-employer answer, which is what the Employer Reports tab is for. --}}
+@include('partials.staff-activity-tabs')
 
 <div class="mb-3">
     <h5 class="fw-bold mb-1" style="color:var(--g-700);">
-        <i class="ph-fill ph-{{ $isInhouseList ? 'calendar-check' : 'briefcase' }} me-2" style="color:var(--g-600);"></i>
-        {{ $isInhouseList ? 'List of In-house Interview' : 'List of Company Interview' }}
+        <i class="ph-fill ph-{{ $isPending ? 'hourglass-medium' : ($isInhouseList ? 'calendar-check' : 'briefcase') }} me-2" style="color:var(--g-600);"></i>
+        @if($isPending)
+            Pending Company Interview
+        @elseif($isInhouseList)
+            List of In-house Interview
+        @else
+            List of Company Interview
+        @endif
     </h5>
     <p class="mb-0" style="font-size:13px;color:var(--n-500);">
-        {{ $isInhouseList
-            ? 'Approved in-house interviews, for monitoring'
-            : 'Job vacancies solicited for company interviews' }}
+        @if($isPending)
+            Company interviews that have not happened yet — soonest first
+        @elseif($isInhouseList)
+            Approved in-house interviews, for monitoring
+        @else
+            Job vacancies solicited for company interviews
+        @endif
     </p>
 </div>
 
@@ -39,8 +47,12 @@
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     {{-- A month, not a date range. The desk reads this list one month at a
          time — it is the same period the reports are cut on — and two date
-         boxes to say "August" is three more clicks than the answer is worth. --}}
-    <div class="d-flex align-items-center gap-2">
+         boxes to say "August" is three more clicks than the answer is worth.
+
+         Not on the pending list: that one is cut on the interview date, and a
+         month box that filtered on the posting date instead would hide the very
+         rows the tab exists for. --}}
+    <div class="d-flex align-items-center gap-2" @if($isPending) hidden @endif>
         <input type="month" id="monthFilter" class="form-control form-control-sm"
             style="max-width:170px;border-color:var(--n-200);font-size:12.5px;border-radius:8px;"
             value="{{ $month === 'all' ? '' : $month }}">

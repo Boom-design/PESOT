@@ -44,15 +44,6 @@
 {{-- IN-HOUSE TAB --}}
 @if(request('type', 'inhouse') === 'inhouse')
 
-    @if($inhouseApplications->isEmpty())
-        <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-            <i class="ph ph-calendar-x" style="font-size:48px;color:var(--n-300);"></i>
-            <div class="mt-3 fw-semibold" style="color:var(--g-700);">No in-house schedules yet</div>
-            <div class="text-muted small mt-1">
-                In-house interview schedules will appear here once you confirm participation after applying
-            </div>
-        </div>
-    @else
         <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
@@ -71,7 +62,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($inhouseApplications as $i => $app)
+                        @forelse($inhouseApplications as $i => $app)
                         <tr style="font-size:13px;">
                             <td style="padding:12px 16px;color:var(--n-500);">{{ $i + 1 }}</td>
                             <td style="padding:12px 16px;font-weight:600;color:var(--g-700);">
@@ -113,25 +104,26 @@
                                 </span>
                             </td>
                         </tr>
-                        @endforeach
+                        @empty
+                        {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
+                             gihapon ug ang pahina dili mag-usab ug porma. --}}
+                        <tr>
+                            <td colspan="7" class="text-center"
+                                style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                                <i class="ph ph-calendar-x me-1"
+                                   style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                                In-house interview schedules will appear here once you confirm participation after applying
+                            </td>
+                        </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
         </div>
-    @endif
 
 {{-- JOB FAIR TAB --}}
 @else
 
-    @if($jobFairSchedules->isEmpty())
-        <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-            <i class="ph ph-calendar-x" style="font-size:48px;color:var(--n-300);"></i>
-            <div class="mt-3 fw-semibold" style="color:var(--g-700);">No job fair schedules yet</div>
-            <div class="text-muted small mt-1">
-                Job fair events will appear here once at least 3 employers have confirmed participation
-            </div>
-        </div>
-    @else
         <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
@@ -146,7 +138,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($jobFairSchedules as $i => $event)
+                        @forelse($jobFairSchedules as $i => $event)
                         <tr style="font-size:13px;">
                             <td style="padding:12px 16px;color:var(--n-500);">{{ $i + 1 }}</td>
                             <td style="padding:12px 16px;font-weight:600;color:var(--g-700);">
@@ -187,12 +179,22 @@
                                 @endif
                             </td>
                         </tr>
-                        @endforeach
+                        @empty
+                        {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
+                             gihapon ug ang pahina dili mag-usab ug porma. --}}
+                        <tr>
+                            <td colspan="6" class="text-center"
+                                style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                                <i class="ph ph-calendar-x me-1"
+                                   style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                                Job fair events will appear here once at least 3 employers have confirmed participation
+                            </td>
+                        </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
         </div>
-    @endif
 
 @endif
 

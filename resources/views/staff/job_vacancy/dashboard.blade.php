@@ -32,7 +32,7 @@
         </a>
     </div>
     <div class="col-12 col-md-4">
-        {{-- Lands on the same Approved Employers tab, but filtered down to the
+        {{-- Lands on the same Registered Employer tab, but filtered down to the
              companies whose papers run out within the week. --}}
         <a href="{{ route('staff.employers', ['tab' => 'approved', 'filter' => 'expiring']) }}" class="text-decoration-none">
             <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100"

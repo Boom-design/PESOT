@@ -103,11 +103,6 @@ $erPager = function ($rows, string $label) {
         </div>
     </div>
 
-    @if($attendees->isEmpty())
-        <div class="p-3 text-center" style="font-size:12px;color:var(--n-500);">
-            No jobseeker took part in this interview.
-        </div>
-    @else
     <div class="table-responsive">
         <table class="table table-hover table-sm mb-0">
             <thead>
@@ -120,7 +115,7 @@ $erPager = function ($rows, string $label) {
                 </tr>
             </thead>
             <tbody>
-                @foreach($attendees as $application)
+                @forelse($attendees as $application)
                 @php
                     $seeker = $application->jobseeker;
                     $result = $application->status;
@@ -149,11 +144,21 @@ $erPager = function ($rows, string $label) {
                         </span>
                     </td>
                 </tr>
-                @endforeach
+                @empty
+                {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
+                     gihapon ug ang pahina dili mag-usab ug porma. --}}
+                <tr>
+                    <td colspan="4" class="text-center"
+                        style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                        <i class="ph ph-tray me-1"
+                           style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                        No jobseeker took part in this interview.
+                    </td>
+                </tr>
+                @endforelse
             </tbody>
         </table>
     </div>
-    @endif
 </div>
 @empty
 @if($employerRoomOnly->isEmpty())

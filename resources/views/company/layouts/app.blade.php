@@ -44,10 +44,23 @@
 
     {{-- ── SIDEBAR ── --}}
     <div class="sidebar">
+        {{-- The office name lives in the topbar. Under the logo the sidebar names
+             who is signed in, which is the one thing that differs per session. --}}
         <div class="sidebar-brand">
             <img src="{{ asset('images/peso_logo.png') }}" alt="PESO Logo">
-            <div class="brand-title">PUBLIC EMPLOYMENT SERVICE OFFICE</div>
-            <div class="brand-sub">A Web-based Job Management System</div>
+            <div class="brand-user">
+                <div class="avatar">
+                    @if(Auth::user()->profile_photo)
+                        <img src="{{ asset('storage/'.Auth::user()->profile_photo) }}" alt="">
+                    @else
+                        <i class="ph ph-buildings"></i>
+                    @endif
+                </div>
+                <div class="brand-user-text">
+                    <div class="u-name">{{ optional(Auth::user()->activeCompany())->company_name ?? Auth::user()->name ?? 'Company' }}</div>
+                    <div class="u-role">Employer</div>
+                </div>
+            </div>
         </div>
 
         @php
@@ -179,20 +192,6 @@
                 </a>
             </div>
             @endif
-
-            <div class="sidebar-user">
-                <div class="avatar">
-                    @if(Auth::user()->profile_photo)
-                        <img src="{{ asset('storage/'.Auth::user()->profile_photo) }}" alt="">
-                    @else
-                        <i class="ph ph-buildings"></i>
-                    @endif
-                </div>
-                <div style="min-width:0;flex:1;">
-                    <div class="u-name">{{ optional(Auth::user()->activeCompany())->company_name ?? Auth::user()->name ?? 'Company' }}</div>
-                    <div class="u-role">Employer</div>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -237,7 +236,13 @@
             <button class="hamburger" onclick="toggleSidebar()" type="button">
                 <i class="ph ph-list"></i>
             </button>
-            <div class="page-title">@yield('page-title', 'Dashboard')</div>
+            {{-- The page name fell back to "Dashboard" on every screen, so it
+                 said nothing. The office name stands here instead; each page
+                 carries its own heading in its content. --}}
+            <div class="topbar-brand">
+                <div class="topbar-brand-title">PUBLIC EMPLOYMENT SERVICE OFFICE</div>
+                <div class="topbar-brand-sub">A Web-based Job Management System</div>
+            </div>
         </div>
 
         <div class="d-flex align-items-center gap-2">

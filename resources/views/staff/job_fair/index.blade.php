@@ -13,13 +13,6 @@
     </p>
 </div>
 
-@if($invitations->isEmpty())
-    <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-        <i class="ph ph-calendar-x" style="font-size:48px;color:var(--n-300);"></i>
-        <div class="mt-3 fw-semibold" style="color:var(--g-700);">No invitations yet</div>
-        <div class="text-muted small mt-1">PESO will send you job fair invitations here</div>
-    </div>
-@else
     <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
         <div class="table-responsive">
             <table class="table table-hover mb-0">
@@ -34,7 +27,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($invitations as $i => $inv)
+                    @forelse($invitations as $i => $inv)
                     <tr style="font-size:13px;">
                         <td style="padding:12px 16px;color:var(--n-500);">{{ $invitations->firstItem() + $loop->index }}</td>
                         <td style="padding:12px 16px;font-weight:600;color:var(--g-700);">
@@ -85,11 +78,21 @@
                             @endif
                         </td>
                     </tr>
-                    @endforeach
+                    @empty
+                    {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
+                         gihapon ug ang pahina dili mag-usab ug porma. --}}
+                    <tr>
+                        <td colspan="6" class="text-center"
+                            style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                            <i class="ph ph-calendar-x me-1"
+                               style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                            PESO will send you job fair invitations here
+                        </td>
+                    </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
     </div>
-@endif
 
 @endsection

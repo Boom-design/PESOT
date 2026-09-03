@@ -142,12 +142,22 @@ class NavAlerts
         }
 
         if ($role === 'job_fair') {
+            // Approved but still closed: staff has to open these before
+            // jobseekers can see them at the event.
+            //
+            // Counted from the last time the desk opened Job Fair Vacancies.
+            // Before that mark existed the number stayed lit after the page had
+            // been read, because only "Post All Job Vacancies" emptied the list
+            // and the desk chooses when to press it — normally five days before
+            // the fair. Opening the page answers the question the number asks;
+            // a posting approved afterwards lights it again.
+            $seenAt = $staff->postings_seen_at;
+
             return self::pruned([
-                // Approved but still closed: staff has to open these before
-                // jobseekers can see them at the event.
                 'postings' => Job::where('schedule_type', 'job_fair')
                     ->where('posting_status', 'approved')
                     ->where('status', 'closed')
+                    ->when($seenAt, fn($q) => $q->where('updated_at', '>', $seenAt))
                     ->count(),
             ]);
         }

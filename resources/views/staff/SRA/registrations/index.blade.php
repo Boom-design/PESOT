@@ -112,7 +112,7 @@
                             Date Registered<br>
                             <span style="font-size:10px;font-weight:400;opacity:0.85;">(Account)</span>
                         </th>
-                        <th style="background:var(--g-600);color:#fff;font-size:12px;font-weight:700;border:none;padding:12px 16px;">Status</th>
+                        <th style="background:var(--g-600);color:#fff;font-size:12px;font-weight:700;border:none;padding:12px 16px;">Employment Status</th>
                         <th style="background:var(--g-600);color:#fff;font-size:12px;font-weight:700;border:none;padding:12px 16px;">View Form</th>
                     </tr>
                 </thead>
@@ -138,14 +138,24 @@
                             {{ optional($reg->user)->created_at?->format('M d, Y') ?? $reg->created_at->format('M d, Y') }}
                         </td>
                         <td style="font-size:13px;padding:12px 16px;">
+                            {{-- The jobseeker's own answer on the NSRP form, not
+                                 anything the desk decides. Two states are all the
+                                 form offers, so "unemployed" is shown the way PESO
+                                 says it out loud: still looking. --}}
                             @php
-                                $hasApplications = $reg->user ? $reg->user->applications()->exists() : false;
+                                $employment = $reg->nsrp->employment_type ?? null;
+                                $employmentLabel = match ($employment) {
+                                    'employed'   => 'Employed',
+                                    'unemployed' => 'Looking for Work',
+                                    default      => 'None',
+                                };
+                                $employmentColor = match ($employment) {
+                                    'employed'   => 'var(--g-600)',
+                                    'unemployed' => 'var(--warn)',
+                                    default      => 'var(--n-500)',
+                                };
                             @endphp
-                            @if(!$hasApplications)
-                                <span style="color:var(--warn);font-weight:600;">Waiting</span>
-                            @else
-                                <span style="color:var(--g-700);font-weight:600;">Applied</span>
-                            @endif
+                            <span style="color:{{ $employmentColor }};font-weight:600;">{{ $employmentLabel }}</span>
                         </td>
                         <td style="padding:12px 16px;">
                             <a href="{{ route('staff.registrations.view', $reg->jobseeker_registrations_id) }}"

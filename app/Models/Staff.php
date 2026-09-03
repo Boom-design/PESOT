@@ -17,6 +17,11 @@ class Staff extends Model
         'last_name',
         'middle_name',
         'phone',
+        'postings_seen_at',
+    ];
+
+    protected $casts = [
+        'postings_seen_at' => 'datetime',
     ];
 
     public function user()

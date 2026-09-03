@@ -82,7 +82,7 @@
                 <p style="font-size:11.5px;color:var(--n-500);margin-bottom:14px;">
                     Review each document below — <strong style="color:var(--g-600);">Approve</strong> or
                     <strong style="color:var(--danger);">Reject</strong> one at a time. The employer moves to
-                    Approved Employers only from the button on the right, after all five are done.
+                    Registered Employer only from the button on the right, after all five are done.
                 </p>
 
                 {{-- Logo first, and set apart: it is not reviewed, cannot be
@@ -167,7 +167,7 @@
                             </button>
 
                             {{-- Usa ka papel, usa ka hukom. Walay pindot dinhi
-                                 nga magdala sa kompanya sa Approved Employers ug
+                                 nga magdala sa kompanya sa Registered Employer ug
                                  walay pindot dinhi nga mopadala ug mensahe sa
                                  employer — ang duha ka buton sa tuo ang mobuhat
                                  niana, human mahukman ang lima. --}}
@@ -270,14 +270,14 @@
                     <i class="ph-fill ph-check-circle me-2" style="color:var(--g-600);"></i>Final Step
                 </h6>
                 <p style="font-size:13px;color:var(--n-500);">
-                    Moving this employer to Approved Employers lets them request in-house interviews
+                    Moving this employer to Registered Employer lets them request in-house interviews
                     and post job vacancies. Review the five documents on the left first.
                 </p>
 
                 {{-- Pila na ang nahukman. Ang buton sirado hangtod mahukman
                      ang lima, ug sirado gihapon kung naay usa nga gibalibaran —
                      ang folder nga naay sayop mobalik sa employer, dili moadto
-                     sa Approved Employers. --}}
+                     sa Registered Employer. --}}
                 @php
                     $docLabels     = \App\Models\EmployerRequirement::DOCUMENT_LABELS;
                     $decidedCount  = $requirement->decidedDocumentCount();
@@ -318,7 +318,7 @@
                                padding:10px;font-size:13px;{{ $readyToApprove ? '' : 'cursor:not-allowed;' }}"
                         {{ $readyToApprove ? '' : 'disabled' }}
                         onclick="confirmApprove()">
-                        <i class="ph-fill ph-check-circle me-2"></i>Move to Approved Employers
+                        <i class="ph-fill ph-check-circle me-2"></i>Move to Registered Employer
                     </button>
                 </form>
             </div>

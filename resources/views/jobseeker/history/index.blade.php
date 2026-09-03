@@ -36,17 +36,6 @@
     </div>
 </div>
 
-@if($history->isEmpty())
-    <div class="peso-card fade-in">
-        <div class="empty-state">
-            <div class="empty-icon">
-                <i class="ph ph-clock-counter-clockwise"></i>
-            </div>
-            <h6>No history yet</h6>
-            <p>Jobs you apply for will appear here.</p>
-        </div>
-    </div>
-@else
     <div class="peso-table fade-in">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
@@ -60,7 +49,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($history as $i => $app)
+                    @forelse($history as $i => $app)
                     <tr>
                         <td style="padding:12px 16px;color:var(--n-500);">{{ $history->firstItem() + $i }}</td>
                         <td style="padding:12px 16px;font-weight:600;color:var(--g-700);">
@@ -98,7 +87,18 @@
                             @endif
                         </td>
                     </tr>
-                    @endforeach
+                    @empty
+                    {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
+                         gihapon ug ang pahina dili mag-usab ug porma. --}}
+                    <tr>
+                        <td colspan="5" class="text-center"
+                            style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                            <i class="ph ph-clock-counter-clockwise me-1"
+                               style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                            Jobs you apply for will appear here.
+                        </td>
+                    </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
@@ -109,6 +109,5 @@
         {{ $history->links() }}
     </div>
     @endif
-@endif
 
 @endsection

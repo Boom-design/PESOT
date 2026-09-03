@@ -23,13 +23,20 @@
     </div>
 </div>
 
-<div class="mb-3 p-2 px-3 rounded-3" style="background:var(--n-50);font-size:12px;color:var(--g-700);">
-    <i class="ph-fill ph-info me-1"></i>
+{{-- A note, and it should look like one. The filled grey block read as another
+     panel of the page; an outlined box with nothing behind it sits on the page
+     rather than in it, which is what a note does. --}}
+<div class="mb-3 p-3 rounded-3 d-flex gap-2"
+     style="background:transparent;border:1px solid var(--n-200);
+            font-size:12px;line-height:1.6;color:var(--g-700);">
+    <i class="ph-fill ph-info" style="color:var(--g-600);font-size:15px;flex-shrink:0;line-height:1.35;"></i>
+    <div>
     An in-house request waits for you. The dates the employer picked are held while you decide,
     and the vacancy stays hidden from jobseekers until you accept — so a rejection stops the
     interview before anyone has applied to it. Once you accept, the request leaves this page and
     the vacancy is listed under In-house Job Vacancy. Company-interview and job fair postings are
     not reviewed here; they go live on submit.
+    </div>
 </div>
 
 {{-- SEARCH --}}
@@ -46,15 +53,6 @@
 </div>
 
 {{-- TABLE --}}
-@if($schedules->isEmpty())
-    <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-        <i class="ph ph-calendar-x" style="font-size:48px;color:var(--n-300);"></i>
-        <div class="mt-3 fw-semibold" style="color:var(--g-700);">Nothing waiting for a decision</div>
-        <div class="text-muted small mt-1">
-            Accepted requests are listed under In-house Job Vacancy.
-        </div>
-    </div>
-@else
     <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
         <div class="table-responsive">
             <table class="table table-hover mb-0">
@@ -72,7 +70,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($schedules as $i => $item)
+                    @forelse($schedules as $i => $item)
                     @if($item->source === 'schedule')
                     <tr style="font-size:13px;">
                         <td style="padding:12px 16px;color:var(--n-500);">{{ $schedules->firstItem() + $loop->index }}</td>
@@ -337,7 +335,18 @@
                         </div>
                     </div>
                     @endif
-                    @endforeach
+                    @empty
+                    {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
+                         gihapon ug ang pahina dili mag-usab ug porma. --}}
+                    <tr>
+                        <td colspan="9" class="text-center"
+                            style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                            <i class="ph ph-calendar-x me-1"
+                               style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                            Accepted requests are listed under In-house Job Vacancy.
+                        </td>
+                    </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
@@ -379,7 +388,6 @@
         </div>
         @endif
     </div>
-@endif
 
 @push('scripts')
 <script>

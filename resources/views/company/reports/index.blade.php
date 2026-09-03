@@ -59,12 +59,6 @@
         <a href="{{ route('company.reports', ['view' => 'hired']) }}" style="color:var(--g-600);">Hired Applicants</a>.
     </p>
 
-    @if($archivedJobs->isEmpty())
-        <div class="peso-card peso-empty">
-            <i class="ph ph-archive"></i>
-            <div class="peso-empty-title">No archived postings yet</div>
-        </div>
-    @else
         <div class="peso-card" style="overflow:hidden;">
             <div class="table-responsive">
                 <table class="peso-table">
@@ -79,7 +73,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($archivedJobs as $archived)
+                        @forelse($archivedJobs as $archived)
                         @php
                             $typeLabel = match($archived->schedule_type) {
                                 'job_fair' => ['Job Fair', 'is-success'],
@@ -127,7 +121,18 @@
                                 </a>
                             </td>
                         </tr>
-                        @endforeach
+                        @empty
+                        {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
+                             gihapon ug ang pahina dili mag-usab ug porma. --}}
+                        <tr>
+                            <td colspan="6" class="text-center"
+                                style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                                <i class="ph ph-archive me-1"
+                                   style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                                No archived postings yet
+                            </td>
+                        </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
@@ -155,7 +160,6 @@
             </div>
             @endif
         </div>
-    @endif
 
 @else
 
@@ -198,13 +202,6 @@
         @endif
     </form>
 
-    @if($jobs->isEmpty())
-        <div class="peso-card peso-empty">
-            <i class="ph ph-user-list"></i>
-            <div class="peso-empty-title">No hired applicants yet</div>
-            <div class="peso-empty-text">Job postings with hired jobseekers will appear here.</div>
-        </div>
-    @else
         <div class="peso-card" style="overflow:hidden;">
             <div class="table-responsive">
                 <table class="peso-table">
@@ -218,7 +215,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($jobs as $job)
+                        @forelse($jobs as $job)
                         @php
                             $typeLabel = match($job->schedule_type) {
                                 'job_fair' => ['Job Fair', 'is-success'],
@@ -245,7 +242,18 @@
                                 </a>
                             </td>
                         </tr>
-                        @endforeach
+                        @empty
+                        {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
+                             gihapon ug ang pahina dili mag-usab ug porma. --}}
+                        <tr>
+                            <td colspan="5" class="text-center"
+                                style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                                <i class="ph ph-user-list me-1"
+                                   style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                                Job postings with hired jobseekers will appear here.
+                            </td>
+                        </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
@@ -273,7 +281,6 @@
             </div>
             @endif
         </div>
-    @endif
 
 @endif
 

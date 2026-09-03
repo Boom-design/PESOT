@@ -66,15 +66,6 @@
     {{-- ── ALL APPLICANTS TAB (existing Hire/Reject/Waiting) ── --}}
     <div class="tab-pane fade show active" id="allApplicantsPane" role="tabpanel">
         <div class="peso-card fade-in-1">
-            @if($applicants->isEmpty())
-                <div class="empty-state">
-                    <div class="empty-icon">
-                        <i class="ph ph-users-three"></i>
-                    </div>
-                    <h6>No applicants yet</h6>
-                    <p>Applicants will appear here once jobseekers apply.</p>
-                </div>
-            @else
                 <div class="table-responsive">
                     <table class="table peso-table mb-0" id="applicantsTable">
                         <thead>
@@ -88,7 +79,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($applicants as $i => $application)
+                            @forelse($applicants as $i => $application)
                             <tr class="applicant-row">
                                 <td style="color:var(--n-500);">{{ $i + 1 }}</td>
                                 <td>
@@ -167,24 +158,27 @@
                                     @endif
                                 </td>
                             </tr>
-                            @endforeach
+                            @empty
+                            {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
+                                 gihapon ug ang pahina dili mag-usab ug porma. --}}
+                            <tr>
+                                <td colspan="6" class="text-center"
+                                    style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                                    <i class="ph ph-users-three me-1"
+                                       style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                                    Applicants will appear here once jobseekers apply.
+                                </td>
+                            </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
-            @endif
         </div>
     </div>
 
     {{-- ── QUALIFIED APPLICANTS TAB (50–74%) ── --}}
     <div class="tab-pane fade" id="qualifiedPane" role="tabpanel">
         <div class="peso-card fade-in-1">
-            @if($qualifiedApplicants->isEmpty())
-                <div class="empty-state">
-                    <div class="empty-icon"><i class="ph ph-user-minus"></i></div>
-                    <h6>No qualified applicants yet</h6>
-                    <p>Applicants with 50–74% match will appear here.</p>
-                </div>
-            @else
                 <div class="table-responsive">
                     <table class="table peso-table mb-0">
                         <thead>
@@ -197,7 +191,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($qualifiedApplicants as $i => $app)
+                            @forelse($qualifiedApplicants as $i => $app)
                             <tr>
                                 <td style="color:var(--n-500);">{{ $i + 1 }}</td>
                                 <td class="fw-semibold">{{ $app->jobseeker->first_name ?? '' }} {{ $app->jobseeker->surname ?? 'None' }}</td>
@@ -208,24 +202,27 @@
                                 <td style="text-align:center;font-weight:700;color:var(--warn);">{{ $app->match_percentage }}%</td>
                                 <td style="text-align:center;color:var(--n-500);">{{ $app->created_at->format('M d, Y') }}</td>
                             </tr>
-                            @endforeach
+                            @empty
+                            {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
+                                 gihapon ug ang pahina dili mag-usab ug porma. --}}
+                            <tr>
+                                <td colspan="5" class="text-center"
+                                    style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                                    <i class="ph ph-user-minus me-1"
+                                       style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                                    Applicants with 50–74% match will appear here.
+                                </td>
+                            </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
-            @endif
         </div>
     </div>
 
     {{-- ── HIGHLY QUALIFIED APPLICANTS TAB (75–100%) ── --}}
     <div class="tab-pane fade" id="highlyQualifiedPane" role="tabpanel">
         <div class="peso-card fade-in-1">
-            @if($highlyQualifiedApplicants->isEmpty())
-                <div class="empty-state">
-                    <div class="empty-icon"><i class="ph ph-user-minus"></i></div>
-                    <h6>No highly qualified applicants yet</h6>
-                    <p>Applicants with 75–100% match will appear here.</p>
-                </div>
-            @else
                 <div class="table-responsive">
                     <table class="table peso-table mb-0">
                         <thead>
@@ -238,7 +235,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($highlyQualifiedApplicants as $i => $app)
+                            @forelse($highlyQualifiedApplicants as $i => $app)
                             <tr>
                                 <td style="color:var(--n-500);">{{ $i + 1 }}</td>
                                 <td class="fw-semibold">{{ $app->jobseeker->first_name ?? '' }} {{ $app->jobseeker->surname ?? 'None' }}</td>
@@ -249,11 +246,21 @@
                                 <td style="text-align:center;font-weight:700;color:var(--g-700);">{{ $app->match_percentage }}%</td>
                                 <td style="text-align:center;color:var(--n-500);">{{ $app->created_at->format('M d, Y') }}</td>
                             </tr>
-                            @endforeach
+                            @empty
+                            {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
+                                 gihapon ug ang pahina dili mag-usab ug porma. --}}
+                            <tr>
+                                <td colspan="5" class="text-center"
+                                    style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                                    <i class="ph ph-user-minus me-1"
+                                       style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                                    Applicants with 75–100% match will appear here.
+                                </td>
+                            </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
-            @endif
         </div>
     </div>
 </div>

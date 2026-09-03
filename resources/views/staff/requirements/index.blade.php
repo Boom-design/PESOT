@@ -70,12 +70,6 @@
 </div>
 
 {{-- TABLE --}}
-@if($requirements->isEmpty())
-    <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-        <i class="ph ph-tray" style="font-size:48px;color:var(--n-300);"></i>
-        <div class="mt-3 fw-semibold" style="color:var(--g-700);">No requirements found</div>
-    </div>
-@else
     <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
         <div class="table-responsive">
             <table class="table table-hover mb-0">
@@ -95,7 +89,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($requirements as $i => $req)
+                    @forelse($requirements as $i => $req)
                     @php
                         $totalHired = isset($staffRole) && $staffRole === 'lra'
                             ? ($req->employer->jobs->flatMap->applications->where('status', 'hired')->count() ?? 0)
@@ -193,12 +187,6 @@
                                     @php
                                         $hiredApps = $req->employer->jobs->flatMap->applications->where('status', 'hired');
                                     @endphp
-                                    @if($hiredApps->isEmpty())
-                                        <div class="text-center py-3" style="color:var(--n-500);font-size:13px;">
-                                            <i class="ph ph-tray" style="font-size:32px;color:var(--n-300);"></i>
-                                            <div class="mt-2">No hired jobseekers yet</div>
-                                        </div>
-                                    @else
                                         <div class="table-responsive">
                                             <table class="table table-hover mb-0" style="font-size:13px;">
                                                 <thead>
@@ -210,7 +198,7 @@
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    @foreach($hiredApps as $idx => $app)
+                                                    @forelse($hiredApps as $idx => $app)
                                                     <tr>
                                                         <td style="padding:8px 12px;color:var(--n-500);">{{ $idx + 1 }}</td>
                                                         <td style="padding:8px 12px;font-weight:600;color:var(--g-700);">
@@ -227,11 +215,21 @@
                                                             </span>
                                                         </td>
                                                     </tr>
-                                                    @endforeach
+                                                    @empty
+                                                    {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
+                                                         gihapon ug ang pahina dili mag-usab ug porma. --}}
+                                                    <tr>
+                                                        <td colspan="4" class="text-center"
+                                                            style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                                                            <i class="ph ph-tray me-1"
+                                                               style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                                                            No hired jobseekers yet
+                                                        </td>
+                                                    </tr>
+                                                    @endforelse
                                                 </tbody>
                                             </table>
                                         </div>
-                                    @endif
                                 </div>
                                 <div class="modal-footer">
                                     @if(isset($staffRole) && $staffRole === 'sra' && $req->status === 'pending')
@@ -259,7 +257,18 @@
                     </div>
                     @endif
 
-                    @endforeach
+                    @empty
+                    {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
+                         gihapon ug ang pahina dili mag-usab ug porma. --}}
+                    <tr>
+                        <td colspan="8" class="text-center"
+                            style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                            <i class="ph ph-tray me-1"
+                               style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                            No requirements found
+                        </td>
+                    </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
@@ -301,7 +310,6 @@
         </div>
         @endif
     </div>
-@endif
 
 {{-- SRA REJECT MODAL --}}
 @if(isset($staffRole) && $staffRole === 'sra')
