@@ -132,12 +132,6 @@
 </div>
 
 {{-- TABLE --}}
-@if($jobs->isEmpty())
-    <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-        <i class="ph ph-tray" style="font-size:48px;color:var(--n-300);"></i>
-        <div class="mt-3 fw-semibold" style="color:var(--g-700);">No job vacancies solicited for this month</div>
-    </div>
-@else
     <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
         <div class="p-3" style="border-bottom:1px solid var(--n-50);">
             <div class="fw-bold text-center" style="color:var(--g-700);font-size:14px;">JOB VACANCIES SOLICITED</div>
@@ -161,7 +155,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($jobs as $job)
+                    @forelse($jobs as $job)
                     <tr style="font-size:12px;">
                         <td style="padding:10px 12px;color:var(--n-500);">{{ $jobs->firstItem() + $loop->index }}</td>
                         <td style="padding:10px 12px;font-weight:600;color:var(--g-700);">
@@ -217,7 +211,18 @@
                             {{ strtoupper($job->company->company_name ?? 'None') }}
                         </td>
                     </tr>
-                    @endforeach
+                    @empty
+                    {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
+                         gihapon ug ang pahina dili mag-usab ug porma. --}}
+                    <tr>
+                        <td colspan="9" class="text-center"
+                            style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                            <i class="ph ph-tray me-1"
+                               style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                            No job vacancies solicited for this month
+                        </td>
+                    </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
@@ -257,7 +262,6 @@
         </div>
         @endif
     </div>
-@endif
 
 @elseif(($tab ?? 'vacancies') === 'top_employers')
 
@@ -294,9 +298,6 @@
     @if(($topEmployersMonth ?? '') === '' && ($topEmployersYear ?? '') === '')
         @php $topEmployersMonth = now()->format('Y-m'); @endphp
     @endif
-    @if($topEmployers->isEmpty())
-        <div class="text-muted small">No job vacancies solicited in this period.</div>
-    @else
         <div class="table-responsive">
             <table class="table table-sm mb-0">
                 <thead>
@@ -308,18 +309,28 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($topEmployers as $index => $entry)
+                    @forelse($topEmployers as $index => $entry)
                         <tr style="font-size:13px;">
                             <td style="padding:8px 10px;color:var(--n-500);">{{ $index + 1 }}</td>
                             <td style="padding:8px 10px;color:var(--g-700);font-weight:600;">{{ $entry['employer']->company_name ?? 'Unknown Employer' }}</td>
                             <td style="padding:8px 10px;text-align:center;color:var(--g-700);font-weight:700;">{{ $entry['total_vacancies'] }}</td>
                             <td style="padding:8px 10px;text-align:center;color:var(--n-700);">{{ $entry['posting_count'] }}</td>
                         </tr>
-                    @endforeach
+                    @empty
+                    {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
+                         gihapon ug ang pahina dili mag-usab ug porma. --}}
+                    <tr>
+                        <td colspan="4" class="text-center"
+                            style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                            <i class="ph ph-tray me-1"
+                               style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                            No job vacancies solicited in this period.
+                        </td>
+                    </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
-    @endif
 </div>
 
 @elseif(($tab ?? 'vacancies') === 'company_interview')
@@ -506,11 +517,6 @@
                     </div>
                 </div>
 
-                @if($companyJobs->isEmpty())
-                <div class="text-center py-4" style="color:var(--n-500);font-size:13px;">
-                    No postings on record.
-                </div>
-                @else
                 <div class="table-responsive">
                     <table class="table table-sm mb-0">
                         <thead>
@@ -522,7 +528,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($companyJobs as $companyJob)
+                            @forelse($companyJobs as $companyJob)
                             <tr style="font-size:12px;">
                                 <td style="padding:8px 10px;font-weight:600;color:var(--g-700);">
                                     {{ $companyJob->title }}
@@ -540,11 +546,21 @@
                                     </span>
                                 </td>
                             </tr>
-                            @endforeach
+                            @empty
+                            {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
+                                 gihapon ug ang pahina dili mag-usab ug porma. --}}
+                            <tr>
+                                <td colspan="4" class="text-center"
+                                    style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                                    <i class="ph ph-tray me-1"
+                                       style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                                    No postings on record.
+                                </td>
+                            </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
-                @endif
 
             </div>
             <div class="modal-footer py-2">

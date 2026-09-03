@@ -44,13 +44,6 @@
         </form>
     </div>
 
-    @if($applicants->isEmpty())
-        <div class="card border-0 shadow-sm rounded-3 p-4 text-center">
-            <i class="ph ph-users-three" style="font-size:40px;color:var(--n-300);"></i>
-            <div class="mt-2 fw-semibold" style="color:var(--g-700);font-size:13px;">No applicants yet</div>
-            <div class="text-muted small">Applicants who applied to your job fair postings will appear here.</div>
-        </div>
-    @else
         <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
@@ -67,7 +60,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($applicants as $i => $app)
+                        @forelse($applicants as $i => $app)
                         <tr style="font-size:13px;">
                             <td style="padding:12px 16px;color:var(--n-500);">{{ $applicants->firstItem() + $i }}</td>
                             <td style="padding:12px 16px;">
@@ -191,7 +184,18 @@
                                 @endif
                             </td>
                         </tr>
-                        @endforeach
+                        @empty
+                        {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
+                             gihapon ug ang pahina dili mag-usab ug porma. --}}
+                        <tr>
+                            <td colspan="8" class="text-center"
+                                style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                                <i class="ph ph-users-three me-1"
+                                   style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                                Applicants who applied to your job fair postings will appear here.
+                            </td>
+                        </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
@@ -231,6 +235,5 @@
             </div>
             @endif
         </div>
-    @endif
 </div>
 @endif

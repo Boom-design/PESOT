@@ -42,9 +42,6 @@
 </div>
 
 {{-- SEARCH + TABLE --}}
-@if($users->isEmpty())
-    <div class="alert alert-info">No users registered yet.</div>
-@else
     <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
         <span id="tabCountText" style="font-size:13px;color:var(--g-700);font-weight:600;"></span>
         <div class="input-group" style="max-width:280px;">
@@ -78,7 +75,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($users as $index => $user)
+                    @forelse($users as $index => $user)
                     @php
                         $rowRole = ($user->role === 'staff' && $user->status === 'deactivated') ? 'inactive' : $user->role;
 
@@ -204,7 +201,18 @@
                             @endif
                         </td>
                     </tr>
-                    @endforeach
+                    @empty
+                    {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
+                         gihapon ug ang pahina dili mag-usab ug porma. --}}
+                    <tr>
+                        <td colspan="7" class="text-center"
+                            style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                            <i class="ph ph-tray me-1"
+                               style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                            No users registered yet.
+                        </td>
+                    </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
@@ -239,7 +247,6 @@
             <i class="ph ph-caret-right"></i>
         </button>
     </div>
-@endif
 
 {{-- UPDATE USER MODAL --}}
 <div class="modal fade" id="updateUserModal" tabindex="-1" aria-hidden="true">

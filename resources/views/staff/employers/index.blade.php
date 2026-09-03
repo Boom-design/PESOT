@@ -96,7 +96,7 @@
 
 {{-- TABS
 
-     The LRA has no tabs. It never had more than one — Pre-Employer and
+     The LRA has no tabs. It never had more than one — Pending Employer Account and
      Inactive belong to the desks that decide on them — and a single tab is not
      a choice, only a heading repeated under the heading it repeats. --}}
 @if($staffRole !== 'lra')
@@ -108,7 +108,7 @@
            : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
            border-radius:8px;font-size:12px;padding:5px 16px;white-space:nowrap;flex-shrink:0;">
         <i class="ph-fill ph-user-plus me-1"></i>
-        Pre-Employer
+        Pending Employer Account
         <span class="ms-1 fw-bold">({{ $totalPre }})</span>
     </a>
     <a href="{{ route('staff.employers', ['tab' => 'approved']) }}"
@@ -118,7 +118,7 @@
            : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
            border-radius:8px;font-size:12px;padding:5px 16px;white-space:nowrap;flex-shrink:0;">
         <i class="ph ph-check-circle me-1"></i>
-        Approved Employers
+        Registered Employer
         <span class="ms-1 fw-bold">({{ $totalApproved }})</span>
     </a>
     {{-- Ang gipatay nga account, awtomatiko man o gipatay sa staff. Ang LRA
@@ -132,7 +132,7 @@
            : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
            border-radius:8px;font-size:12px;padding:5px 16px;white-space:nowrap;flex-shrink:0;">
         <i class="ph-fill ph-lock-simple me-1"></i>
-        Inactive Employers
+        Inactive Employer Account
         <span class="ms-1 fw-bold">({{ $totalDormant }})</span>
     </a>
     @endif
@@ -310,10 +310,26 @@
                                     {{ $labels[$reqStatus] }}
                                 </span>
                             @else
+                                {{-- The number opens the names behind it.
+                                     Only the two desks that keep a Reports page
+                                     of their own: Job Vacancy's reports are a
+                                     different set of tabs, and sending it there
+                                     would land on nothing. --}}
+                                @if(in_array($staffRole, ['lra', 'sra'], true))
+                                <a href="{{ route('staff.reports', ['tab' => 'employer_hires', 'employer' => $companyRow->employer_nsrp_registrations_id]) }}"
+                                   class="text-decoration-none"
+                                   title="See who this employer hired">
+                                    <span class="fw-bold" style="color:var(--g-600);font-size:14px;border-bottom:1px dotted var(--g-600);">
+                                        {{ $totalHired }}
+                                    </span>
+                                    <span style="font-size:11px;color:var(--n-500);"> hired</span>
+                                </a>
+                                @else
                                 <span class="fw-bold" style="color:var(--g-700);font-size:14px;">
                                     {{ $totalHired }}
                                 </span>
                                 <span style="font-size:11px;color:var(--n-500);"> hired</span>
+                                @endif
                             @endif
                         </td>
                         <td style="padding:12px 16px;color:var(--n-500);text-align:center;">
@@ -569,7 +585,7 @@
                          A shared modal would have to be rewired by JavaScript on every open,
                          and a mis-wire there posts a decision against the wrong company.
 
-                         Rendered wherever the documents are listed, not on the Pre-Employer
+                         Rendered wherever the documents are listed, not on the Pending Employer Account
                          tab alone. The View button beside each document is drawn on every
                          tab, but this window was not: on Approved — the only list the LRA
                          has — the button pointed at a modal that was never on the page, so
@@ -669,7 +685,7 @@
                                                        border-radius:8px;font-size:12.5px;padding:8px;{{ $readyToMove ? '' : 'cursor:not-allowed;' }}"
                                                 {{ $readyToMove ? '' : 'disabled' }}>
                                                 <i class="ph-fill ph-check-circle me-1"></i>
-                                                {{ $perDoc ? 'Move to Approved Employers' : 'Approve Requirements' }}
+                                                {{ $perDoc ? 'Move to Registered Employer' : 'Approve Requirements' }}
                                             </button>
                                         </form>
 

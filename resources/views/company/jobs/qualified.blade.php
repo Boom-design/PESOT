@@ -200,13 +200,6 @@
     {{-- ── HIGHLY QUALIFIED TAB ── --}}
     <div class="tab-pane fade show active" id="highlyQualifiedPane" role="tabpanel">
         <div class="peso-card fade-in-1">
-            @if($highlyQualified->isEmpty())
-                <div class="empty-state">
-                    <div class="empty-icon"><i class="ph ph-user-minus"></i></div>
-                    <h6>No highly qualified jobseekers yet</h6>
-                    <p>@if($isInhouse) Jobseekers who accepted the in-house interview with 75–100% match will appear here. @else Jobseekers with 75–100% match will appear here. @endif</p>
-                </div>
-            @else
                 <div class="table-responsive">
                     <table class="table peso-table mb-0 qualified-table">
                         <thead>
@@ -218,7 +211,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($highlyQualified as $i => $app)
+                            @forelse($highlyQualified as $i => $app)
                             <tr class="qualified-row">
                                 <td style="color:var(--n-500);">{{ $i + 1 }}</td>
                                 <td>
@@ -242,24 +235,27 @@
                                     @include('company.jobs.partials.applicant-actions', ['app' => $app])
                                 </td>
                             </tr>
-                            @endforeach
+                            @empty
+                            {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
+                                 gihapon ug ang pahina dili mag-usab ug porma. --}}
+                            <tr>
+                                <td colspan="6" class="text-center"
+                                    style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                                    <i class="ph ph-user-minus me-1"
+                                       style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                                    Jobseekers who accepted the in-house interview with 75–100% match will appear here. Jobseekers with 75–100% match will appear here.
+                                </td>
+                            </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
-            @endif
         </div>
     </div>
 
     {{-- ── QUALIFIED TAB ── --}}
     <div class="tab-pane fade" id="qualifiedPane" role="tabpanel">
         <div class="peso-card fade-in-1">
-            @if($qualified->isEmpty())
-                <div class="empty-state">
-                    <div class="empty-icon"><i class="ph ph-user-minus"></i></div>
-                    <h6>No qualified jobseekers yet</h6>
-                    <p>@if($isInhouse) Jobseekers who accepted the in-house interview with 50–74% match will appear here. @else Jobseekers with 50–74% match will appear here. @endif</p>
-                </div>
-            @else
                 <div class="table-responsive">
                     <table class="table peso-table mb-0 qualified-table">
                         <thead>
@@ -271,7 +267,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($qualified as $i => $app)
+                            @forelse($qualified as $i => $app)
                             <tr class="qualified-row">
                                 <td style="color:var(--n-500);">{{ $i + 1 }}</td>
                                 <td>
@@ -295,24 +291,27 @@
                                     @include('company.jobs.partials.applicant-actions', ['app' => $app])
                                 </td>
                             </tr>
-                            @endforeach
+                            @empty
+                            {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
+                                 gihapon ug ang pahina dili mag-usab ug porma. --}}
+                            <tr>
+                                <td colspan="6" class="text-center"
+                                    style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                                    <i class="ph ph-user-minus me-1"
+                                       style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                                    Jobseekers who accepted the in-house interview with 50–74% match will appear here. Jobseekers with 50–74% match will appear here.
+                                </td>
+                            </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
-            @endif
         </div>
     </div>
 
     {{-- ── NOT QUALIFIED TAB ── --}}
     <div class="tab-pane fade" id="notQualifiedPane" role="tabpanel">
         <div class="peso-card fade-in-1">
-            @if($notQualified->isEmpty())
-                <div class="empty-state">
-                    <div class="empty-icon"><i class="ph ph-user-minus"></i></div>
-                    <h6>No not-qualified jobseekers yet</h6>
-                    <p>@if($isInhouse) Jobseekers who accepted the in-house interview with below 50% match will appear here. @else Jobseekers with below 50% match will appear here. @endif</p>
-                </div>
-            @else
                 <div class="table-responsive">
                     <table class="table peso-table mb-0 qualified-table">
                         <thead>
@@ -324,7 +323,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($notQualified as $i => $app)
+                            @forelse($notQualified as $i => $app)
                             <tr class="qualified-row">
                                 <td style="color:var(--n-500);">{{ $i + 1 }}</td>
                                 <td>
@@ -348,11 +347,21 @@
                                     @include('company.jobs.partials.applicant-actions', ['app' => $app])
                                 </td>
                             </tr>
-                            @endforeach
+                            @empty
+                            {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
+                                 gihapon ug ang pahina dili mag-usab ug porma. --}}
+                            <tr>
+                                <td colspan="6" class="text-center"
+                                    style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                                    <i class="ph ph-user-minus me-1"
+                                       style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                                    Jobseekers who accepted the in-house interview with below 50% match will appear here. Jobseekers with below 50% match will appear here.
+                                </td>
+                            </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
-            @endif
         </div>
     </div>
 </div>

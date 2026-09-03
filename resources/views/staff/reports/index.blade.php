@@ -20,17 +20,23 @@
 </div>
 
 @php
+// Every tab carries a second, broken form of its own name. The row holds all
+// seven side by side, so a long name has to wrap — and where it wraps is a
+// decision, not something to leave to whatever width the browser happens to
+// give the box. "Hired on the Spot" breaks after "on", never mid-phrase.
 $tabs = [
-    'attendance'         => ['icon' => 'ph-fill ph-clipboard-text', 'label' => 'Attendance'],
-    'companies'          => ['icon' => 'ph-fill ph-buildings', 'label' => $staffRole === 'sra' ? 'Overseas Companies' : 'Local Companies'],
-    'further_interview'  => ['icon' => 'ph-fill ph-user-list', 'label' => 'Further Interview'],
-    'hots'               => ['icon' => 'ph-fill ph-lightning', 'label' => 'Hired on the Spot'],
-    'vacancy_list'       => ['icon' => 'ph-fill ph-list-numbers', 'label' => 'Local Job Vacancies'],
-    'summary'            => ['icon' => 'ph-fill ph-clipboard-text', 'label' => 'Post Job Fair Summary'],
-    'industry'           => ['icon' => 'ph-fill ph-tree-structure', 'label' => 'Companies w/ Vacancies'],
+    'attendance'         => ['icon' => 'ph-fill ph-clipboard-text', 'label' => 'Attendance', 'html' => 'Attendance'],
+    'companies'          => ['icon' => 'ph-fill ph-buildings',
+                             'label' => $staffRole === 'sra' ? 'Overseas Companies' : 'Local Companies',
+                             'html'  => $staffRole === 'sra' ? 'Overseas<br>Companies' : 'Local<br>Companies'],
+    'further_interview'  => ['icon' => 'ph-fill ph-user-list', 'label' => 'Further Interview', 'html' => 'Further<br>Interview'],
+    'hots'               => ['icon' => 'ph-fill ph-lightning', 'label' => 'Hired on the Spot', 'html' => 'Hired on<br>the Spot'],
+    'vacancy_list'       => ['icon' => 'ph-fill ph-list-numbers', 'label' => 'Local Job Vacancies', 'html' => 'Local Job<br>Vacancies'],
+    'summary'            => ['icon' => 'ph-fill ph-clipboard-text', 'label' => 'Post Job Fair Summary', 'html' => 'Post Job Fair<br>Summary'],
+    'industry'           => ['icon' => 'ph-fill ph-tree-structure', 'label' => 'Companies w/ Vacancies', 'html' => 'Companies w/<br>Vacancies'],
 ];
 if ($staffRole !== 'sra') {
-    $tabs['placement'] = ['icon' => 'ph-fill ph-briefcase', 'label' => 'Company Placement'];
+    $tabs['placement'] = ['icon' => 'ph-fill ph-briefcase', 'label' => 'Company Placement', 'html' => 'Company<br>Placement'];
 }
 @endphp
 
@@ -101,30 +107,40 @@ if ($staffRole !== 'sra') {
 </div>
 @endif
 
-@if($staffRole === 'sra')
-<div class="mb-3">
-    <select id="reportViewSelector" class="form-select form-select-sm" style="max-width:260px;border-color:var(--n-200);font-size:13px;" onchange="changeReportView(this.value)">
-        <option value="staff" {{ ($reportView ?? 'staff') === 'staff' ? 'selected' : '' }}>Overseas Reports</option>
-        <option value="jobfair" {{ ($reportView ?? 'staff') === 'jobfair' ? 'selected' : '' }}>Job Fair Reports (Overseas)</option>
-    </select>
-</div>
-@endif
+{{-- The view selector is drawn inside each view's own first row rather than on
+     a line of its own above them. It is the first thing on that line, the fair
+     picker is next to it, and the reports that do not read a fair sit at the
+     far end — one line that says what you are looking at and what else there
+     is to look at. --}}
+@php
+    $sraViewSelector = $staffRole === 'sra';
+@endphp
 
 {{-- JOB FAIR STAFF — 7 TABS (SRA: overseas-filtered, walay Placement tab) --}}
 @if($staffRole === 'job_fair' || ($staffRole === 'sra' && ($reportView ?? 'staff') === 'jobfair'))
 
 {{-- ── THE TWO ROWS ──
 
-     Top row: the fair being read, and beside it the three reports that are not
-     about a fair at all. Bottom row: the tabs of the chosen fair.
+     Top row: which set of reports you are in, the fair being read, and at the
+     far end the reports that are not about a fair at all. Bottom row: the tabs
+     of the chosen fair.
 
-     They were one row before, with the three sitting after Company Placement,
-     which read as seven tabs of the same kind — and the desk had no way to see
-     that three of them ignore the dropdown entirely. Beside the dropdown they
-     are plainly the other thing: the reports you open without choosing. --}}
+     They were one row before, with the last few sitting after Company
+     Placement, which read as tabs of the same kind — and the desk had no way to
+     see that they ignore the dropdown entirely. Pushed to the right of the same
+     line as the pickers, they are plainly the other thing: the reports you open
+     without choosing a fair. --}}
 @php $tabNeedsEvent = !in_array($tab, ['top_employers', 'imported', 'archived'], true); @endphp
 
 <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+    @if($sraViewSelector ?? false)
+    <select id="reportViewSelector" class="form-select form-select-sm"
+        style="max-width:250px;border-color:var(--n-200);font-size:13px;"
+        onchange="changeReportView(this.value)">
+        <option value="staff" {{ ($reportView ?? 'staff') === 'staff' ? 'selected' : '' }}>Overseas Reports</option>
+        <option value="jobfair" {{ ($reportView ?? 'staff') === 'jobfair' ? 'selected' : '' }}>Job Fair Reports (Overseas)</option>
+    </select>
+    @endif
     @if($tabNeedsEvent)
     <select id="eventSelector" class="form-select form-select-sm"
         style="max-width:320px;border-color:var(--n-200);font-size:13px;"
@@ -188,17 +204,29 @@ if ($staffRole !== 'sra') {
     </div>
 </div>
 
-{{-- TABS NAV — ang tab sa gipiling fair. --}}
+{{-- ── TABS NAV — ang tab sa gipiling fair ──
+
+     One line, all of them. They used to be nowrap and free to be whatever width
+     their name needed, so the row broke after four and the last three sat under
+     the first three looking like a second, lesser group.
+
+     Each box now takes an equal share of the line (flex:1 1 0) and the name
+     wraps inside it at the break written into $tabs. min-width keeps the row
+     from squeezing past reading size — below that it wraps, which is the right
+     answer on a phone. --}}
 @if($tabNeedsEvent)
 <div class="d-flex gap-2 mb-4" style="flex-wrap:wrap;">
     @foreach($tabs as $key => $t)
     <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->query(), ['tab' => $key, 'event_id' => $eventId])) }}"
-       class="btn btn-sm fw-semibold"
+       class="btn btn-sm fw-semibold d-flex align-items-center justify-content-center text-center"
+       title="{{ $t['label'] }}"
        style="{{ $tab === $key
            ? 'background:var(--g-600);color:#fff;border:none;'
            : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
-           border-radius:8px;font-size:11px;padding:5px 12px;white-space:nowrap;flex-shrink:0;">
-        <i class="{{ $t['icon'] }} me-1"></i>{{ $t['label'] }}
+           border-radius:8px;font-size:10.5px;line-height:1.25;padding:6px 8px;
+           flex:1 1 0;min-width:104px;min-height:46px;white-space:normal;">
+        <i class="{{ $t['icon'] }} me-1" style="flex-shrink:0;"></i>
+        <span>{!! $t['html'] !!}</span>
     </a>
     @endforeach
 </div>
@@ -1178,7 +1206,67 @@ if ($staffRole !== 'sra') {
 
 @else
 
-{{-- LRA/SRA — 3 TABS (with inline counts, no separate stat cards) --}}
+{{-- ── ROW ONE (SRA) ──
+
+     The view selector, and at the far end the reports that are not a count of
+     jobseekers: who got a room, the interviews employers ran, what each
+     employer did with the people it took, and the postings that have lapsed.
+
+     They were in the row below with Registered / Placed / Referred, which made
+     eight tabs of two different kinds reading as one list. Split by kind, and
+     pushed to the right so the selector is not crowded. --}}
+@if($staffRole === 'sra')
+<div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+    <select id="reportViewSelector" class="form-select form-select-sm"
+        style="max-width:250px;border-color:var(--n-200);font-size:13px;"
+        onchange="changeReportView(this.value)">
+        <option value="staff" {{ ($reportView ?? 'staff') === 'staff' ? 'selected' : '' }}>Overseas Reports</option>
+        <option value="jobfair" {{ ($reportView ?? 'staff') === 'jobfair' ? 'selected' : '' }}>Job Fair Reports (Overseas)</option>
+    </select>
+
+    <div class="d-flex gap-2 flex-wrap ms-auto">
+        <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->query(), ['tab' => 'schedules', 'page' => 1])) }}"
+           class="btn btn-sm fw-semibold"
+           style="{{ request('tab') === 'schedules'
+               ? 'background:var(--g-600);color:#fff;border:none;'
+               : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
+               border-radius:8px;font-size:11px;padding:5px 12px;white-space:nowrap;flex-shrink:0;">
+            <i class="ph-fill ph-calendar-check me-1"></i>In-house Schedules
+        </a>
+        <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->query(), ['tab' => 'company_interview', 'page' => 1])) }}"
+           class="btn btn-sm fw-semibold"
+           style="{{ request('tab') === 'company_interview'
+               ? 'background:var(--g-600);color:#fff;border:none;'
+               : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
+               border-radius:8px;font-size:11px;padding:5px 12px;white-space:nowrap;flex-shrink:0;">
+            <i class="ph-fill ph-video-camera me-1"></i>Company Interviews
+        </a>
+        @if(($reportRouteName ?? 'staff.reports') === 'staff.reports')
+        <a href="{{ route('staff.reports', array_merge(request()->except('employer'), ['tab' => 'employer_hires', 'page' => 1])) }}"
+           class="btn btn-sm fw-semibold"
+           style="{{ request('tab') === 'employer_hires'
+               ? 'background:var(--g-600);color:#fff;border:none;'
+               : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
+               border-radius:8px;font-size:11px;padding:5px 12px;white-space:nowrap;flex-shrink:0;">
+            <i class="ph-fill ph-buildings me-1"></i>Employer Reports
+        </a>
+        @endif
+        {{-- The same list of lapsed postings the Job Fair Reports view shows.
+             One tab key, one partial: the two views are two ways into the same
+             record, not two records. --}}
+        <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->query(), ['tab' => 'archived', 'page' => 1])) }}"
+           class="btn btn-sm fw-semibold"
+           style="{{ request('tab') === 'archived'
+               ? 'background:var(--warn);color:#fff;border:none;'
+               : 'border:1px solid var(--warn-br);color:var(--warn);background:#fff;' }}
+               border-radius:8px;font-size:11px;padding:5px 12px;white-space:nowrap;flex-shrink:0;">
+            <i class="ph-fill ph-archive me-1"></i>Archived Job Postings
+        </a>
+    </div>
+</div>
+@endif
+
+{{-- LRA/SRA — the jobseeker counts (with inline counts, no separate stat cards) --}}
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <div class="d-flex gap-2" style="overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;padding-bottom:4px;max-width:100%;">
         <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->query(), ['tab' => 'registered', 'page' => 1])) }}"
@@ -1206,7 +1294,9 @@ if ($staffRole !== 'sra') {
             <i class="ph-fill ph-users-three me-1"></i> Job Applicants Referred ({{ $totalReferred }})
         </a>
         {{-- Who got a room and who was turned down. Both desks keep one, each
-             for their own side. --}}
+             for their own side. The SRA's is in the row above, with the other
+             reports that are not a count of jobseekers. --}}
+        @if($staffRole !== 'sra')
         <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->query(), ['tab' => 'schedules', 'page' => 1])) }}"
            class="btn btn-sm fw-semibold"
            style="{{ request('tab') === 'schedules'
@@ -1214,17 +1304,6 @@ if ($staffRole !== 'sra') {
                : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
                border-radius:8px;font-size:12px;padding:5px 16px;">
             <i class="ph-fill ph-calendar-check me-1"></i> In-house Schedules
-        </a>
-        {{-- Overseas only. The local company interviews are on the Job Vacancy
-             desk's own report, because that desk owns them. --}}
-        @if($staffRole === 'sra')
-        <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->query(), ['tab' => 'company_interview', 'page' => 1])) }}"
-           class="btn btn-sm fw-semibold"
-           style="{{ request('tab') === 'company_interview'
-               ? 'background:var(--g-600);color:#fff;border:none;'
-               : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
-               border-radius:8px;font-size:12px;padding:5px 16px;">
-            <i class="ph-fill ph-video-camera me-1"></i> Company Interviews
         </a>
         @endif
         @if($staffRole === 'sra')
@@ -1252,6 +1331,20 @@ if ($staffRole !== 'sra') {
             <i class="ph-fill ph-buildings me-1"></i> Top 5 Employers
         </a>
         @endif
+        {{-- Pila ang gikuha sa matag employer, ug kinsa. Ang "Total Hired" nga
+             numero sa Registered Employer nga listahan mo-abot diri, mao nga
+             ang duha ka desk naay usa — ang SRA sa overseas, ang LRA sa local.
+             Wala sa admin nga kopya sa parehas nga blade. --}}
+        @if($staffRole !== 'sra' && ($reportRouteName ?? 'staff.reports') === 'staff.reports')
+        <a href="{{ route('staff.reports', array_merge(request()->except('employer'), ['tab' => 'employer_hires', 'page' => 1])) }}"
+           class="btn btn-sm fw-semibold"
+           style="{{ request('tab') === 'employer_hires'
+               ? 'background:var(--g-600);color:#fff;border:none;'
+               : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
+               border-radius:8px;font-size:12px;padding:5px 16px;">
+            <i class="ph-fill ph-buildings me-1"></i> Employer Reports
+        </a>
+        @endif
         {{-- LRA staff, 2026-08-23: unsay nahitabo sa usa ka employer usa ka
              semana human sa iyang in-house interview. Tab ni, dili kaugalingon
              nga sidebar entry — taas na ang nav sa LRA, ug report man gihapon
@@ -1267,17 +1360,8 @@ if ($staffRole !== 'sra') {
         </a>
         @endif
         {{-- Walay Archived Job Postings para sa LRA: ang posting gidumala sa
-             Job Vacancy staff ug sa SRA, dili niya. --}}
-        @if($staffRole !== 'lra')
-        <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->query(), ['tab' => 'archived', 'page' => 1])) }}"
-           class="btn btn-sm fw-semibold"
-           style="{{ request('tab') === 'archived'
-               ? 'background:var(--warn);color:#fff;border:none;'
-               : 'border:1px solid var(--warn-br);color:var(--warn);background:#fff;' }}
-               border-radius:8px;font-size:12px;padding:5px 16px;">
-            <i class="ph-fill ph-archive me-1"></i> Archived Job Postings
-        </a>
-        @endif
+             Job Vacancy staff ug sa SRA, dili niya. Ang sa SRA naa sa laray sa
+             ibabaw. --}}
     </div>
     <div class="input-group" style="max-width:260px;width:100%;">
         <span class="input-group-text" style="border-color:var(--n-200);background:var(--n-50);">
@@ -1613,16 +1697,26 @@ if ($staffRole !== 'sra') {
 {{-- ── TAB: JOB VACANCIES SOLICITED (SRA ra) ── --}}
 @elseif(request('tab') === 'vacancies' && $staffRole === 'sra')
 
-    <div class="mb-3">
-        <input type="month" class="form-control form-control-sm" style="max-width:220px;" value="{{ $vacancyMonth }}" onchange="changeVacancyMonth(this.value)">
+    {{-- A month, or every month. The Total Jobs card on the dashboard counts
+         the whole thing, so it opens this list on "all months" — the number
+         that was pressed and the list that answers it have to be the same
+         number. --}}
+    <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+        <input type="month" class="form-control form-control-sm" style="max-width:220px;"
+               value="{{ $vacancyMonth === 'all' ? '' : $vacancyMonth }}"
+               onchange="changeVacancyMonth(this.value)">
+        @if($vacancyMonth === 'all')
+            <span style="font-size:11.5px;color:var(--n-500);">Showing every month.</span>
+        @else
+            <a href="{{ route('staff.reports', array_merge(request()->query(), ['tab' => 'vacancies', 'vacancy_month' => 'all', 'page' => 1])) }}"
+               class="btn btn-sm fw-semibold"
+               style="border:1px solid var(--n-200);color:var(--g-700);background:#fff;
+                      border-radius:8px;font-size:11.5px;padding:5px 12px;white-space:nowrap;">
+                <i class="ph ph-x me-1"></i>All months
+            </a>
+        @endif
     </div>
 
-    @if($solicitedJobs->isEmpty())
-        <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
-            <i class="ph ph-tray" style="font-size:48px;color:var(--n-300);"></i>
-            <div class="mt-3 fw-semibold" style="color:var(--g-700);">No job vacancies solicited this month</div>
-        </div>
-    @else
         <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
@@ -1636,7 +1730,7 @@ if ($staffRole !== 'sra') {
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($solicitedJobs as $i => $job)
+                        @forelse($solicitedJobs as $i => $job)
                         <tr style="font-size:13px;">
                             <td style="padding:12px 16px;color:var(--n-500);">{{ $solicitedJobs->firstItem() + $i }}</td>
                             <td style="padding:12px 16px;font-weight:600;color:var(--g-700);">{{ $job->title }}</td>
@@ -1644,7 +1738,18 @@ if ($staffRole !== 'sra') {
                             <td style="padding:12px 16px;text-align:center;color:var(--n-700);">{{ $job->slots }}</td>
                             <td style="padding:12px 16px;color:var(--n-700);">{{ $job->education_required ?? 'Any' }}, {{ $job->experience_months ?? 0 }} mo. exp.</td>
                         </tr>
-                        @endforeach
+                        @empty
+                        {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
+                             gihapon ug ang pahina dili mag-usab ug porma. --}}
+                        <tr>
+                            <td colspan="5" class="text-center"
+                                style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                                <i class="ph ph-tray me-1"
+                                   style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                                No job vacancies solicited this month
+                            </td>
+                        </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
@@ -1673,9 +1778,12 @@ if ($staffRole !== 'sra') {
             </div>
             @endif
         </div>
-    @endif
 
 {{-- ── TAB 4: JOB APPLICANTS REFERRED ── --}}
+@elseif(request('tab') === 'employer_hires')
+
+    @include('staff.reports._employer_hires')
+
 @elseif(request('tab') === 'employer_report' && $staffRole === 'lra')
 
     @include('staff.reports._employer')
@@ -1942,7 +2050,9 @@ if ($staffRole !== 'sra') {
 
     function changeVacancyMonth(value) {
         const url = new URL(window.location.href);
-        url.searchParams.set('vacancy_month', value);
+        // Clearing the month box means every month, not "fall back to this one".
+        url.searchParams.set('vacancy_month', value || 'all');
+        url.searchParams.set('page', 1);
         window.location.href = url.toString();
     }
 

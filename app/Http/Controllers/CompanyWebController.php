@@ -192,7 +192,7 @@ class CompanyWebController extends Controller
                 'type'           => 'employer_inactivity_reply',
                 'title'          => 'Employer answered the status check 📨',
                 'message'        => ($employer->company_name ?? 'An employer')
-                                    . ' has explained why they stopped posting. Read it on the Inactive Employers tab'
+                                    . ' has explained why they stopped posting. Read it on the Inactive Employer Account tab'
                                     . ' and switch their account back on if it should be reopened.',
                 'reference_type' => 'employer_inactivity',
                 'reference_id'   => $employer->employer_nsrp_registrations_id,
@@ -1124,27 +1124,17 @@ class CompanyWebController extends Controller
         $company = $this->authCompany();
         if (!$company) return redirect()->route('login');
 
-        // ── Ang requirements KINAHANGLAN na-approve. Kaniadto, makapasa ang
-        // ── employer bisan naghulat pa siya, kay ang staff man ang mo-approve
-        // ── sa posting sa dili pa siya mogawas. Karon wala nay maong gate: ang
-        // ── posting mogawas dayon, mao nga ang pagsusi sa requirements na ang
-        // ── bugtong tsekpoint — kinahanglan siya nga mahuman una. ──
+    
         if ($guard = $this->blockIfRestricted($company)) return $guard;
         if ($guard = $this->requireApprovedRequirements($company)) return $guard;
 
-        // ── Daghan nang mapili nga schedule type sa usa ka request (PESO
-        // ── interview, 2026-08-12). Ang employer nga gusto makakita dayon ug
-        // ── applicants mahimong mo-post sa Company Interview, In-house ug Job Fair
-        // ── nga usa ra ka fill-up — dili na tulo ka managlahi nga request.
-        // ── Kada channel naay kaugalingon nga petsa, venue, approver ug
-        // ── applicant list, mao nga kada channel usa ka job row gihapon; ang
-        // ── posting_group_id na ang mag-hiusa sa ilang slots. ──
+        
         $requestedTypes = array_values(array_intersect(
             ['company_interview', 'inhouse', 'job_fair'],
             array_map('strval', (array) $request->input('schedule_types', []))
         ));
 
-        // Gikan sa "confirm job fair invitation" nga flow: job fair ra gyud.
+        
         if ($request->filled('job_fair_id')) {
             $requestedTypes = ['job_fair'];
         }
@@ -1156,21 +1146,17 @@ class CompanyWebController extends Controller
             'schedule_types'   => 'required|array|min:1',
             'schedule_types.*' => 'in:inhouse,company_interview,job_fair',
             'job_fair_id'      => 'nullable|exists:job_fair_events,job_fair_events_id',
-            // Usa ra ka petsa kada channel, bisan pila ka position ang gi-post:
-            // usa ra man ka adlaw nga mo-adto ang employer sa PESO.
-            // Dili karong adlawa: naay preparasyon ang PESO.
+            
+           
             'inhouse_date'   => [\Illuminate\Validation\Rule::requiredIf($wantsInhouse), 'nullable', 'date', 'after_or_equal:' . \App\Support\OfficeCalendar::earliestBookableDate()],
-            // Katapusang adlaw sa window nga gitanyag. Blangko = usa ra ka adlaw.
+            
             'inhouse_date_end' => 'nullable|date|after_or_equal:inhouse_date',
             'company_interview_date'    => [\Illuminate\Validation\Rule::requiredIf($wantsCompanyInterview),  'nullable', 'date', 'after_or_equal:' . \App\Support\OfficeCalendar::earliestBookableDate()],
             'venue_type'     => [\Illuminate\Validation\Rule::requiredIf($wantsInhouse), 'nullable', 'in:peso_office,other'],
             'venue_address'  => 'required_if:venue_type,other|nullable|string|max:255',
             'poster_image'   => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
 
-            // ── BRING EXISTING (PESO interview 2026-08-13). Ang employer nga
-            // ── nakapost na mo-check ra sa iyang buhi nga vacancy imbes mag-
-            // ── retype. Ang "positions" mahimong blangko kung naa'y gi-check —
-            // ── ug ang "existing_job_ids" blangko kung bag-o gyud ang gi-type. ──
+           
             'existing_job_ids'   => 'nullable|array',
             'existing_job_ids.*' => 'integer',
 
@@ -1181,9 +1167,7 @@ class CompanyWebController extends Controller
             'positions.*.location'              => 'required|string|max:255',
             'positions.*.salary'                => 'nullable|string|max:100',
             'positions.*.slots'                 => 'required|integer|min:1',
-            // ── Max usa ka tuig. Ang default sa form kay usa ka bulan; ang
-            // ── employer nga daghan ug branch mahimong motaas hangtod usa ka
-            // ── tuig, apan dili molapas (PESO interview 2026-08-13). ──
+            
             'positions.*.deadline'              => 'nullable|date|after_or_equal:today|before_or_equal:' . now()->addYear()->toDateString(),
             'positions.*.experience_months'     => 'nullable|integer|min:0',
             'positions.*.religion'              => 'nullable|string|max:100',
@@ -1202,8 +1186,7 @@ class CompanyWebController extends Controller
             'positions.*.accepts_programs'      => 'nullable|array',
             'positions.*.job_image'             => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
         ], [
-            // Ang default nga mensahe kay "The selected schedule_types.0 is
-            // invalid" — walay kahulogan sa employer nga nagbasa niini.
+            
             'schedule_types.required' => 'Pick at least one schedule type.',
             'schedule_types.*.in'     => 'That schedule type is not one of the choices.',
             'company_interview_date.required'    => 'Pick the preferred date for the Company Interview posting.',
@@ -1218,13 +1201,7 @@ class CompanyWebController extends Controller
             'positions.required_without'           => 'Tick a vacancy to bring, or add a new position.',
         ]);
 
-        // ── Sarado ang PESO sa holiday (PESO interview 2026-08-13). Ang date
-        // ── picker mo-disable na niini, apan ang browser dili basihan — ang
-        // ── POST mahimong moabot bisan asa. Ang weekend wala giapil: pwede pa
-        // ── gihapon kini hangyoon ug ang LRA/SRA maoy mo-desisyon. ──
-        // Ang in-house nga window gilaktawan kung labaw pa sa usa ka adlaw:
-        // walay daot kung naa'y holiday sulod sa Aug 13–17 — laing adlaw na
-        // lang ang pilion sa staff. Ang usa ka adlaw nga pangayo gitsek gihapon.
+       
         $inhouseWindowIsOneDay = !$request->filled('inhouse_date_end')
             || $request->input('inhouse_date_end') === $request->input('inhouse_date');
 
@@ -1253,7 +1230,7 @@ class CompanyWebController extends Controller
             }
         }
 
-        // ── Usa ra ka poster image para sa TIBUOK request, i-share sa tanan positions ──
+        
         $posterPath = null;
         if ($request->hasFile('poster_image')) {
             $posterPath = $request->file('poster_image')->store('job_posters', 'public');
@@ -1263,24 +1240,11 @@ class CompanyWebController extends Controller
         $createdJobs  = [];
         $jobFairJobs  = [];
 
-        // ── BRING EXISTING VACANCY ──
-        // PESO interview 2026-08-13: "Kung ang employer adunay existing vacancy,
-        // kinahanglan adunay option kung gusto ba niya nga i-apil kini sa Job Fair."
-        //
-        // Ang gi-check DILI mahimong bag-ong bakante. Mo-dugang ra kini ug Job
-        // Fair nga channel sa PAREHAS nga posting group, mao nga ang slots gi-
-        // ambitan gihapon: pag-puno sa job fair, mo-undang pud ang Company Interview
-        // ug In-house nga row dungan (Job::scopeActive).
-        //
-        // Gikopya ang mga field gikan sa daan nga row aron dili na mag-retype
-        // ang employer — mao ra man gyud ang tumong sa feature.
+       
         $broughtCount = 0;
         $bringIds = array_filter(array_map('intval', (array) $request->input('existing_job_ids', [])));
         if ($bringIds) {
-            // Ang na-dala na niini nga event dili na e-doble. Ang modal nag-
-            // tago na niini, apan ang POST mahimong moabot bisan asa — ug ang
-            // doble nga row magbuhat ug doble nga applicant list sa usa ra
-            // ka bakante.
+            
             $alreadyBroughtGroups = Job::whereIn(
                     'job_qualifications_id',
                     \App\Models\JobFairEmploymentRequest::where('job_fair_id', $request->job_fair_id)
@@ -1298,8 +1262,7 @@ class CompanyWebController extends Controller
                 ->active()                                  // buhi pa: dili expired, dili puno
                 ->get()
                 ->reject(fn($job) => in_array($job->group_key, $alreadyBroughtGroups))
-                // Usa ra ka clone kada posting group: ang "Welder" nga gi-check
-                // sa Company Interview ug In-house nga row kay usa ra ka bakante.
+               
                 ->unique(fn($job) => $job->group_key);
 
             foreach ($sourceJobs as $source) {
@@ -1308,9 +1271,7 @@ class CompanyWebController extends Controller
                     'confirmed_date', 'confirmed_time', 'schedule_status', 'schedule_rejection_reason',
                 ]);
                 $clone->schedule_type    = 'job_fair';
-                // Buhi na ang gigikanan nga vacancy, mao nga wala nay ikasusi
-                // pag-usab. Ang job fair nga row magpabilin nga sirado hangtod
-                // haduol na ang event — tan-awa ang JobPostingNotice.
+               
                 $clone->fill(\App\Support\JobPostingNotice::initialState('job_fair'));
                 $clone->posting_group_id = $source->group_key;  // parehas nga bakante
                 $clone->remarks          = null;
@@ -1323,28 +1284,18 @@ class CompanyWebController extends Controller
         }
 
         foreach ((array) $request->input('positions', []) as $pos) {
-            // Kada position kaugalingon ang group niya: ang "Foreman, 3 slots"
-            // ug ang "Welder, 2 slots" managlahi ug bakante bisan parehas ra
-            // sila ug channel.
+           
             $groupId = null;
 
             foreach ($requestedTypes as $type) {
-                // Ang preferred_date kay ang adlaw sa interview — dili kini ang
-                // kamatayon sa bakante. PESO interview 2026-08-13: "kung mag-post
-                // sila og job vacancy, magpabilin kini sa system hangtod ma-hire
-                // na ang applicant", ug ang employer maoy mopili sa validity
-                // hangtod usa ka tuig. Mao nga ang deadline nga gi-type sa
-                // position ang mo-una; ang petsa sa schedule kay fallback ra
-                // kung wala gyud siyay gi-type.
+               
                 $scheduleDate = match ($type) {
                     'inhouse'      => $request->inhouse_date,
                     'company_interview' => $request->company_interview_date,
                     default        => null,
                 };
 
-                // Sa in-house, ang gitanyag kay window. Ang kataposang adlaw
-                // niini ang gamiton isip fallback nga deadline — dili mosira
-                // ang posting samtang mahimo pa ang interview.
+                
                 $scheduleEnd = $type === 'inhouse'
                     ? ($request->inhouse_date_end ?: $request->inhouse_date)
                     : null;
@@ -1359,8 +1310,7 @@ class CompanyWebController extends Controller
                     'slots'               => $pos['slots'],
                     'deadline'            => ($pos['deadline'] ?? null) ?: ($scheduleEnd ?: $scheduleDate),
                     'salary'              => $pos['salary'] ?? 'Negotiable',
-                    // Buhi dayon — wala nay pag-approve sa staff. Tan-awa ang
-                    // JobPostingNotice::initialState().
+                    
                     ...\App\Support\JobPostingNotice::initialState($type),
                     'posting_type'        => 'direct',
                     'schedule_type'       => $type,
@@ -1387,8 +1337,7 @@ class CompanyWebController extends Controller
                     'experience_months'   => $pos['experience_months'] ?: 0,
                 ]);
 
-                // Ang una nga row sa group mo-turol sa iyang kaugalingon, ang
-                // sunod nga channel didto pud mo-turol — mao nay group key.
+                
                 $groupId = $groupId ?? $job->job_qualifications_id;
                 $job->update(['posting_group_id' => $groupId]);
 
@@ -1399,49 +1348,36 @@ class CompanyWebController extends Controller
             }
         }
 
-        // ── Kung gikan ni sa "confirm job fair invitation" flow, i-tag dayon ang bag-ong job(s) sa maong event ──
-        // ── Ang job fair nga row ra ang gi-tag: ang company interview ug in-house
-        // ── nga row sa parehas nga position dili didto sa event. ──
+        
         if ($request->filled('job_fair_id')) {
             $event = \App\Models\JobFairEvent::find($request->job_fair_id);
 
             foreach ($jobFairJobs as $job) {
-                // Ang gidala nga daan nga vacancy mahimong hamubo ra ang
-                // deadline kaysa sa adlaw sa job fair. Kung ipabilin, matawo
-                // kini nga expired na — mao nga i-abot sa adlaw sa event.
+               
                 if ($event && $job->deadline && $job->deadline->lt($event->event_date)) {
                     $job->update(['deadline' => $event->event_date->toDateString()]);
                 }
 
-                // Hangyo, dili pagsulod. PESO Job Fair staff, 2026-08-26: ang
-                // opisina ang mohukom kung asa nga fair mahiluna ang bakante ug
-                // kung mahiluna ba gyud siya. Ang JobFairEmploymentRequest —
-                // ang nagsulti nga naa na siya sa fair, ug gibasa sa tanang
+               
                 // report — gisulat na sa pag-approve, dili dinhi.
                 $job->update(['requested_job_fair_id' => $request->job_fair_id]);
             }
         }
 
-        // Ang gi-check nga vacancy mahimong nahurot na o na-expire tali sa pag-
-        // abli sa modal ug sa pag-submit — gisalikway sila sa active() sa taas.
-        // Kung wala gyud nahibilin, walay bakante nga nabuhat.
+    
         if (empty($createdJobs)) {
             return back()->withInput()->with('error',
                 'Nothing was posted — the vacancies you ticked are no longer open. Add a new position instead.');
         }
 
         $firstJob = $createdJobs[0];
-        // Ihap sa POSITION, dili sa row: ang usa ka position nga gi-post sa tulo
-        // ka channel kay tulo ka row, apan usa ra gihapon ka bakante.
+       
         $positionCount = count((array) $request->input('positions', [])) + $broughtCount;
         $titleSummary  = $positionCount > 1
             ? $firstJob->title . ' (+' . ($positionCount - 1) . ' more)'
             : $firstJob->title;
 
-        // ── Ang staff wala na mag-approve sa posting. Gipahibalo ra sila nga
-        // ── buhi na siya: kinahanglan nila mahibaw-an ang bag-ong bakante nga
-        // ── ilang ipares, ug ang in-house nga petsa nga naka-reserba na. Usa
-        // ── ka notice kada channel, kay managlahi ang staff nga naga-atiman. ──
+        
         $isOverseas = $company->activeCompany() && $company->activeCompany()->is_overseas;
 
         foreach ($requestedTypes as $type) {
@@ -1482,13 +1418,7 @@ class CompanyWebController extends Controller
             ], \App\Models\Staff::where('staff_role', $role)->pluck('staff_id'));
         }
 
-        // ── Ang jobseeker masultihan ra sa row nga tinuod nga makita na niya:
-        // ── ang job fair magpabilin nga sirado hangtod haduol na ang event.
-        // ──
-        // ── Usa ra ka notice kada POSITION, dili kada row. Ang "Metal Fabricator"
-        // ── nga gi-post sa Company Interview ug In-house kay duha ka row apan usa ra
-        // ── gihapon ka bakante — duha ka managsama nga mensahe ang mo-abot sa
-        // ── jobseeker kung ang row ang basihan. ──
+       
         $announced = [];
 
         foreach ($createdJobs as $created) {
@@ -1503,24 +1433,20 @@ class CompanyWebController extends Controller
 
         $noun = $positionCount > 1 ? $positionCount . ' job postings' : 'Job posting';
 
-        // Isulti kung asa nga channel ni na-post — tulo ka schedule type kay
-        // tulo ka row, ug dili kadto klaro sa "1 job posting".
+       
         $channelText = collect($requestedTypes)
             ->map(fn($t) => \App\Models\Job::scheduleTypeLabel($t))
             ->implode(', ');
 
         $successMsg = $noun . ' published for ' . $channelText . '!';
 
-        // Ang job fair nga posting hangyo, dili pagsulod. Kung dili ni isulti,
-        // maghunahuna ang employer nga naa na siya sa fair.
+        
         if (in_array('job_fair', $requestedTypes, true)) {
             $successMsg .= ' The job fair posting is not on a fair yet — '
                          . lcfirst(\App\Support\JobPostingNotice::pendingNote('job_fair'));
         }
 
-        // Ang in-house naghulat sa PESO. Kung dili ni isulti, mangita ang
-        // employer sa iyang bakante sa listahan sa jobseeker ug maghunahuna
-        // nga napakyas ang pag-post.
+        
         if (in_array('inhouse', $requestedTypes, true)) {
             $successMsg .= ' The in-house posting is not visible yet — '
                          . lcfirst(\App\Support\JobPostingNotice::pendingNote('inhouse'));

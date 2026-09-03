@@ -2,10 +2,17 @@
 
 @section('content')
 
-{{-- Ang Approved nga ihap naa sa tumoy sa tab row, sulod sa parehas nga kahon
-     nga gigamit sa Total Jobs sa Company Interview ug In-house. Usa ka numero
-     dili kinahanglan ug stat card, ug tapad sa tabs mabasa siya isip ihap sa
-     kung unsa ang gipakita sa dagkotan nga tab. --}}
+{{-- ── ONE THING ON THIS TAB ──
+
+     The SRA's Job Fair tab used to open on two sub-tabs — Job Fair Postings and
+     Invite Overseas Agencies — and neither name said which one you were meant
+     to be on. The postings list was monitoring only: the approving is the Job
+     Fair desk's, and every row on it was already approved.
+
+     What is left is the one thing the SRA actually does with a fair: pick a
+     fair, see the industries it is asking for, and invite the agencies that
+     match. The Job Vacancy desk keeps its postings list, and the LRA keeps its
+     events table. --}}
 @include('partials.staff-activity-tabs', $jobs !== null ? ['tabsRight' => '
     <div class="d-flex align-items-center gap-2" style="border:1px solid var(--n-200);background:#fff;
          border-radius:8px;padding:5px 14px;white-space:nowrap;">
@@ -14,31 +21,7 @@
     </div>
 '] : [])
 
-{{-- ── SUB-TABS ──
-     SRA ra ang naay duha ka panel dinhi. Kung tapadon sila sa usa ka taas nga
-     page, ang pag-imbita mahulog sa ubos sa tibuok lamesa sa posting, ug ang
-     desk mangita niini kada higayon. Ang gipiling panel naa sa URL, aron ang
-     pagpili ug fair sa sulod sa Invite dili mobalik sa Postings. --}}
-@if($staffRole === 'sra')
-@php
-    $panelOn  = 'background:var(--g-600);color:#fff;border:none;';
-    $panelOff = 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;';
-@endphp
-<div class="d-flex gap-2 mb-4 flex-wrap">
-    <a href="{{ route('staff.inhouse.jobfair', ['panel' => 'postings']) }}"
-       class="btn btn-sm fw-semibold"
-       style="{{ $panel === 'postings' ? $panelOn : $panelOff }}border-radius:8px;font-size:12px;padding:5px 16px;">
-        <i class="ph-fill ph-briefcase me-1"></i> Job Fair Postings
-    </a>
-    <a href="{{ route('staff.inhouse.jobfair', ['panel' => 'invite']) }}"
-       class="btn btn-sm fw-semibold"
-       style="{{ $panel === 'invite' ? $panelOn : $panelOff }}border-radius:8px;font-size:12px;padding:5px 16px;">
-        <i class="ph-fill ph-envelope-simple me-1"></i> Invite Overseas Agencies
-    </a>
-</div>
-@endif
-
-@if($jobs !== null && !($staffRole === 'sra' && $panel === 'invite'))
+@if($jobs !== null)
 <div class="mb-4">
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
@@ -239,15 +222,6 @@
 </div>
 
 {{-- TABLE --}}
-@if($events->isEmpty())
-    <div class="card border-0 shadow-sm rounded-4 py-5 text-center" style="background:var(--n-0);">
-        <div style="width:72px;height:72px;background:var(--g-600);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;box-shadow:0 6px 18px rgba(77,217,192,0.3);">
-            <i class="ph-fill ph-calendar-dots" style="font-size:28px;color:#fff;"></i>
-        </div>
-        <div class="fw-bold" style="color:var(--g-700);font-size:14px;">No job fair events found</div>
-        <div class="text-muted small mt-1">Job fair events will appear here once created by Job Fair staff.</div>
-    </div>
-@else
     <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
@@ -261,7 +235,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($events as $i => $event)
+                    @forelse($events as $i => $event)
                     <tr style="font-size:13px;">
                         <td style="padding:12px 16px;color:var(--n-500);">{{ $events->firstItem() + $loop->index }}</td>
                         <td style="padding:12px 16px;font-weight:600;color:var(--g-700);">
@@ -287,7 +261,18 @@
                             </span>
                         </td>
                     </tr>
-                    @endforeach
+                    @empty
+                    {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
+                         gihapon ug ang pahina dili mag-usab ug porma. --}}
+                    <tr>
+                        <td colspan="5" class="text-center"
+                            style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                            <i class="ph ph-calendar-dots me-1"
+                               style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                            Job fair events will appear here once created by Job Fair staff.
+                        </td>
+                    </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
@@ -332,13 +317,12 @@
         @endif
     </div>
 @endif
-@endif
 
 {{-- ── INVITE OVERSEAS AGENCIES ──
-     SRA ra. Kaniadto naa siyay kaugalingong tab nga "Overseas Line-up"; walay
-     nakasabot sa maong ngalan kung para siya sa unsa, mao nga gi-ngalan siya
-     sa lihok mismo ug gihimo nga panel dinhi sa Job Fair nga tab. --}}
-@if($staffRole === 'sra' && $panel === 'invite')
+     SRA ra, ug kini na lang ang sulod sa iyang Job Fair nga tab. Walay
+     sub-tab, walay ulohan nga nagsulti kung asa ka — abli ang page sa trabaho
+     mismo. --}}
+@if($staffRole === 'sra')
     @include('partials.overseas-lineup')
 @endif
 

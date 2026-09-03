@@ -71,7 +71,7 @@ class Announcement extends Model
      * This used to point at the Inactive tab for every inactivity notice. That
      * was right while the sweep switched accounts off by itself. It no longer
      * does — the account the desk is being asked to decide on is still in
-     * Approved Employers — so the link landed on a list the company was not in
+     * Registered Employer — so the link landed on a list the company was not in
      * and the staff had to go and find it.
      */
     private function employerInactivityUrl(): string

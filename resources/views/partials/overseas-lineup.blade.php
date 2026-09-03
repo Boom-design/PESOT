@@ -6,11 +6,13 @@
     here — the permission itself is given in the room, and this line is all the
     system can hold of it, so it is required.
 
-    Lives inside the SRA's Job Fair tab as a panel of its own. It used to be a
-    tab called "Overseas Line-up", which said nothing about what it was for.
-    Named after the thing you do here instead.
+    This is the whole of the SRA's Job Fair tab. Pick the fair, pick the industry
+    it is asking for, and one table lists every overseas agency that fits —
+    invited already or not. One table, because the agency does not move: the
+    invitation appears in its row.
 
-    Needs: $lineupEvents, $lineupEvent, $lineupAvailable, $lineupOnTheList.
+    Needs: $lineupEvents, $lineupEvent, $lineupRows, $lineupOnTheList,
+           $lineupAwaiting, $lineupIndustries, $lineupIndustry, $lineupUninvited.
 --}}
 <div class="mb-4">
     <h5 class="fw-bold mb-1" style="color:var(--g-700);">
@@ -34,26 +36,60 @@
     </div>
 @else
 
-    {{-- EVENT PICKER --}}
+    {{-- ── THE TWO PICKERS, SIDE BY SIDE ──
+
+         Pick the fair, then pick the industry it is asking for. Two selects on
+         one line, because they are one question: which agencies am I looking at.
+
+         The industry choices are the fair's own target industries. A fair that
+         names none takes every industry, so the choices are then whatever the
+         eligible agencies are in — a list with nothing behind it is not a
+         choice worth offering.
+
+         lineup_event, dili event_id: kining page naay kaugalingon nga paginator
+         para sa events ug sa postings, ug ang usa ka parehas nga ngalan mokuha
+         sa lain. --}}
     <div class="card border-0 shadow-sm rounded-3 mb-4">
         <div class="card-body p-3">
-            <label class="peso-label mb-2">Job fair event</label>
-            <div class="d-flex gap-2 flex-wrap">
-                @foreach($lineupEvents as $e)
-                    {{-- lineup_event, dili event_id: kining page naay kaugalingon
-                         nga paginator para sa events ug sa postings, ug ang usa
-                         ka parehas nga ngalan mokuha sa lain. Ang panel gidala
-                         sad, kay ang pagpili ug fair dili pagbiya sa panel. --}}
-                    <a href="{{ route('staff.inhouse.jobfair', ['panel' => 'invite', 'lineup_event' => $e->job_fair_events_id]) }}"
-                       class="btn btn-sm fw-semibold"
-                       style="{{ $lineupEvent && $lineupEvent->job_fair_events_id === $e->job_fair_events_id
-                           ? 'background:var(--g-600);color:#fff;border:none;'
-                           : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
-                           border-radius:20px;font-size:12px;padding:5px 16px;">
-                        {{ $e->title }}
-                        <span style="opacity:0.75;">· {{ $e->event_date->format('M d, Y') }}</span>
-                    </a>
-                @endforeach
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="peso-label mb-2" for="lineupEventPicker">Job fair event</label>
+                    <select id="lineupEventPicker" class="form-select form-select-sm"
+                            style="border-color:var(--n-200);font-size:12.5px;border-radius:8px;">
+                        @foreach($lineupEvents as $e)
+                        <option value="{{ $e->job_fair_events_id }}"
+                            {{ $lineupEvent && $lineupEvent->job_fair_events_id === $e->job_fair_events_id ? 'selected' : '' }}>
+                            {{ $e->title }} — {{ $e->event_date->format('M d, Y') }}
+                        </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="peso-label mb-2" for="lineupIndustryPicker">Industry</label>
+                    <select id="lineupIndustryPicker" class="form-select form-select-sm"
+                            style="border-color:var(--n-200);font-size:12.5px;border-radius:8px;"
+                            {{ ($lineupIndustries ?? collect())->isEmpty() ? 'disabled' : '' }}>
+                        <option value="">
+                            {{ ($lineupIndustries ?? collect())->isEmpty()
+                                ? 'No industry to choose from'
+                                : 'All industries this fair wants' }}
+                        </option>
+                        @foreach($lineupIndustries ?? [] as $group)
+                        <option value="{{ $group }}" {{ ($lineupIndustry ?? null) === $group ? 'selected' : '' }}>
+                            {{ $group }}
+                        </option>
+                        @endforeach
+                    </select>
+                    <div class="mt-1" style="font-size:11px;color:var(--n-500);">
+                        @if($lineupEvent && ($lineupEvent->target_industries ?? null))
+                            This fair asks for {{ count((array) $lineupEvent->target_industries) }}
+                            industry(ies). An agency that has not recorded its industry is never listed —
+                            there is nothing to match it against.
+                        @else
+                            This fair names no target industry, so every approved overseas agency is eligible.
+                        @endif
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -145,153 +181,206 @@
         </div>
         @endif
 
-        {{-- ── ALREADY ON THE LIST ── --}}
-        <div class="card border-0 shadow-sm rounded-3 mb-4 overflow-hidden">
+        {{-- ── THE ONE TABLE ──
+
+             Every overseas agency this fair can take, whether it has been
+             invited or not. There used to be two tables — one of agencies you
+             could invite and one of agencies already invited — and pressing the
+             button moved a row from the bottom table to the top one, so the
+             desk lost the line it was reading.
+
+             Nothing moves now. The row stays where it is and the last column
+             changes: a Send Invitation button while there is nothing to say,
+             and the agency's own answer once there is. --}}
+        <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
             <div class="card-header border-0 py-2 px-3" style="background:var(--g-600);border-radius:12px 12px 0 0;">
                 <h6 class="mb-0 fw-bold text-white" style="font-size:13px;">
-                    <i class="ph ph-list-checks me-2"></i>Already invited ({{ $lineupOnTheList->count() }})
+                    <i class="ph ph-buildings me-2"></i>Overseas agencies for this fair ({{ $lineupRows->count() }})
+                    @if($lineupIndustry ?? null)
+                    <span style="font-weight:500;opacity:0.85;"> · {{ $lineupIndustry }}</span>
+                    @endif
+                    @if(($lineupUninvited ?? 0) > 0)
+                    <span style="font-weight:500;opacity:0.85;"> · {{ $lineupUninvited }} not yet invited</span>
+                    @endif
                 </h6>
             </div>
 
-            @if($lineupOnTheList->isEmpty())
-                <div class="p-4 text-center" style="color:var(--n-500);font-size:13px;">
-                    No overseas agency has been invited to this fair yet.
-                </div>
-            @else
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th style="background:var(--n-50);font-size:12px;border:none;padding:10px 16px;color:var(--g-700);">Agency</th>
-                                <th style="background:var(--n-50);font-size:12px;border:none;padding:10px 16px;color:var(--g-700);">Response</th>
-                                <th style="background:var(--n-50);font-size:12px;border:none;padding:10px 16px;color:var(--g-700);">Invited by</th>
-                                <th style="background:var(--n-50);font-size:12px;border:none;padding:10px 16px;color:var(--g-700);">Permission recorded</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($lineupOnTheList as $participant)
-                            <tr style="font-size:13px;">
-                                <td style="padding:10px 16px;font-weight:600;color:var(--g-700);">
-                                    {{ $participant->employer->company_name ?? 'None' }}
-                                </td>
-                                {{-- Hilaw nga enum ang gipakita kaniadto, ug ang
-                                     "not_selected" mabasa nga sayop nga pulong.
-                                     Ang matag estado naay pulong nga sabton sa
-                                     desk, ug ang gipili sa SRA nagdala sa iyang
-                                     ngalan ug sa iyang rason. --}}
-                                @php
-                                    $lineupLabels = [
-                                        'pending'      => ['Awaiting reply',       'var(--warn)'],
-                                        'accepted'     => ['Accepted — your call', 'var(--warn)'],
-                                        'confirmed'    => ['In the fair',          'var(--g-700)'],
-                                        'not_selected' => ['Not selected',         'var(--n-500)'],
-                                        'declined'     => ['Agency declined',      'var(--danger)'],
-                                        'expired'      => ['No reply — lapsed',    'var(--n-500)'],
-                                    ];
-                                    [$lineupLabel, $lineupColor] = $lineupLabels[$participant->confirmation_status]
-                                        ?? [ucfirst($participant->confirmation_status), 'var(--n-700)'];
-                                @endphp
-                                <td style="padding:10px 16px;">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th style="background:var(--n-50);font-size:12px;border:none;padding:10px 16px;color:var(--g-700);">#</th>
+                            <th style="background:var(--n-50);font-size:12px;border:none;padding:10px 16px;color:var(--g-700);">Company Name</th>
+                            <th style="background:var(--n-50);font-size:12px;border:none;padding:10px 16px;color:var(--g-700);">Company Email</th>
+                            <th style="background:var(--n-50);font-size:12px;border:none;padding:10px 16px;color:var(--g-700);">Contact Number</th>
+                            <th style="background:var(--n-50);font-size:12px;border:none;padding:10px 16px;color:var(--g-700);">Industry</th>
+                            <th style="background:var(--n-50);font-size:12px;border:none;padding:10px 16px;color:var(--g-700);text-align:center;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($lineupRows as $row)
+                        @php
+                            $agency      = $row->employer;
+                            $participant = $row->participant;
+                        @endphp
+                        <tr style="font-size:13px;">
+                            <td style="padding:10px 16px;color:var(--n-500);">{{ $loop->iteration }}</td>
+                            <td style="padding:10px 16px;font-weight:600;color:var(--g-700);">
+                                {{ $agency->company_name ?? 'None' }}
+                                @if($agency->contact_person)
+                                <div style="font-size:11px;color:var(--n-500);font-weight:400;">
+                                    {{ $agency->contact_person }}{{ $agency->position_title ? ' — ' . $agency->position_title : '' }}
+                                </div>
+                                @endif
+                            </td>
+                            <td style="padding:10px 16px;color:var(--n-700);">
+                                {{ $agency->employer->email ?? 'None' }}
+                            </td>
+                            <td style="padding:10px 16px;color:var(--n-700);">
+                                {{ $agency->mobile_number ?: 'None' }}
+                            </td>
+                            <td style="padding:10px 16px;color:var(--n-700);">
+                                {{ $agency->industry_group ?: 'None' }}
+                            </td>
+                            <td style="padding:10px 16px;text-align:center;">
+                                @if($participant)
+                                    {{-- Already invited. The button is gone because
+                                         the invitation cannot be sent twice; what
+                                         the agency said back takes its place. --}}
+                                    @php
+                                        $lineupLabels = [
+                                            'pending'      => ['Awaiting reply',       'var(--warn)'],
+                                            'accepted'     => ['Accepted — your call', 'var(--warn)'],
+                                            'confirmed'    => ['In the fair',          'var(--g-700)'],
+                                            'not_selected' => ['Not selected',         'var(--n-500)'],
+                                            'declined'     => ['Agency declined',      'var(--danger)'],
+                                            'expired'      => ['No reply — lapsed',    'var(--n-500)'],
+                                        ];
+                                        [$lineupLabel, $lineupColor] = $lineupLabels[$participant->confirmation_status]
+                                            ?? [ucfirst($participant->confirmation_status), 'var(--n-700)'];
+                                    @endphp
                                     <span class="fw-semibold" style="color:{{ $lineupColor }};font-size:12.5px;">
                                         {{ $lineupLabel }}
                                     </span>
-                                    @if($participant->sra_decided_at)
-                                    <div style="font-size:11px;color:var(--n-500);">
-                                        {{ $participant->sraDecidedBy->full_name
-                                            ?? $participant->sraDecidedBy->first_name
-                                            ?? 'PESO' }},
-                                        {{ $participant->sra_decided_at->format('M d, Y') }}
+                                    <div style="font-size:10.5px;color:var(--n-500);">
+                                        Invited {{ optional($participant->invited_at)->format('M d, Y') ?? 'None' }}
+                                        by {{ $participant->invitedBy->full_name
+                                                ?? $participant->invitedBy->first_name
+                                                ?? 'the system' }}
+                                    </div>
+                                    @if($participant->permission_note)
+                                    <div style="font-size:10.5px;color:var(--n-500);">
+                                        <i class="ph ph-note me-1"></i>{{ $participant->permission_note }}
                                     </div>
                                     @endif
-                                    @if($participant->sra_decision_note)
-                                    <div style="font-size:11px;color:var(--n-500);">
-                                        {{ $participant->sra_decision_note }}
-                                    </div>
-                                    @endif
-                                </td>
-                                <td style="padding:10px 16px;color:var(--n-700);">
-                                    {{ $participant->invitedBy->full_name
-                                        ?? $participant->invitedBy->first_name
-                                        ?? 'Invited by the system' }}
-                                    <div style="font-size:11px;color:var(--n-500);">
-                                        {{ optional($participant->invited_at)->format('M d, Y') }}
-                                    </div>
-                                </td>
-                                <td style="padding:10px 16px;color:var(--n-700);">
-                                    {{ $participant->permission_note ?: '—' }}
-                                </td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            @endif
+                                @else
+                                    <button type="button" class="btn btn-sm fw-semibold"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#inviteAgency{{ $agency->employer_nsrp_registrations_id }}"
+                                        style="background:var(--g-600);color:#fff;border:none;border-radius:8px;font-size:11.5px;white-space:nowrap;">
+                                        <i class="ph ph-paper-plane-tilt me-1"></i>Send Invitation
+                                    </button>
+                                @endif
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="6" class="text-center" style="padding:36px 16px;color:var(--n-500);font-size:13px;">
+                                <i class="ph ph-tray" style="font-size:40px;color:var(--n-300);display:block;margin-bottom:8px;"></i>
+                                @if($lineupIndustry ?? null)
+                                    No approved overseas agency is registered under {{ $lineupIndustry }}.
+                                @else
+                                    No approved overseas agency matches what this fair is asking for.
+                                @endif
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
 
-        {{-- ── ADD MORE ── --}}
-        <div class="card border-0 shadow-sm rounded-3">
-            <div class="card-header border-0 py-2 px-3" style="background:var(--g-600);border-radius:12px 12px 0 0;">
-                <h6 class="mb-0 fw-bold text-white" style="font-size:13px;">
-                    <i class="ph ph-plus-circle me-2"></i>Agencies you can invite ({{ $lineupAvailable->count() }})
-                </h6>
-            </div>
-            <div class="card-body p-3">
+        {{-- ── ONE MODAL PER UNINVITED AGENCY ──
 
-                @if($lineupAvailable->isEmpty())
-                    <div class="text-center py-4" style="color:var(--n-500);font-size:13px;">
-                        Every eligible overseas agency has already been invited to this fair.
-                    </div>
-                @else
+             Outside the table: a <div> between two <tr> elements is not valid
+             table markup and the browser moves it anyway.
+
+             The permission is asked for here rather than once at the bottom of
+             the page, because it is not one permission for the list — it is
+             what the head of the office said about this agency. --}}
+        @foreach($lineupRows as $row)
+        @continue($row->participant)
+        @php $agency = $row->employer; @endphp
+        <div class="modal fade" id="inviteAgency{{ $agency->employer_nsrp_registrations_id }}" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content border-0 rounded-3">
                     <form action="{{ route('staff.jobfair.overseas.invite', $lineupEvent->job_fair_events_id) }}" method="POST">
                         @csrf
+                        <input type="hidden" name="employer_ids[]" value="{{ $agency->employer_nsrp_registrations_id }}">
 
-                        <div class="row g-2 mb-3">
-                            @foreach($lineupAvailable as $employer)
-                            <div class="col-md-6">
-                                <label class="d-flex align-items-start gap-2 p-2 rounded-3"
-                                       style="border:1px solid var(--n-200);background:var(--n-0);cursor:pointer;">
-                                    <input type="checkbox" name="employer_ids[]"
-                                           value="{{ $employer->employer_nsrp_registrations_id }}"
-                                           class="form-check-input mt-1" style="flex-shrink:0;">
-                                    <span>
-                                        <span style="font-size:13px;font-weight:600;color:var(--g-700);">
-                                            {{ $employer->company_name }}
-                                        </span>
-                                        <span class="d-block" style="font-size:11px;color:var(--n-500);">
-                                            {{ $employer->industry_group ?: 'No industry group set' }}
-                                        </span>
-                                    </span>
-                                </label>
-                            </div>
-                            @endforeach
+                        <div class="modal-header border-0" style="background:var(--g-600);">
+                            <h6 class="modal-title fw-bold text-white">
+                                <i class="ph-fill ph-envelope-simple me-2"></i>Invite {{ $agency->company_name }}
+                            </h6>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                         </div>
 
-                        {{-- The permission itself is given in the office. This line is
-                             all the system can hold of it, so it is required. --}}
-                        <label class="peso-label">Permission recorded *</label>
-                        <input type="text" name="permission_note"
-                               class="form-control peso-input @error('permission_note') is-invalid @enderror"
-                               value="{{ old('permission_note') }}"
-                               maxlength="255"
-                               placeholder="e.g. Cleared by the PESO head on Aug 26, 2026">
-                        @error('permission_note')
-                            <div class="invalid-feedback" style="font-size:11px;">{{ $message }}</div>
-                        @enderror
+                        <div class="modal-body p-4">
+                            <div style="font-size:12.5px;color:var(--n-500);" class="mb-3">
+                                The invitation goes to {{ $agency->employer->email ?? 'this agency' }} for
+                                <strong style="color:var(--g-700);">{{ $lineupEvent->title }}</strong>
+                                on {{ $lineupEvent->event_date->format('M d, Y') }}. They have
+                                {{ (int) config('peso.jobfair.confirm_window_days') }} days to answer.
+                            </div>
 
-                        @error('employer_ids')
-                            <div style="font-size:11px;color:var(--danger);margin-top:6px;">{{ $message }}</div>
-                        @enderror
+                            {{-- The permission itself is given in the office. This
+                                 line is all the system can hold of it, so it is
+                                 required. --}}
+                            <label class="peso-label">Permission recorded *</label>
+                            <input type="text" name="permission_note" required maxlength="255"
+                                   class="form-control peso-input"
+                                   placeholder="e.g. Cleared by the PESO head on Aug 26, 2026">
+                        </div>
 
-                        <div class="d-flex justify-content-end mt-3">
+                        <div class="modal-footer border-0 pt-0">
+                            <button type="button" class="btn btn-sm fw-semibold" data-bs-dismiss="modal"
+                                style="border:1px solid var(--n-200);color:var(--g-700);background:#fff;border-radius:8px;">
+                                Cancel
+                            </button>
                             <button type="submit" class="btn btn-peso px-4">
-                                <i class="ph ph-paper-plane-tilt me-1"></i> Invite to this fair
+                                <i class="ph ph-paper-plane-tilt me-1"></i> Send Invitation
                             </button>
                         </div>
                     </form>
-                @endif
-
+                </div>
             </div>
         </div>
+        @endforeach
 
     @endif
 @endif
+
+@push('scripts')
+<script>
+    // Picking a fair reloads the page carrying the choice in the URL, so the
+    // list below and anything the desk submits belong to the same fair. The
+    // industry is dropped: it belongs to the fair that was showing, and the new
+    // fair may not ask for it at all.
+    document.getElementById('lineupEventPicker')?.addEventListener('change', function () {
+        const url = new URL(window.location.href);
+        url.searchParams.set('lineup_event', this.value);
+        url.searchParams.delete('lineup_industry');
+        window.location.href = url.toString();
+    });
+
+    document.getElementById('lineupIndustryPicker')?.addEventListener('change', function () {
+        const url = new URL(window.location.href);
+        if (this.value) {
+            url.searchParams.set('lineup_industry', this.value);
+        } else {
+            url.searchParams.delete('lineup_industry');
+        }
+        window.location.href = url.toString();
+    });
+</script>
+@endpush

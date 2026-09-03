@@ -294,18 +294,6 @@
 
 {{-- ── TABLE ── --}}
 <div class="peso-card fade-in-1">
-    @if($jobs->isEmpty())
-        <div class="empty-state">
-            <div class="empty-icon">
-                <i class="ph ph-briefcase"></i>
-            </div>
-            <h6>Nothing was removed</h6>
-            <p>None of your jobs have been taken down. You will see them here if that ever happens.</p>
-            <a href="{{ route('company.jobseekers') }}" class="btn btn-peso mt-3">
-                <i class="ph ph-briefcase me-1"></i> Go to Active Job Postings
-            </a>
-        </div>
-    @else
         <div class="table-responsive">
             <table class="table peso-table mb-0" id="jobsTable">
                 <thead>
@@ -321,7 +309,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($jobs as $i => $job)
+                    @forelse($jobs as $i => $job)
                     <tr class="job-row">
                         <td style="color:var(--n-500);">{{ $i + 1 }}</td>
                         <td class="fw-semibold">{{ $job->title }}</td>
@@ -353,11 +341,21 @@
                             </div>
                         </td>
                     </tr>
-                    @endforeach
+                    @empty
+                    {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
+                         gihapon ug ang pahina dili mag-usab ug porma. --}}
+                    <tr>
+                        <td colspan="8" class="text-center"
+                            style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                            <i class="ph ph-briefcase me-1"
+                               style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                            None of your jobs have been taken down. You will see them here if that ever happens.
+                        </td>
+                    </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
-    @endif
 </div>
 
 @include('company.partials.request-job-modal')

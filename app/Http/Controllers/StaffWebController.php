@@ -47,14 +47,77 @@ class StaffWebController extends Controller
             ->take(5)->get();
 
         if ($staffRole === 'sra') {
-    $query = JobseekerRegistration::with(['user', 'nsrp'])
-        ->whereHas('nsrp', function($q) {
-            $q->whereIn('type', ['overseas', 'both']);
-        });
-            $total  = $query->count();
-            $recent = $query->latest()->take(5)->get();
+            // ── Ang static nga quick-link cards sa ubos gitangtang, parehas sa
+            // ── LRA: gi-usab lang nila ang sidebar sa porma sa card ug walay
+            // ── numero nga gidala. Ang lima ka stat card sa ibabaw mao na ang
+            // ── dashboard — ang matag usa nagsulti kung unsay naghulat sa desk
+            // ── karon. Wala pay link ang mga card; hulaton sa kung asa gyud
+            // ── mo-abli ang matag usa. ──
+
+            // Ang overseas nga ahensya ra ang sa SRA. Usa ka basihan dinhi,
+            // gigamit sa duha ka card sa ubos.
+            $overseasEmployers = EmployerNsrpRegistration::query()
+                ->whereHas('employer', fn($q) => $q->where('role', 'company'))
+                ->where('is_overseas', true);
+
+            // ── CARD 1 — Pending In-house Schedule ──
+            // Parehas gyud nga basihan sa In-house Schedule nga page: duha ka
+            // pultahan padulong sa opisina, ang schedule-only nga hangyo ug ang
+            // in-house nga posting. Kung usa ra ang ihapon dinhi, ang card ug
+            // ang listahan magsultig lain-laing numero.
+            $pendingInhouse = \App\Models\InhouseSchedule::where('status', 'pending')
+                    ->whereHas('employer', fn($q) => $q->where('is_overseas', true))
+                    ->count()
+                + \App\Models\Job::where('posting_status', 'pending')
+                    ->where('schedule_type', 'inhouse')
+                    ->whereHas('company', fn($q) => $q->where('is_overseas', true))
+                    ->count();
+
+            // ── CARD 2 — On-going Job Activities ──
+            // Ang nahitabo KARON, sa tulo ka matang sa job activity: ang fair
+            // nga nagpadayon, ang in-house nga gi-accept para karong adlawa, ug
+            // ang company interview nga karon ang petsa.
+            $ongoingActivities = \App\Models\JobFairEvent::where('status', 'ongoing')->count()
+                + \App\Models\InhouseSchedule::where('status', 'accepted')
+                    ->whereDate('confirmed_date', now()->toDateString())
+                    ->whereHas('employer', fn($q) => $q->where('is_overseas', true))
+                    ->count()
+                + \App\Models\Job::where('schedule_type', 'company_interview')
+                    ->whereDate('preferred_date', now()->toDateString())
+                    ->whereHas('company', fn($q) => $q->where('is_overseas', true))
+                    ->count();
+
+            // ── CARD 3 — Pending Company Interview ──
+            // Ang company interview walay approval nga agian — buhi na siya
+            // pag-post — mao nga ang "pending" dinhi kay ang wala pa mahitabo:
+            // karon o sa umaabot pa ang petsa.
+            $pendingCompanyInterview = \App\Models\Job::where('schedule_type', 'company_interview')
+                ->whereDate('preferred_date', '>=', now()->toDateString())
+                ->whereHas('company', fn($q) => $q->where('is_overseas', true))
+                ->count();
+
+            // ── CARD 4 — Total Overseas Employer ──
+            // Parehas nga kahulogan sa Registered Employer: kompanya, overseas,
+            // gi-approve nga papel, dili inactive.
+            $overseasEmployerTotal = (clone $overseasEmployers)
+                ->whereHas('requirement', fn($q) => $q->where('status', 'approved'))
+                ->whereNull('dormant_at')
+                ->count();
+
+            // ── CARD 5 — Total Jobseeker (Overseas) ──
+            $jobseekerTotal = JobseekerRegistration::whereHas('nsrp', fn($q) =>
+                $q->whereIn('type', ['overseas', 'both'])
+            )->count();
+
+            // ── CARD 6 — Total Jobs ──
+            // Parehas gyud nga basihan sa Job Vacancies Solicited nga report,
+            // nga mao pud ang ablihan sa pagpindot niini nga card.
+            $totalJobsSolicited = $this->overseasSolicitedVacancies()->count();
+
             return view('staff.sra.dashboard', compact(
-                'total', 'recent', 'todayJobFair', 'todayInhouse'
+                'pendingInhouse', 'ongoingActivities', 'pendingCompanyInterview',
+                'overseasEmployerTotal', 'jobseekerTotal', 'totalJobsSolicited',
+                'todayJobFair', 'todayInhouse'
             ));
 
         } elseif ($staffRole === 'lra') {
@@ -68,7 +131,7 @@ class StaffWebController extends Controller
             $jobseekerTotal = $query->count();
             $recent         = $query->latest()->take(5)->get();
 
-            // ── Parehas gyud nga basihan sa Approved Employers nga tab:
+            // ── Parehas gyud nga basihan sa Registered Employer nga tab:
             // ── kompanya, local, gi-approve nga papel, dili inactive. Kung
             // ── lahi ang pag-ihap dinhi, ang card ug ang listahan nga
             // ── giablihan sa pagpindot magsultig lain-laing numero. ──
@@ -123,7 +186,7 @@ class StaffWebController extends Controller
                 ->whereHas('employer', fn($q) => $q->where('role', 'company'))
                 ->where('is_overseas', false);
 
-            // Pre-Employer: wala pay gipasa nga requirement, o gipasa na apan
+            // Pending Employer Account: wala pay gipasa nga requirement, o gipasa na apan
             // wala pa ma-desisyonan.
             $pendingCount = (clone $companies)
                 ->where(fn($q) =>
@@ -131,7 +194,7 @@ class StaffWebController extends Controller
                       ->orWhereHas('requirement', fn($r) => $r->where('status', 'pending'))
                 )->count();
 
-            // Approved Employers: gi-ihap ang kompanya, dili ang papel.
+            // Registered Employer: gi-ihap ang kompanya, dili ang papel.
             $approvedCount = (clone $companies)
                 ->whereHas('requirement', fn($r) => $r->where('status', 'approved'))
                 ->whereNull('dormant_at')
@@ -139,7 +202,7 @@ class StaffWebController extends Controller
 
             // Ang mga approved nga naay papel nga mahurot sulod sa usa ka
             // semana. Kini ang gikinahanglan ug aksyon karon — dili ang
-            // rejected, nga naa naman sa Pre-Employer tab ug gihulat na lang
+            // rejected, nga naa naman sa Pending Employer Account tab ug gihulat na lang
             // ang bag-ong pasa sa employer.
             $expiringCount = (clone $companies)
                 ->whereHas('requirement', fn($r) => $r->where('status', 'approved')->expiringSoon())
@@ -307,23 +370,44 @@ class StaffWebController extends Controller
 $nsrp = $registration->nsrp;
         $staffRole    = $staff->staff_role;
 
-        $isOverseas = $staffRole === 'sra';
-        $existingAppliedJobIds = \App\Models\Application::where('jobseeker_id', $registration->jobseeker_registrations_id)->pluck('job_id')->toArray();
-
-        $openJobs = \App\Models\Job::with('company')
-            ->where('status', 'open')
-            ->whereHas('company', fn($q) => $q->where('is_overseas', $isOverseas))
-            ->whereNotIn('job_qualifications_id', $existingAppliedJobIds)
-            ->where(function ($q) {
-                $q->whereNull('deadline')->orWhereDate('deadline', '>=', now()->toDateString());
-            })
-            ->latest()
+        // ── Ang gisulat sa jobseeker sa NSRP nga porma kay iyang giingon lang:
+        // ── wala kadto ni-agi sa sistema, ug walay lain nga makapamatuod niini.
+        // ── Kini nga listahan lahi — kini ang trabaho nga naagi mismo sa PESO,
+        // ── gikan sa aplikasyon nga gitiman-an sa employer ug 'hired'. Mao nga
+        // ── managbulag sila sa VIII: usa ka giingon, usa ka natala.
+        $placements = \App\Models\Application::with('job.company')
+            ->where('jobseeker_id', $registration->jobseeker_registrations_id)
+            ->where('status', 'hired')
+            ->orderByDesc('hired_at')
             ->get();
 
+        $isOverseas = $staffRole === 'sra';
+
+        // ── Ang listahan sa bakante gigamit ra sa porma nga "Apply to a Job
+        // ── Posting", ug kana nga porma para sa walk-in ra. Ang jobseeker nga
+        // ── siya mismo ang nag-rehistro naay account ug siya na ang mo-apply,
+        // ── mao nga walay porma sa iyang panid ug walay hinungdan nga pangitaon
+        // ── ang mga bakante. ──
+        $openJobs = collect();
+
+        if ($registration->is_walk_in) {
+            $existingAppliedJobIds = \App\Models\Application::where('jobseeker_id', $registration->jobseeker_registrations_id)->pluck('job_id')->toArray();
+
+            $openJobs = \App\Models\Job::with('company')
+                ->where('status', 'open')
+                ->whereHas('company', fn($q) => $q->where('is_overseas', $isOverseas))
+                ->whereNotIn('job_qualifications_id', $existingAppliedJobIds)
+                ->where(function ($q) {
+                    $q->whereNull('deadline')->orWhereDate('deadline', '>=', now()->toDateString());
+                })
+                ->latest()
+                ->get();
+        }
+
         if ($staffRole === 'sra') {
-    return view('staff.sra.registrations.show', compact('registration', 'nsrp', 'openJobs'));
+    return view('staff.sra.registrations.show', compact('registration', 'nsrp', 'openJobs', 'placements'));
 } elseif ($staffRole === 'lra') {
-    return view('staff.lra.registrations.show', compact('registration', 'nsrp', 'openJobs'));
+    return view('staff.lra.registrations.show', compact('registration', 'nsrp', 'openJobs', 'placements'));
 }
 
         return redirect()->route('staff.dashboard');
@@ -477,7 +561,10 @@ $nsrp = $registration->nsrp;
     /**
      * The overseas line-up shown inside the SRA's Job Fair tab.
      *
-     * Returns [events, chosen event, agencies not yet on it, agencies on it].
+     * Returns [events, chosen event, one row per eligible agency (with its
+     * invitation, if it has one), the invitations on this fair, the agencies
+     * awaiting a decision, the industries that can be picked, the one picked,
+     * and how many agencies are still uninvited].
      * It had a page of its own until the office asked for one tab fewer; the
      * work belongs to the fair, so it is drawn with the fair.
      */
@@ -494,16 +581,63 @@ $nsrp = $registration->nsrp;
             ? $events->firstWhere('job_fair_events_id', (int) $eventId)
             : $events->first();
 
-        $available = $event
-            ? \App\Support\JobFairInvites::notYetInvited($event, true)
-            : collect();
-
         $onTheList = $event
             ? \App\Models\JobFairParticipant::with(['employer', 'invitedBy', 'sraDecidedBy'])
                 ->where('job_fair_id', $event->job_fair_events_id)
                 ->whereHas('employer', fn($q) => $q->where('is_overseas', true))
                 ->get()
             : collect();
+
+        // ── ANG INDUSTRIYA NGA MAPILIAN ──
+        //
+        // Ang fair mismo ang nagsulti kung unsang industriya ang iyang gipangita,
+        // ug kana ang mapilian. Ang fair nga walay gipili nga industriya modawat
+        // sa tanan, mao nga ang lista kuhaon gikan sa mga ahensya nga naa: usa ka
+        // pagpili nga walay laray sa likod niya kay pagpili nga dili pilion.
+        $eligible = $event
+            ? \App\Support\JobFairInvites::eligibleFor($event)
+                ->filter(fn($employer) => (bool) $employer->is_overseas)
+                ->sortBy(fn($employer) => mb_strtolower((string) $employer->company_name))
+                ->values()
+            : collect();
+
+        $industries = collect((array) ($event->target_industries ?? []))
+            ->whenEmpty(fn() => $eligible->pluck('industry_group'))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
+
+        // Ang gipili. Kung dili siya sakop sa mapilian, isipon nga walay gipili —
+        // ang usa ka industriya nga gisulod pinaagi sa URL dili makapakita ug
+        // ahensya nga dili angay sa fair.
+        $industry = request('lineup_industry');
+        if (!$industries->contains($industry)) {
+            $industry = null;
+        }
+
+        if ($industry) {
+            $eligible = $eligible
+                ->filter(fn($employer) => $employer->industry_group === $industry)
+                ->values();
+        }
+
+        // ── USA KA LAMESA ──
+        //
+        // Duha ka lamesa ang naa dinhi kaniadto — ang na-invite na ug ang
+        // mahimo pang i-invite — ug ang parehas nga ahensya molukso gikan sa
+        // ubos ngadto sa ibabaw pag-pindot sa buton. Usa na lang: ang tanan nga
+        // ahensya nga haom niining fair, na-invite na o wala pa. Ang gidala sa
+        // matag laray mao ang iyang tubag, kung naa, ug ang buton motungha lang
+        // sa wala pa napadad-i.
+        $byEmployer = $onTheList->keyBy('employer_id');
+
+        $rows = $eligible->map(fn($employer) => (object) [
+            'employer'    => $employer,
+            'participant' => $byEmployer->get($employer->employer_nsrp_registrations_id),
+        ])->values();
+
+        $available = $rows->filter(fn($row) => $row->participant === null)->values();
 
         // ── Ang naghulat sa desisyon sa SRA — mitubag na sila ug oo.
         // ──
@@ -516,7 +650,7 @@ $nsrp = $registration->nsrp;
             ->sortBy('responded_at')
             ->values();
 
-        return [$events, $event, $available, $onTheList, $awaiting];
+        return [$events, $event, $rows, $onTheList, $awaiting, $industries, $industry, $available->count()];
     }
 
     /** Put the chosen agencies on the fair, and record on whose word. */
@@ -686,9 +820,14 @@ $nsrp = $registration->nsrp;
         // status. Ang pending ug rejected wala na: wala silay mahimo niini.
         $eventId = request('event_id');
 
-        // ── LRA dili mo-approve og Job Fair postings (SRA/Job Vacancy ra) — pero pwede gihapon makakita sa events monitoring ──
-        if (in_array($staffRole, ['job_vacancy', 'sra'])) {
-            $isOverseas = $staffRole === 'sra';
+        // ── Job Vacancy ra ang naay lista sa posting dinhi.
+        // ──
+        // ── PESO SRA: gitangtang ang Job Fair Postings sa SRA. Monitoring ra
+        // ── siya — ang pag-approve iya sa Job Fair desk — ug ang tab niya karon
+        // ── usa ra ka butang: ang pag-imbita sa ahensya nga haom sa fair. Ang
+        // ── LRA nagbasa gihapon sa events nga lamesa sa ubos. ──
+        if ($staffRole === 'job_vacancy') {
+            $isOverseas = false;
 
             $baseJobQuery = \App\Models\Job::where('schedule_type', 'job_fair')
                 ->where('posting_status', 'approved')
@@ -717,14 +856,18 @@ $nsrp = $registration->nsrp;
         // ── Duha ka panel, dili nag-uban-uban: ang postings ug ang pag-imbita.
         // ── Kung tapadon sila, ang pag-imbita mahulog sa ubos sa tibuok lamesa
         // ── ug kinahanglan pang i-scroll siya pangitaon. ──
-        $panel = request('panel') === 'invite' ? 'invite' : 'postings';
+        $panel = 'invite';
 
-        [$lineupEvents, $lineupEvent, $lineupAvailable, $lineupOnTheList, $lineupAwaiting] =
-            $staffRole === 'sra' ? $this->overseasLineupData() : [collect(), null, collect(), collect(), collect()];
+        [$lineupEvents, $lineupEvent, $lineupRows, $lineupOnTheList, $lineupAwaiting,
+         $lineupIndustries, $lineupIndustry, $lineupUninvited] =
+            $staffRole === 'sra'
+                ? $this->overseasLineupData()
+                : [collect(), null, collect(), collect(), collect(), collect(), null, 0];
 
         return view('staff.inhouse.jobfair', compact(
             'events', 'staffRole', 'jobs', 'eventId', 'jobFairOptions', 'totalApprovedJobs',
-            'panel', 'lineupEvents', 'lineupEvent', 'lineupAvailable', 'lineupOnTheList', 'lineupAwaiting'
+            'panel', 'lineupEvents', 'lineupEvent', 'lineupRows', 'lineupOnTheList', 'lineupAwaiting',
+            'lineupIndustries', 'lineupIndustry', 'lineupUninvited'
         ));
     }
 
@@ -1598,6 +1741,14 @@ $nsrp = $registration->nsrp;
         $staff = $this->authStaff();
         if (!$staff || $staff->staff_role !== 'job_fair') return redirect()->route('login');
 
+        // ── Ang pula nga ihap sa sidebar mapawong dinhi. ──
+        // ── Ang pangutana niini mao ang "abliha kini nga pahina"; abli na
+        // ── siya, mao nga natubag na. Ang bakante nga ma-approve human niini
+        // ── mopasiga niya pag-usab, kay mas bag-o ang ilang updated_at kay sa
+        // ── marka. Ang marka anaa sa staff nga laray, dili sa user — si
+        // ── authStaff() nagbalik ug User. ──
+        $staff->staff?->forceFill(['postings_seen_at' => now()])->save();
+
         // Ang tab mao na ang tubag sa employer sa imbitasyon. Ang bisan unsa
         // nga wala sa tulo mahulog sa Pending, imbis nga hilom nga molista sa
         // tanan.
@@ -2083,7 +2234,7 @@ $nsrp = $registration->nsrp;
      *
      * PESO Job Vacancy staff, 2026-09-01: the desk reads the folder a paper at
      * a time. Before this there was a single Approve for the whole folder, so
-     * accepting the business permit put the company in Approved Employers with
+     * accepting the business permit put the company in Registered Employer with
      * four documents nobody had opened.
      *
      * Nothing here moves the company. The company moves on approveRequirement,
@@ -2237,7 +2388,7 @@ $nsrp = $registration->nsrp;
         // ── Ang tanang papel kinahanglan nabasa na.
         // ──
         // ── PESO Job Vacancy staff, 2026-09-01: ang pagdawat sa business
-        // ── permit nagdala sa kompanya sa Approved Employers samtang upat pa
+        // ── permit nagdala sa kompanya sa Registered Employer samtang upat pa
         // ── ka papel ang wala pa naablihan. Ang buton dinhi mao ang katapusan
         // ── nga pag-uyon sa tibuok folder, dili ang una.
         // ──
@@ -2255,7 +2406,7 @@ $nsrp = $registration->nsrp;
 
         // Ang gibalibaran nga papel dili ma-approve pinaagi sa pag-agi sa lain.
         // Ang folder nga naay sayop mobalik sa employer, dili moadto sa
-        // Approved Employers.
+        // Registered Employer.
         if (!$isOverseas && $requirement->hasRejectedDocuments()) {
             $bad = collect($requirement->rejected_fields)
                 ->map(fn($f) => \App\Models\EmployerRequirement::documentLabel($f))
@@ -2626,7 +2777,7 @@ $nsrp = $registration->nsrp;
             ->get();
 
         $preamble = array_values(array_filter([
-            ['Report', 'Approved Employers'],
+            ['Report', 'Registered Employer'],
             ['Desk', match ($staffRole) {
                 'sra'          => 'Overseas (SRA)',
                 'job_vacancy'  => 'Local (Job Vacancy)',
@@ -3921,6 +4072,11 @@ $nsrp = $registration->nsrp;
         }
         $monthFilter = $month === 'all' ? null : $month;
 
+        // Ang Pending Company Interview nga tab. Ang LRA walay company
+        // interview, mao nga dili gyud siya makasulod dinhi.
+        $isPendingInterview = $staffRole !== 'lra'
+            && request('type') === 'company_interview_pending';
+
         $query = \App\Models\Job::with('company')
             ->when($staffRole === 'lra', function($q) {
                 // LRA: local, In-house ra nga NA-APPROVE na (mabalhin diri gikan sa In-house tab)
@@ -3939,6 +4095,9 @@ $nsrp = $registration->nsrp;
 
                 if (request('type') === 'inhouse') {
                     $q->where('schedule_type', 'inhouse')->where('posting_status', 'approved');
+                } elseif (request('type') === 'company_interview_pending') {
+                    // Pending Company Interview — ang wala pa nahitabo.
+                    $this->pendingCompanyInterviewFilter($q);
                 } else {
                     // Company Interview. Ang Job Fair naa sa kaugalingon niyang tab.
                     $q->where(function ($q2) {
@@ -3952,13 +4111,19 @@ $nsrp = $registration->nsrp;
                 $q->whereHas('company', fn($n) => $n->where('is_overseas', true));
                 if ($sraType === 'inhouse') {
                     $q->where('schedule_type', 'inhouse')->where('posting_status', 'approved');
+                } elseif ($sraType === 'company_interview_pending') {
+                    $this->pendingCompanyInterviewFilter($q);
                 } else {
                     $q->where(function ($q2) {
                         $q2->whereNull('schedule_type')->orWhere('schedule_type', 'company_interview');
                     });
                 }
             })
-            ->when($monthFilter, function ($q) use ($monthFilter) {
+            // Ang Pending Company Interview walay sala sa bulan. Ang lista
+            // gitino sa petsa sa interview, dili sa petsa nga gi-post — ug ang
+            // interview sa sunod bulan gi-post karong bulana, mao nga ang sala
+            // sa bulan motago sa mga laray nga mao gyoy hinungdan sa tab.
+            ->when($monthFilter && !$isPendingInterview, function ($q) use ($monthFilter) {
                 [$y, $m] = explode('-', $monthFilter);
                 $q->whereYear('created_at', $y)->whereMonth('created_at', $m);
             })
@@ -3972,11 +4137,55 @@ $nsrp = $registration->nsrp;
 
         // Lima kada page. Ang desk mobasa niini usa-usa, ug ang taas nga page
         // magkinahanglan ug scroll — ang gipangita mahulog sa ubos sa screen.
-        $jobs = $query->latest()->paginate(5)->withQueryString();
+        // Ang pinakaduol nga interview ang una sa pending nga lista — kana ang
+        // sunod nga mahitabo. Sa laing tab, ang pinakabag-o nga gi-post.
+        $jobs = ($isPendingInterview
+                ? $query->orderBy('preferred_date')
+                : $query->latest())
+            ->paginate(5)
+            ->withQueryString();
 
         return view('staff.jobs.index', compact(
-            'jobs', 'staffRole', 'month', 'totalAll'
+            'jobs', 'staffRole', 'month', 'totalAll', 'isPendingInterview'
         ));
+    }
+
+    /**
+     * The overseas vacancies this desk solicited.
+     *
+     * One definition for the SRA's Total Jobs card and for the Job Vacancies
+     * Solicited report it opens. Two copies of this query is how a card comes
+     * to state a number the list behind it does not agree with.
+     */
+    private function overseasSolicitedVacancies()
+    {
+        return \App\Models\Job::query()
+            ->whereHas('company', fn($q) => $q->where('is_overseas', true))
+            ->where('posting_status', 'approved')
+            ->where(function ($q) {
+                $q->whereNull('schedule_type')
+                  ->orWhere('schedule_type', 'company_interview')
+                  ->orWhere(function ($q2) {
+                      $q2->where('schedule_type', 'inhouse')
+                         ->where('posting_status', 'approved');
+                  });
+            });
+    }
+
+    /**
+     * The company interviews that have not happened yet.
+     *
+     * A company interview is never approved by anybody — it goes live the
+     * moment the employer posts it — so "pending" here cannot mean waiting for
+     * a decision. It means waiting to happen: the interview date is today or
+     * still ahead. A posting with no date at all is not on this list, because
+     * there is nothing to say it is still coming.
+     */
+    private function pendingCompanyInterviewFilter($query): void
+    {
+        $query->where('schedule_type', 'company_interview')
+            ->whereNotNull('preferred_date')
+            ->whereDate('preferred_date', '>=', now()->toDateString());
     }
 
     public function createJobVacancy()
@@ -5279,27 +5488,25 @@ $nsrp = $registration->nsrp;
 
         $totalReferred = (clone $referredQuery)->count();
 
+        // ── Ang bulan sa Job Vacancies Solicited.
+        // ──
+        // ── 'all' kay tinuyo nga pag-ingon nga tanan. Ang stat card sa
+        // ── dashboard nag-ihap sa tibuok, ug kung ang report kanunay nga
+        // ── mo-sala ug bulan, ang numero nga gipindot ug ang lista nga
+        // ── moabli magkalahi — ug walay makahibalo asa sa duha ang tinuod. ──
         $vacancyMonth = request('vacancy_month', now()->format('Y-m'));
-        if (!preg_match('/^\d{4}-\d{2}$/', $vacancyMonth)) {
+        if ($vacancyMonth !== 'all' && !preg_match('/^\d{4}-\d{2}$/', $vacancyMonth)) {
             $vacancyMonth = now()->format('Y-m');
         }
-        [$vacancyYear, $vacancyMonthNumber] = array_pad(explode('-', $vacancyMonth), 2, now()->format('m'));
 
         $solicitedJobs = collect();
         $totalVacanciesSolicited = 0;
         if ($staffRole === 'sra') {
-            $vacancyQuery = \App\Models\Job::with('company')
-                ->whereHas('company', fn($q) => $q->where('is_overseas', true))
-                ->where('posting_status', 'approved')
-                ->whereYear('updated_at', $vacancyYear)
-                ->whereMonth('updated_at', $vacancyMonthNumber)
-                ->where(function ($q) {
-                    $q->whereNull('schedule_type')
-                      ->orWhere('schedule_type', 'company_interview')
-                      ->orWhere(function ($q2) {
-                          $q2->where('schedule_type', 'inhouse')
-                             ->where('posting_status', 'approved');
-                      });
+            $vacancyQuery = $this->overseasSolicitedVacancies()
+                ->with('company')
+                ->when($vacancyMonth !== 'all', function ($q) use ($vacancyMonth) {
+                    [$y, $m] = explode('-', $vacancyMonth);
+                    $q->whereYear('updated_at', $y)->whereMonth('updated_at', $m);
                 })
                 ->when($search, fn($q) => $q->where('title', 'like', "%{$search}%")
                     ->orWhereHas('company', fn($u) => $u->where('company_name', 'like', "%{$search}%"))
@@ -5429,13 +5636,47 @@ $nsrp = $registration->nsrp;
             ? \App\Support\CompanyInterviewReport::paginate(null, null, $search, true)
             : null;
 
+        // ── TAB: EMPLOYER REPORTS — pila ang gikuha sa matag employer, ug kinsa.
+        // ──
+        // ── Ang "Total Hired" nga numero sa Registered Employer nga listahan
+        // ── nagsulti ug ihap lang; kining tab nagsulti kung kinsa ang mga
+        // ── tawo luyo sa maong numero. Mao nga ang numero didto mo-link diri.
+        // ──
+        // ── Walay date range dinhi tinuyo. Ang numero nga gi-click sa listahan
+        // ── sa employer kay tibuok panahon; kung mo-sala ni ug petsa, ang
+        // ── giklik nga numero ug ang mabasa dinhi magkalahi, ug walay
+        // ── makahibalo asa sa duha ang tinuod. ──
+        $employerHires   = null;
+        $employerFocusId = (int) request('employer') ?: null;
+
+        if ($tab === 'employer_hires') {
+            $employerHires = EmployerNsrpRegistration::query()
+                ->whereHas('employer', fn($q) => $q->where('role', 'company'))
+                ->where('is_overseas', $isOverseas)
+                ->whereHas('requirement', fn($q) => $q->where('status', 'approved'))
+                // Usa ka kompanya nga giablihan gikan sa listahan sa employer.
+                ->when($employerFocusId, fn($q) =>
+                    $q->where('employer_nsrp_registrations_id', $employerFocusId))
+                ->when($search, fn($q) => $q->where(fn($w) =>
+                    $w->where('company_name', 'like', "%{$search}%")
+                      ->orWhereHas('employer', fn($u) => $u->where('email', 'like', "%{$search}%"))
+                ))
+                ->with([
+                    'employer',
+                    'jobs.applications' => fn($q) => $q->where('status', 'hired')->with('jobseeker'),
+                ])
+                ->orderBy('company_name')
+                ->paginate(5, ['*'], 'page')
+                ->withQueryString();
+        }
+
         return view('staff.reports.index', compact(
             'staffRole', 'tab', 'registeredView', 'reportView', 'range', 'placedChart',
             'registeredParticipants', 'registeredAll', 'placedApplications', 'referredApplications',
             'totalRegistered', 'totalRegisteredAll', 'totalPlaced', 'totalReferred',
             'vacancyMonth', 'solicitedJobs', 'totalVacanciesSolicited',
             'topEmployersFilter', 'topEmployersMonth', 'topEmployersYear', 'topEmployersByCompanyInterviews',
-            'employerPostings', 'employerRoomOnly',
+            'employerPostings', 'employerRoomOnly', 'employerHires', 'employerFocusId',
             'archivedJobs', 'inhouseReport', 'companyInterviews'
         ));
     }

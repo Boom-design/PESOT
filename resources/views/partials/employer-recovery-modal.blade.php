@@ -187,7 +187,7 @@
                     @if($showStatus)
                     {{-- ── ANG SWITCH ──
                          Parehas ra og resulta bisan ang sweep o ang staff ang
-                         nagpatay: ang account moadto sa Inactive Employers tab,
+                         nagpatay: ang account moadto sa Inactive Employer Account tab,
                          ug ang employer makasulod gihapon aron mo-sulat sa iyang
                          rason. Mao nga usa ra pud ka switch ang mo-abli. --}}
                     <div class="mb-3">

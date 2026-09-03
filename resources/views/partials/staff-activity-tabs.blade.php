@@ -11,9 +11,11 @@
     including this and nothing else.
 
     Who sees what:
-      lra          In-house Schedule, In-house Job Vacancy, Participants
-      sra          + Company Interview, Job Fair
-      job_vacancy  In-house, Company Interview, Job Fair (no Participants)
+      lra          In-house Schedule, In-house Job Vacancy, Job Fair
+      sra          Pending In-house Schedule, Pending Company Interview,
+                   In-house Job Vacancy, Company Interview, Job Fair
+      job_vacancy  the same, minus Pending In-house Schedule (LRA holds that
+                   calendar), and named In-house rather than In-house Job Vacancy
 --}}
 @php
     $tabRole  = optional(Auth::user()->staff)->staff_role ?? 'staff';
@@ -32,7 +34,13 @@
         || $tabType === 'inhouse'
         || ($tabRole === 'sra' && $tabType === null)
     );
-    $onInterview   = $tabRoute === 'staff.jobs' && !$onInhouseJobs;
+
+    // Ang company interview nga wala pa nahitabo. Kaugalingon niyang tab kay
+    // lahi ang pangutana: ang Company Interview nga tab kay rekord sa tanan nga
+    // gi-solicit, kini kay ang umaabot pa nga kinahanglan pang bantayan.
+    $onPendingInterview = $tabRoute === 'staff.jobs' && $tabType === 'company_interview_pending';
+
+    $onInterview = $tabRoute === 'staff.jobs' && !$onInhouseJobs && !$onPendingInterview;
 @endphp
 
 {{-- $tabsRight — anything the page wants sitting at the end of this row.
@@ -53,9 +61,12 @@
     @endif
 
     @if($tabRole !== 'lra')
-    <a href="{{ route('staff.jobs', ['type' => 'company_interview']) }}" class="btn btn-sm fw-semibold"
-       style="{{ $onInterview ? $tabOn : $tabOff }}{{ $tabBase }}">
-        <i class="ph-fill ph-briefcase me-1"></i> Company Interview
+    <a href="{{ route('staff.jobs', ['type' => 'company_interview_pending']) }}" class="btn btn-sm fw-semibold"
+       style="{{ $onPendingInterview ? $tabOn : $tabOff }}{{ $tabBase }}">
+        {{-- Ang interview nga wala pa nahitabo — karon o umaabot pa ang petsa.
+             Walay approval nga agian ang company interview, buhi na siya
+             pag-post, mao nga ang "pending" dinhi kay ang wala pa nahitabo. --}}
+        <i class="ph-fill ph-hourglass-medium me-1"></i> Pending Company Interview
     </a>
     @endif
 
@@ -66,24 +77,33 @@
     </a>
 
     @if($tabRole !== 'lra')
-    {{-- Ang LRA walay Job Fair nga tab: dili iya ang event. Apan ang jobseeker
-         nga niapil didto iya gihapon nga tubagan, mao nga naa siya sa
-         Participants sa ubos. --}}
+    <a href="{{ route('staff.jobs', ['type' => 'company_interview']) }}" class="btn btn-sm fw-semibold"
+       style="{{ $onInterview ? $tabOn : $tabOff }}{{ $tabBase }}">
+        <i class="ph-fill ph-briefcase me-1"></i> Company Interview
+    </a>
+    @endif
+
+    @if($tabRole !== 'lra')
+    {{-- Dili iya sa LRA ang event mismo, mao nga wala siya niining tab. Ang
+         jobseeker nga niapil sa usa ka fair iya gihapon nga tubagan, ug para
+         niana naa siyay kaugalingong Job Fair nga tab sa ubos. --}}
     <a href="{{ route('staff.inhouse.jobfair') }}" class="btn btn-sm fw-semibold"
        style="{{ $tabRoute === 'staff.inhouse.jobfair' ? $tabOn : $tabOff }}{{ $tabBase }}">
         <i class="ph-fill ph-calendar-dots me-1"></i> Job Fair
     </a>
     @endif
 
-    {{-- Ang LRA: Job Fair. Ang page nagsulti kinsa nga employer ang niapil sa
-         usa ka fair, mao nga ang ngalan sa fair mismo ang husto. Ang SRA naay
-         Job Fair nga tab na sa ibabaw, mao nga ang iyaha Participants gihapon
-         ug wala nausab ang sulod. --}}
-    @if(in_array($tabRole, ['lra', 'sra'], true))
+    {{-- Ang LRA ra. Ang page nagsulti kinsa nga employer ang niapil sa usa ka
+         fair, mao nga para niya ang ngalan sa fair mismo ang husto — Job Fair
+         ang iyang tab, ug kini ang bugtong agianan niya ngadto sa fair.
+
+         Ang SRA wala nay Participants nga tab. Naa na siyay Job Fair nga tab sa
+         ibabaw nga nagbuhat sa iyang trabaho didto, ug ang ikaduha nga tab
+         padulong sa parehas nga fair nagbahin sa pangutana sa duha ka lugar. --}}
+    @if($tabRole === 'lra')
     <a href="{{ route('staff.participants') }}" class="btn btn-sm fw-semibold"
        style="{{ $tabRoute === 'staff.participants' ? $tabOn : $tabOff }}{{ $tabBase }}">
-        <i class="ph-fill ph-{{ $tabRole === 'lra' ? 'calendar-dots' : 'users-three' }} me-1"></i>
-        {{ $tabRole === 'lra' ? 'Job Fair' : 'Participants' }}
+        <i class="ph-fill ph-calendar-dots me-1"></i> Job Fair
     </a>
     @endif
 

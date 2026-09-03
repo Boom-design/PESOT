@@ -22,10 +22,23 @@
 
 {{-- ── SIDEBAR ── --}}
 <div class="sidebar">
+    {{-- The office name lives in the topbar. Under the logo the sidebar names
+         who is signed in, which is the one thing that differs per session. --}}
     <div class="sidebar-brand">
         <img src="{{ asset('images/peso_logo.png') }}" alt="PESO Logo">
-        <div class="brand-title">PUBLIC EMPLOYMENT SERVICE OFFICE</div>
-        <div class="brand-sub">A Web-based Job Management System</div>
+        <div class="brand-user">
+            <div class="avatar">
+                @if(Auth::user()->profile_photo)
+                    <img src="{{ asset('storage/'.Auth::user()->profile_photo) }}" alt="">
+                @else
+                    <i class="ph ph-user"></i>
+                @endif
+            </div>
+            <div class="brand-user-text">
+                <div class="u-name">{{ Auth::user()->name ?? 'Admin' }}</div>
+                <div class="u-role">Administrator</div>
+            </div>
+        </div>
     </div>
 
     {{-- Red dot per nav item — see App\Support\NavAlerts for what counts. --}}
@@ -82,21 +95,6 @@
         </ul>
     </nav>
 
-    <div class="sidebar-footer">
-        <div class="sidebar-user">
-            <div class="avatar">
-                @if(Auth::user()->profile_photo)
-                    <img src="{{ asset('storage/'.Auth::user()->profile_photo) }}" alt="">
-                @else
-                    <i class="ph ph-user"></i>
-                @endif
-            </div>
-            <div style="min-width:0;flex:1;">
-                <div class="u-name">{{ Auth::user()->name ?? 'Admin' }}</div>
-                <div class="u-role">Administrator</div>
-            </div>
-        </div>
-    </div>
 </div>
 
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
@@ -115,11 +113,14 @@
         <button class="hamburger" onclick="toggleSidebar()" type="button">
             <i class="ph ph-list"></i>
         </button>
-        {{-- No page title here. Not one admin page sets @section('page-title'),
-             so the fallback printed "Dashboard" across Manage Users, Job
-             Activities, Registrations and Reports alike — a heading that was
-             wrong on four pages out of five. Each page already carries its own
-             heading in its content. --}}
+        {{-- Not one admin page sets a page title, so the fallback printed
+             "Dashboard" across Manage Users, Job Activities, Registrations and
+             Reports alike. The office name stands here instead; each page
+             carries its own heading in its content. --}}
+        <div class="topbar-brand">
+            <div class="topbar-brand-title">PUBLIC EMPLOYMENT SERVICE OFFICE</div>
+            <div class="topbar-brand-sub">A Web-based Job Management System</div>
+        </div>
     </div>
 
     <div class="d-flex align-items-center gap-2">

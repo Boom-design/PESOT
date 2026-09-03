@@ -18,7 +18,7 @@ class ResetEmployerInactivity extends Command
     // kung limpyohan una ang mga kolum. Kini ang naglimpyo kanila.
     //
     // Ang account mismo wala gihilabti. Kung na-inactive na siya, ang
-    // pag-abli pag-usab kay desisyon sa staff sa Inactive Employers nga tab,
+    // pag-abli pag-usab kay desisyon sa staff sa Inactive Employer Account nga tab,
     // dili usa ka butang nga hilom nga buhaton sa usa ka command.
     public function handle()
     {
@@ -64,7 +64,7 @@ class ResetEmployerInactivity extends Command
 
         if ($employers->contains(fn($e) => $e->dormant_at)) {
             $this->warn('Some of these accounts are still inactive. Switch them back on from'
-                . ' Employers → Inactive Employers; that is the staff\'s decision, not this command\'s.');
+                . ' Employers → Inactive Employer Account; that is the staff\'s decision, not this command\'s.');
         }
 
         return 0;

@@ -122,6 +122,16 @@ class ApplicationController extends Controller
         ]);
 
         $registration = JobseekerRegistration::findOrFail($registrationId);
+
+        // ── Walk-in ra. Ang jobseeker nga siya mismo ang nag-rehistro naay
+        // ── kaugalingong account ug siya na ang mo-apply; ang porma tinago na
+        // ── sa iyang panid, ug ang pagtago dili igo — kining route mahimo pang
+        // ── tawgon nga diretso. Dinhi mahunong. ──
+        if (!$registration->is_walk_in) {
+            return back()->with('error',
+                'This jobseeker registered online and applies from their own account.');
+        }
+
         // Parehas nga lagda sa walk-in nga gi-apply sa staff: ang nalabyan ug
         // ang napuno nga bakante dili na dawaton.
         $job = Job::active()->where('job_qualifications_id', $request->job_id)->first();

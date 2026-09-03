@@ -14,7 +14,14 @@
 
 @include('staff.shared.show-content')
 
-{{-- ── APPLY TO JOB (para sa walk-in jobseekers nga walay email/phone para self-apply) ── --}}
+{{-- ── APPLY TO JOB — WALK-IN ONLY ──
+
+     A jobseeker who registered here signed up themselves and applies the same
+     way; putting the form on their page invites staff to apply on behalf of
+     somebody who never asked for it. The walk-in is the one with no account to
+     do it from, so this is the only page where the form belongs — and it sits
+     at the very end, after the whole NSRP form has been read. ── --}}
+@if($registration->is_walk_in)
 <div class="card border-0 shadow-sm rounded-3 mt-4">
     <div class="card-header border-0 py-3 px-4" style="background:var(--g-600);border-radius:12px 12px 0 0;">
         <h6 class="mb-0 fw-bold text-white"><i class="ph-fill ph-paper-plane-tilt me-2"></i>Apply to a Job Posting</h6>
@@ -51,5 +58,6 @@
         @endif
     </div>
 </div>
+@endif
 
 @endsection
