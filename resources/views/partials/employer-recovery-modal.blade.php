@@ -141,14 +141,28 @@
                          ug ang email ngadto sa mga bili nga naa na sila, ug
                          mag-file ug audit nga nagsulti nga nabalhin ang account
                          nga walay nabalhin. --}}
-                    <label class="d-flex align-items-start gap-2 p-2 rounded-3 mb-3"
-                           style="border:1px solid var(--n-200);cursor:pointer;background:var(--n-50);">
+                    {{-- Naka-disable hangtod mapislit ang Reset sa taas.
+                         Parehas nga pultahan sa contact field: ang pag-ilis ug
+                         password sa account sa lain nga tawo dili angay usa ka
+                         pislit ang gilay-on gikan sa pag-abli ra sa window aron
+                         tan-awon ang detalye. Usa ka tinuyo nga lakang una, ug
+                         ang parehas nga lakang mo-abli sa duha. --}}
+                    <label class="d-flex align-items-start gap-2 p-2 rounded-3 mb-3 js-recover-reset-wrap"
+                           style="border:1px solid var(--n-200);cursor:not-allowed;background:var(--n-50);opacity:0.55;">
+                        {{-- Gibalik nga porma nga naay sayop: ang tikan magpabilin,
+                             kay ang setLocked sa ubos mo-abli sa porma kung naay
+                             sayop ug dili niya kini hikapon. --}}
                         <input class="form-check-input mt-1 flex-shrink-0 js-recover-reset" type="checkbox"
-                               name="reset_password" value="1">
+                               name="reset_password" value="1"
+                               {{ old('reset_password') ? 'checked' : '' }}
+                               {{ $errors->any() ? '' : 'disabled' }}>
                         <span style="font-size:12px;color:var(--n-700);line-height:1.5;">
                             <strong style="color:var(--g-700);">Reset their password too</strong><br>
                             Tick this when the same person simply cannot get in. Leave it alone
                             when you are only editing the details above.
+                            <span class="js-recover-reset-hint" style="display:block;margin-top:3px;color:var(--n-500);">
+                                Press Reset above to use this.
+                            </span>
                         </span>
                     </label>
                     @endif
@@ -178,10 +192,43 @@
                                    name="method" value="temp_password">
                             <span style="font-size:12px;color:var(--n-700);line-height:1.5;">
                                 <strong style="color:var(--g-700);">Temporary password over the phone</strong><br>
-                                For a caller with no working inbox. Shown to you once, read it out,
+                                For a caller with no working inbox. You write it below, read it out,
                                 and they must change it the moment they log in.
                             </span>
                         </label>
+                    </div>
+
+                    {{-- ── ANG PASSWORD NGA IMONG ISULTI ──
+                         Ikaw ang nagsulat niini, dili ang sistema. Basahon nimo
+                         siya sa telepono, ug ikaw ra ang nakabalo kung unsay
+                         masabtan sa linya ug unsay dali litukon. Ang gi-generate
+                         nga hilo kinahanglan pang litukon, isulat sa papel ug
+                         balikon, ug ang matag balik usa ka higayon nga masayop.
+
+                         Motungha ra kini kung naay password nga ihatag: gitikan
+                         ang Reset, o gipili ang temporary password. --}}
+                    <div class="mb-3 js-recover-temp" style="display:{{ $errors->has('temp_password') ? 'block' : 'none' }};">
+                        <label class="form-label fw-semibold" style="font-size:12px;color:var(--g-700);">
+                            Temporary password you will read out *
+                        </label>
+                        <input type="text" name="temp_password"
+                               class="form-control @error('temp_password') is-invalid @enderror"
+                               value="{{ old('temp_password') }}"
+                               autocomplete="off" spellcheck="false"
+                               placeholder="e.g. Kalinaw2026"
+                               style="border:1px solid var(--n-200);border-radius:8px;font-size:13px;">
+                        @error('temp_password')
+                            <div class="invalid-feedback d-block" style="font-size:11.5px;">{{ $message }}</div>
+                        @enderror
+                        <div class="d-flex align-items-start gap-2 p-2 mt-2 rounded-3"
+                             style="background:#FEF7E0;border:1px solid #F5D98B;">
+                            <i class="ph-fill ph-warning-circle" style="color:#B7791F;font-size:15px;margin-top:1px;"></i>
+                            <span style="font-size:11.5px;color:var(--n-700);line-height:1.5;">
+                                At least 4 characters. Pick something easy to say and hard to mishear.
+                                This is temporary — they cannot open a single page until they change it,
+                                and the change screen applies the full password rules.
+                            </span>
+                        </div>
                     </div>
 
                     @if($showStatus)
@@ -242,6 +289,7 @@
     if (!modal) return;
 
     const methodBlock = modal.querySelector('.js-recover-method');
+    const tempBlock   = modal.querySelector('.js-recover-temp');
     const watched     = modal.querySelectorAll('.js-recover-contact');
     const resetBox    = modal.querySelector('.js-recover-reset');
     if (!methodBlock || !watched.length) return;
@@ -252,13 +300,26 @@
     const contactEdited = () =>
         Array.from(watched).some(input => input.value.trim() !== (input.dataset.original || '').trim());
 
+    // Ang password nga kahon motungha kung naay password nga ihatag: gitikan
+    // ang Reset, o gipili ang temporary password imbes ang email nga code.
+    const methodPicked = () => {
+        const chosen = modal.querySelector('input[name="method"]:checked');
+        return chosen && chosen.value === 'temp_password';
+    };
+
     const sync = () => {
         const needed = contactEdited() || (resetBox && resetBox.checked);
         methodBlock.style.display = needed ? 'block' : 'none';
+
+        if (tempBlock) {
+            const wantsPassword = (resetBox && resetBox.checked) || (needed && methodPicked());
+            tempBlock.style.display = wantsPassword ? 'block' : 'none';
+        }
     };
 
     watched.forEach(input => input.addEventListener('input', sync));
     if (resetBox) resetBox.addEventListener('change', sync);
+    modal.querySelectorAll('input[name="method"]').forEach(r => r.addEventListener('change', sync));
 
     // ── Ang Reset ang mo-abli sa upat ka contact field ──
     //
@@ -267,6 +328,9 @@
     // gihapon sa contact person ug sa email bisan ang status ra ang giusab.
     const unlock   = modal.querySelector('.js-recover-unlock');
     const lockable = modal.querySelectorAll('.js-recover-lockable');
+
+    const resetWrap = modal.querySelector('.js-recover-reset-wrap');
+    const resetHint = modal.querySelector('.js-recover-reset-hint');
 
     const setLocked = (locked) => {
         lockable.forEach(input => {
@@ -277,10 +341,24 @@
             unlock.disabled = !locked;
             unlock.style.opacity = locked ? '1' : '0.5';
         }
+
+        // Ang parehas nga Reset ang mo-abli sa checkbox. Samtang naka-lock,
+        // gi-uncheck pud siya: ang tikan nga kahon nga dili ma-tangtang usa ka
+        // gipili nga dili na mabakwi.
+        if (resetBox) {
+            resetBox.disabled = locked;
+            if (locked) resetBox.checked = false;
+        }
+        if (resetWrap) {
+            resetWrap.style.opacity = locked ? '0.55' : '1';
+            resetWrap.style.cursor  = locked ? 'not-allowed' : 'pointer';
+        }
+        if (resetHint) resetHint.style.display = locked ? 'block' : 'none';
     };
 
     if (unlock) unlock.addEventListener('click', () => {
         setLocked(false);
+        sync();
         const firstField = lockable[0];
         if (firstField) firstField.focus();
     });
@@ -293,6 +371,10 @@
         });
         setLocked(true);
         if (resetBox) resetBox.checked = false;
+        // Ang gi-type nga password dili gyud angay mabilin para sa sunod nga
+        // employer nga ablihan: isulti unta siya sa lain nga tawo.
+        const tempInput = modal.querySelector('input[name="temp_password"]');
+        if (tempInput) tempInput.value = '';
         sync();
     });
 

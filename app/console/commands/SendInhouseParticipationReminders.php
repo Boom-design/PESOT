@@ -10,16 +10,21 @@ use Illuminate\Console\Command;
 class SendInhouseParticipationReminders extends Command
 {
     protected $signature = 'inhouse:send-participation-reminders';
-    protected $description = 'Notify jobseekers to confirm in-house interview participation once the schedule is 5 days away';
+    protected $description = 'Remind jobseekers who never answered the in-house participation question, five days before the schedule';
 
+    /**
+     * The nudge, not the question.
+     *
+     * The question is asked the moment they apply. This is for the jobseeker
+     * who closed that window without answering: five days before the date,
+     * once, they are asked again. Exactly five — a range would send the same
+     * reminder every day from T-5 to the morning of the interview.
+     */
     public function handle()
     {
-        $targetDate = today()->addDays(5);
-
         $jobs = Job::where('schedule_type', 'inhouse')
             ->where('posting_status', 'approved')
-            ->whereDate('preferred_date', '<=', $targetDate)
-            ->whereDate('preferred_date', '>=', today())
+            ->whereDate('preferred_date', '=', today()->addDays(5))
             ->get();
 
         $totalSent = 0;
@@ -27,7 +32,6 @@ class SendInhouseParticipationReminders extends Command
         foreach ($jobs as $job) {
             $applications = Application::where('job_id', $job->job_qualifications_id)
                 ->where('inhouse_participation', 'pending')
-                ->whereNull('inhouse_participation_notified_at')
                 ->get();
 
             foreach ($applications as $app) {

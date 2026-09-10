@@ -117,7 +117,7 @@
 
             @php
             $docs = [
-                ['field' => 'business_permit',             'label' => 'CDO Business Permit', 'year' => true,         'icon' => 'ph ph-buildings',          'hint' => 'Upload a clear photo or scan of your business permit, and say which year it covers.'],
+                ['field' => 'business_permit',             'label' => 'CDO Business Permit', 'icon' => 'ph ph-buildings',          'hint' => 'Upload a clear photo or scan of your business permit, and enter the expiry date printed on it.'],
                 ['field' => 'sec_dti',                     'label' => 'SEC / DTI',                                   'icon' => 'ph ph-bank',              'hint' => 'SEC for Corporation, DTI for Single Proprietorship.'],
                 ['field' => 'company_profile',             'label' => 'Company Profile',                             'icon' => 'ph ph-identification-card',       'hint' => 'Upload your company profile document.'],
                 ['field' => 'no_pending_case_certificate', 'label' => 'Certificate of No Pending Case',             'icon' => 'ph ph-seal-check',       'hint' => 'From DOLE-CDO Field Office. Pwede to-follow.'],
@@ -215,42 +215,26 @@
                                 <div class="invalid-feedback" style="font-size:11px;">{{ $message }}</div>
                             @enderror
 
-                            @if(!empty($doc['year']))
-                                {{-- The permit is issued per calendar year, so the year is
-                                     what it is asked for — not a date the employer has to
-                                     read off the paper and copy. The office allows three
-                                     months into the next year to renew. --}}
-                                <label class="mt-2 mb-1" style="font-size:10.5px;color:var(--n-500);display:block;">Permit Year</label>
-                                <select name="business_permit_year"
-                                        class="form-select @error('business_permit_year') is-invalid @enderror"
-                                        style="font-size:12px; border-radius:8px; border-color:{{ $isFlagged ? 'var(--danger)' : 'var(--n-200)' }};">
-                                    <option value="">Select year</option>
-                                    @foreach(range(now()->year + 1, now()->year - 2) as $year)
-                                        <option value="{{ $year }}"
-                                            {{ (int) old('business_permit_year', $requirement?->business_permit_year ?? now()->year) === $year ? 'selected' : '' }}>
-                                            {{ $year }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('business_permit_year')
-                                    <div class="invalid-feedback" style="font-size:11px;">{{ $message }}</div>
-                                @enderror
-                                <div style="font-size:10.5px;color:var(--n-500);margin-top:4px;">
-                                    A {{ now()->year }} permit carries your account until
-                                    <strong style="color:var(--g-700);">31 March {{ now()->year + 1 }}</strong>.
-                                </div>
-                            @else
-                                {{-- Expiry date (required together with a new file) — pre-filled sa naa nang saved date kung naa --}}
-                                <label class="mt-2 mb-1" style="font-size:10.5px;color:var(--n-500);display:block;">Expiry Date</label>
-                                <input type="date"
-                                       name="{{ $doc['field'] }}_expires_at"
-                                       class="form-control @error($doc['field'].'_expires_at') is-invalid @enderror"
-                                       value="{{ old($doc['field'].'_expires_at', optional($requirement?->{$doc['field'].'_expires_at'})->format('Y-m-d')) }}"
-                                       style="font-size:12px; border-radius:8px; border-color:{{ $isFlagged ? 'var(--danger)' : 'var(--n-200)' }};">
+                            {{-- Expiry date (required together with a new file) — pre-filled sa naa nang saved date kung naa --}}
+                            <label class="mt-2 mb-1" style="font-size:10.5px;color:var(--n-500);display:block;">Expiry Date</label>
+                            <input type="date"
+                                   name="{{ $doc['field'] }}_expires_at"
+                                   class="form-control @error($doc['field'].'_expires_at') is-invalid @enderror"
+                                   value="{{ old($doc['field'].'_expires_at', optional($requirement?->{$doc['field'].'_expires_at'})->format('Y-m-d')) }}"
+                                   style="font-size:12px; border-radius:8px; border-color:{{ $isFlagged ? 'var(--danger)' : 'var(--n-200)' }};">
 
-                                @error($doc['field'].'_expires_at')
-                                    <div class="invalid-feedback" style="font-size:11px;">{{ $message }}</div>
-                                @enderror
+                            @error($doc['field'].'_expires_at')
+                                <div class="invalid-feedback" style="font-size:11px;">{{ $message }}</div>
+                            @enderror
+                            @if($doc['field'] === 'business_permit')
+                                {{-- The city does not issue the next permit the morning
+                                     after this one lapses, so the account keeps working
+                                     for a while past the date on the paper. --}}
+                                <div style="font-size:10.5px;color:var(--n-500);margin-top:4px;">
+                                    After it expires, your account keeps working for
+                                    <strong style="color:var(--g-700);">{{ config('peso.employer.business_permit_grace_months', 3) }} more months</strong>
+                                    while you renew.
+                                </div>
                             @endif
                         @endif
                     </div>

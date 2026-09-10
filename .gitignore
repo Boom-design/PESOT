@@ -42,3 +42,4 @@ yarn-error.log
 
 # Demo helper, not part of the system (see the header inside the file).
 /test-clock.php
+/philsms-check.php

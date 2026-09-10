@@ -52,7 +52,7 @@ class Announcement extends Model
             'employer_inactivity'    => $this->employerInactivityUrl(),
             'jobseeker_registration' => route('staff.registrations.view', $this->reference_id),
             'jobseeker_notice'       => route('staff.registrations'),
-            'job'                    => route('staff.jobs'),
+            'job'                    => $this->jobNoticeUrl(),
             'inhouse_schedule'       => route('staff.inhouse'),
             'job_fair'               => route('staff.jobfair.events'),
             // Ang pagpili sa SRA. Dili ni mahimong 'job_fair': kana nga route
@@ -62,6 +62,46 @@ class Announcement extends Model
             'job_fair_selection'     => route('staff.inhouse.jobfair', ['panel' => 'invite']),
             default                  => route('staff.notifications.index'),
         };
+    }
+
+    /**
+     * A posting notice opens the tab that posting is listed on.
+     *
+     * Every one of them used to land on staff.jobs, which is the Company
+     * Interview list. A job fair posting is not on it, so the desk was dropped
+     * on a page that did not contain the thing it had just been told about,
+     * with no hint of where to look.
+     *
+     * The tab is named, never left to the page's own default. Bare staff.jobs
+     * is the Company Interview list for Job Vacancy staff but the In-house one
+     * for SRA — jobVacancies() reads request('type', 'inhouse') for that role —
+     * so an SRA notice about a company interview posting opened a tab the
+     * posting was not on. Saying which tab makes the link mean the same thing
+     * at every desk.
+     */
+    private function jobNoticeUrl(): string
+    {
+        $job = Job::find($this->reference_id);
+
+        if ($job?->schedule_type === 'job_fair') {
+            return route('staff.inhouse.jobfair');
+        }
+
+        if ($job?->schedule_type === 'inhouse') {
+            return route('staff.jobs', ['type' => 'inhouse']);
+        }
+
+        // An overseas company interview posting waits for the SRA before
+        // jobseekers see it, and the Approve and Reject buttons live on the
+        // Pending Company Interview tab, not on the Company Interview list —
+        // that list is the record of what has already been solicited. The
+        // notice has to open the tab the desk can act on, or it is an errand
+        // rather than a link.
+        if ($job?->posting_status === 'pending') {
+            return route('staff.jobs', ['type' => 'company_interview_pending']);
+        }
+
+        return route('staff.jobs', ['type' => 'company_interview']);
     }
 
     /**
@@ -85,23 +125,52 @@ class Announcement extends Model
     }
 
     // ── Helpers — parehas ra ka signature sa daan, pero karon 1 row per recipient sa parehas nga table ──
+    /**
+     * One id, a plain array of ids, or a collection of them — as a plain array.
+     *
+     * The three senders below used to work this out inline with
+     * `is_iterable($ids) ? $ids->toArray() : [$ids]`. A plain PHP array is
+     * iterable and has no toArray(), so every caller that passed one — such as
+     * `[$participant->employer_id]` in decideOverseasSelection() — died on
+     * "Call to a member function toArray() on array". The `?? $ids` after it
+     * could not help: the call had already thrown.
+     *
+     * Written once, so the same mistake cannot be made in three places.
+     */
+    private static function recipientIds($ids): array
+    {
+        if ($ids instanceof \Illuminate\Support\Collection) {
+            return $ids->all();
+        }
+
+        if (is_array($ids)) {
+            return $ids;
+        }
+
+        if (is_iterable($ids)) {
+            return iterator_to_array($ids);
+        }
+
+        return $ids === null ? [] : [$ids];
+    }
+
     public static function sendToJobseekers(array $data, $jobseekerIds)
     {
-        foreach ((array) (is_iterable($jobseekerIds) ? $jobseekerIds->toArray() ?? $jobseekerIds : [$jobseekerIds]) as $id) {
+        foreach (self::recipientIds($jobseekerIds) as $id) {
             self::create(array_merge($data, ['jobseeker_id' => $id]));
         }
     }
 
     public static function sendToEmployers(array $data, $employerIds)
     {
-        foreach ((array) (is_iterable($employerIds) ? $employerIds->toArray() ?? $employerIds : [$employerIds]) as $id) {
+        foreach (self::recipientIds($employerIds) as $id) {
             self::create(array_merge($data, ['employer_id' => $id]));
         }
     }
 
     public static function sendToStaff(array $data, $staffIds)
     {
-        foreach ((array) (is_iterable($staffIds) ? $staffIds->toArray() ?? $staffIds : [$staffIds]) as $id) {
+        foreach (self::recipientIds($staffIds) as $id) {
             self::create(array_merge($data, ['staff_id' => $id]));
         }
     }

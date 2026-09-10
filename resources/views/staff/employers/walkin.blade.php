@@ -43,7 +43,7 @@
                 Register an employer who turned up for a job fair, attach their requirements,
                 and bring their vacancy to the event
             @else
-                Register {{ $isOverseas ? 'an overseas' : 'a local' }} employer at the counter,
+                Register {{ $isOverseas ? 'an overseas' : 'a local' }} employer at the PESO Office,
                 attach their requirements, and post their vacancy
             @endif
         </div>
@@ -77,10 +77,10 @@
               'total_workforce', 'line_of_business', 'industry_group',
               'est_province', 'est_city_municipality', 'est_barangay'],
         2 => ['contact_title', 'contact_person', 'position_title',
-              'telephone_no', 'mobile_number', 'fax_no', 'email'],
+              'telephone_no', 'mobile_number', 'fax_no', 'email', 'temp_password'],
         3 => ['business_permit', 'sec_dti', 'company_profile',
               'no_pending_case_certificate', 'vacancy_posting',
-              'company_logo', 'business_permit_year',
+              'company_logo',
               'business_permit_expires_at', 'sec_dti_expires_at',
               'company_profile_expires_at', 'no_pending_case_certificate_expires_at',
               'vacancy_posting_expires_at'],
@@ -312,13 +312,29 @@
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="p-3 rounded-3 h-100 d-flex align-items-center"
+                        <label class="peso-label">Temporary Password *</label>
+                        <input type="text" name="temp_password" id="tempPasswordInput"
+                               class="form-control peso-input" value="{{ old('temp_password') }}"
+                               maxlength="64" required
+                               placeholder="e.g. the contact person's first name">
+                        @error('temp_password')
+                            <div style="font-size:11px;color:var(--danger);margin-top:2px;">{{ $message }}</div>
+                        @enderror
+                        {{-- Ang staff ang mosulat niini, dili ang sistema: ang
+                             employer naa sa atubangan niya, ug ang usa ka
+                             gihimo nga 12 ka karakter kinahanglan pa basahon,
+                             sulaton ug ulit-uliton. Sayon lang siya tinuyo -
+                             pugson man siya nga mo-ilis dayon sa unang
+                             login. --}}
+                        <div class="p-3 rounded-3 mt-2"
                              style="background:#fff5e0;border:1px solid #e0b64d;">
                             <div style="font-size:11.5px;color:#6b4500;line-height:1.6;">
                                 <i class="ph-fill ph-key me-1"></i>
-                                This email is the employer's login. A <strong>temporary password</strong> is
-                                generated on save and shown to you once — read it to them before you leave the
-                                page. They are forced to change it at first login.
+                                The email above is the employer's login. Write a short password
+                                you can say out loud at the PESO Office - the employer is
+                                <strong>forced to change it</strong> the first time they sign in,
+                                so it does not need to be strong. It is shown to you once more
+                                after saving.
                             </div>
                         </div>
                     </div>
@@ -355,27 +371,13 @@
                         <label class="peso-label">{{ $i + 1 }}. {{ $doc['label'] }} *</label>
                         <input type="file" name="{{ $doc['field'] }}" class="form-control peso-input"
                                accept=".jpg,.jpeg,.png,.pdf" required>
-                        @if(!empty($doc['year']))
-                            {{-- Tinuig ang permit, mao nga tuig ang gipangayo. Ang
-                                 petsa (Dis 31) gikalkula sa server gikan sa tuig. --}}
-                            <label class="peso-label mt-1" style="font-weight:400;">Permit year *</label>
-                            <select name="business_permit_year" class="form-select peso-input" required>
-                                @foreach(range(now()->year + 1, now()->year - 2) as $year)
-                                    <option value="{{ $year }}" {{ (int) old('business_permit_year', now()->year) === $year ? 'selected' : '' }}>{{ $year }}</option>
-                                @endforeach
-                            </select>
-                            @error('business_permit_year')
-                                <div style="font-size:11px;color:var(--danger);margin-top:2px;">{{ $message }}</div>
-                            @enderror
-                        @else
-                            <label class="peso-label mt-1" style="font-weight:400;">Expiry date *</label>
-                            <input type="date" name="{{ $doc['field'] }}_expires_at" class="form-control peso-input"
-                                   value="{{ old($doc['field'].'_expires_at') }}"
-                                   min="{{ now()->addDay()->format('Y-m-d') }}" required>
-                            @error($doc['field'].'_expires_at')
-                                <div style="font-size:11px;color:var(--danger);margin-top:2px;">{{ $message }}</div>
-                            @enderror
-                        @endif
+                        <label class="peso-label mt-1" style="font-weight:400;">Expiry date *</label>
+                        <input type="date" name="{{ $doc['field'] }}_expires_at" class="form-control peso-input"
+                               value="{{ old($doc['field'].'_expires_at') }}"
+                               @if(empty($doc['year'])) min="{{ now()->addDay()->format('Y-m-d') }}" @endif required>
+                        @error($doc['field'].'_expires_at')
+                            <div style="font-size:11px;color:var(--danger);margin-top:2px;">{{ $message }}</div>
+                        @enderror
                         @error($doc['field'])
                             <div style="font-size:11px;color:var(--danger);margin-top:2px;">{{ $message }}</div>
                         @enderror
@@ -518,7 +520,9 @@
                                 no other company can take it. The PESO Office takes
                                 {{ $inhouseDailyLimit }} {{ $inhouseDailyLimit === 1 ? 'company' : 'companies' }}
                                 a day; a full day is crossed out on the calendar. Holidays cannot be
-                                picked; weekends can. The date is not final until <strong>LRA accepts</strong> it.
+                                picked; weekends can. You verified the papers at the PESO Office, so the dates you
+                                pick here are <strong>confirmed on save</strong> - the desk is told, it does
+                                not have to accept them.
                             </div>
                             <div id="walkinDateAvailability" style="font-size:11px;margin-top:4px;"></div>
                             @error('inhouse_date')
@@ -671,7 +675,7 @@
                         <input class="form-check-input" type="checkbox" name="certification_agreed"
                                value="1" id="certAgreed" {{ old('certification_agreed') ? 'checked' : '' }} required>
                         <label class="form-check-label" style="font-size:12px;" for="certAgreed">
-                            The employer agreed to the certification at the counter.
+                            The employer agreed to the certification at the PESO Office.
                         </label>
                     </div>
                 </div>

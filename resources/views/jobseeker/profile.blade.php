@@ -32,7 +32,7 @@
     <div class="peso-card fade-in mb-4">
         <div class="peso-card-body">
             <div class="d-flex align-items-center gap-3 flex-wrap">
-                <div style="width:72px;height:72px;background:var(--g-600);flex:0 0 auto;
+                <div id="pesoAvatarPreview" style="width:72px;height:72px;background:var(--g-600);flex:0 0 auto;
                             border-radius:50%;display:flex;align-items:center;justify-content:center;
                             font-size:32px;color:#fff;overflow:hidden;">
                     @if($jobseeker->profile_photo)
@@ -192,5 +192,7 @@
     </div>
 
 </div>
+
+@include('partials.photo-preview', ['input' => 'jobseekerPhotoInput', 'avatar' => 'pesoAvatarPreview'])
 
 @endsection

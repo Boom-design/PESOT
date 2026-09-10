@@ -23,7 +23,7 @@
                     'closed' => ['bg' => 'var(--n-500)',    'label' => 'Closed'],
                 ][$job->status] ?? ['bg' => 'var(--n-500)', 'label' => ucfirst($job->status)];
                 $postingBadge = [
-                    'pending'  => ['bg' => 'var(--warn)', 'label' => 'Pending Approval'],
+                    'pending'  => ['bg' => 'var(--warn)', 'label' => 'Pending'],
                     'approved' => ['bg' => 'var(--g-700)', 'label' => 'Approved'],
                     'rejected' => ['bg' => 'var(--danger)', 'label' => 'Rejected'],
                 ][$job->posting_status] ?? null;

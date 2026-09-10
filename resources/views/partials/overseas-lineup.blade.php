@@ -11,6 +11,13 @@
     invited already or not. One table, because the agency does not move: the
     invitation appears in its row.
 
+    PESO SRA, 2026-09-01: the invitation and the slot are two decisions. The SRA
+    invites after asking the head of the office, the agency answers, and then
+    the desk picks who is really brought. The second decision used to sit in its
+    own card above the table, so an agency that had answered was written on the
+    page twice. It is in the row now: Status carries what the agency said, and
+    Action carries what the desk can do about it.
+
     Needs: $lineupEvents, $lineupEvent, $lineupRows, $lineupOnTheList,
            $lineupAwaiting, $lineupIndustries, $lineupIndustry, $lineupUninvited.
 --}}
@@ -96,91 +103,6 @@
 
     @if($lineupEvent)
 
-        {{-- ── WAITING FOR A DECISION ──
-
-             Ang ahensya nga mitubag ug oo, apan wala pa nadesisyonan. Una siya
-             sa panid kay siya ra ang nagpaabot ug lihok — ang listahan sa ubos
-             basahon, kini aksyonan.
-
-             PESO SRA, 2026-09-01: ang imbitasyon ug ang lugar sa fair duha ka
-             desisyon. Gipangayo ang permiso sa pangulo sa dili pa moadto ang
-             imbitasyon; karon, kung kinsa ang tinuod nga dad-on, ang desk na
-             ang mopili gikan sa mitubag. --}}
-        @if($lineupAwaiting->isNotEmpty())
-        <div class="card border-0 shadow-sm rounded-3 mb-4 overflow-hidden">
-            <div class="card-header border-0 py-2 px-3" style="background:var(--warn);border-radius:12px 12px 0 0;">
-                <h6 class="mb-0 fw-bold text-white" style="font-size:13px;">
-                    <i class="ph ph-hourglass-medium me-2"></i>Waiting for your decision ({{ $lineupAwaiting->count() }})
-                </h6>
-            </div>
-            <div class="card-body p-3 d-flex flex-column gap-2">
-                @foreach($lineupAwaiting as $waiting)
-                <div class="rounded-3 p-3" style="border:1px solid var(--n-200);">
-                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
-                        <div>
-                            <div class="fw-semibold" style="color:var(--g-700);font-size:14px;">
-                                {{ $waiting->employer->company_name ?? 'None' }}
-                            </div>
-                            <div style="font-size:11.5px;color:var(--n-500);margin-top:2px;">
-                                Accepted {{ optional($waiting->responded_at)->format('M d, Y') ?? 'None' }}
-                                &nbsp;&bull;&nbsp;
-                                Invited by
-                                {{ $waiting->invitedBy->full_name
-                                    ?? $waiting->invitedBy->first_name
-                                    ?? 'the system' }}
-                            </div>
-                            @if($waiting->permission_note)
-                            <div style="font-size:11.5px;color:var(--n-500);margin-top:2px;">
-                                <i class="ph ph-note me-1"></i>{{ $waiting->permission_note }}
-                            </div>
-                            @endif
-                        </div>
-                        <div class="d-flex gap-2 align-items-start">
-                            <form action="{{ route('staff.jobfair.overseas.decide', $waiting->job_fair_participants_id) }}"
-                                  method="POST" class="d-inline">
-                                @csrf
-                                <input type="hidden" name="decision" value="confirmed">
-                                <button type="submit" class="btn btn-sm fw-semibold"
-                                    style="background:var(--g-600);color:#fff;border:none;border-radius:8px;font-size:11.5px;">
-                                    <i class="ph ph-check me-1"></i>Bring to fair
-                                </button>
-                            </form>
-                            <button type="button" class="btn btn-sm fw-semibold"
-                                data-bs-toggle="collapse"
-                                data-bs-target="#dropAgency{{ $waiting->job_fair_participants_id }}"
-                                style="border:1px solid var(--danger);color:var(--danger);background:#fff;border-radius:8px;font-size:11.5px;">
-                                <i class="ph ph-minus-circle me-1"></i>Not selected
-                            </button>
-                        </div>
-                    </div>
-
-                    {{-- Ang rason gikinahanglan. Ang ahensya mitubag ug oo, ug
-                         ang pagbalibad nga walay gisulti mao ang pagpasabot nga
-                         wala siyay angay masayran. --}}
-                    <div class="collapse mt-3" id="dropAgency{{ $waiting->job_fair_participants_id }}">
-                        <form action="{{ route('staff.jobfair.overseas.decide', $waiting->job_fair_participants_id) }}"
-                              method="POST">
-                            @csrf
-                            <input type="hidden" name="decision" value="not_selected">
-                            <label class="form-label fw-semibold" style="color:var(--danger);font-size:12px;">
-                                Why is this agency not being brought to the fair?
-                            </label>
-                            <textarea name="reason" rows="2" required maxlength="255"
-                                class="form-control mb-2"
-                                style="border:1px solid var(--n-200);border-radius:8px;font-size:13px;"
-                                placeholder="The agency is told this reason - write what they should know."></textarea>
-                            <button type="submit" class="btn btn-sm fw-semibold"
-                                style="background:var(--danger);color:#fff;border:none;border-radius:8px;font-size:11.5px;">
-                                <i class="ph ph-minus-circle me-1"></i>Confirm not selected
-                            </button>
-                        </form>
-                    </div>
-                </div>
-                @endforeach
-            </div>
-        </div>
-        @endif
-
         {{-- ── THE ONE TABLE ──
 
              Every overseas agency this fair can take, whether it has been
@@ -189,9 +111,10 @@
              button moved a row from the bottom table to the top one, so the
              desk lost the line it was reading.
 
-             Nothing moves now. The row stays where it is and the last column
-             changes: a Send Invitation button while there is nothing to say,
-             and the agency's own answer once there is. --}}
+             Nothing moves now. The row stays where it is and the last two
+             columns change: Send Invitation while there is nothing to say,
+             then the agency's answer, then Bring to fair or Not selected once
+             it is the desk's turn. --}}
         <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
             <div class="card-header border-0 py-2 px-3" style="background:var(--g-600);border-radius:12px 12px 0 0;">
                 <h6 class="mb-0 fw-bold text-white" style="font-size:13px;">
@@ -201,6 +124,11 @@
                     @endif
                     @if(($lineupUninvited ?? 0) > 0)
                     <span style="font-weight:500;opacity:0.85;"> · {{ $lineupUninvited }} not yet invited</span>
+                    @endif
+                    @if(($lineupAwaiting ?? collect())->isNotEmpty())
+                    <span class="badge ms-1" style="background:var(--warn);font-size:10px;vertical-align:middle;">
+                        {{ $lineupAwaiting->count() }} waiting for your decision
+                    </span>
                     @endif
                 </h6>
             </div>
@@ -214,6 +142,7 @@
                             <th style="background:var(--n-50);font-size:12px;border:none;padding:10px 16px;color:var(--g-700);">Company Email</th>
                             <th style="background:var(--n-50);font-size:12px;border:none;padding:10px 16px;color:var(--g-700);">Contact Number</th>
                             <th style="background:var(--n-50);font-size:12px;border:none;padding:10px 16px;color:var(--g-700);">Industry</th>
+                            <th style="background:var(--n-50);font-size:12px;border:none;padding:10px 16px;color:var(--g-700);">Status</th>
                             <th style="background:var(--n-50);font-size:12px;border:none;padding:10px 16px;color:var(--g-700);text-align:center;">Action</th>
                         </tr>
                     </thead>
@@ -242,50 +171,109 @@
                             <td style="padding:10px 16px;color:var(--n-700);">
                                 {{ $agency->industry_group ?: 'None' }}
                             </td>
-                            <td style="padding:10px 16px;text-align:center;">
+                            {{-- ANG KAHIMTANG UG ANG LIHOK, MAGLAIN NGA KOLUM
+
+                                 Usa ra sila ka kolum kaniadto, ug ang tulo ka
+                                 ahensya nga naghulat ug desisyon naa sa laing
+                                 kard sa taas sa lamesa - so ang parehas nga
+                                 ahensya gisulat ug kaduha sa panid.
+
+                                 Usa na lang ka laray kada ahensya. Ang gisulti
+                                 niya naa sa Status, ug ang mahimo nimo bahin
+                                 niya naa sa Action, sama sa ubang lamesa sa
+                                 sistema. --}}
+                            @php
+                                $lineupLabels = [
+                                    'pending'      => ['Awaiting reply',       'var(--warn)'],
+                                    'accepted'     => ['Accepted — your call', 'var(--warn)'],
+                                    'confirmed'    => ['In the fair',          'var(--g-700)'],
+                                    'not_selected' => ['Not selected',         'var(--n-500)'],
+                                    'declined'     => ['Agency declined',      'var(--danger)'],
+                                    'expired'      => ['No reply — lapsed',    'var(--n-500)'],
+                                ];
+                                [$lineupLabel, $lineupColor] = $participant
+                                    ? ($lineupLabels[$participant->confirmation_status]
+                                        ?? [ucfirst($participant->confirmation_status), 'var(--n-700)'])
+                                    : ['Not invited yet', 'var(--n-500)'];
+                            @endphp
+                            <td style="padding:10px 16px;">
+                                <span class="fw-semibold" style="color:{{ $lineupColor }};font-size:12.5px;">
+                                    {{ $lineupLabel }}
+                                </span>
                                 @if($participant)
-                                    {{-- Already invited. The button is gone because
-                                         the invitation cannot be sent twice; what
-                                         the agency said back takes its place. --}}
-                                    @php
-                                        $lineupLabels = [
-                                            'pending'      => ['Awaiting reply',       'var(--warn)'],
-                                            'accepted'     => ['Accepted — your call', 'var(--warn)'],
-                                            'confirmed'    => ['In the fair',          'var(--g-700)'],
-                                            'not_selected' => ['Not selected',         'var(--n-500)'],
-                                            'declined'     => ['Agency declined',      'var(--danger)'],
-                                            'expired'      => ['No reply — lapsed',    'var(--n-500)'],
-                                        ];
-                                        [$lineupLabel, $lineupColor] = $lineupLabels[$participant->confirmation_status]
-                                            ?? [ucfirst($participant->confirmation_status), 'var(--n-700)'];
-                                    @endphp
-                                    <span class="fw-semibold" style="color:{{ $lineupColor }};font-size:12.5px;">
-                                        {{ $lineupLabel }}
-                                    </span>
-                                    <div style="font-size:10.5px;color:var(--n-500);">
-                                        Invited {{ optional($participant->invited_at)->format('M d, Y') ?? 'None' }}
-                                        by {{ $participant->invitedBy->full_name
-                                                ?? $participant->invitedBy->first_name
-                                                ?? 'the system' }}
-                                    </div>
-                                    @if($participant->permission_note)
-                                    <div style="font-size:10.5px;color:var(--n-500);">
-                                        <i class="ph ph-note me-1"></i>{{ $participant->permission_note }}
-                                    </div>
+                                <div style="font-size:10.5px;color:var(--n-500);">
+                                    Invited {{ optional($participant->invited_at)->format('M d, Y') ?? 'None' }}
+                                    by {{ $participant->invitedBy->full_name
+                                            ?? $participant->invitedBy->first_name
+                                            ?? 'the system' }}
+                                    @if($participant->responded_at)
+                                    · answered {{ $participant->responded_at->format('M d, Y') }}
                                     @endif
-                                @else
+                                </div>
+                                @if($participant->permission_note)
+                                <div style="font-size:10.5px;color:var(--n-500);">
+                                    <i class="ph ph-note me-1"></i>{{ $participant->permission_note }}
+                                </div>
+                                @endif
+                                {{-- Wala pa siyay bakante alang niini nga fair.
+                                     Dili ni sayop ug dili siya mag-block: ang
+                                     ahensya mahimo pang mo-post, ug ang cutoff
+                                     modala sa bisan unsa nga naa nianang orasa.
+                                     Apan ang desk kinahanglan makabasa niini sa
+                                     wala pa siya mopindot ug Bring to fair -
+                                     booth nga walay bakante ang laing sangputanan. --}}
+                                @if(!$row->has_vacancy && in_array($participant->confirmation_status, ['accepted', 'confirmed'], true))
+                                <div class="fw-semibold" style="font-size:10.5px;color:var(--warn);margin-top:2px;">
+                                    <i class="ph-fill ph-warning-circle me-1"></i>No vacancy yet
+                                </div>
+                                @endif
+                                {{-- Ang rason sa pagbalibad basahon sa desk sa
+                                     ulahi. Kung ania ra siya sa modal nga
+                                     gisulatan, wala nay makakita niya human
+                                     ma-submit. --}}
+                                @if($participant->wasNotSelected() && $participant->sra_decision_note)
+                                <div style="font-size:10.5px;color:var(--n-500);">
+                                    <i class="ph ph-chat-text me-1"></i>{{ $participant->sra_decision_note }}
+                                </div>
+                                @endif
+                                @endif
+                            </td>
+                            <td style="padding:10px 16px;text-align:center;">
+                                @if(!$participant)
+                                    {{-- Wala pa siya na-imbitahi. --}}
                                     <button type="button" class="btn btn-sm fw-semibold"
                                         data-bs-toggle="modal"
                                         data-bs-target="#inviteAgency{{ $agency->employer_nsrp_registrations_id }}"
                                         style="background:var(--g-600);color:#fff;border:none;border-radius:8px;font-size:11.5px;white-space:nowrap;">
                                         <i class="ph ph-paper-plane-tilt me-1"></i>Send Invitation
                                     </button>
+                                @elseif($participant->awaitingSelection())
+                                    {{-- Mitubag na siya ug oo. Ang desk na ang mopili. --}}
+                                    <div class="d-flex gap-2 justify-content-center flex-wrap">
+                                        <form action="{{ route('staff.jobfair.overseas.decide', $participant->job_fair_participants_id) }}"
+                                              method="POST" class="d-inline">
+                                            @csrf
+                                            <input type="hidden" name="decision" value="confirmed">
+                                            <button type="submit" class="btn btn-sm fw-semibold"
+                                                style="background:var(--g-600);color:#fff;border:none;border-radius:8px;font-size:11.5px;white-space:nowrap;">
+                                                <i class="ph ph-check me-1"></i>Bring to fair
+                                            </button>
+                                        </form>
+                                        <button type="button" class="btn btn-sm fw-semibold"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#dropAgency{{ $participant->job_fair_participants_id }}"
+                                            style="border:1px solid var(--danger);color:var(--danger);background:#fff;border-radius:8px;font-size:11.5px;white-space:nowrap;">
+                                            <i class="ph ph-minus-circle me-1"></i>Not selected
+                                        </button>
+                                    </div>
+                                @else
+                                    <span style="font-size:11.5px;color:var(--n-400);">None</span>
                                 @endif
                             </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="6" class="text-center" style="padding:36px 16px;color:var(--n-500);font-size:13px;">
+                            <td colspan="7" class="text-center" style="padding:36px 16px;color:var(--n-500);font-size:13px;">
                                 <i class="ph ph-tray" style="font-size:40px;color:var(--n-300);display:block;margin-bottom:8px;"></i>
                                 @if($lineupIndustry ?? null)
                                     No approved overseas agency is registered under {{ $lineupIndustry }}.
@@ -349,6 +337,62 @@
                             </button>
                             <button type="submit" class="btn btn-peso px-4">
                                 <i class="ph ph-paper-plane-tilt me-1"></i> Send Invitation
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        @endforeach
+
+        {{-- ONE MODAL PER AGENCY WAITING FOR A DECISION
+
+             Ang rason gikinahanglan. Ang ahensya mitubag ug oo, ug ang
+             pagbalibad nga walay gisulti mao ang pagpasabot nga wala siyay
+             angay masayran.
+
+             Modal, dili collapse sulod sa laray: ang gibuklad nga porma sa
+             sulod sa usa ka <td> mopatunga sa lamesa ug motulod sa ubang
+             ahensya paubos. Gawas siya sa lamesa, sama sa porma sa pag-imbita. --}}
+        @foreach($lineupRows as $row)
+        @continue(!$row->participant || !$row->participant->awaitingSelection())
+        @php $agency = $row->employer; $waiting = $row->participant; @endphp
+        <div class="modal fade" id="dropAgency{{ $waiting->job_fair_participants_id }}" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content border-0 rounded-3">
+                    <form action="{{ route('staff.jobfair.overseas.decide', $waiting->job_fair_participants_id) }}"
+                          method="POST">
+                        @csrf
+                        <input type="hidden" name="decision" value="not_selected">
+
+                        <div class="modal-header border-0" style="background:var(--danger);">
+                            <h6 class="modal-title fw-bold text-white">
+                                <i class="ph-fill ph-minus-circle me-2"></i>Not selected: {{ $agency->company_name }}
+                            </h6>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+
+                        <div class="modal-body p-4">
+                            <div style="font-size:12.5px;color:var(--n-500);" class="mb-3">
+                                {{ $agency->company_name }} accepted the invitation to
+                                <strong style="color:var(--g-700);">{{ $lineupEvent->title }}</strong>.
+                                Turning them away is told to the agency, so write what they should know.
+                            </div>
+
+                            <label class="peso-label">Why is this agency not being brought to the fair? *</label>
+                            <textarea name="reason" rows="3" required maxlength="255"
+                                class="form-control peso-input"
+                                placeholder="e.g. The overseas slots for this fair are full."></textarea>
+                        </div>
+
+                        <div class="modal-footer border-0 pt-0">
+                            <button type="button" class="btn btn-sm fw-semibold" data-bs-dismiss="modal"
+                                style="border:1px solid var(--n-200);color:var(--g-700);background:#fff;border-radius:8px;">
+                                Cancel
+                            </button>
+                            <button type="submit" class="btn btn-sm fw-semibold px-4"
+                                style="background:var(--danger);color:#fff;border:none;border-radius:8px;">
+                                <i class="ph ph-minus-circle me-1"></i> Confirm not selected
                             </button>
                         </div>
                     </form>

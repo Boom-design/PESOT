@@ -608,11 +608,11 @@ foreach ($workExperiences as $exp) {
             $matchCriteria   = $breakdown['criteria'];
         }
 
-        // ── In-house: auto-prompt kung ≤5 days na lang ang nabilin sa preferred_date ug wala pa nagrespond ──
-        $showInhouseParticipationPrompt = false;
-        if ($application && $application->inhouse_participation === 'pending') {
-            $showInhouseParticipationPrompt = $job->isInhousePromptDue();
-        }
+        // ── In-house: mangutana samtang wala pa siya mitubag. Walay petsa nga
+        // ── sukdanan — ang wala matubag nga pangutana dili mawala tungod kay
+        // ── layo pa ang interview. ──
+        $showInhouseParticipationPrompt = $application
+            && $application->inhouse_participation === 'pending';
 
         return view('jobseeker.jobs.show', compact(
             'jobseeker', 'job', 'registration', 'nsrp',
@@ -757,7 +757,10 @@ foreach ($workExperiences as $exp) {
             ->withCount(['participants as confirmed_count' => function ($q) {
                 $q->where('confirmation_status', 'confirmed');
             }])
-            ->having('confirmed_count', '>=', 3)
+            // Parehas nga numero sa nag-abli sa notice ug sa SMS gate. Usa ra
+            // ka tinubdan: kung magkalahi sila, ang jobseeker makadawat ug
+            // notice para sa fair nga wala sa iyang panid.
+            ->having('confirmed_count', '>=', \App\Support\JobFairAudience::threshold())
             ->latest()
             ->get();
 

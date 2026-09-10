@@ -25,24 +25,24 @@ class ExpireEmployerRequirements extends Command
         $totalExpired = 0;
         $totalRestricted = 0;
 
-        // ── Ang permit tinuig, ug ang tuig mismo dili pa igo nga hinungdan sa
-        // ── pag-restrict. Ang siyudad dili mohatag sa bag-ong permit sa Enero 1;
-        // ── ang renewal season moabot sa unang quarter. Mao nga ang gisukod dinhi
-        // ── mao ang katapusan sa palugit — tan-awa ang
-        // ── EmployerRequirement::businessPermitGraceEndsAt(). ──
-        $months   = (int) config('peso.employer.business_permit_grace_months', 3);
-        $cutoff   = today()->subMonths($months)->year;   // ang tuig nga nahurot na ang palugit
+        // ── Ang paglabay sa petsa sa permit dili pa igo nga hinungdan sa
+        // ── pag-restrict. Ang siyudad dili mohatag sa bag-ong permit sa
+        // ── pagkasunod buntag; ang renewal season moabot sa unang quarter.
+        // ── Mao nga ang gisukod dinhi mao ang katapusan sa palugit — tan-awa
+        // ── ang EmployerRequirement::businessPermitGraceEndsAt(). ──
+        $months = (int) config('peso.employer.business_permit_grace_months', 3);
 
         $expired = EmployerRequirement::with('employer')
             ->where('status', 'approved')
-            ->whereNotNull('business_permit_year')
-            ->where('business_permit_year', '<', $cutoff)
+            ->whereNotNull('business_permit_expires_at')
+            ->where('business_permit_expires_at', '<', today()->subMonths($months))
             ->get()
             ->filter(fn($requirement) => $requirement->isBusinessPermitOverdue());
 
         foreach ($expired as $requirement) {
             $label    = $requirement->businessPermitLabel();
-            $dueYear  = $requirement->business_permit_year + 1;
+            $dueYear  = ($requirement->business_permit_year
+                            ?: $requirement->business_permit_expires_at->year) + 1;
             $deadline = $requirement->businessPermitGraceEndsAt()->format('F j, Y');
 
             $requirement->update([

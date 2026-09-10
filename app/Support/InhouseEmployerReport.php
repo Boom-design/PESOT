@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Models\InhouseSchedule;
 use App\Models\Job;
 use Carbon\Carbon;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 // ── Ang report sa usa ka employer human sa iyang in-house interview.
@@ -142,6 +143,43 @@ class InhouseEmployerReport
             })
             ->sortByDesc(fn(InhouseSchedule $s) => $s->confirmed_date ?: $s->preferred_date)
             ->values();
+    }
+
+    /**
+     * The two lists, paged for the screen.
+     *
+     * The LRA desk and the Admin master view show the same tab and must page it
+     * the same way. Written twice, they drift: one desk gets three rows a page
+     * and the other five, and the same report reads differently depending on
+     * who opened it.
+     *
+     * The CSV does not page — the whole list is still downloaded, filtered by
+     * the same search.
+     *
+     * @return array{postings:LengthAwarePaginator, roomOnly:LengthAwarePaginator}
+     */
+    public static function paged(bool $overseas, ?string $search = null): array
+    {
+        $page = function (Collection $rows, int $perPage, string $pageName) {
+            $current = (int) request($pageName, 1);
+
+            return new LengthAwarePaginator(
+                $rows->forPage($current, $perPage)->values(),
+                $rows->count(),
+                $perPage,
+                $current,
+                [
+                    'path'     => request()->url(),
+                    'pageName' => $pageName,
+                    'query'    => request()->query(),
+                ]
+            );
+        };
+
+        return [
+            'postings' => $page(self::completedPostings($overseas, $search), 3, 'er_page'),
+            'roomOnly' => $page(self::completedScheduleOnly($overseas, $search), 5, 'room_page'),
+        ];
     }
 
     /** Usa ka laray kada jobseeker, andam na para sa spreadsheet. */

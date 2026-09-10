@@ -5,7 +5,8 @@
     Active Vacancies tab on the same screen already uses search/vac_page, and
     the two lists must not move each other.
 
-    Expects: $applicants, $jobFairByJobId, $isConfirmed, $jfSearch.
+    Expects: $applicants, $jobFairByJobId, $isConfirmed, $jfSearch,
+             $jfEventOptions, $jfEventId.
 --}}
 
 @if(!$isConfirmed)
@@ -16,6 +17,16 @@
     </div>
 @else
 <div>
+    @php
+        // Usa ra ka fair ang giapilan? Nan siya na ang gipangutana, bisan
+        // walay gipili. Ang kinatibuk-ang pahimangno alang sa gisagol nga
+        // listahan, ug ang listahan nga usa ra ka fair dili gisagol.
+        $jfSelected = $jfEventId
+            ? $jfEventOptions->firstWhere('job_fair_events_id', (int) $jfEventId)
+            : ($jfEventOptions->count() === 1 ? $jfEventOptions->first() : null);
+        $jfState = $jfSelected ? \App\Support\JobFairDecisionWindow::state($jfSelected) : null;
+    @endphp
+
     <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
         <div>
             <h6 class="fw-bold mb-1" style="color:var(--g-700);">
@@ -26,8 +37,30 @@
             </p>
         </div>
 
-        <form method="GET" action="{{ route('company.jobseekers') }}">
+        <form method="GET" action="{{ route('company.jobseekers') }}"
+              class="d-flex gap-2 flex-wrap align-items-center">
             <input type="hidden" name="tab" value="applicants">
+
+            {{-- Ang fair, pilion kausa.
+                 Ang employer nga miapil ug tulo ka fair nagbasa sa tulo ka
+                 listahan nga gisagol; ang kolum sa Job Fair Event mao ra ang
+                 nagbulag kanila. Kining kahon nagbulag kanila sa ibabaw, ug
+                 siya usab ang nagtugot sa notes sa ubos nga mosulti ug tinuod
+                 nga petsa imbis sa kinatibuk-ang pahimangno. --}}
+            @if($jfEventOptions->isNotEmpty())
+            <select name="jf_event" class="form-select form-select-sm"
+                    style="max-width:250px;border-color:var(--n-200);font-size:12.5px;border-radius:8px;"
+                    onchange="this.form.submit()">
+                <option value="">All job fair events</option>
+                @foreach($jfEventOptions as $fair)
+                    <option value="{{ $fair->job_fair_events_id }}"
+                        {{ (int) $jfEventId === $fair->job_fair_events_id ? 'selected' : '' }}>
+                        {{ $fair->title }} · {{ $fair->event_date->format('M d, Y') }}
+                    </option>
+                @endforeach
+            </select>
+            @endif
+
             <div class="input-group" style="max-width:260px;">
                 <span class="input-group-text" style="border-color:var(--n-200);background:var(--n-50);">
                     <i class="ph ph-magnifying-glass" style="color:var(--g-600);"></i>
@@ -38,10 +71,55 @@
                     value="{{ $jfSearch }}">
                 <button type="submit" class="btn btn-peso">Search</button>
                 @if($jfSearch)
-                    <a href="{{ route('company.jobseekers', ['tab' => 'applicants']) }}" class="btn btn-peso-outline">Clear</a>
+                    <a href="{{ route('company.jobseekers', ['tab' => 'applicants', 'jf_event' => $jfEventId]) }}"
+                       class="btn btn-peso-outline">Clear</a>
                 @endif
             </div>
         </form>
+    </div>
+
+    {{-- ── UNSAY GIBUHAT NIINING LISTAHAN HUMAN SA FAIR ──
+
+         Ang employer nangutana ngano nga ania pa ang listahan nga human na
+         ang fair. Ang tubag mao nga dili tanan desisyon nahimo sa booth: ang
+         tawo nga gibutang sa Waiting mobalik sa opisina sa employer sa sunod
+         semana, ug didto siya ma-hire. Kanang ulahi nga hire mao ang giihap sa
+         Company Placement nga report sa PESO.
+
+         Mao nga ang notes wala magsulti ug "closed"; nagsulti siya kung unsay
+         nahibilin nga buhaton ug hangtod kanus-a. --}}
+    <div class="card border-0 shadow-sm rounded-3 p-3 mb-3"
+         style="background:{{ $jfState === 'closed' ? 'var(--n-50)' : 'var(--g-50)' }};">
+        <div class="d-flex align-items-start gap-2">
+            <i class="ph-fill {{ $jfState === 'closed' ? 'ph-lock-simple' : 'ph-info' }}"
+               style="color:{{ $jfState === 'closed' ? 'var(--n-500)' : 'var(--g-600)' }};
+                      font-size:17px;flex-shrink:0;margin-top:1px;"></i>
+            <div style="font-size:12px;color:var(--n-600);line-height:1.65;">
+                @if($jfSelected && $jfState === 'closed')
+                    <strong style="color:var(--n-700);">Decisions on this fair are closed.</strong>
+                    {{ $jfSelected->title }} was held
+                    {{ $jfSelected->event_date->format('M d, Y') }}, and the
+                    {{ \App\Support\JobFairDecisionWindow::days() }}-day window closed on
+                    {{ \App\Support\JobFairDecisionWindow::closesOn($jfSelected)->format('M d, Y') }}.
+                    The list stays as a record. Contact PESO if someone still has to be recorded.
+                @elseif($jfSelected && $jfSelected->event_date->isPast())
+                    <strong style="color:var(--g-700);">The fair is over — these are the people you met there.</strong>
+                    Anyone you put on <strong>Waiting</strong> and later hired at your own office
+                    is recorded here, and that is what the PESO Company Placement report counts.
+                    You have <strong>{{ \App\Support\JobFairDecisionWindow::daysLeft($jfSelected) }} day(s)</strong>
+                    left — this closes
+                    {{ \App\Support\JobFairDecisionWindow::closesOn($jfSelected)->format('M d, Y') }},
+                    {{ \App\Support\JobFairDecisionWindow::days() }} days after the fair.
+                @else
+                    <strong style="color:var(--g-700);">Not every decision is made at the booth.</strong>
+                    Someone you put on <strong>Waiting</strong> at the fair and hired at your own
+                    office afterwards is recorded here too — that later hire is what the PESO
+                    Company Placement report counts. Each fair stays open for
+                    {{ \App\Support\JobFairDecisionWindow::days() }} days after its event date,
+                    then locks.
+                @endif
+            </div>
+        </div>
     </div>
 
         <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
@@ -135,13 +213,23 @@
                             </td>
                             <td style="padding:12px 16px;text-align:center;">
                                 @php
-                                    $rowUnlocked = !$jfEvent || now()->toDateString() >= \Carbon\Carbon::parse($jfEvent->event_date)->toDateString();
+                                    $rowState = \App\Support\JobFairDecisionWindow::state($jfEvent);
                                 @endphp
                                 {{-- Hired and rejected stay editable here too. Someone
                                      hired at the fair can still fail to report, and the
-                                     employer is the one who finds that out. --}}
-                                @if(!$rowUnlocked)
+                                     employer is the one who finds that out.
+
+                                     But only inside the window. A row from a fair held
+                                     last year has nowhere left to be reported, so the
+                                     buttons go and the decision stands as it is. --}}
+                                @if($rowState === 'early')
                                     <span style="font-size:11px;color:var(--n-500);"><i class="ph ph-clock me-1"></i>Locked until {{ $jfEvent->event_date->format('M d, Y') }}</span>
+                                @elseif($rowState === 'closed')
+                                    <span style="font-size:11px;color:var(--n-500);"
+                                          title="{{ \App\Support\JobFairDecisionWindow::days() }} days after {{ $jfEvent->event_date->format('M d, Y') }}">
+                                        <i class="ph ph-lock-simple me-1"></i>Closed
+                                        {{ \App\Support\JobFairDecisionWindow::closesOn($jfEvent)->format('M d, Y') }}
+                                    </span>
                                 @else
                                 <div class="d-flex gap-1 justify-content-center">
                                     {{-- Hired --}}

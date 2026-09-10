@@ -16,6 +16,9 @@
 @include('partials.staff-activity-tabs', $jobs !== null ? ['tabsRight' => '
     <div class="d-flex align-items-center gap-2" style="border:1px solid var(--n-200);background:#fff;
          border-radius:8px;padding:5px 14px;white-space:nowrap;">
+        <span style="font-size:12px;color:var(--n-500);">Pending</span>
+        <span class="fw-bold" style="color:var(--warn);font-size:15px;">' . $totalPendingJobs . '</span>
+        <span style="width:1px;height:14px;background:var(--n-200);"></span>
         <span style="font-size:12px;color:var(--n-500);">Approved</span>
         <span class="fw-bold" style="color:var(--g-600);font-size:15px;">' . $totalApprovedJobs . '</span>
     </div>
@@ -30,7 +33,8 @@
                 List of Job Fair Postings
             </h5>
             <p class="mb-0" style="font-size:13px;color:var(--n-500);">
-                Approved postings for job fair use. They stay closed and go live
+                Postings offered for job fair use, the ones still waiting first.
+                Once approved they stay closed and go live
                 {{ \App\Support\JobFairPostingWindow::daysBefore() }} days before the event.
             </p>
         </div>
@@ -81,8 +85,8 @@
                                 <div class="mt-3 fw-semibold" style="color:var(--g-700);">No job fair postings</div>
                                 <div class="text-muted small mt-1">
                                     {{ $eventId
-                                        ? 'No approved posting has been brought into this event yet.'
-                                        : 'Approved job fair postings will appear here.' }}
+                                        ? 'No posting has been brought into this event yet.'
+                                        : 'Job fair postings will appear here as employers offer them.' }}
                                 </div>
                             </td>
                         </tr>

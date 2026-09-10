@@ -132,6 +132,14 @@ if ($staffRole !== 'sra') {
      without choosing a fair. --}}
 @php $tabNeedsEvent = !in_array($tab, ['top_employers', 'imported', 'archived'], true); @endphp
 
+{{-- Ang report_view kinahanglan mokuyog sa link.
+
+     Kining tulo ka buton wala nagdala niini kaniadto, ug ang SRA naa sa Job
+     Fair Reports (Overseas) — mao nga ang pagpislit sa Top 10 mibalik siya sa
+     Overseas Reports, diin ang parehas nga tab gibalibaran ug usa ka note.
+     Ang buton nagpakita ug report nga naa, apan wala siya kaabot didto. --}}
+@php $fairViewQuery = $staffRole === 'sra' ? ['report_view' => $reportView ?? 'jobfair'] : []; @endphp
+
 <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
     @if($sraViewSelector ?? false)
     <select id="reportViewSelector" class="form-select form-select-sm"
@@ -160,7 +168,7 @@ if ($staffRole !== 'sra') {
          tab row sa fair, mao nga kung walay agianan pabalik, ang desk kinahanglan
          mo-Back sa browser o mopislit sa sidebar — ug ang sidebar mobalik sa
          ulohan sa Reports, dili sa tab nga iyang gibiyaan. --}}
-    <a href="{{ route($reportRouteName ?? 'staff.reports', ['tab' => 'attendance']) }}"
+    <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge($fairViewQuery, ['tab' => 'attendance'])) }}"
        class="btn btn-sm fw-semibold"
        style="border:1px solid var(--n-200);color:var(--g-700);background:#fff;
               border-radius:8px;font-size:12px;padding:5px 14px;white-space:nowrap;">
@@ -173,18 +181,18 @@ if ($staffRole !== 'sra') {
     @endif
 
     <div class="d-flex gap-2 flex-wrap ms-auto">
-        <a href="{{ route($reportRouteName ?? 'staff.reports', ['tab' => 'top_employers']) }}"
+        <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge($fairViewQuery, ['tab' => 'top_employers'])) }}"
            class="btn btn-sm fw-semibold"
            style="{{ $tab === 'top_employers'
                ? 'background:var(--g-600);color:#fff;border:none;'
                : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
                border-radius:8px;font-size:11px;padding:5px 12px;white-space:nowrap;flex-shrink:0;">
-            <i class="ph-fill ph-buildings me-1"></i>Top 10 Employers
+            <i class="ph-fill ph-briefcase me-1"></i>Top 10 Occupation and Industry
         </a>
         {{-- Ang kaugalingon nga report sa staff. Job Fair staff ra — dili siya
              bahin sa panglantaw sa SRA ug wala siya sa admin nga kopya. --}}
         @if($staffRole === 'job_fair' && ($reportRouteName ?? 'staff.reports') === 'staff.reports')
-        <a href="{{ route('staff.reports', ['tab' => 'imported']) }}"
+        <a href="{{ route('staff.reports', array_merge($fairViewQuery, ['tab' => 'imported'])) }}"
            class="btn btn-sm fw-semibold"
            style="{{ $tab === 'imported'
                ? 'background:var(--g-600);color:#fff;border:none;'
@@ -193,7 +201,7 @@ if ($staffRole !== 'sra') {
             <i class="ph-fill ph-upload-simple me-1"></i>My Imported Reports
         </a>
         @endif
-        <a href="{{ route($reportRouteName ?? 'staff.reports', ['tab' => 'archived']) }}"
+        <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge($fairViewQuery, ['tab' => 'archived'])) }}"
            class="btn btn-sm fw-semibold"
            style="{{ $tab === 'archived'
                ? 'background:var(--warn);color:#fff;border:none;'
@@ -1348,9 +1356,14 @@ if ($staffRole !== 'sra') {
         {{-- LRA staff, 2026-08-23: unsay nahitabo sa usa ka employer usa ka
              semana human sa iyang in-house interview. Tab ni, dili kaugalingon
              nga sidebar entry — taas na ang nav sa LRA, ug report man gihapon
-             siya. Wala sa admin nga kopya sa parehas nga blade. --}}
-        @if($staffRole === 'lra' && ($reportRouteName ?? 'staff.reports') === 'staff.reports')
-        <a href="{{ route('staff.reports', array_merge(request()->query(), ['tab' => 'employer_report', 'page' => 1])) }}"
+             siya.
+
+             Naa pud sa Admin nga master view. Ang Admin nagbantay sa trabaho sa
+             desk, ug ang tab nga makita ra sa desk mismo maghimo sa maong
+             pagbantay nga bakak. Parehas nga helper ang naghatag sa datos, mao
+             nga ang numero managsama gyud. --}}
+        @if($staffRole === 'lra')
+        <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->query(), ['tab' => 'employer_report', 'page' => 1])) }}"
            class="btn btn-sm fw-semibold"
            style="{{ request('tab') === 'employer_report'
                ? 'background:var(--g-600);color:#fff;border:none;'

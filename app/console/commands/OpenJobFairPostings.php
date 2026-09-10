@@ -8,7 +8,7 @@ use Illuminate\Console\Command;
 class OpenJobFairPostings extends Command
 {
     protected $signature = 'jobfair:open-postings';
-    protected $description = 'Open every approved job fair posting once a job fair event is close enough for jobseekers to plan around';
+    protected $description = 'At the cutoff, take every waiting vacancy onto its job fair and show them all to jobseekers';
 
     // ── PESO 2026-08-13. Ang event i-create dili moubos sa 10 ka adlaw nga
     // ── abante; ang mga posting mo-abli sa tunga niini — 5 ka adlaw sa dili pa
@@ -28,13 +28,18 @@ class OpenJobFairPostings extends Command
             return 0;
         }
 
-        $event  = $events->first();
-        $opened = JobFairPostingWindow::openAll($event);
+        // Sobra sa usa ka fair ang mahimong sulod sa window kung duol ang
+        // ilang petsa. Ang matag usa naay kaugalingong listahan sa bakante,
+        // mao nga ang matag usa naay kaugalingong cutoff.
+        foreach ($events as $event) {
+            $result = JobFairPostingWindow::runCutoff($event);
 
-        $this->info($opened === 0
-            ? 'No job fair posting was waiting. Nothing opened.'
-            : "Opened {$opened} job fair posting(s) ahead of \"{$event->title}\" on "
-              . $event->event_date->format('M d, Y') . '.');
+            $this->info($result['accepted'] === 0 && $result['opened'] === 0
+                ? "Nothing left to do for \"{$event->title}\"."
+                : "\"{$event->title}\" on " . $event->event_date->format('M d, Y') . ': '
+                  . "{$result['accepted']} vacancy(s) taken onto the fair, "
+                  . "{$result['opened']} now visible to jobseekers.");
+        }
 
         return 0;
     }

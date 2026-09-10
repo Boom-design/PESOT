@@ -10,7 +10,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 
 // ── Ang pag-ilis sa authorized contact sa usa ka employer account.
 // ──
@@ -50,10 +49,23 @@ class EmployerAccountRecovery
         // napuno ug kana ang basahon sa bag-ong mga rekord.
         $staffId = Staff::where('user_id', $actor->users_id)->value('staff_id');
 
+        // Ang staff ang nagsulat sa pansamantalang password, dili ang sistema.
+        //
+        // Basahon ni siya sa telepono. Ang gi-generate nga napulog-duha ka
+        // karakter kinahanglan pang litukon, isulat sa papel ug balikon sa
+        // dili pa siya mapuslan, ug ang matag balik usa ka higayon nga masayop.
+        // Ang gi-type sa staff mao gyud ang iyang isulti.
+        //
+        // Luwas ra kini tungod sa mosunod: gi-set gihapon ang
+        // must_change_password sa ubos, ug ang EnsurePasswordChanged nagpugong
+        // sa account gikan sa tanan nga panid hangtod mopuli ang tinuod nga
+        // password ubos sa tibuok PasswordPolicy. Parehas nga rason sa
+        // App\Support\StarterPassword ug sa walk-in nga porma.
+        //
         // Ang plaintext gibalik kausa ra ngadto sa nagtawag — wala gyud kini
         // gitipigan, wala gi-email, ug dili na makita pag-usab.
         $tempPassword = $method === self::METHOD_TEMP_PASSWORD
-            ? Str::password(12, true, true, true, false)
+            ? ($data['temp_password'] ?? null)
             : null;
 
         DB::transaction(function () use (
@@ -137,19 +149,22 @@ class EmployerAccountRecovery
      *
      * Returns the plaintext once. It is never stored and never e-mailed.
      */
-    public static function resetPassword(User $employerUser, string $reason, User $actor): string
-    {
+    public static function resetPassword(
+        User $employerUser,
+        string $reason,
+        User $actor,
+        string $tempPassword
+    ): string {
         $nsrp = $employerUser->employerNsrp;
 
-        // PESO, 2026-08-28: the contact person's first name, not a generated
-        // string. This one is read down a phone line, and the employer cannot
-        // reach a single page with it — `must_change_password` below sends
-        // them straight to the change screen, where the full PasswordPolicy
-        // applies. The handover in perform() above still generates, because
-        // there the account is passing to somebody new.
-        $tempPassword = \App\Support\StarterPassword::fromName(
-            $nsrp?->contact_person ?: $employerUser->name
-        );
+        // Ang nagpangita sa password mao ang nagsulat niini.
+        //
+        // Kaniadto gikan kini sa unang ngalan sa contact person. Mas maayo pa
+        // kana kaysa random nga hilo, apan wala gihapoy pagpili ang tawo nga
+        // maoy mobasa niini sa telepono — ug siya ra ang nakabalo kung unsay
+        // masabtan sa linya, unsay dali litukon, ug unsay dili maglibog sa
+        // ngalan sa kompanya. `must_change_password` sa ubos nagpadala kaniya
+        // diretso sa change screen, diin ang tibuok PasswordPolicy ang mo-hukom.
 
         $staffId = Staff::where('user_id', $actor->users_id)->value('staff_id');
         $email        = $employerUser->email;
@@ -241,6 +256,12 @@ class EmployerAccountRecovery
             'new_mobile_number'  => 'nullable|string|max:20',
             'reason'             => 'required|string|max:500',
             'method'             => 'nullable|in:reset_code,temp_password',
+
+            // Gi-type sa staff, dili gi-generate. Ang gidaghanon dinhi gituyo
+            // nga luag: ang tibuok PasswordPolicy modagan kung ilisan na kini
+            // sa employer, ug ang pagpugos ug simbolo sa usa ka pulong nga
+            // basahon sa telepono maghimo lang niini nga sayop nga malitok.
+            'temp_password'      => 'nullable|string|min:4|max:64',
         ];
     }
 
@@ -249,6 +270,14 @@ class EmployerAccountRecovery
         return [
             'new_email.unique' => 'That email is already used by another account.',
             'reason.required'  => 'State why the contact is being changed — it is kept on record.',
+            // Tulo ka ngalan sa parehas nga pagsulay: required, required_if
+            // (gipili ang temporary password) ug required_with (gitikan ang
+            // Reset). Ang default nga teksto sa Laravel mo-ngalan sa field ug
+            // sa kondisyon; ang desk nangayo lang unsay isulat.
+            'temp_password.required'      => 'Write the temporary password you are giving this employer.',
+            'temp_password.required_if'   => 'Write the temporary password you will read out to them.',
+            'temp_password.required_with' => 'Write the temporary password you will read out to them.',
+            'temp_password.min'           => 'The temporary password needs at least 4 characters.',
         ];
     }
 }

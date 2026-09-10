@@ -27,7 +27,11 @@
             .bg-wrapper {
                 position: fixed;
                 inset: 0;
-                background: url('{{ asset('images/cityhall.png') }}') center center / cover no-repeat;
+                background: url('{{ asset('images/cityhall.jpg') }}') center center / cover no-repeat;
+                /* Kaugalingon nga layer sa GPU. Kung wala, ang fixed nga layer
+                   ipintal pag-usab kada frame sa pag-scroll. */
+                transform: translateZ(0);
+                will-change: transform;
                 z-index: 0;
             }
             .bg-overlay {
@@ -35,6 +39,9 @@
                 inset: 0;
                 background: linear-gradient(180deg, rgba(20,85,27,0.90) 0%, rgba(20,85,27,0.96) 100%);
                 z-index: 1;
+                /* Parehas nga rason sa .bg-wrapper. */
+                transform: translateZ(0);
+                will-change: transform;
             }
 
             /* ── PAGE LAYOUT ── */

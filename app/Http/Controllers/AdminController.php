@@ -286,10 +286,21 @@ class AdminController extends Controller
             return back()->with('error', 'This employer has no NSRP registration record yet.');
         }
 
+        // `+` sa array dili mo-overwrite sa key nga naa na, mao nga ang
+        // temp_password gi-assign gyud — kung idugang ra siya sa tuo nga kilid,
+        // ang luag nga rule gikan sa rules() maoy magpabilin ug ang gikinahanglan
+        // nga pag-check dili gyud modagan.
+        $rules = \App\Support\EmployerAccountRecovery::rules($employerUser->users_id);
+        $rules['reset_password'] = 'nullable|boolean';
+
+        // Gikinahanglan sa duha ka agianan nga naghatag ug password: ang reset
+        // lang, ug ang handover nga gipili ang temp_password.
+        $rules['temp_password'] = 'required_if:method,temp_password'
+                                  . '|required_with:reset_password'
+                                  . '|nullable|string|min:4|max:64';
+
         $validated = $request->validate(
-            \App\Support\EmployerAccountRecovery::rules($employerUser->users_id) + [
-                'reset_password' => 'nullable|boolean',
-            ],
+            $rules,
             \App\Support\EmployerAccountRecovery::messages()
         );
 
@@ -308,7 +319,7 @@ class AdminController extends Controller
             }
 
             $tempPassword = \App\Support\EmployerAccountRecovery::resetPassword(
-                $employerUser, $validated['reason'], $admin
+                $employerUser, $validated['reason'], $admin, $validated['temp_password']
             );
 
             return back()
@@ -989,12 +1000,31 @@ if ($type === 'local') {
             ? \App\Support\CompanyInterviewReport::paginate(null, null, $search, true)
             : null;
 
+        // ── TAB: EMPLOYER REPORT ──
+        //
+        // Ang parehas nga tab nga nakita sa LRA. Gikan sa parehas nga helper,
+        // mao nga ang numero ug ang paging managsama gyud — ang Admin nga
+        // master view mao gyuy tan-awonan sa trabaho sa desk, ug ang report
+        // nga magbasa ug lahi dinhi maghimo sa duha nga dili masaligan.
+        //
+        // LRA ra, parehas sa desk: ang in-house nga interview sa overseas wala
+        // pa gitukod. Ang Download nga buton wala dinhi — ang desk ang tag-iya
+        // sa file, parehas sa laing export niini nga panid.
+        $employerPostings = collect();
+        $employerRoomOnly = collect();
+
+        if ($tab === 'employer_report' && $staffRole === 'lra') {
+            ['postings' => $employerPostings, 'roomOnly' => $employerRoomOnly] =
+                \App\Support\InhouseEmployerReport::paged(false, $search);
+        }
+
         return view('staff.reports.index', compact(
             'staffRole', 'tab', 'registeredView',
             'registeredParticipants', 'registeredAll', 'placedApplications', 'referredApplications',
             'totalRegistered', 'totalRegisteredAll', 'totalPlaced', 'totalReferred', 'solicitationStats',
             'topEmployersByInhouseInterviews', 'topEmployersFilter', 'topEmployersMonth', 'topEmployersYear',
-            'inhouseReport', 'companyInterviews'
+            'inhouseReport', 'companyInterviews',
+            'employerPostings', 'employerRoomOnly'
         ) + ['layout' => 'admin.layouts.app', 'reportRouteName' => 'admin.reports.staff']);
     }
 

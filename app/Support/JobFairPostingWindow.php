@@ -73,7 +73,19 @@ class JobFairPostingWindow
     // ── mo-abli dayon kung ang Septyembre nga fair duol na. ──
     public static function opensFor(JobFairEvent $event): bool
     {
-        return !$event->event_date->copy()->subDays(self::daysBefore())->isFuture();
+        return !self::opensOn($event)->isFuture();
+    }
+
+    /**
+     * The day this fair's vacancies may be shown to jobseekers.
+     *
+     * The button, the note under it, the refusal the route gives and the
+     * scheduled command all have to name the same day, so only one place
+     * works it out.
+     */
+    public static function opensOn(JobFairEvent $event): \Carbon\Carbon
+    {
+        return $event->event_date->copy()->subDays(self::daysBefore());
     }
 
     // ── Usa ka tudling nga isulti sa employer ug sa staff: buhi na ba ang
@@ -159,6 +171,102 @@ class JobFairPostingWindow
             ->get();
     }
 
+    /**
+     * The cutoff. Five days before a fair, that fair takes what it was offered
+     * and shows it to jobseekers.
+     *
+     * PESO Job Fair staff, 2026-09-04: there were two buttons before this, and
+     * neither of them could say no. "Post Selected" accepted every waiting
+     * vacancy the fair's own rules already let in; "Post All Job Vacancies"
+     * showed them. Both were pressed on the same afternoon, by the same
+     * person, for the same reason: the fair is close. The date is the reason,
+     * so the date does it.
+     *
+     * The employer target does not gate this. A fair aiming for ten employers
+     * and holding three still happens, and the three still need people to show
+     * up for them.
+     *
+     * Idempotent: it runs every morning while the fair is inside the window,
+     * and finds nothing left to do after the first.
+     */
+    public static function runCutoff(JobFairEvent $event): array
+    {
+        $accepted = self::acceptWaitingPostings($event);
+        $opened   = self::openAll($event);
+
+        return ['accepted' => $accepted, 'opened' => $opened];
+    }
+
+    /**
+     * The vacancies still waiting that this fair takes.
+     *
+     * The fair does the filtering, exactly as it did when the desk pressed the
+     * button: it must cater to this employer's type, and the vacancy must not
+     * clash with what the fair is asking for. Anything it refuses keeps
+     * waiting for a fair that wants it — nobody is told no.
+     */
+    public static function waitingFor(JobFairEvent $event): Collection
+    {
+        if ($event->status === 'completed') {
+            return collect();
+        }
+
+        return Job::with('company')
+            ->where('schedule_type', 'job_fair')
+            ->where('posting_status', 'pending')
+            ->withinDeadline()
+            ->get()
+            ->filter(fn($job) => $event->catersTo((bool) optional($job->company)->is_overseas)
+                                 && !$event->postingMismatch($job))
+            ->values();
+    }
+
+    /** Take them onto the fair. They are opened by openAll straight after. */
+    private static function acceptWaitingPostings(JobFairEvent $event): int
+    {
+        $waiting = self::waitingFor($event);
+
+        if ($waiting->isEmpty()) {
+            return 0;
+        }
+
+        foreach ($waiting as $job) {
+            // Ang deadline nga mas sayo pa kay sa adlaw sa fair magpatay sa
+            // posting sa dili pa siya magamit.
+            if ($job->deadline && $job->deadline->lt($event->event_date)) {
+                $job->deadline = $event->event_date->toDateString();
+            }
+
+            $job->posting_status        = 'approved';
+            $job->status                = 'closed';   // openAll ang mo-abli niini
+            $job->remarks               = null;
+            $job->requested_job_fair_id = $event->job_fair_events_id;
+            $job->save();
+
+            JobFairEmploymentRequest::firstOrCreate([
+                'job_fair_id' => $event->job_fair_events_id,
+                'employer_id' => $job->company_id,
+                'job_id'      => $job->job_qualifications_id,
+            ]);
+
+            if ($job->company_id) {
+                Announcement::sendToEmployers([
+                    'type'           => 'job_approved',
+                    'title'          => 'Job Posting Accepted ✅',
+                    'message'        => 'Your job posting "' . $job->title . '" was accepted into '
+                        . $event->title . ' on ' . $event->event_date->format('M d, Y') . '.',
+                    'reference_type' => 'job',
+                    'reference_id'   => $job->job_qualifications_id,
+                ], $job->company_id);
+            }
+        }
+
+        // Kausa ra kada fair — ang helper mismo ang nagbantay niini.
+        \App\Support\JobFairInvites::inviteJobseekers($event);
+
+        return $waiting->count();
+    }
+
     // ── I-abli ang tanan nga naghulat, ug sultihi ang employer ug ang
     // ── jobseeker. Mo-return sa gidaghanon nga na-abli.
     // ──
@@ -194,64 +302,19 @@ class JobFairPostingWindow
         return $postings->count();
     }
 
-    // ── Ang jobseeker nga ang gustong trabaho pareho sa titulo makadawat ug
-    // ── "Matching Job Vacancy Found"; ang uban makadawat ra sa ordinaryo nga
-    // ── "New Job Vacancy Posted". Gikuha kini gikan sa storeJobFairEvent aron
-    // ── mag-uban ang mensahe ug ang tinuod nga pag-abli. ──
+    /**
+     * Tell the jobseekers, through the one copy of that logic.
+     *
+     * This held a second copy of the matched/unmatched split, and the copies
+     * drifted. JobPostingNotice learned on 2026-09-05 to skip a jobseeker whose
+     * NSRP classification does not cover this kind of work; this one did not,
+     * so the cutoff went on telling a local-only jobseeker about a scaffolding
+     * job in Qatar. One copy, so they cannot drift again.
+     */
     private static function notifyJobseekers(Collection $postings): void
     {
-        $registrations = \App\Models\JobseekerRegistration::whereHas(
-                'user', fn($q) => $q->where('status', 'approved')
-            )
-            ->with('nsrp')
-            ->get();
-
-        if ($registrations->isEmpty()) {
-            return;
-        }
-
         foreach ($postings as $job) {
-            $matched = collect();
-            $others  = collect();
-            $title   = strtolower($job->title);
-
-            foreach ($registrations as $registration) {
-                $preferred = $registration->nsrp->preferred_occupations ?? [];
-                $isMatch   = false;
-
-                foreach ($preferred as $occupation) {
-                    if (strtolower(trim($occupation)) === $title) {
-                        $isMatch = true;
-                        break;
-                    }
-                }
-
-                $isMatch
-                    ? $matched->push($registration->jobseeker_registrations_id)
-                    : $others->push($registration->jobseeker_registrations_id);
-            }
-
-            if ($matched->isNotEmpty()) {
-                Announcement::sendToJobseekers([
-                    'type'           => 'job_match',
-                    'title'          => 'Matching Job Vacancy Found! 💼',
-                    'message'        => 'A job vacancy matching your preferred position "' . $job->title . '" from '
-                                        . ($job->company->company_name ?? 'an employer') . ' is now available. Would you like to apply?',
-                    'reference_type' => 'job',
-                    'reference_id'   => $job->job_qualifications_id,
-                ], $matched);
-            }
-
-            if ($others->isNotEmpty()) {
-                Announcement::sendToJobseekers([
-                    'type'           => 'job_posted',
-                    'title'          => 'New Job Vacancy Posted 💼',
-                    'message'        => 'A new job vacancy "' . $job->title . '" from '
-                                        . ($job->company->company_name ?? 'an employer') . ' is now available!',
-                    'reference_type' => 'job',
-                    'reference_id'   => $job->job_qualifications_id,
-                ], $others);
-            }
+            \App\Support\JobPostingNotice::announce($job);
         }
     }
 }

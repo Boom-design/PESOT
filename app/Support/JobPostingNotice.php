@@ -23,18 +23,49 @@ class JobPostingNotice
      *
      * Whoever listed the exact job title among their preferred occupations gets
      * the personal wording; everyone else gets the general one.
+     *
+     * A jobseeker only hears about the kind of work they registered for.
+     * `jobseeker_nsrp_registrations.type` is local, overseas or both, and it is
+     * the first question the NSRP form asks. Until now nothing read it here, so
+     * an agency posting a carpenter for Riyadh notified a jobseeker who had
+     * said plainly that they were looking for work at home — and the desk was
+     * then told, on its own bell, that one jobseeker had been reached.
+     *
+     * A registration with no NSRP row yet counts as local. That is what the
+     * column itself defaults to, and a jobseeker who has not said where they
+     * want to work has not said "abroad".
      */
+    /**
+     * The NSRP classifications this vacancy is allowed to reach.
+     *
+     * Public because the job fair text uses the same rule. One copy, so an
+     * overseas vacancy cannot reach a local-only jobseeker down one path while
+     * being correctly held back on another.
+     */
+    public static function wantedTypesFor(Job $job): array
+    {
+        return optional($job->company)->is_overseas
+            ? ['overseas', 'both']
+            : ['local', 'both'];
+    }
+
     public static function announce(Job $job): void
     {
         $matched   = collect();
         $unmatched = collect();
         $title     = strtolower($job->title);
 
+        $wantedTypes = self::wantedTypesFor($job);
+
         $registrations = JobseekerRegistration::whereHas('user', fn($q) => $q->where('status', 'approved'))
             ->with('nsrp')
             ->get();
 
         foreach ($registrations as $registration) {
+            if (!in_array($registration->nsrp->type ?? 'local', $wantedTypes, true)) {
+                continue;
+            }
+
             $preferred = $registration->nsrp->preferred_occupations ?? [];
 
             $isMatch = false;
@@ -122,7 +153,17 @@ class JobPostingNotice
      * making them wait again only delays the vacancy. Staff keep the power to
      * take a posting down afterwards — see StaffWebController::rejectJob.
      *
-     * Two exceptions.
+     * Three exceptions.
+     *
+     * OVERSEAS COMPANY INTERVIEW. PESO SRA, 2026-09-05: an overseas agency
+     * interviewing for a job abroad is not the same as a local employer
+     * interviewing for a job down the road. The job order, the principal
+     * employer and the deployment country all sit behind that posting, and the
+     * SRA is the desk answerable for them — so it reads the posting before
+     * jobseekers do. A local company interview still goes live on submit.
+     *
+     * It starts CLOSED for the same reason in-house does: a rejection has to
+     * be able to stop the posting before anyone applies to it.
      *
      * IN-HOUSE. LRA staff, 2026-08-23: an in-house interview is held at the
      * PESO Office, and the office does not take every company — one offering a
@@ -138,17 +179,19 @@ class JobPostingNotice
      * JOB FAIR. Approved on arrival but closed until the fair is near, so
      * jobseekers are not shown vacancies they can only act on weeks away.
      */
-    public static function initialState(string $scheduleType): array
+    public static function initialState(string $scheduleType, bool $isOverseas = false): array
     {
         if ($scheduleType === 'inhouse') {
             return ['posting_status' => 'pending', 'status' => 'closed'];
         }
 
         if ($scheduleType !== 'job_fair') {
-            return ['posting_status' => 'approved', 'status' => 'open'];
+            return $isOverseas
+                ? ['posting_status' => 'pending', 'status' => 'closed']
+                : ['posting_status' => 'approved', 'status' => 'open'];
         }
 
-       
+
         return ['posting_status' => 'pending', 'status' => 'closed'];
     }
 
@@ -156,20 +199,26 @@ class JobPostingNotice
      * Why a posting of this kind is not visible yet, in words the employer can
      * act on. Null when it goes live immediately.
      */
-    public static function pendingNote(string $scheduleType): ?string
+    public static function pendingNote(string $scheduleType, bool $isOverseas = false): ?string
     {
         return match ($scheduleType) {
             'inhouse'  => 'It is waiting for PESO to approve the in-house schedule. '
                           . 'Jobseekers will see it once the office accepts the date.',
             'job_fair' => 'It is waiting for PESO to accept it into a job fair. '
                           . 'Once the office takes it in, ' . lcfirst(JobFairPostingWindow::liveNote()),
-            default    => null,
+            // Named the desk, not "PESO". An overseas agency deals with the SRA
+            // and nobody else, so a note that says only "PESO" sends it asking
+            // at the wrong window.
+            default    => $isOverseas
+                          ? 'It is waiting for SRA staff to review it. '
+                            . 'Jobseekers will see it once the desk approves the posting.'
+                          : null,
         };
     }
 
     /** Whether a posting created with initialState() is visible right away. */
-    public static function goesLive(string $scheduleType): bool
+    public static function goesLive(string $scheduleType, bool $isOverseas = false): bool
     {
-        return self::initialState($scheduleType)['status'] === 'open';
+        return self::initialState($scheduleType, $isOverseas)['status'] === 'open';
     }
 }

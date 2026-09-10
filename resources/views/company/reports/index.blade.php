@@ -175,8 +175,7 @@
                 {{ $pesoHiresTotal ?? 0 }} so far.
                 You also recorded <strong>{{ $outsideHiresTotal }}</strong> hire(s) made outside PESO;
                 those filled your slots but are not counted as PESO placements.
-                They are listed under
-                <a href="{{ route('company.reports', ['view' => 'archived']) }}" style="color:var(--g-600);">Archived Job Postings</a>.
+                Each posting shows its own count below.
             </div>
         </div>
     @endif
@@ -235,7 +234,17 @@
                                  rows with the same title and the same count are
                                  impossible to tell apart. --}}
                             <td>{{ $job->created_at?->format('F d, Y') ?? 'Not recorded' }}</td>
-                            <td class="cell-num cell-strong">{{ $job->hired_count }} / {{ $job->slots }}</td>
+                            <td class="cell-num cell-strong">
+                                {{ $job->hired_count }} / {{ $job->slots }}
+                                {{-- The employer's own hires fill the same slots. Left
+                                     off the row, the count reads as if ten slots were
+                                     still open when the posting is in fact full. --}}
+                                @if($job->group_external_hires > 0)
+                                    <div class="t-caption" style="font-weight:400;">
+                                        {{ $job->group_external_hires }} hired outside PESO
+                                    </div>
+                                @endif
+                            </td>
                             <td class="cell-num">
                                 <a href="{{ route('company.reports.show', $job->job_qualifications_id) }}" class="btn-peso-outline btn-sm">
                                     <i class="ph ph-eye"></i> View

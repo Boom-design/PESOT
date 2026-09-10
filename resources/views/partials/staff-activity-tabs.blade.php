@@ -41,6 +41,11 @@
     $onPendingInterview = $tabRoute === 'staff.jobs' && $tabType === 'company_interview_pending';
 
     $onInterview = $tabRoute === 'staff.jobs' && !$onInhouseJobs && !$onPendingInterview;
+
+    // Ang numero sa sidebar gibahin sa mga tab nga naghatag niini. Parehas nga
+    // tinubdan, mao nga ang sumada sa nakita dinhi mao gyud ang numero sa
+    // ibabaw sa Manage Job Activities.
+    $tabAlerts = \App\Support\NavAlerts::staffJobActivityCounts(optional(Auth::user())->staff);
 @endphp
 
 {{-- $tabsRight — anything the page wants sitting at the end of this row.
@@ -57,21 +62,34 @@
              accepted or rejected; once accepted it moves to In-house Job
              Vacancy, so nothing decided stays behind. --}}
         <i class="ph-fill ph-calendar-check me-1"></i> Pending In-house Schedule
+        @include('partials.tab-dot', ['count' => $tabAlerts['inhouse_schedule'] ?? 0, 'on' => $tabRoute === 'staff.inhouse'])
     </a>
     @endif
 
     @if($tabRole !== 'lra')
     <a href="{{ route('staff.jobs', ['type' => 'company_interview_pending']) }}" class="btn btn-sm fw-semibold"
        style="{{ $onPendingInterview ? $tabOn : $tabOff }}{{ $tabBase }}">
-        {{-- Ang interview nga wala pa nahitabo — karon o umaabot pa ang petsa.
-             Walay approval nga agian ang company interview, buhi na siya
-             pag-post, mao nga ang "pending" dinhi kay ang wala pa nahitabo. --}}
+        {{-- Ang posting nga wala pa nadesisyunan — posting_status = 'pending'.
+
+             Pag-approve, mobalhin siya sa Company Interview nga tab ug mawala
+             dinhi. Usa ka lugar kada posting: kung duha ka tab ang nagpakita
+             kaniya, wala siya milihok, ug ang desk dili makabasa asa siya
+             karon.
+
+             Karon, ang overseas ra ang makasulod dinhi. Ang lokal nga company
+             interview buhi dayon sa pag-post, mao nga wala gyud siyay pending
+             nga hugna. --}}
         <i class="ph-fill ph-hourglass-medium me-1"></i> Pending Company Interview
+        @include('partials.tab-dot', ['count' => $tabAlerts['company_interview_pending'] ?? 0, 'on' => $onPendingInterview])
     </a>
     @endif
 
     <a href="{{ route('staff.jobs', ['type' => 'inhouse']) }}" class="btn btn-sm fw-semibold"
        style="{{ $onInhouseJobs ? $tabOn : $tabOff }}{{ $tabBase }}">
+        {{-- Walay numero dinhi. Ang tab nagbasa ug posting_status = 'approved',
+             mao nga nadesisyunan na ang tanan nga laray niya. Ang in-house nga
+             posting nga naghulat pa naa sa Pending In-house Schedule, ug didto
+             pud ang numero niya. --}}
         <i class="ph-fill ph-{{ $tabRole === 'job_vacancy' ? 'calendar-check' : 'briefcase' }} me-1"></i>
         {{ $tabRole === 'job_vacancy' ? 'In-house' : 'In-house Job Vacancy' }}
     </a>
@@ -90,6 +108,7 @@
     <a href="{{ route('staff.inhouse.jobfair') }}" class="btn btn-sm fw-semibold"
        style="{{ $tabRoute === 'staff.inhouse.jobfair' ? $tabOn : $tabOff }}{{ $tabBase }}">
         <i class="ph-fill ph-calendar-dots me-1"></i> Job Fair
+        @include('partials.tab-dot', ['count' => $tabAlerts['job_fair'] ?? 0, 'on' => $tabRoute === 'staff.inhouse.jobfair'])
     </a>
     @endif
 

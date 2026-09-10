@@ -16,41 +16,6 @@
         )->first()?->status ?? 'none'
     );
 
-    // ── BRING EXISTING VACANCY (PESO interview 2026-08-13: "Kung ang employer
-    // ── adunay existing vacancy, kinahanglan adunay option kung gusto ba niya
-    // ── nga i-apil kini sa Job Fair o dili.")
-    // ──
-    // ── Buhi ra ang gilista: ang active() nagsalikway sa nalabyan na nga
-    // ── deadline ug sa napuno na nga slots. Ang expired dili dinhi — kana kay
-    // ── i-post pag-usab, dili banhawon.
-    // ──
-    // ── groupLeaders(): usa ka row kada POSITION, dili kada channel. Ang
-    // ── "Welder" nga gi-post sa Company Interview ug In-house kay usa ra ka
-    // ── bakante, mao nga usa ra ka checkbox ang angay.
-    $bringableJobs = collect();
-    if (($jobFairId ?? null) && ($companyNsrpId = optional($company->activeCompany())->employer_nsrp_registrations_id)) {
-        // Ang position nga nadala na niini nga event dili na e-doble.
-        $alreadyBroughtGroups = \App\Models\Job::whereIn(
-                'job_qualifications_id',
-                \App\Models\JobFairEmploymentRequest::where('job_fair_id', $jobFairId)
-                    ->where('employer_id', $companyNsrpId)
-                    ->pluck('job_id')
-            )
-            ->get()
-            ->map(fn($job) => $job->group_key)
-            ->all();
-
-        $bringableJobs = \App\Models\Job::where('company_id', $companyNsrpId)
-            ->where('schedule_type', '!=', 'job_fair')
-            ->where('posting_status', 'approved')
-            ->active()
-            ->groupLeaders()
-            ->withGroupHiredCount()
-            ->latest()
-            ->get()
-            ->reject(fn($job) => in_array($job->group_key, $alreadyBroughtGroups))
-            ->values();
-    }
 @endphp
 
 <div class="modal fade" id="requestJobModal" tabindex="-1">
@@ -60,7 +25,16 @@
                 <h5 class="modal-title text-white fw-bold">
                     <i class="ph ph-briefcase me-2"></i>Post a Job
                 </h5>
+                {{-- Walay X kung gikan siya sa gidawat nga imbitasyon.
+
+                     Ang pag-ingon ug oo sa usa ka fair ug ang pagsira sa porma
+                     nagbilin sa opisina ug booth nga walay bakante — ang
+                     employer naa sa listahan, ug walay jobseeker nga naay
+                     adtoan didto. Ang tubag sa imbitasyon dili kompleto hangtod
+                     naa nay bakante, mao nga usa ra ka gutlo ang duha. --}}
+                @unless($jobFairId ?? null)
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                @endunless
             </div>
             <form action="{{ route('company.jobs.request') }}" method="POST" enctype="multipart/form-data" style="display:flex;flex-direction:column;overflow:hidden;flex:1;">
                 @csrf
@@ -74,56 +48,16 @@
                          style="background:var(--g-50);border:1px solid var(--n-200);">
                         <i class="ph-fill ph-calendar-dots" style="color:var(--g-700);font-size:18px;margin-top:1px;"></i>
                         <div style="font-size:12px;color:var(--g-700);line-height:1.6;">
-                            <strong>Asking to bring this vacancy to the job fair you just confirmed.</strong><br>
-                            Bring a vacancy you already posted, add a new position, or both.
+                            {{-- "just confirmed" was wrong for an overseas agency: its yes
+                                 stops at accepted while the SRA decides on the slot, and the
+                                 form now opens there too. What is true at both moments is
+                                 that the invitation was accepted. --}}
+                            <strong>Asking to bring this vacancy to the job fair invitation you just accepted.</strong><br>
+                            Add the position you want to fill at the fair. PESO staff confirm it
+                            onto the event.
                         </div>
                     </div>
 
-                    {{-- ── BRING EXISTING VACANCY ──
-                         Ang gi-check dili mahimong bag-ong bakante: mo-dugang lang
-                         ug Job Fair nga channel sa parehas nga posting group, mao
-                         nga usa ra gihapon ang slots nga gi-ambitan. --}}
-                    @if($bringableJobs->isNotEmpty())
-                    <div class="mb-3 pb-2" style="border-bottom:2px solid var(--n-200);">
-                        <span class="fw-bold" style="color:var(--g-700);font-size:13px;">
-                            <i class="ph ph-check-square me-1" style="color:var(--g-600);"></i> Bring a vacancy you already posted
-                        </span>
-                    </div>
-                    <div style="font-size:12px;color:var(--n-500);margin-bottom:12px;">
-                        These stay one vacancy — bringing them here does not double the slots.
-                        Hire someone at the job fair and the other schedules close too.
-                    </div>
-
-                    <div class="mb-4" style="border:1px solid var(--n-200);border-radius:10px;overflow:hidden;">
-                        @foreach($bringableJobs as $bringable)
-                        @php
-                            $bringableLabel = \App\Models\Job::scheduleTypeLabel($bringable->schedule_type);
-                        @endphp
-                        <label class="d-flex align-items-center gap-3 p-3 mb-0"
-                               style="cursor:pointer;border-bottom:1px solid var(--n-100);background:#fff;">
-                            <input type="checkbox" class="form-check-input mt-0 bring-existing-check"
-                                   name="existing_job_ids[]" value="{{ $bringable->job_qualifications_id }}"
-                                   style="flex-shrink:0;">
-                            <span class="flex-grow-1">
-                                <span class="fw-semibold d-block" style="color:var(--g-700);font-size:13px;">
-                                    {{ $bringable->title }}
-                                </span>
-                                <span style="font-size:11px;color:var(--n-500);">
-                                    <i class="ph ph-map-pin me-1"></i>{{ $bringable->location }}
-                                    &nbsp;·&nbsp;
-                                    <i class="ph ph-users me-1"></i>{{ $bringable->group_hired_count }} / {{ $bringable->slots }} slot(s) filled
-                                    @if($bringable->deadline)
-                                        &nbsp;·&nbsp;<i class="ph ph-calendar-blank me-1"></i>until {{ $bringable->deadline->format('M d, Y') }}
-                                    @endif
-                                </span>
-                            </span>
-                            <span style="color:var(--g-700);font-size:10px;font-weight:600;flex-shrink:0;">
-                                {{ $bringableLabel }}
-                            </span>
-                        </label>
-                        @endforeach
-                    </div>
-                    @endif
                     @endif
 
                     <div class="d-flex align-items-start gap-2 p-3 mb-4 rounded-3"
@@ -157,19 +91,11 @@
                     <div class="mb-3 pb-2" style="border-bottom:2px solid var(--n-200);">
                         <span class="fw-bold" style="color:var(--g-700);font-size:13px;">
                             <i class="ph ph-briefcase me-1" style="color:var(--g-600);"></i>
-                            @if($bringableJobs->isNotEmpty())
-                                Or add a new position
-                            @else
-                                III-IV. Vacancy Details &amp; Qualification Requirements
-                            @endif
+                            III-IV. Vacancy Details &amp; Qualification Requirements
                         </span>
                     </div>
                     <div style="font-size:12px;color:var(--n-500);margin-bottom:12px;">
-                        @if($bringableJobs->isNotEmpty())
-                            Only for a position you have not posted yet. If you ticked one above, you can leave this empty.
-                        @else
-                            You may add more than one position under this request — each can have its own description and qualifications.
-                        @endif
+                        You may add more than one position under this request — each can have its own description and qualifications.
                     </div>
 
                     <div id="requestPositionsContainer"></div>
@@ -182,7 +108,7 @@
                     <div id="emptyRequestError" class="mb-4"
                          style="display:none;font-size:12px;color:var(--danger);font-weight:600;">
                         <i class="ph-fill ph-warning-circle me-1"></i>
-                        Tick a vacancy to bring, or add a new position.
+                        Add at least one position.
                     </div>
 
                     {{-- STEP 2 — where the position(s) above get posted. More than
@@ -306,7 +232,14 @@
 
                 </div>
                 <div class="modal-footer" style="border-top:1px solid var(--n-200);flex-shrink:0;">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    @if($jobFairId ?? null)
+                        <div class="me-auto" style="font-size:11.5px;color:var(--n-500);">
+                            <i class="ph-fill ph-info me-1" style="color:var(--g-600);"></i>
+                            Your booth needs a vacancy. Add one to finish accepting.
+                        </div>
+                    @else
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    @endif
                     <button type="submit" class="btn btn-peso btn-sm px-4">
                         <i class="ph ph-paper-plane-tilt me-1"></i> Post Job
                     </button>

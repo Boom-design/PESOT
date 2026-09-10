@@ -1,6 +1,6 @@
 @extends('company.layouts.app')
 
-@section('page-title', 'My Profile')
+@section('page-title', 'My Account Profile')
 
 @section('content')
 
@@ -15,7 +15,7 @@
 <div style="max-width:820px;margin:0 auto;">
 
     <div class="mb-4 fade-in">
-        <h5 class="fw-bold mb-1" style="color:var(--g-700);">My Profile</h5>
+        <h5 class="fw-bold mb-1" style="color:var(--g-700);">My Account Profile</h5>
         <p class="mb-0" style="font-size:13px;color:var(--n-500);">
             Manage your company information and password
         </p>
@@ -25,7 +25,7 @@
     <div class="peso-card fade-in-1 mb-4">
         <div class="peso-card-body">
             <div class="d-flex align-items-center gap-3 flex-wrap">
-                <div style="width:72px;height:72px;background:var(--g-600);flex:0 0 auto;
+                <div id="pesoAvatarPreview" style="width:72px;height:72px;background:var(--g-600);flex:0 0 auto;
                             border-radius:50%;display:flex;align-items:center;justify-content:center;
                             font-size:32px;color:#fff;overflow:hidden;">
                     @if($company->profile_photo)
@@ -236,4 +236,6 @@
         }
     }
 </script>
+@include('partials.photo-preview', ['input' => 'companyPhotoInput', 'avatar' => 'pesoAvatarPreview'])
+
 @endsection

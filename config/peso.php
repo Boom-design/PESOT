@@ -73,6 +73,21 @@ return [
         // office does not pay to invite people the employers cannot use.
         'qualified_match_percentage' => (int) env('JOBFAIR_QUALIFIED_MATCH', 75),
 
+        // How many days after the fair an employer may still record a
+        // decision on the people it met there.
+        //
+        // Not every hire happens at the booth. An employer who says "come to
+        // our office next week" marks the applicant Waiting, and the hire
+        // lands days later - that later hire is the Company Placement report.
+        // So the buttons cannot die when the fair ends.
+        //
+        // PESO Job Fair staff, 2026-09-04: the paper report asks "Status After
+        // One (1) Month - Hired / Not Hired". Once the office has phoned round
+        // and filed it, the answer is on record; a hire recorded in the
+        // fourteenth month reaches no report at all. The month the office
+        // already works to is the month the buttons stay live.
+        'placement_window_days' => (int) env('JOBFAIR_PLACEMENT_DAYS', 30),
+
     ],
 
     /*
