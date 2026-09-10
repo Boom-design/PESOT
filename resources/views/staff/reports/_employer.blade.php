@@ -21,7 +21,11 @@
         that is not here yet — the employer is still deciding on the people they saw.
     </div>
 
-    @if($employerPostings->isNotEmpty() || $employerRoomOnly->isNotEmpty())
+    {{-- Ang desk ra ang naay Download. Ang export nga route LRA ra, parehas sa
+         laing export niini nga panid; ang Admin mobasa sa numero dinhi ug
+         mangayo sa file sa desk kung kinahanglan niya. --}}
+    @if(($employerPostings->isNotEmpty() || $employerRoomOnly->isNotEmpty())
+        && ($reportRouteName ?? 'staff.reports') === 'staff.reports')
     <a href="{{ route('staff.reports.inhouse.export', request()->query()) }}"
        class="btn btn-sm fw-semibold flex-shrink-0"
        style="background:#fff;color:var(--g-700);border:1px solid var(--n-200);

@@ -30,8 +30,13 @@
                 position: fixed; top: 0; left: 0; right: 0; z-index: 500;
                 padding: 14px 20px;
                 background: rgba(20,85,27,0.94);
-                backdrop-filter: blur(18px);
-                -webkit-backdrop-filter: blur(18px);
+                /* Ang navbar naka-fixed, mao nga ang sulod sa panid molabay sa
+                   ilawom niya - siya ra ang usa dinhi nga naay tinuod nga
+                   blurihonon. Gitangtang gihapon: sa 94% nga opaque, halos
+                   walay makita niini, ug siya ang bugtong butang sa panid nga
+                   mo-blur ug naglihok nga sulod kada frame. */
+                transform: translateZ(0);
+                will-change: transform;
                 border-bottom: 1px solid rgba(255,255,255,0.2);
             }
             body { padding-top: 68px; }
@@ -177,8 +182,12 @@
                 border: 1px solid rgba(255,255,255,0.3);
                 border-radius: 16px;
                 padding: 20px 18px;
-                backdrop-filter: blur(16px);
-                -webkit-backdrop-filter: blur(16px);
+                /* Walay backdrop-filter dinhi. Ang naa sa likod niini nga kahon
+                   kay ang solid nga var(--g-800) sa body - ang pag-blur sa usa
+                   ka patag nga kolor mohatag sa parehas nga patag nga kolor,
+                   mao nga walay makita nga kalahian. Ang gasto tinuod: ang
+                   browser mo-sample pag-usab sa likod kada frame sa pag-scroll,
+                   ug kining duha ka kahon nagsakop sa halos tibuok panid. */
                 box-shadow: 0 20px 60px rgba(0,0,0,0.2);
                 display: flex;
                 flex-direction: column;
@@ -192,8 +201,12 @@
                 border: 1px solid rgba(255,255,255,0.3);
                 border-radius: 16px;
                 padding: 20px 18px;
-                backdrop-filter: blur(16px);
-                -webkit-backdrop-filter: blur(16px);
+                /* Walay backdrop-filter dinhi. Ang naa sa likod niini nga kahon
+                   kay ang solid nga var(--g-800) sa body - ang pag-blur sa usa
+                   ka patag nga kolor mohatag sa parehas nga patag nga kolor,
+                   mao nga walay makita nga kalahian. Ang gasto tinuod: ang
+                   browser mo-sample pag-usab sa likod kada frame sa pag-scroll,
+                   ug kining duha ka kahon nagsakop sa halos tibuok panid. */
                 box-shadow: 0 20px 60px rgba(0,0,0,0.2);
                 display: flex;
                 flex-direction: column;

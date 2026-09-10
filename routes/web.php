@@ -236,19 +236,18 @@
         Route::delete('/staff/jobfair/events/{id}',           [StaffWebController::class, 'deleteJobFairEvent'])->name('staff.jobfair.events.delete');
         Route::post('/staff/jobfair/events/{id}/invite-more', [StaffWebController::class, 'inviteMoreEmployers'])->whereNumber('id')->name('staff.jobfair.events.inviteMore');
         Route::get('/staff/jobfair/postings',                 [StaffWebController::class, 'jobFairPostings'])->name('staff.jobfair.postings');
-        // Usa ra ka buton. Ang fair mismo ang nagsala: ang naghulat nga bakante
-        // nga sakop niini mosulod, ang uban maghulat sa fair nga modawat nila.
-        Route::post('/staff/jobfair/postings/post-fitting',  [StaffWebController::class, 'approveFittingJobFairJobs'])->name('staff.jobfair.postings.postFitting');
-        // Ang pagpakita sa bakante ngadto sa jobseeker. Manual: ang desk ang
-        // nagbuot kung kanus-a mobuto ang listahan, sagad lima ka adlaw sa
-        // dili pa ang fair.
-        Route::post('/staff/jobfair/postings/open-all',      [StaffWebController::class, 'openJobFairPostings'])->name('staff.jobfair.postings.openAll');
+        // Walay buton para sa pag-post. Ang petsa ang nagbuhat niini: lima ka
+        // adlaw sa dili pa ang fair, ang jobfair:open-postings modawat sa
+        // naghulat nga bakante ngadto sa fair ug mopakita kanila sa jobseeker.
+        // Tan-awa ang JobFairPostingWindow::runCutoff().
 
         // Ang applicant sa usa ka bakante nga gidala sa fair, gibahin sa marka.
         // Ang text gikan dinhi ug dili gikan sa usa ka kinatibuk-ang blast page:
         // ang staff makakita kinsa ang padad-an sa dili pa siya mopadala.
         Route::get('/staff/jobfair/postings/{id}/applicants', [StaffWebController::class, 'jobFairApplicants'])->whereNumber('id')->name('staff.jobfair.postings.applicants');
         Route::post('/staff/jobfair/postings/{id}/notify',    [StaffWebController::class, 'notifyJobFairApplicants'])->whereNumber('id')->name('staff.jobfair.postings.notify');
+        // Ang wala pa ni-apply apan qualified. Lahi nga buton, lahi nga teksto.
+        Route::post('/staff/jobfair/postings/{id}/notify-prospects', [StaffWebController::class, 'notifyJobFairProspects'])->whereNumber('id')->name('staff.jobfair.postings.notifyProspects');
 
         // ── STAFF IN-HOUSE ──
         Route::get('/staff/inhouse/jobfair',                  [StaffWebController::class, 'jobFairViewOnly'])->name('staff.inhouse.jobfair');

@@ -100,6 +100,11 @@
      Inactive belong to the desks that decide on them — and a single tab is not
      a choice, only a heading repeated under the heading it repeats. --}}
 @if($staffRole !== 'lra')
+{{-- Ang pula nga numero sa Employers nga item sa sidebar gikan sa mga papel nga
+     naghulat ug review, ug kana tanan naa sa Pending Employer Account nga tab.
+     Gibutang siya dinhi aron matultolan: ang numero sa ibabaw naay tab nga
+     mopasabot niya. Ang (n) nga naa na kay ihap sa laray, dili siya lihok. --}}
+@php $employerAlerts = \App\Support\NavAlerts::forStaff(optional(Auth::user())->staff); @endphp
 <div class="d-flex gap-2 mb-4" style="overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;padding-bottom:4px;">
     <a href="{{ route('staff.employers', ['tab' => 'pre']) }}"
        class="btn btn-sm fw-semibold"
@@ -110,6 +115,7 @@
         <i class="ph-fill ph-user-plus me-1"></i>
         Pending Employer Account
         <span class="ms-1 fw-bold">({{ $totalPre }})</span>
+        @include('partials.tab-dot', ['count' => $employerAlerts['employers'] ?? 0, 'on' => $tab === 'pre'])
     </a>
     <a href="{{ route('staff.employers', ['tab' => 'approved']) }}"
        class="btn btn-sm fw-semibold"
@@ -661,33 +667,29 @@
                                     <div class="peso-req-side p-3">
                                         @if($canDecide)
                                         {{-- Ang hukom sa matag papel una, ang paglihok sa kompanya
-                                             ulahi. Ang SRA wala giapil: usa ka pindot ang iyaha sa
-                                             tibuok folder, walay per-document nga lakang didto. --}}
-                                        @php
-                                            $perDoc = $staffRole === 'job_vacancy' && !($companyRow->is_overseas ?? false);
-                                            $readyToMove = !$perDoc
-                                                || ($req->allDocumentsDecided() && !$req->hasRejectedDocuments());
-                                        @endphp
+                                             ulahi — para sa duha ka desk.
 
-                                        @if($perDoc)
-                                            @include('staff.requirements._document_decisions', [
-                                                'requirement' => $req,
-                                                'perDoc'      => true,
-                                            ])
-                                        @endif
+                                             Ang SRA naay kaugalingong buton dinhi kaniadto: usa ka
+                                             pindot sa tibuok folder. Ang sangputanan mao nga ang
+                                             pag-approve sa business permit nagdala sa ahensya
+                                             ngadto sa Registered Employer samtang upat pa ka papel
+                                             ang wala pa naablihan. --}}
+                                        @include('staff.requirements._document_decisions', [
+                                            'requirement' => $req,
+                                            'perDoc'      => true,
+                                        ])
 
-                                        <form action="{{ route('staff.requirements.approve', $reqId) }}"
-                                              method="POST" class="mb-2">
-                                            @csrf
-                                            <button type="submit" class="btn btn-sm w-100 fw-semibold"
-                                                style="background:{{ $readyToMove ? 'var(--g-600)' : 'var(--n-200)' }};
-                                                       color:{{ $readyToMove ? '#fff' : 'var(--n-500)' }};border:none;
-                                                       border-radius:8px;font-size:12.5px;padding:8px;{{ $readyToMove ? '' : 'cursor:not-allowed;' }}"
-                                                {{ $readyToMove ? '' : 'disabled' }}>
-                                                <i class="ph-fill ph-check-circle me-1"></i>
-                                                {{ $perDoc ? 'Move to Registered Employer' : 'Approve Requirements' }}
-                                            </button>
-                                        </form>
+                                        {{-- No second Approve here. Every paper has already been
+                                             decided one at a time, so the last Approve above is
+                                             the decision and the company moves on it. A button
+                                             that could only ever say yes is a step, not a check. --}}
+                                        <div class="p-2 mb-2 rounded-3"
+                                             style="background:var(--g-50);border:1px solid var(--g-500);
+                                                    font-size:11px;color:var(--g-700);line-height:1.45;">
+                                            <i class="ph ph-info me-1"></i>
+                                            Approving the last document moves this employer to
+                                            <strong>Registered Employer</strong> — nothing else to press.
+                                        </div>
 
                                         {{-- Approving needs no form to fill in, so the panel opens
                                              showing two buttons and nothing else. The checkboxes and
@@ -1037,6 +1039,27 @@
             if (first) pesoShowReqDoc(reqId, first.dataset.field);
         });
     });
+
+    // ── Put the window back where the decision was made.
+    //
+    // Approving one document reloads the page, and a reload closes every modal.
+    // Without this the desk lands back on the tab, hunts for the company, and
+    // presses View again for each of the five papers. The controller says which
+    // folder and which document, so the page can reopen on exactly that.
+@if(session('open_req_review'))
+    document.addEventListener('DOMContentLoaded', function () {
+        const reqId = @json(session('open_req_review'));
+        const el    = document.getElementById('reqReviewModal' + reqId);
+        if (!el) return;
+
+        el.addEventListener('shown.bs.modal', function () {
+            const field = @json(session('open_req_doc'));
+            if (field) pesoShowReqDoc(reqId, field);
+        }, { once: true });
+
+        bootstrap.Modal.getOrCreateInstance(el).show();
+    });
+@endif
 </script>
 @endpush
 

@@ -12,7 +12,7 @@
         </h5>
         <p class="mb-0" style="font-size:13px;color:var(--n-500);">
             The employers invited to a fair, by what they answered, and the vacancies each
-            would bring. Pick a fair and post everything it takes — a posted vacancy goes live
+            would bring. Nothing to press: every vacancy a fair takes is posted
             {{ \App\Support\JobFairPostingWindow::daysBefore() }} days before that fair.
         </p>
     </div>
@@ -50,6 +50,21 @@
         @endforeach
     </div>
     <div class="d-flex gap-2 flex-wrap align-items-center">
+        {{-- Ang fair, pilion kausa alang sa tulo ka tab.
+             Ang Job Fair nga kolum kaniadto nagsulti niini kada laray; kining
+             usa ka kahon nagsulti niini kausa, ug ang lamesa nagpabilin nga
+             tulo lang ka pangutana: kinsa, unsa ang dad-on, ug pila. --}}
+        <select id="eventFilter" class="form-select form-select-sm"
+                style="max-width:260px;border-color:var(--n-200);font-size:12.5px;border-radius:8px;">
+            <option value="">All job fair events</option>
+            @foreach($fairOptions as $fair)
+                <option value="{{ $fair->job_fair_events_id }}"
+                    {{ (int) $eventId === $fair->job_fair_events_id ? 'selected' : '' }}>
+                    {{ $fair->title }} · {{ $fair->event_date->format('M d, Y') }}
+                </option>
+            @endforeach
+        </select>
+
         {{-- Ang sala nga gigamit sa dili pa mo-post ug tinapok: ang fair nga
              para sa Education modawat sa Education ra, mao nga salaan ang
              listahan hangtod nga ang nahibilin mao na ang i-post. --}}
@@ -86,8 +101,14 @@
      event — industriya, PWD, lokal o overseas — mao nga ang desk dili na
      magbasa ug usa-usa nga bakante. Pilia ang fair, tan-awa pila ang mosulod,
      ug i-post silang tanan. Ang wala mohaom maghulat sa fair nga modawat nila;
-     wala silay nadawat nga pagbalibad ug walay nahibaw-an ang employer. --}}
-@if($invite === 'pending' && $waitingTotal > 0 && $events->isEmpty())
+     wala silay nadawat nga pagbalibad ug walay nahibaw-an ang employer.
+
+     PESO Job Fair staff, 2026-09-04: naa ni sa Accepted Invitation, dili sa
+     Pending. Ang bakante nga i-post iya sa employer nga miingon ug oo, ug ang
+     listahan sa mga miingon ug oo anaa dinhi. Sa Pending nga tab, ang desk
+     motan-aw sa buton nga nagdala sa bakante sa mga tawo nga wala pa gani
+     mitubag. --}}
+@if($invite === 'accepted' && $waitingTotal > 0 && $events->isEmpty())
 {{-- Ang buton nagkinahanglan ug fair nga kasudlan. Kung walay upcoming nga
      event, ang lugar dili magpabilin nga blangko: ang desk mangita sa buton
      ug maghunahuna nga nabuak siya, nga ang tinuod nga tubag mao nga wala pa
@@ -111,79 +132,47 @@
 </div>
 @endif
 
-@if($invite === 'pending' && $events->isNotEmpty() && $waitingTotal > 0)
-<form method="POST" action="{{ route('staff.jobfair.postings.postFitting') }}" id="postFittingForm" class="mb-3">
-    @csrf
-    <div class="card border-0 shadow-sm rounded-3 p-3">
-        <div class="d-flex align-items-center gap-2 flex-wrap">
-            <label class="fw-semibold mb-0" style="color:var(--g-700);font-size:12.5px;white-space:nowrap;">
-                <i class="ph ph-flag-banner me-1" style="color:var(--g-600);"></i>Post the waiting vacancies to
-            </label>
-            <select name="job_fair_id" id="fitEventSelect" class="form-select form-select-sm"
-                    style="max-width:340px;border-color:var(--n-200);font-size:12.5px;border-radius:8px;" required>
-                @foreach($events as $event)
-                    <option value="{{ $event->job_fair_events_id }}" data-fit="{{ $fitCounts[$event->job_fair_events_id] ?? 0 }}">
-                        {{ $event->title }} — {{ $event->event_date->format('M d, Y') }}{{ $event->pwd_only ? ' · PWD only' : '' }}
-                    </option>
-                @endforeach
-            </select>
+@if($invite === 'accepted' && $events->isNotEmpty())
+{{-- ── NO BUTTON ──
 
-            <span id="fitHint" style="font-size:11.5px;color:var(--n-500);"></span>
+     PESO Job Fair staff, 2026-09-04: the desk used to press two buttons here,
+     and neither of them could answer anything but yes. The fair already decides
+     which vacancies it takes, and the only question left was when — which is
+     always the same answer: shortly before the fair. So the date presses them.
 
-            <button type="submit" id="postFittingButton" class="btn btn-sm fw-semibold ms-auto"
-                style="background:var(--g-700);color:#fff;border:none;border-radius:8px;font-size:12px;padding:6px 16px;">
-                <i class="ph ph-check-circle me-1"></i> Post <span id="fitCount">0</span> vacancy(s)
-            </button>
+     What is left is the statement of what will happen and when, so the desk can
+     see it coming and knows nothing is waiting on it. --}}
+<div class="card border-0 shadow-sm rounded-3 p-3 mb-3">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <i class="ph-fill ph-clock-countdown" style="color:var(--g-600);font-size:18px;"></i>
+        <div class="fw-semibold" style="color:var(--g-700);font-size:12.5px;">
+            Vacancies post themselves {{ $openDaysBefore }} days before each fair
         </div>
     </div>
-</form>
-@endif
-
-{{-- ── SHOW THE VACANCIES TO JOBSEEKERS ──
-
-     PESO Job Fair staff, 2026-09-02: the desk decides the moment the list goes
-     public, normally {{ $openDaysBefore }} days before the fair, once the
-     employers that are coming have answered. Until then the vacancies sit
-     closed — a vacancy announced a month before the day it can be applied for
-     is buried under everything posted since.
-
-     It sits on Accepted Invitation because that is the tab that answers the
-     question the desk asks first: who is actually coming. --}}
-@if($invite === 'accepted' && $openable->isNotEmpty())
-<form method="POST" action="{{ route('staff.jobfair.postings.openAll') }}" id="openAllForm" class="mb-3">
-    @csrf
-    <div class="card border-0 shadow-sm rounded-3 p-3">
-        <div class="d-flex align-items-center gap-2 flex-wrap">
-            <label class="fw-semibold mb-0" style="color:var(--g-700);font-size:12.5px;white-space:nowrap;">
-                <i class="ph ph-megaphone me-1" style="color:var(--g-600);"></i>Show the vacancies of
-            </label>
-            <select name="job_fair_id" id="openAllSelect" class="form-select form-select-sm"
-                    style="max-width:340px;border-color:var(--n-200);font-size:12.5px;border-radius:8px;" required>
-                @foreach($openable as $option)
-                    <option value="{{ $option['id'] }}"
-                            data-waiting="{{ $option['waiting'] }}"
-                            data-inrange="{{ $option['inRange'] ? '1' : '0' }}"
-                            data-title="{{ $option['title'] }}">
-                        {{ $option['title'] }} — {{ $option['date']->format('M d, Y') }}
-                    </option>
-                @endforeach
-            </select>
-
-            <span id="openAllHint" style="font-size:11.5px;color:var(--n-500);"></span>
-
-            <button type="button" id="openAllButton" class="btn btn-sm fw-semibold ms-auto"
-                style="background:var(--g-600);color:#fff;border:none;border-radius:8px;font-size:12px;padding:6px 16px;">
-                <i class="ph-fill ph-megaphone me-1"></i> Post All Job Vacancies
-                (<span id="openAllCount">0</span>)
-            </button>
-        </div>
-        <div id="openAllEarly" class="mt-2" style="display:none;font-size:11.5px;color:var(--warn);">
-            <i class="ph-fill ph-warning-circle me-1"></i>
-            This fair is more than {{ $openDaysBefore }} days away. Posting now means jobseekers
-            see these vacancies well before the day they can act on them.
-        </div>
+    <div style="font-size:11.5px;color:var(--n-600);line-height:1.6;">
+        On that day every waiting vacancy the fair takes is accepted onto it and shown to
+        jobseekers at once — whether or not the employer target has been reached. A vacancy
+        the fair does not take keeps waiting for one that does.
     </div>
-</form>
+    <div class="mt-2 d-flex flex-column gap-1">
+        @foreach($openable as $option)
+        <div class="d-flex align-items-center gap-2 flex-wrap p-2 rounded-3"
+             style="background:{{ $option['inRange'] ? 'var(--g-50)' : 'var(--n-50)' }};
+                    border:1px solid {{ $option['inRange'] ? 'var(--g-500)' : 'var(--n-200)' }};">
+            <span class="fw-semibold" style="color:var(--g-700);font-size:12px;">{{ $option['title'] }}</span>
+            <span style="color:var(--n-500);font-size:11px;">· {{ $option['date']->format('M d, Y') }}</span>
+            <span class="ms-auto text-nowrap" style="font-size:11px;color:{{ $option['inRange'] ? 'var(--g-700)' : 'var(--n-600)' }};">
+                @if($option['inRange'])
+                    <i class="ph-fill ph-check-circle me-1"></i>Posted {{ $option['opensOn']->format('M d, Y') }}
+                @else
+                    <i class="ph ph-clock me-1"></i>Posts {{ $option['opensOn']->format('M d, Y') }}
+                    · {{ $option['goingLive'] }} vacancy(s) queued
+                @endif
+            </span>
+        </div>
+        @endforeach
+    </div>
+</div>
 @endif
 
 {{-- ── ONE ROW PER EMPLOYER, NOT PER VACANCY ──
@@ -204,7 +193,6 @@
                 <tr style="background:var(--g-600);">
                     <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">#</th>
                     <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Company</th>
-                    <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Job Fair</th>
                     <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Industry</th>
                     <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Vacancies</th>
                     <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;text-align:center;">Potential Applicants</th>
@@ -229,27 +217,31 @@
                             {{ $company->employer->email ?? 'None' }}
                         </div>
                     </td>
-                    <td style="padding:12px 16px;color:var(--n-700);">
-                        {{ $row->jobFair->title ?? 'None' }}
-                        @if($row->jobFair?->event_date)
-                            <div style="font-size:11px;color:var(--n-500);">
-                                {{ $row->jobFair->event_date->format('M d, Y') }}
-                            </div>
-                        @endif
-                    </td>
                     <td style="padding:12px 16px;color:var(--n-700);font-size:12px;">
                         {{ $company->industry_group ?? 'Not set' }}
                     </td>
                     <td style="padding:12px 16px;color:var(--n-700);">
+                        {{-- ── Ang titulo kaniadto mao ra ang link.
+                             ──
+                             ── PESO Job Fair staff, 2026-09-04: "wajud ko kabalo
+                             ── nga button to". Ang panid nga naay listahan sa
+                             ── aplikante ug ang buton nga mo-text kanila naabot
+                             ── ra pinaagi niini, mao nga ang tinago nga link
+                             ── nagtago sa tibuok trabaho. Buton na siya karon. --}}
                         @forelse($vacancies as $vacancy)
-                            <div style="font-size:12px;">
-                                <a href="{{ route('staff.jobfair.postings.applicants', $vacancy->job_qualifications_id) }}"
-                                   class="fw-semibold text-decoration-none" style="color:var(--g-700);">
+                            <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+                                <span class="fw-semibold" style="color:var(--g-700);font-size:12px;">
                                     {{ $vacancy->title }}
-                                </a>
+                                </span>
                                 <span style="color:var(--n-500);font-size:11px;">
                                     · {{ $vacancy->slots }} slot(s)@if($vacancy->acceptsPwd()) · accepts PWD @endif
                                 </span>
+                                <a href="{{ route('staff.jobfair.postings.applicants', $vacancy->job_qualifications_id) }}"
+                                   class="btn btn-sm fw-semibold text-nowrap"
+                                   style="border:1px solid var(--g-500);color:var(--g-700);background:var(--g-50);
+                                          border-radius:8px;font-size:11px;padding:3px 10px;">
+                                    <i class="ph ph-users-three me-1"></i>View applicants
+                                </a>
                             </div>
                         @empty
                             <span style="font-size:11.5px;color:var(--n-400);">No job fair vacancy posted</span>
@@ -270,16 +262,17 @@
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="6" class="text-center"
+                    <td colspan="5" class="text-center"
                         style="padding:26px 16px;color:var(--n-500);font-size:13px;">
                         <i class="ph ph-envelope-simple me-1"
                            style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                        @php $forFair = $eventId ? ' for this job fair' : ''; @endphp
                         @if($invite === 'pending')
-                            No employer is waiting to answer an invitation.
+                            No employer is waiting to answer an invitation{{ $forFair }}.
                         @elseif($invite === 'accepted')
-                            No employer has accepted an invitation yet.
+                            No employer has accepted an invitation{{ $forFair }} yet.
                         @else
-                            No employer has declined an invitation.
+                            No employer has declined an invitation{{ $forFair }}.
                         @endif
                     </td>
                 </tr>
@@ -340,94 +333,10 @@
         goToFilter('industry', this.value);
     });
 
-    // ── POST ALL JOB VACANCIES ──
-    // The count is the server's, so the button and the actual open cannot
-    // disagree. A fair with nothing waiting kills the button — there is
-    // nothing to show. The press asks first: the employers are told their
-    // posting is live and the matching jobseekers are notified, and neither
-    // message can be taken back.
-    (function () {
-        const select = document.getElementById('openAllSelect');
-        if (!select) return;
+    document.getElementById('eventFilter')?.addEventListener('change', function () {
+        goToFilter('event_id', this.value);
+    });
 
-        const button = document.getElementById('openAllButton');
-        const count  = document.getElementById('openAllCount');
-        const hint   = document.getElementById('openAllHint');
-        const early  = document.getElementById('openAllEarly');
-        const form   = document.getElementById('openAllForm');
-
-        function refresh() {
-            const option  = select.options[select.selectedIndex];
-            const waiting = parseInt(option?.dataset.waiting || '0', 10);
-            const inRange = option?.dataset.inrange === '1';
-
-            count.textContent = waiting;
-            button.disabled = waiting === 0;
-            button.style.opacity = waiting === 0 ? '0.55' : '';
-            button.style.cursor  = waiting === 0 ? 'not-allowed' : '';
-
-            hint.textContent = waiting === 0
-                ? 'Every vacancy on this fair is already visible to jobseekers.'
-                : waiting + ' vacancy(s) on this fair are still hidden from jobseekers.';
-
-            early.style.display = waiting > 0 && !inRange ? 'block' : 'none';
-        }
-
-        select.addEventListener('change', refresh);
-        refresh();
-
-        button.addEventListener('click', function () {
-            const option  = select.options[select.selectedIndex];
-            const waiting = parseInt(option?.dataset.waiting || '0', 10);
-
-            Swal.fire({
-                title: 'Post these vacancies?',
-                html: '<div style="font-size:14px;">This makes <strong>' + waiting + '</strong> vacancy(s) on '
-                      + '<strong>' + (option?.dataset.title || 'this fair') + '</strong> visible to every jobseeker. '
-                      + 'The employers are told their posting is live and the matching jobseekers are notified. '
-                      + 'This cannot be taken back.</div>',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: 'Post them now',
-                cancelButtonText: 'Cancel',
-                confirmButtonColor: '#2e7d32',
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    button.disabled = true;
-                    form.submit();
-                }
-            });
-        });
-    })();
-
-    // ── PILA ANG MOSULOD SA PINILING FAIR ──
-    // Ang numero gikwenta sa server para sa matag fair, mao nga ang gipakita
-    // sa buton ug ang tinuod nga i-post parehas gyud. Ang fair nga walay
-    // sakop nga bakante mopatay sa buton — walay ipadala.
-    (function () {
-        const select = document.getElementById('fitEventSelect');
-        if (!select) return;
-
-        const button = document.getElementById('postFittingButton');
-        const count  = document.getElementById('fitCount');
-        const hint   = document.getElementById('fitHint');
-
-        function refresh() {
-            const option = select.options[select.selectedIndex];
-            const fits   = parseInt(option?.dataset.fit || '0', 10);
-
-            if (count)  count.textContent = fits;
-            if (button) button.disabled = fits === 0;
-            if (hint) {
-                hint.textContent = fits === 0
-                    ? 'No waiting vacancy belongs to this fair.'
-                    : fits + ' of the waiting vacancies belong to this fair.';
-            }
-        }
-
-        select.addEventListener('change', refresh);
-        refresh();
-    })();
 </script>
 @endpush
 

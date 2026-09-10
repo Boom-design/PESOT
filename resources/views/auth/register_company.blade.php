@@ -19,13 +19,20 @@
 
         .bg-wrapper {
             position: fixed; inset: 0;
-            background: url('{{ asset('images/cityhall.png') }}') center center / cover no-repeat;
+            background: url('{{ asset('images/cityhall.jpg') }}') center center / cover no-repeat;
+            /* Kaugalingon nga layer sa GPU. Kung wala, ang fixed nga layer
+               ipintal pag-usab kada frame sa pag-scroll. */
+            transform: translateZ(0);
+            will-change: transform;
             z-index: 0;
         }
         .bg-overlay {
             position: fixed; inset: 0;
             background: linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.68) 100%);
             z-index: 1;
+            /* Parehas nga rason sa .bg-wrapper. */
+            transform: translateZ(0);
+            will-change: transform;
         }
 
         .page {
@@ -230,7 +237,7 @@
                       'telephone_no', 'mobile_number', 'fax_no', 'email'],
                 3 => ['business_permit', 'sec_dti', 'company_profile',
                       'no_pending_case_certificate', 'vacancy_posting',
-                      'company_logo', 'business_permit_year',
+                      'company_logo',
                       'business_permit_expires_at', 'sec_dti_expires_at', 'company_profile_expires_at',
                       'no_pending_case_certificate_expires_at', 'vacancy_posting_expires_at',
                       'certification_agreed', 'certification_date', 'password'],
@@ -478,7 +485,7 @@
                 <div class="row g-2">
                     @php
                     $regDocs = [
-                        ['field' => 'business_permit',             'label' => 'CDO Business Permit', 'year' => true],
+                        ['field' => 'business_permit',             'label' => 'CDO Business Permit'],
                         ['field' => 'sec_dti',                     'label' => 'SEC / DTI'],
                         ['field' => 'company_profile',             'label' => 'Company Profile'],
                         ['field' => 'no_pending_case_certificate', 'label' => 'Certificate of No Pending Case'],
@@ -489,25 +496,12 @@
                     <div class="col-md-6">
                         <label class="peso-label">{{ $i + 1 }}. {{ $doc['label'] }} <span style="font-weight:400;color:rgba(255,255,255,0.65);">(optional)</span></label>
                         <input type="file" name="{{ $doc['field'] }}" class="peso-input" accept=".jpg,.jpeg,.png,.pdf" style="padding:6px 12px;">
-                        @if(!empty($doc['year']))
-                            {{-- Ang permit tinuig, mao nga ang tuig ang gipangayo, dili petsa. --}}
-                            <select name="business_permit_year" class="peso-input mt-1" style="padding:6px 12px;">
-                                <option value="">Permit year</option>
-                                @foreach(range(now()->year + 1, now()->year - 2) as $year)
-                                    <option value="{{ $year }}" {{ (int) old('business_permit_year', now()->year) === $year ? 'selected' : '' }}>{{ $year }}</option>
-                                @endforeach
-                            </select>
-                            @error('business_permit_year')
-                                <div style="font-size:11px;color:var(--danger-br);margin-top:2px;">{{ $message }}</div>
-                            @enderror
-                        @else
-                            <input type="date" name="{{ $doc['field'] }}_expires_at" class="peso-input mt-1"
-                                   placeholder="Expiry date" value="{{ old($doc['field'].'_expires_at') }}"
-                                   style="padding:6px 12px;">
-                            @error($doc['field'].'_expires_at')
-                                <div style="font-size:11px;color:var(--danger-br);margin-top:2px;">{{ $message }}</div>
-                            @enderror
-                        @endif
+                        <input type="date" name="{{ $doc['field'] }}_expires_at" class="peso-input mt-1"
+                               placeholder="Expiry date" value="{{ old($doc['field'].'_expires_at') }}"
+                               style="padding:6px 12px;">
+                        @error($doc['field'].'_expires_at')
+                            <div style="font-size:11px;color:var(--danger-br);margin-top:2px;">{{ $message }}</div>
+                        @enderror
                     </div>
                     @endforeach
 

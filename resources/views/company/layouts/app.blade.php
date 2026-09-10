@@ -348,7 +348,7 @@
                 <ul class="dropdown-menu dropdown-menu-end peso-dropdown">
                     <li>
                         <a class="dropdown-item" href="{{ route('company.profile') }}">
-                            <i class="ph ph-user-circle"></i> My Profile
+                            <i class="ph ph-user-circle"></i> My Account Profile
                         </a>
                     </li>
                     <li><hr class="dropdown-divider"></li>

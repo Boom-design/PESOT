@@ -107,7 +107,7 @@ class CompanyWebController extends Controller
                 \App\Http\Controllers\UnifiedAuthController::requirementFileRules()
             ),
             array_merge(\App\Support\EmployerRegistration::messages(), [
-                'business_permit_year.required_with' => 'Say which year this business permit covers.',
+                'business_permit_expires_at.required_with' => 'Enter the expiry date printed on this business permit.',
             ])
         );
 
@@ -525,9 +525,13 @@ class CompanyWebController extends Controller
                 'deadline'            => in_array($request->schedule_type, ['inhouse', 'company_interview'])
                                           ? ($request->preferred_date_end ?: $request->preferred_date)
                                           : ($pos['deadline'] ?? null),
-                // Buhi dayon — wala nay pag-approve sa staff. Tan-awa ang
+                // Buhi dayon ang lokal — wala nay pag-approve sa staff. Ang
+                // overseas naghulat sa SRA. Tan-awa ang
                 // JobPostingNotice::initialState().
-                ...\App\Support\JobPostingNotice::initialState($request->schedule_type),
+                ...\App\Support\JobPostingNotice::initialState(
+                    $request->schedule_type,
+                    (bool) $employerNsrp->is_overseas
+                ),
                 'posting_type'        => 'direct',
                 'schedule_type'       => $request->schedule_type,
                 'preferred_date'      => $request->schedule_type !== 'job_fair' ? $request->preferred_date : null,
@@ -564,7 +568,10 @@ class CompanyWebController extends Controller
         // ── gipahibalo ra sila nga buhi na. Ang in-house lahi: naghulat siya
         // ── sa ilang desisyon, mao nga ang mensahe usa ka hangyo, dili
         // ── kasayoran. ──
-        $goesLive = \App\Support\JobPostingNotice::goesLive($request->schedule_type);
+        $goesLive = \App\Support\JobPostingNotice::goesLive(
+            $request->schedule_type,
+            (bool) $employerNsrp->is_overseas
+        );
 
         if ($request->schedule_type === 'inhouse') {
             $staffRole  = $employerNsrp->is_overseas ? 'sra' : 'lra';
@@ -581,8 +588,13 @@ class CompanyWebController extends Controller
                          . \App\Support\JobFairPostingWindow::liveNote();
         } else {
             $staffRole = $employerNsrp->is_overseas ? 'sra' : 'job_vacancy';
-            $title     = 'New Job Posting 💼';
-            $message   = $employerNsrp->company_name . ' posted their initial job vacancy. It is live now.';
+            $title     = $employerNsrp->is_overseas
+                         ? 'Company Interview Needs Approval 💼'
+                         : 'New Job Posting 💼';
+            $message   = $employerNsrp->company_name . ' posted their initial job vacancy'
+                         . ($employerNsrp->is_overseas
+                            ? ' for a company interview. It stays hidden from jobseekers until you approve it.'
+                            : '. It is live now.');
         }
 
         \App\Models\Announcement::sendToStaff([
@@ -606,7 +618,10 @@ class CompanyWebController extends Controller
         return redirect()->route('company.jobseekers')->with('success', $goesLive
             ? 'Job posting confirmed and is now live!'
             : 'Job posting confirmed. '
-              . \App\Support\JobPostingNotice::pendingNote($request->schedule_type));
+              . \App\Support\JobPostingNotice::pendingNote(
+                    $request->schedule_type,
+                    (bool) $employerNsrp->is_overseas
+                ));
     }
 
     // ───────────────────────────────
@@ -985,15 +1000,35 @@ class CompanyWebController extends Controller
             }
         }
 
-        // ── Job Fair applicants — dili pwede i-Hire/Waiting/Reject hangtod moabot ang event date (server-side, dili lang UI hide) ──
+        // ── Job Fair applicants — usa ka bintana nga naay duha ka tumoy.
+        // ──
+        // ── Ang salog mao ang adlaw sa fair: walay desisyon sa wala pa
+        // ── magkita ang employer ug ang tawo.
+        // ──
+        // ── Ang kisame usa ka bulan human. Kaniadto walay kisame, mao nga
+        // ── ang buton buhi gihapon duha ka tuig human sa fair — ug ang
+        // ── hire nga natala didto walay report nga makaabot.
+        // ──
+        // ── Ang UI nagtago sa buton, apan ang pagtago dili mopugong sa POST.
+        // ── Diri gyud ang tinuod nga pugong. ──
         if ($application->job && $application->job->schedule_type === 'job_fair'
             && in_array($request->status, ['hired', 'waiting', 'rejected'])) {
             $jobFairEvent = \App\Models\JobFairEmploymentRequest::where('job_id', $application->job_id)
                 ->with('jobFair')
                 ->first()?->jobFair;
 
-            if ($jobFairEvent && now()->toDateString() < \Carbon\Carbon::parse($jobFairEvent->event_date)->toDateString()) {
-                return back()->with('error', 'You can only finalize job fair applicants once the event date (' . $jobFairEvent->event_date->format('M d, Y') . ') arrives.');
+            $window = \App\Support\JobFairDecisionWindow::state($jobFairEvent);
+
+            if ($window === 'early') {
+                return back()->with('error', 'You can only finalize job fair applicants once the event date ('
+                    . $jobFairEvent->event_date->format('M d, Y') . ') arrives.');
+            }
+
+            if ($window === 'closed') {
+                return back()->with('error', 'Decisions on "' . $jobFairEvent->title . '" closed on '
+                    . \App\Support\JobFairDecisionWindow::closesOn($jobFairEvent)->format('M d, Y')
+                    . ', ' . \App\Support\JobFairDecisionWindow::days()
+                    . ' days after the fair. Contact PESO if this applicant still has to be recorded.');
             }
         }
 
@@ -1157,10 +1192,7 @@ class CompanyWebController extends Controller
             'poster_image'   => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
 
            
-            'existing_job_ids'   => 'nullable|array',
-            'existing_job_ids.*' => 'integer',
-
-            'positions'                          => 'required_without:existing_job_ids|array',
+            'positions'                          => 'required|array',
             'positions.*.title'                 => 'required|string|max:255',
             'positions.*.description'           => 'required|string',
             'positions.*.type'                  => 'required|in:permanent,contractual,project_based,internship,part_time,work_from_home',
@@ -1240,48 +1272,12 @@ class CompanyWebController extends Controller
         $createdJobs  = [];
         $jobFairJobs  = [];
 
+        // Gikuha dinhi kay duha na ka butang ang nagsalig niini: kung asa nga
+        // desk ang pahibaloon, ug kung buhi ba dayon ang posting o naghulat pa
+        // sa SRA. Tan-awa ang JobPostingNotice::initialState().
+        $isOverseas = (bool) $company->activeCompany()->is_overseas;
+
        
-        $broughtCount = 0;
-        $bringIds = array_filter(array_map('intval', (array) $request->input('existing_job_ids', [])));
-        if ($bringIds) {
-            
-            $alreadyBroughtGroups = Job::whereIn(
-                    'job_qualifications_id',
-                    \App\Models\JobFairEmploymentRequest::where('job_fair_id', $request->job_fair_id)
-                        ->where('employer_id', $companyId)
-                        ->pluck('job_id')
-                )
-                ->get()
-                ->map(fn($job) => $job->group_key)
-                ->all();
-
-            $sourceJobs = Job::whereIn('job_qualifications_id', $bringIds)
-                ->where('company_id', $companyId)          // iyaha ra gyud
-                ->where('schedule_type', '!=', 'job_fair') // wala na sa fair
-                ->where('posting_status', 'approved')
-                ->active()                                  // buhi pa: dili expired, dili puno
-                ->get()
-                ->reject(fn($job) => in_array($job->group_key, $alreadyBroughtGroups))
-               
-                ->unique(fn($job) => $job->group_key);
-
-            foreach ($sourceJobs as $source) {
-                $clone = $source->replicate([
-                    'preferred_date', 'preferred_time', 'venue_type', 'venue_address',
-                    'confirmed_date', 'confirmed_time', 'schedule_status', 'schedule_rejection_reason',
-                ]);
-                $clone->schedule_type    = 'job_fair';
-               
-                $clone->fill(\App\Support\JobPostingNotice::initialState('job_fair'));
-                $clone->posting_group_id = $source->group_key;  // parehas nga bakante
-                $clone->remarks          = null;
-                $clone->save();
-
-                $createdJobs[] = $clone;
-                $jobFairJobs[] = $clone;
-                $broughtCount++;
-            }
-        }
 
         foreach ((array) $request->input('positions', []) as $pos) {
            
@@ -1311,7 +1307,7 @@ class CompanyWebController extends Controller
                     'deadline'            => ($pos['deadline'] ?? null) ?: ($scheduleEnd ?: $scheduleDate),
                     'salary'              => $pos['salary'] ?? 'Negotiable',
                     
-                    ...\App\Support\JobPostingNotice::initialState($type),
+                    ...\App\Support\JobPostingNotice::initialState($type, $isOverseas),
                     'posting_type'        => 'direct',
                     'schedule_type'       => $type,
                     'preferred_date'      => $scheduleDate,
@@ -1367,18 +1363,15 @@ class CompanyWebController extends Controller
     
         if (empty($createdJobs)) {
             return back()->withInput()->with('error',
-                'Nothing was posted — the vacancies you ticked are no longer open. Add a new position instead.');
+                'Nothing was posted — add at least one position.');
         }
 
         $firstJob = $createdJobs[0];
        
-        $positionCount = count((array) $request->input('positions', [])) + $broughtCount;
+        $positionCount = count((array) $request->input('positions', []));
         $titleSummary  = $positionCount > 1
             ? $firstJob->title . ' (+' . ($positionCount - 1) . ' more)'
             : $firstJob->title;
-
-        
-        $isOverseas = $company->activeCompany() && $company->activeCompany()->is_overseas;
 
         foreach ($requestedTypes as $type) {
             $channelJob = collect($createdJobs)->firstWhere('schedule_type', $type);
@@ -1402,10 +1395,15 @@ class CompanyWebController extends Controller
                            . '" for job fair use. ' . \App\Support\JobFairPostingWindow::liveNote();
             } else {
                 $role    = $isOverseas ? 'sra' : 'job_vacancy';
-                $title   = 'New Job Posting 💼';
+                $title   = $isOverseas
+                           ? 'Company Interview Needs Approval 💼'
+                           : 'New Job Posting 💼';
                 $message = $company->activeCompany()->company_name . ' posted "' . $titleSummary
                            . '" for a company interview on '
-                           . \Carbon\Carbon::parse($request->company_interview_date)->format('M d, Y') . '. It is live now.';
+                           . \Carbon\Carbon::parse($request->company_interview_date)->format('M d, Y') . '. '
+                           . ($isOverseas
+                              ? 'It stays hidden from jobseekers until you approve it.'
+                              : 'It is live now.');
             }
 
             \App\Models\Announcement::sendToStaff([
@@ -1450,6 +1448,12 @@ class CompanyWebController extends Controller
         if (in_array('inhouse', $requestedTypes, true)) {
             $successMsg .= ' The in-house posting is not visible yet — '
                          . lcfirst(\App\Support\JobPostingNotice::pendingNote('inhouse'));
+        }
+
+        // Ang lokal nga company interview buhi dayon, mao nga walay isulti.
+        if ($isOverseas && in_array('company_interview', $requestedTypes, true)) {
+            $successMsg .= ' The company interview posting is not visible yet — '
+                         . lcfirst(\App\Support\JobPostingNotice::pendingNote('company_interview', true));
         }
 
         if ($request->filled('job_fair_id')) {
@@ -1804,7 +1808,7 @@ class CompanyWebController extends Controller
             $needsSelection => 'Your acceptance has been sent to PESO. The office will confirm'
                                . ' your slot for this job fair — you will be notified once it does.',
             $request->response === 'confirmed'
-                            => 'You have confirmed the job fair invitation! Please post a job vacancy for this event.',
+                            => 'You have confirmed the job fair invitation!',
             default         => 'You have declined the job fair invitation.',
         };
 
@@ -1818,16 +1822,113 @@ class CompanyWebController extends Controller
                   . ', so please coordinate with PESO about your booth.';
         }
 
-        // Ang modal sa pag-post ug bakante moabli lang kung apil na gyud siya.
-        // Ang naghulat pa sa SRA walay ma-post — ug ang pag-abli sa porma kay
-        // saad nga wala pa gihatag.
-        if ($newStatus === 'confirmed') {
+        // ── Ang porma sa bakante moabli sa duha ka porma sa oo.
+        // ──
+        // ── Kaniadto ang confirmed ra ang naka-abli niini: "ang naghulat pa sa
+        // ── SRA walay ma-post, ug ang pag-abli sa porma kay saad nga wala pa
+        // ── gihatag." Apan ang job_fair_id nga gipasa sa porma nagbutang ra ug
+        // ── requested_job_fair_id — pangayo, dili pagsulod. Si staff gihapon
+        // ── ang mo-approve sa bakante ngadto sa fair, ug ang posting mismo
+        // ── magpabilin nga pending ug closed hangtod niana.
+        // ──
+        // ── PESO SRA, 2026-09-05: ang ahensya nga miingon ug oo ug dayon wala
+        // ── gipangutana unsay iyang dad-on kinahanglan mangita sa buton sa
+        // ── iyang kaugalingon, ug ang SRA nga mopili walay makita nga bakante
+        // ── nga basehan sa pagpili. Ang duha ka pangutana — "moapil ka ba" ug
+        // ── "unsay imong dad-on" — usa ra ka higayon nga pangutan-on. ──
+        // ── Ang fair tinuod na sa jobseeker.
+        // ──
+        // ── Ang panid sa PESO Events mopakita sa fair kung igo na ang na-confirm
+        // ── nga employer, ug kana nga gutlo mao kini. Sa wala pa ni, ang notice
+        // ── moabot ra sa T-minus 5 — parehas nga adlaw sa pag-abli sa bakante —
+        // ── mao nga ang mensahe nga nag-ingon nga "employers are being lined up
+        // ── now" moabot na kung human na ang paglinya.
+        // ──
+        // ── inviteJobseekers() mismo ang nagbantay nga kausa ra kada fair, mao
+        // ── nga ang ika-upat nga employer nga mo-confirm walay ipadala. ──
+        if ($newStatus === 'confirmed'
+            && \App\Support\JobFairAudience::gateMet($participant->jobFair)) {
+            \App\Support\JobFairInvites::inviteJobseekers($participant->jobFair);
+        }
+
+        if (in_array($newStatus, ['confirmed', 'accepted'], true)) {
+            $carried = $this->carryWaitingPostingsIntoFair(
+                $company->activeCompany(),
+                $participant->jobFair
+            );
+
+            // ── Nag-post na siya sa wala pa ang event.
+            // ──
+            // ── Ang pagpangayo kaniya nga mo-post pag-usab kay pagpangayo sa
+            // ── butang nga gihatag na niya. Ang naghulat nga bakante mao gyud
+            // ── ang iyang tubag sa imbitasyon, mao nga kini na ang ipadala ug
+            // ── walay porma nga moabli. ──
+            if ($carried > 0) {
+                return redirect()->route('company.jobseekers', ['tab' => 'invitations'])
+                    ->with('success', $msg . ' ' . $carried . ' job fair vacancy(s) you'
+                        . ' already posted have been sent to this event. PESO will'
+                        . ' confirm them — you do not need to post them again.');
+            }
+
             return redirect()->route('company.jobseekers', ['tab' => 'invitations'])
-                ->with('success', $msg)
+                ->with('success', $msg . ($needsSelection
+                    ? ' Tell PESO which vacancy you would bring, so the office knows'
+                      . ' what your booth is for while it decides on your slot.'
+                    : ' Please post a job vacancy for this event.'))
                 ->with('open_job_fair_modal', $participant->job_fair_id);
         }
 
         return back()->with('success', $msg);
+    }
+
+    /**
+     * Send the vacancies already waiting for a fair to the one just accepted.
+     *
+     * An employer may post a job fair vacancy before any fair exists. It waits
+     * with no event attached, because there was none to attach it to. When an
+     * invitation finally arrives and is accepted, that waiting vacancy IS the
+     * answer — asking them to type it again asks for what they already gave.
+     *
+     * Only the ones the fair actually takes are sent; a vacancy the event does
+     * not cater to keeps waiting for one that does, instead of being quietly
+     * attached to a fair that would refuse it.
+     *
+     * Returns how many were sent, so the caller knows whether to open the form.
+     */
+    private function carryWaitingPostingsIntoFair(
+        \App\Models\EmployerNsrpRegistration $employer,
+        \App\Models\JobFairEvent $event
+    ): int {
+        $waiting = \App\Models\Job::where('company_id', $employer->employer_nsrp_registrations_id)
+            ->where('schedule_type', 'job_fair')
+            ->where('posting_status', 'pending')
+            ->whereNull('requested_job_fair_id')
+            ->withinDeadline()
+            ->get();
+
+        $sent = 0;
+
+        foreach ($waiting as $job) {
+            // Parehas nga sukdanan sa gigamit sa staff sa pagdawat ug posting
+            // ngadto sa usa ka fair — usa ka lagda, dili duha.
+            if ($event->postingMismatch($job)) {
+                continue;
+            }
+
+            // Ang deadline nga mas sayo pa kay sa adlaw sa fair magpatay sa
+            // posting sa dili pa siya magamit.
+            if ($job->deadline && $job->deadline->lt($event->event_date)) {
+                $job->deadline = $event->event_date->toDateString();
+            }
+
+            // Pangayo ra kini, dili pa pagsulod: si staff gihapon ang mo-approve
+            // niini ngadto sa fair, parehas sa bisan unsang job fair nga posting.
+            $job->requested_job_fair_id = $event->job_fair_events_id;
+            $job->save();
+            $sent++;
+        }
+
+        return $sent;
     }
 
     // ───────────────────────────────
@@ -2032,11 +2133,14 @@ class CompanyWebController extends Controller
             ->paginate(5, ['*'], 'pending_page')
             ->withQueryString();
 
+        // Tulo ka laray kada panid. Ang lamesa naa sa ubos sa pending nga
+        // listahan, mao nga ang taas nga listahan nagpasabot ug scroll una pa
+        // makita ang katapusan. Mas maayo ang next kaysa scroll.
         $pastInvitations = \App\Models\JobFairParticipant::with('jobFair')
             ->where('employer_id', $employerId)
             ->whereIn('confirmation_status', ['confirmed', 'declined', 'not_selected'])
             ->latest()
-            ->paginate(5, ['*'], 'past_page')
+            ->paginate(3, ['*'], 'past_page')
             ->withQueryString();
 
         $pendingInvitationsCount = \App\Models\JobFairParticipant::where('employer_id', $employerId)
@@ -2069,15 +2173,35 @@ class CompanyWebController extends Controller
 
         $applicants     = collect();
         $jobFairByJobId = collect();
+        $jfEventOptions = collect();
+        $jfEventId      = null;
 
         if ($isConfirmed) {
             // ── Job ids nga tinuod nga gi-submit para sa mga event nga confirmed ang company ──
             $confirmedEventIds = \App\Models\JobFairParticipant::where('employer_id', $employerId)
                 ->where('confirmation_status', 'confirmed')
                 ->pluck('job_fair_id');
+
+            // ── Ang fair, usa ka sala.
+            // ──
+            // ── PESO, 2026-09-04: ang employer nga miapil ug tulo ka fair
+            // ── nagbasa sa tulo ka listahan nga gisagol, ug ang kolum sa Job
+            // ── Fair Event mao ra ang nagbulag kanila. Ang pagpili sa fair
+            // ── kausa mas limpyo, ug siya usab ang nagtugot sa notes sa
+            // ── ibabaw nga mosulti ug tinuod nga petsa. ──
+            $jfEventOptions = \App\Models\JobFairEvent::whereIn('job_fair_events_id', $confirmedEventIds)
+                ->orderByDesc('event_date')
+                ->get();
+
+            $jfEventId = $request->input('jf_event');
+            if (!$jfEventOptions->contains('job_fair_events_id', (int) $jfEventId)) {
+                $jfEventId = null;
+            }
+
             $employmentRequests = \App\Models\JobFairEmploymentRequest::with('jobFair')
                 ->where('employer_id', $employerId)
                 ->whereIn('job_fair_id', $confirmedEventIds)
+                ->when($jfEventId, fn($q) => $q->where('job_fair_id', $jfEventId))
                 ->get();
             $bringableJobIds = $employmentRequests->pluck('job_id');
             // ── job_id => JobFairEvent, para ipakita sa Applicants table kung unsa nga event ang gikan sa matag applicant ──
@@ -2107,7 +2231,7 @@ class CompanyWebController extends Controller
         return compact(
             'pendingInvitations', 'pastInvitations', 'pendingInvitationsCount',
             'applicants', 'jobFairByJobId', 'isConfirmed', 'jfSearch', 'confirmedCountsPerEvent',
-            'potentialApplicants'
+            'potentialApplicants', 'jfEventOptions', 'jfEventId'
         );
     }
 
@@ -2186,8 +2310,14 @@ class CompanyWebController extends Controller
             $range->apply($q, 'job_matching.updated_at');
         };
 
+        // withHireBreakdown carries group_external_hires alongside the PESO
+        // count, so the row can say where the slots went without a query per
+        // row. The archive has always shown both numbers; the list of live
+        // postings showed only the PESO one, and an employer who filled the
+        // rest himself could not tell from the page why the slots were gone.
         $hired = Job::where('company_id', $companyId)
             ->whereHas('applications', $hiredInRange)
+            ->withHireBreakdown()
             ->withCount(['applications as hired_count' => $hiredInRange])
             ->when($search, fn($q) => $q->where('title', 'like', "%{$search}%"))
             ->latest();

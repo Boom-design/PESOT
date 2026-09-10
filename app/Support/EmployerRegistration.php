@@ -130,12 +130,12 @@ class EmployerRegistration
 
             $uploaded[$field] = $request->file($field)->store('employer_requirements', 'local');
 
-            if ($field === 'business_permit' && $request->filled('business_permit_year')) {
-                // Ang petsa gikan sa tuig, dili gikan sa gi-type — dili gyud
-                // sila magkalahi kung usa ra ang tinubdan.
-                $year = (int) $request->input('business_permit_year');
-                $uploaded['business_permit_year']       = $year;
-                $uploaded['business_permit_expires_at'] = \Carbon\Carbon::create($year, 12, 31)->toDateString();
+            if ($field === 'business_permit' && $request->filled('business_permit_expires_at')) {
+                // Ang petsa gikan sa papel. Ang tuig gikuha gikan sa petsa —
+                // gigamit ra siya sa label ug sa mensahe, dili sa paghukom.
+                $expiry = \Carbon\Carbon::parse($request->input('business_permit_expires_at'));
+                $uploaded['business_permit_expires_at'] = $expiry->toDateString();
+                $uploaded['business_permit_year']       = $expiry->year;
                 continue;
             }
 

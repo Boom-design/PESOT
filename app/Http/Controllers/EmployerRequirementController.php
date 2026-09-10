@@ -58,16 +58,15 @@ class EmployerRequirementController extends Controller
         foreach ($fields as $field) {
             $rules[$field] = (in_array($field, $fieldsToRequire) ? 'required' : 'nullable') . '|file|mimes:jpg,jpeg,png,pdf|max:5120';
 
-            // The business permit is dated by the year it covers, not by an
-            // expiry the employer has to read off the paper. See
+            // The business permit carries its own expiry, read off the paper
+            // like every other document. It is the only one without
+            // after:today: an employer still inside the renewal grace may be
+            // holding a permit that has already run out, and the grace — not
+            // the upload form — decides how long that permit still works. See
             // EmployerRequirement::businessPermitGraceEndsAt().
-            if ($field !== 'business_permit') {
-                $rules["{$field}_expires_at"] = 'nullable|required_with:' . $field . '|date|after:today';
-            }
+            $rules["{$field}_expires_at"] = 'nullable|required_with:' . $field . '|date'
+                . ($field === 'business_permit' ? '' : '|after:today');
         }
-
-        $rules['business_permit_year'] = 'nullable|required_with:business_permit|integer|min:'
-            . (now()->year - 2) . '|max:' . (now()->year + 1);
 
         // The logo is a picture, never a PDF, and it has no expiry.
         $rules['company_logo'] = 'nullable|image|mimes:jpg,jpeg,png|max:2048';
@@ -76,7 +75,7 @@ class EmployerRequirementController extends Controller
             'required' => 'This document is required.',
             'mimes'    => 'Only JPG, PNG, or PDF files are allowed.',
             'max'      => 'File size must not exceed 5MB.',
-            'business_permit_year.required_with' => 'Say which year this business permit covers.',
+            'business_permit_expires_at.required_with' => 'Enter the expiry date printed on this business permit.',
             'company_logo.image' => 'The logo must be a JPG or PNG image.',
             'company_logo.max'   => 'The logo must be 2MB or smaller.',
         ]);
@@ -111,18 +110,16 @@ class EmployerRequirementController extends Controller
                 $path = $request->file($field)->store('employer_requirements', 'local');
                 $data[$field] = $path;
 
+                $data["{$field}_expires_at"] = $request->input("{$field}_expires_at");
+
                 if ($field === 'business_permit') {
-                    // A permit runs to the last day of the year it covers. The
-                    // date is written from the year rather than typed, so the
-                    // two can never disagree.
-                    $year = (int) $request->input('business_permit_year');
-                    $data['business_permit_year']       = $year;
-                    $data['business_permit_expires_at'] = \Carbon\Carbon::create($year, 12, 31)->toDateString();
+                    // The year is derived from the date, so the label and the
+                    // grace can never disagree about which permit this is.
+                    $data['business_permit_year'] =
+                        \Carbon\Carbon::parse($request->input('business_permit_expires_at'))->year;
                     // A fresh permit opens a fresh cycle: next year's grace
                     // reminder has to be allowed to fire again.
                     $data['business_permit_grace_notified_at'] = null;
-                } else {
-                    $data["{$field}_expires_at"] = $request->input("{$field}_expires_at");
                 }
 
                 $data["{$field}_expiry_notified_at"] = null; // reset the 1-week-before warning gate for the new cycle

@@ -87,17 +87,19 @@ class ApplicationController extends Controller
             'reference_id'   => $job->job_qualifications_id,
         ], $job->company_id);
 
-        // ── In-house: prompt DAYON ra kung 5 days na lang o layo pa ang nabilin sa preferred_date; ──
-        // ── kung layo pa (>5 days), mag-hulat sa scheduled reminder (5 days before) ──
+        // ── In-house: ang pangutana mogawas dayon, sama sa Company Interview.
+        // ──
+        // ── Kaniadto naghulat pa siya hangtod lima ka adlaw sa dili pa ang
+        // ── petsa. Ang jobseeker nga bag-o pa lang nag-apply walay nakita
+        // ── bisan asa — dili sa posting, dili sa PESO Events — mao nga
+        // ── morag walay nahitabo. Ang tubag gikuha na dinhi, ug ang
+        // ── pahinumdom sa T-5 alang na lang sa wala mitubag. ──
         if ($job->schedule_type === 'inhouse') {
-            if ($job->isInhousePromptDue()) {
-                $application->update(['inhouse_participation_notified_at' => now()]);
-                return redirect()->route('jobseeker.jobs.show', $jobId)
-                    ->with('success', 'Application submitted successfully!')
-                    ->with('show_inhouse_prompt', $application->job_matching_id);
-            }
+            $application->update(['inhouse_participation_notified_at' => now()]);
+
             return redirect()->route('jobseeker.jobs.show', $jobId)
-                ->with('success', 'Application submitted successfully!');
+                ->with('success', 'Application submitted successfully!')
+                ->with('show_inhouse_prompt', $application->job_matching_id);
         }
 
         // ── Company Interview: prompt dayon, walay 5-day rule — ipakita ang company name + address ──

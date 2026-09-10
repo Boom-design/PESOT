@@ -79,9 +79,30 @@ class NavAlerts
             ->whereNotNull('attendance_notified_at')
             ->count();
 
+        // A fair the jobseeker can join and has not joined.
+        //
+        // The attendance question above only exists after they have joined, so
+        // on its own it leaves the first and larger question uncounted: the
+        // office announced a fair, told them to open PESO Events and join it,
+        // and nothing on the sidebar said there was anything to open.
+        //
+        // Same test as JobseekerWebController::schedules() uses to decide which
+        // fairs the page shows, and the same threshold as the SMS gate — a
+        // number for a fair that is not on the page could never be cleared.
+        $joinedFairIds = \App\Models\JobFairRegistration::where('user_id', $registrationId)
+            ->pluck('job_fair_id');
+
+        $openFairs = \App\Models\JobFairEvent::where('status', '!=', 'completed')
+            ->whereNotIn('job_fair_events_id', $joinedFairIds)
+            ->withCount(['participants as confirmed_count' => fn($q) =>
+                $q->where('confirmation_status', 'confirmed')])
+            ->having('confirmed_count', '>=', JobFairAudience::threshold())
+            ->get()
+            ->count();
+
         return self::pruned([
             'job_vacancies' => $pendingParticipation,
-            'schedules'     => $pendingAttendance,
+            'schedules'     => $pendingAttendance + $openFairs,
         ]);
     }
 
@@ -99,45 +120,15 @@ class NavAlerts
         $scopeEmployer = fn($q) => $q->whereHas('employer', fn($n) => $n->where('is_overseas', $overseas));
         $scopeCompany  = fn($q) => $q->whereHas('company',  fn($n) => $n->where('is_overseas', $overseas));
 
-        if ($role === 'lra' || $role === 'sra') {
-            $pendingSchedules = InhouseSchedule::where('status', 'pending')->where($scopeEmployer)->count();
-            $pendingInhouseJobs = Job::where('schedule_type', 'inhouse')
-                ->where('posting_status', 'pending')
-                ->where($scopeCompany)
-                ->count();
-
-            // ── Ang ahensya nga mitubag ug oo ug naghulat sa pagpili sa SRA.
-            // ──
-            // ── Ang tubag sa ahensya walay pahibalo nga makita sa listahan —
-            // ── mohilom lang siya sa Job Fair nga tab hangtod may moabli. Ang
-            // ── tuldok mao ang nagsulti nga naay tawo nga naghulat, ug
-            // ── mawala siya kung nadesisyonan na. Overseas ra: ang lokal
-            // ── walay ing-ani nga lakang. ──
-            $awaitingSelection = $overseas
-                ? JobFairParticipant::where('confirmation_status', 'accepted')
-                    ->where($scopeEmployer)
-                    ->whereHas('jobFair', fn($e) => $e->whereDate('event_date', '>=', today()))
-                    ->count()
-                : 0;
-
-            return self::pruned([
-                'employers'      => EmployerRequirement::where('status', 'pending')->where($scopeEmployer)->count(),
-                'job_activities' => $pendingSchedules + $pendingInhouseJobs + $awaitingSelection,
-            ]);
-        }
-
-        if ($role === 'job_vacancy') {
+        if ($role === 'lra' || $role === 'sra' || $role === 'job_vacancy') {
+            // Ang numero sa sidebar kay ang sumada sa mga tab sa ilawom niya.
+            // Usa ra ka lugar ang nag-ihap, mao nga dili sila magkalahi.
             return self::pruned([
                 'employers' => EmployerRequirement::where('status', 'pending')
-                    ->whereHas('employer', fn($n) => $n->where('is_overseas', false))
+                    ->where($scopeEmployer)
                     ->count(),
 
-                'job_activities' => Job::where('posting_status', 'pending')
-                    ->whereHas('company', fn($n) => $n->where('is_overseas', false))
-                    ->where(function ($q) {
-                        $q->whereNull('schedule_type')->orWhere('schedule_type', 'company_interview');
-                    })
-                    ->count(),
+                'job_activities' => array_sum(self::staffJobActivityCounts($staff)),
             ]);
         }
 
@@ -163,6 +154,78 @@ class NavAlerts
         }
 
         return [];
+    }
+
+    /**
+     * The Manage Job Activities number, split across the tabs that explain it.
+     *
+     * The keys are the tabs in partials/staff-activity-tabs, so a desk that is
+     * told "2" can press the item and see which two tabs carry them. The
+     * sidebar total is the sum of these, worked out here and nowhere else.
+     *
+     * A role that has no such tab gets a zero for it: the Job Vacancy desk does
+     * not hold the PESO Office calendar, and only the SRA picks which overseas
+     * agency is brought to a fair.
+     */
+    public static function staffJobActivityCounts(?Staff $staff): array
+    {
+        if (!$staff) {
+            return [];
+        }
+
+        $role     = $staff->staff_role;
+        $overseas = $role === 'sra';
+
+        if (!in_array($role, ['lra', 'sra', 'job_vacancy'], true)) {
+            return [];
+        }
+
+        $scopeEmployer = fn($q) => $q->whereHas('employer', fn($n) => $n->where('is_overseas', $overseas));
+        $scopeCompany  = fn($q) => $q->whereHas('company',  fn($n) => $n->where('is_overseas', $overseas));
+
+        $ownsTheCalendar = $role !== 'job_vacancy';
+
+        return self::pruned([
+            // Pending In-house Schedule — ang hangyo nga wala pa nadawat.
+            //
+            // Duha ka tinubdan ang gilista sa staff.inhouse: ang InhouseSchedule
+            // nga hangyo nga walay posting, ug ang in-house nga posting nga
+            // pending pa. Usa ra ka page, mao nga usa ra ka numero — kung
+            // gibulag sila, ang usa ka numero mapadulong sa tab nga dili siya
+            // makita didto.
+            'inhouse_schedule' => $ownsTheCalendar
+                ? InhouseSchedule::where('status', 'pending')->where($scopeEmployer)->count()
+                    + Job::where('schedule_type', 'inhouse')
+                        ->where('posting_status', 'pending')
+                        ->where($scopeCompany)
+                        ->count()
+                : 0,
+
+            // Pending Company Interview — posting_status = 'pending'. Ang lokal
+            // buhi dayon sa pag-post, mao nga ang overseas ra ang makasulod.
+            'company_interview_pending' => Job::where('posting_status', 'pending')
+                ->where(function ($q) {
+                    $q->where('schedule_type', 'company_interview')
+                      ->orWhereNull('schedule_type');
+                })
+                ->where($scopeCompany)
+                ->count(),
+
+            // Ang In-house Job Vacancy nga tab walay numero. Nagbasa siya ug
+            // posting_status = 'approved' — nadesisyunan na ang tanan didto,
+            // mao nga walay naghulat sa desk. Parehas sa Company Interview nga
+            // tab, nga wala pud.
+
+            // Job Fair — ang ahensya nga mitubag ug oo ug naghulat sa pagpili
+            // sa SRA. Ang tubag walay pahibalo nga makita sa listahan; ang
+            // numero mao ang nagsulti nga naay tawo nga naghulat.
+            'job_fair' => $overseas
+                ? JobFairParticipant::where('confirmation_status', 'accepted')
+                    ->where($scopeEmployer)
+                    ->whereHas('jobFair', fn($e) => $e->whereDate('event_date', '>=', today()))
+                    ->count()
+                : 0,
+        ]);
     }
 
     // ── ADMIN ──

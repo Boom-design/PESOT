@@ -25,15 +25,7 @@
         {{-- "LRA/SRA" named the two desks, which only the desks recognise.
              The split the reader is looking at is local against overseas. --}}
         <i class="ph ph-buildings me-1"></i> In-house Local/Overseas
-        @if(($tabAlerts['inhouse'] ?? 0) > 0)
-            {{-- .nav-dot only exists inside the sidebar, so the tab carries its
-                 own copy of the same red. --}}
-            <span title="{{ $tabAlerts['inhouse'] }} new since you last opened this tab"
-                  style="display:inline-flex;align-items:center;justify-content:center;min-width:17px;
-                         height:17px;padding:0 5px;margin-left:6px;border-radius:999px;
-                         background:var(--danger);color:#fff;font-size:10px;font-weight:700;
-                         line-height:1;vertical-align:middle;">{{ $tabAlerts['inhouse'] > 9 ? '9+' : $tabAlerts['inhouse'] }}</span>
-        @endif
+        @include('partials.tab-dot', ['count' => $tabAlerts['inhouse'] ?? 0, 'on' => request('tab', 'inhouse') === 'inhouse'])
         <span class="ms-1" style="font-size:10px;opacity:0.8;">({{ $inhouseSchedules->count() }})</span>
     </a>
     <a href="{{ route('admin.job.activities', ['tab' => 'companyinterview']) }}"
@@ -43,15 +35,7 @@
            : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
            border-radius:8px;font-size:12px;padding:6px 18px;">
         <i class="ph ph-video-camera me-1"></i> Company Interview
-        @if(($tabAlerts['companyinterview'] ?? 0) > 0)
-            {{-- .nav-dot only exists inside the sidebar, so the tab carries its
-                 own copy of the same red. --}}
-            <span title="{{ $tabAlerts['companyinterview'] }} new since you last opened this tab"
-                  style="display:inline-flex;align-items:center;justify-content:center;min-width:17px;
-                         height:17px;padding:0 5px;margin-left:6px;border-radius:999px;
-                         background:var(--danger);color:#fff;font-size:10px;font-weight:700;
-                         line-height:1;vertical-align:middle;">{{ $tabAlerts['companyinterview'] > 9 ? '9+' : $tabAlerts['companyinterview'] }}</span>
-        @endif
+        @include('partials.tab-dot', ['count' => $tabAlerts['companyinterview'] ?? 0, 'on' => request('tab') === 'companyinterview'])
         <span class="ms-1" style="font-size:10px;opacity:0.8;">({{ $companyInterviewJobs->count() }})</span>
     </a>
     <a href="{{ route('admin.job.activities', ['tab' => 'jobfair']) }}"
@@ -61,15 +45,7 @@
            : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
            border-radius:8px;font-size:12px;padding:6px 18px;">
         <i class="ph-fill ph-users-three me-1"></i> Job Fair
-        @if(($tabAlerts['jobfair'] ?? 0) > 0)
-            {{-- .nav-dot only exists inside the sidebar, so the tab carries its
-                 own copy of the same red. --}}
-            <span title="{{ $tabAlerts['jobfair'] }} new since you last opened this tab"
-                  style="display:inline-flex;align-items:center;justify-content:center;min-width:17px;
-                         height:17px;padding:0 5px;margin-left:6px;border-radius:999px;
-                         background:var(--danger);color:#fff;font-size:10px;font-weight:700;
-                         line-height:1;vertical-align:middle;">{{ $tabAlerts['jobfair'] > 9 ? '9+' : $tabAlerts['jobfair'] }}</span>
-        @endif
+        @include('partials.tab-dot', ['count' => $tabAlerts['jobfair'] ?? 0, 'on' => request('tab') === 'jobfair'])
         <span class="ms-1" style="font-size:10px;opacity:0.8;">({{ $jobFairEvents->count() }})</span>
     </a>
 </div>

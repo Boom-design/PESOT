@@ -109,27 +109,6 @@ class Job extends Model
         return $this->confirmed_date ?: $this->preferred_date;
     }
 
-    /**
-     * Is the in-house participation prompt due for this posting?
-     *
-     * Counted from midnight, matching inhouse:send-participation-reminders,
-     * which asks the same question in SQL with whereDate. now() carries the
-     * time of day with it, so on the interview date itself the difference came
-     * out as a negative fraction — a few hours past midnight — and failed the
-     * >= 0 test. The one day the prompt matters most was the only day it never
-     * appeared.
-     */
-    public function isInhousePromptDue(): bool
-    {
-        if ($this->schedule_type !== 'inhouse' || !$this->interview_date) {
-            return false;
-        }
-
-        $daysUntil = (int) today()->diffInDays($this->interview_date, false);
-
-        return $daysUntil >= 0 && $daysUntil <= 5;
-    }
-
     public function getScheduleWindowLabelAttribute(): string
     {
         if (!$this->preferred_date) return 'None';
@@ -141,6 +120,52 @@ class Job extends Model
         }
 
         return $this->preferred_date->format('M d') . ' – ' . $last->format('M d, Y');
+    }
+
+    /**
+     * The day this posting's activity happens, whichever channel it uses.
+     *
+     * The employer's list used to print created_at here, which answered a
+     * question nobody was asking: they know when they typed it. What they came
+     * to read is when they have to be somewhere — and for a job fair vacancy
+     * that is the fair's own date, not the day the form was filled in.
+     *
+     * The fair is read off the accepted row first, then off the one the
+     * employer asked for. A vacancy with neither is waiting for the desk to
+     * put it on an event, and says so.
+     */
+    public function getScheduleDateLabelAttribute(): string
+    {
+        if ($this->schedule_type === 'job_fair') {
+            $fair = $this->jobFair ?: $this->requestedJobFair;
+
+            return $fair?->event_date?->format('M d, Y') ?? 'Waiting for a fair';
+        }
+
+        if ($this->schedule_type === 'inhouse') {
+            return $this->schedule_window_label;
+        }
+
+        return $this->interview_date?->format('M d, Y') ?? 'None';
+    }
+
+    /**
+     * The fair this posting was actually accepted onto.
+     *
+     * requestedJobFair() is what the employer asked for; this is what the Job
+     * Fair desk granted. They differ until the desk posts the vacancy onto the
+     * event, and only this one is a booking.
+     */
+    public function jobFair()
+    {
+        return $this->hasOneThrough(
+            JobFairEvent::class,
+            JobFairEmploymentRequest::class,
+            'job_id',                 // job_fair_employment_requests.job_id
+            'job_fair_events_id',     // job_fair_events primary key
+            'job_qualifications_id',  // job_qualifications primary key
+            'job_fair_id'             // job_fair_employment_requests.job_fair_id
+        );
     }
 
     // Relationship: Job belongs to a Company (EmployerNsrpRegistration)
@@ -434,6 +459,19 @@ class Job extends Model
     // ── vacancy... Pero kung closed o expired na, dili na dapat ma-update." ──
     public function getLifecycleStatusAttribute(): string
     {
+        // Ang job fair nga posting walay hugna nga "for approval".
+        //
+        // Walay staff nga mo-approve niini nga usa-usa. Ang jobfair:open-postings
+        // maoy moabli sa tanan nga naghulat lima ka adlaw sa dili pa ang event,
+        // mao nga ang pending niya kay paghulat sa petsa, dili paghulat sa
+        // desisyon. Ang pulong nga "approval" nangayo sa employer ug pangutana
+        // nga walay tubag: kinsa man ang mo-approve, ug kanus-a.
+        if ($this->schedule_type === 'job_fair'
+            && in_array($this->posting_status, ['pending', 'approved'], true)
+            && $this->status !== 'open') {
+            return 'waiting';
+        }
+
         if ($this->posting_status === 'pending') {
             return 'pending';
         }
@@ -479,7 +517,7 @@ class Job extends Model
     }
 
     public const LIFECYCLE_LABELS = [
-        'pending'  => 'Pending Approval',
+        'pending'  => 'Pending',
         'rejected' => 'Rejected',
         'active'   => 'Active',
         'waiting'  => 'Waiting for Job Fair',
@@ -508,7 +546,10 @@ class Job extends Model
             // Editable gihapon kini — ang teksto nagsulti ra kung kanus-a siya
             // makita sa jobseeker, dili nga gibabagan siya.
             'waiting'  => \App\Support\JobFairPostingWindow::liveNote(),
-            'pending'  => \App\Support\JobPostingNotice::pendingNote($this->schedule_type)
+            'pending'  => \App\Support\JobPostingNotice::pendingNote(
+                              $this->schedule_type,
+                              (bool) optional($this->company)->is_overseas
+                          )
                           ?? 'PESO is reviewing this posting. Jobseekers will see it once it is approved.',
             'rejected' => $this->remarks
                           ? 'PESO did not approve this posting. Reason: ' . $this->remarks

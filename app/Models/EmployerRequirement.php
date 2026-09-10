@@ -179,23 +179,25 @@ class EmployerRequirement extends Model
     /**
      * The last day the account may run on the permit currently on file.
      *
-     * A permit covers one calendar year and lapses with it, but the city does
-     * not issue the next one on New Year's Day — renewal season runs into the
-     * first quarter. The office allows for that: a 2026 permit carries the
-     * account to the 31st of March 2027, and the account is restricted on the
-     * 1st of April.
+     * A permit lapses on the date printed on it, but the city does not issue
+     * the next one the following morning — renewal season runs into the first
+     * quarter. The office allows for that: a permit expiring 31 December 2026
+     * carries the account to the 31st of March 2027, and the account is
+     * restricted on the 1st of April.
+     *
+     * The grace is counted from the expiry the employer read off the paper, so
+     * a permit that runs out mid-year is not quietly given until March.
      */
     public function businessPermitGraceEndsAt(): ?\Carbon\Carbon
     {
-        if (!$this->business_permit_year) {
+        if (!$this->business_permit_expires_at) {
             return null;
         }
 
         $months = (int) config('peso.employer.business_permit_grace_months', 3);
 
-        return \Carbon\Carbon::create($this->business_permit_year + 1, 1, 1)
+        return $this->business_permit_expires_at->copy()
             ->addMonths($months)
-            ->subDay()
             ->endOfDay();
     }
 
@@ -215,11 +217,11 @@ class EmployerRequirement extends Model
      */
     public function isBusinessPermitInGrace(): bool
     {
-        if (!$this->business_permit_year) {
+        if (!$this->business_permit_expires_at) {
             return false;
         }
 
-        return $this->business_permit_year < now()->year && !$this->isBusinessPermitOverdue();
+        return $this->business_permit_expires_at->isPast() && !$this->isBusinessPermitOverdue();
     }
 
     public function isFieldExpired(string $field): bool

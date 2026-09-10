@@ -284,7 +284,7 @@ class UnifiedAuthController extends Controller
             ),
             array_merge(\App\Support\EmployerRegistration::messages(), [
                 'email.unique' => 'This email address is already registered. Please use a different email or sign in instead.',
-                'business_permit_year.required_with' => 'Say which year this business permit covers.',
+                'business_permit_expires_at.required_with' => 'Enter the expiry date printed on this business permit.',
             ])
         );
 
@@ -320,9 +320,11 @@ class UnifiedAuthController extends Controller
             'vacancy_posting'             => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'company_logo'                => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
 
-            // ── Ang business permit gitimbang-timbang sa tuig nga iyang gisakop,
-            // ── dili sa petsa nga gi-type: usa ra ka tinubdan, walay magkalahi. ──
-            'business_permit_year' => 'nullable|required_with:business_permit|integer|min:2000|max:2100',
+            // ── Ang expiry sa business permit gikan sa papel, parehas sa uban.
+            // ── Walay after:today dinhi: ang employer nga naa pa sa palugit
+            // ── mahimong mag-encode sa permit nga nahuman na, ug ang palugit
+            // ── mao ang mohukom kung hangtod kanus-a siya makagamit. ──
+            'business_permit_expires_at' => 'nullable|required_with:business_permit|date',
 
             'sec_dti_expires_at'                     => 'nullable|required_with:sec_dti|date|after:today',
             'company_profile_expires_at'             => 'nullable|required_with:company_profile|date|after:today',

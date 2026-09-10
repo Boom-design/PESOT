@@ -13,6 +13,15 @@
     </p>
 </div>
 
+{{-- Ang $navAlerts sa layout dili maabot dinhi: ang seksyon gi-render sa
+     wala pa ang layout, mao nga kuhaon siya pag-usab gikan sa samang tinubdan. --}}
+@php
+    $scheduleAlerts = \App\Support\NavAlerts::forJobseeker(
+        optional(\App\Models\JobseekerRegistration::where('user_id', Auth::id())->first())
+            ->jobseeker_registrations_id
+    );
+@endphp
+
 {{-- TABS --}}
 <div class="d-flex gap-2 mb-4">
     <a href="{{ route('jobseeker.schedules', ['type' => 'inhouse']) }}"
@@ -38,6 +47,10 @@
             style="background:rgba(255,255,255,0.3);font-size:10px;">
             {{ $jobFairSchedules->count() }}
         </span>
+        {{-- Ang pula nga numero sa PESO Events nga item sa sidebar kay ang
+             pangutana sa opisina kung moadto ba sila sa fair, ug ang tubag naa
+             ra niini nga tab. Ang puti nga numero sa tapad kay ihap sa laray. --}}
+        @include('partials.tab-dot', ['count' => $scheduleAlerts['schedules'] ?? 0, 'on' => request('type') === 'jobfair'])
     </a>
 </div>
 

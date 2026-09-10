@@ -34,7 +34,7 @@
     </h5>
     <p class="mb-0" style="font-size:13px;color:var(--n-500);">
         @if($isPending)
-            Company interviews that have not happened yet — soonest first
+            Company interview postings waiting for your decision — soonest first
         @elseif($isInhouseList)
             Approved in-house interviews, for monitoring
         @else
@@ -103,10 +103,16 @@
                     @if($jobs->isEmpty())
                     <tr>
                         <td colspan="9" class="text-center py-5" style="border:none;">
-                            <i class="ph ph-briefcase" style="font-size:48px;color:var(--n-300);"></i>
-                            <div class="mt-3 fw-semibold" style="color:var(--g-700);">No job vacancies here</div>
+                            <i class="ph ph-{{ $isPending ? 'gavel' : 'briefcase' }}" style="font-size:48px;color:var(--n-300);"></i>
+                            <div class="mt-3 fw-semibold" style="color:var(--g-700);">
+                                {{ $isPending ? 'Nothing waiting for a decision' : 'No job vacancies here' }}
+                            </div>
                             <div class="text-muted small mt-1">
-                                @if($month !== 'all')
+                                {{-- Ang pending nga lista walay sala sa bulan, mao nga
+                                     dili siya makasulti ug bulan nga wala niya gigamit. --}}
+                                @if($isPending)
+                                    Every company interview posting has been decided.
+                                @elseif($month !== 'all')
                                     Nothing was posted in {{ \Carbon\Carbon::createFromFormat('Y-m', $month)->format('F Y') }}.
                                 @else
                                     Nothing has been posted yet.
@@ -151,10 +157,21 @@
                         </td>
                         <td style="padding:12px 16px;">
                             <div class="d-flex flex-column gap-1" style="min-width:150px;">
+                                {{-- Ang buton nagsulti kung unsay naa sa luyo niini.
+
+                                     Ang pending nga posting naay Approve ug Reject sa
+                                     sulod sa modal, apan ang buton nag-ingon "View
+                                     Details" — mao nga ang desk nga nagtan-aw sa lista
+                                     walay makita nga naa diay siyay desisyon nga
+                                     buhaton. Parehas ni sa gibuhat sa LRA sa iyang
+                                     In-house Schedule nga tab, ug parehas gyud dapat:
+                                     usa ka lista, usa ka pulong. --}}
+                                @php $jobNeedsDecision = $job->posting_status === 'pending'; @endphp
                                 <button type="button" class="btn btn-sm fw-semibold d-flex align-items-center justify-content-center gap-1"
-                                    style="background:var(--g-600);color:#fff;border:none;border-radius:8px;font-size:12px;padding:6px 12px;"
+                                    style="background:{{ $jobNeedsDecision ? 'var(--warn)' : 'var(--g-600)' }};color:#fff;border:none;border-radius:8px;font-size:12px;padding:6px 12px;"
                                     data-bs-toggle="modal" data-bs-target="#jobModal{{ $job->job_qualifications_id }}">
-                                    <i class="ph-fill ph-eye"></i> View Details
+                                    <i class="ph-fill {{ $jobNeedsDecision ? 'ph-gavel' : 'ph-eye' }}"></i>
+                                    {{ $jobNeedsDecision ? 'Decide' : 'View Details' }}
                                 </button>
 
                                 @if($job->posting_status !== 'pending')

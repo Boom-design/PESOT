@@ -84,8 +84,8 @@ class SendEmployerRequirementExpiryWarnings extends Command
         $sent = 0;
 
         $inGrace = EmployerRequirement::where('status', 'approved')
-            ->whereNotNull('business_permit_year')
-            ->where('business_permit_year', '<', now()->year)
+            ->whereNotNull('business_permit_expires_at')
+            ->where('business_permit_expires_at', '<', today())
             ->whereNull('business_permit_grace_notified_at')
             ->get();
 
@@ -95,7 +95,8 @@ class SendEmployerRequirementExpiryWarnings extends Command
             }
 
             $deadline = $requirement->businessPermitGraceEndsAt();
-            $dueYear  = $requirement->business_permit_year + 1;
+            $dueYear  = ($requirement->business_permit_year
+                            ?: $requirement->business_permit_expires_at->year) + 1;
 
             Announcement::sendToEmployers([
                 'type'           => 'employer_requirement_expiring',

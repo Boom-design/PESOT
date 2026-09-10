@@ -50,10 +50,9 @@
             ? 'background:var(--g-600);color:#fff;border:none;'
             : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}border-radius:8px;font-size:12px;padding:7px 18px;">
         <i class="{{ $tab === $key ? 'ph-fill' : 'ph' }} {{ $icon }} me-1"></i> {{ $label }}
-        @if($badge)
-            <span class="badge rounded-pill"
-                  style="{{ $tab === $key ? 'background:#fff;color:var(--danger);' : 'background:var(--danger);color:#fff;' }}font-size:10px;margin-left:4px;">{{ $badge }}</span>
-        @endif
+        {{-- Parehas gyud nga pula sa naa sa Active Job Postings nga item sa
+             sidebar. Usa ra ka numero, duha ka lugar nga gipakita siya. --}}
+        @include('partials.tab-dot', ['count' => $badge ?? 0, 'on' => $tab === $key])
     </a>
     @endforeach
 </div>
@@ -81,11 +80,19 @@
                     <thead>
                         <tr>
                             <th style="background:var(--g-100);color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Job Position</th>
-                            <th style="background:var(--g-100);color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Date</th>
+                            {{-- Duha ka petsa ang laray, ug ang duha managlahi:
+                                 kanus-a ang panagtagbo, ug hangtod kanus-a
+                                 madawat ang aplikasyon. Ang ulohan nga "Date"
+                                 ug "Deadline" wala nagsulti niana, ug ang
+                                 employer nga nagbasa niini kinahanglan
+                                 mangutana. Ang ngalan na ang mutubag. --}}
+                            <th title="The day of the interview, the in-house schedule, or the job fair itself"
+                                style="background:var(--g-100);color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Schedule Date</th>
                             <th style="background:var(--g-100);color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Schedule Type</th>
                             <th style="background:var(--g-100);color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Status</th>
                             <th style="background:var(--g-100);color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Slots Needed</th>
-                            <th style="background:var(--g-100);color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Deadline</th>
+                            <th title="The last day a jobseeker can still apply to this posting"
+                                style="background:var(--g-100);color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Job Posting Deadline</th>
                             <th style="background:var(--g-100);color:var(--g-700);font-size:12px;border:none;padding:12px 16px;text-align:center;">Action</th>
                         </tr>
                     </thead>
@@ -99,8 +106,13 @@
                                 <div class="fw-semibold" style="color:var(--g-700);">{{ $job->title }}</div>
                                 <div style="font-size:11px;color:var(--n-500);"><i class="ph ph-map-pin me-1"></i>{{ $job->location }}</div>
                             </td>
+                            {{-- Ang petsa sa aktibidad, dili ang petsa sa
+                                 pag-encode. Ang employer nahibalo na kanus-a
+                                 siya nag-type; ang gipangita niya kay kanus-a
+                                 siya kinahanglan naa didto. Para sa job fair,
+                                 ang petsa sa event mismo. --}}
                             <td style="padding:12px 16px;color:var(--n-500);">
-                                {{ $job->created_at->format('M d, Y') }}
+                                {{ $job->schedule_date_label }}
                             </td>
                             {{-- Plain nga text. Ang kahon sa likod sa text
                                  nagpasabot nga ma-click — ug kini dili. --}}
@@ -148,7 +160,7 @@
                                               style="background:var(--n-100);color:var(--n-400);border:1px solid var(--n-200);border-radius:8px;cursor:not-allowed;"
                                               title="{{ $job->lifecycle_block_reason }}">
                                             <i class="ph {{ $job->lifecycle_status === 'pending' ? 'ph-hourglass-medium' : 'ph-x-circle' }} me-1"></i>
-                                            {{ $job->lifecycle_status === 'pending' ? 'For approval' : 'Rejected' }}
+                                            {{ $job->lifecycle_status === 'pending' ? 'Under review' : 'Rejected' }}
                                         </span>
                                     @else
                                         <a href="{{ route('company.jobs.qualified', $job->job_qualifications_id) }}" class="btn btn-peso btn-sm px-3">
@@ -160,7 +172,7 @@
                                          sa employer ngadto "accounting graduate" — apan samtang
                                          buhi pa ang posting ug wala pa napuno. --}}
                                     <a href="{{ route('company.jobs.edit', $job->job_qualifications_id) }}"
-                                       class="btn btn-peso-outline btn-sm px-3" title="Edit qualifications">
+                                       class="btn btn-peso-outline btn-sm px-3" title="Update">
                                         <i class="ph ph-pencil-simple"></i>
                                     </a>
                                     {{-- Gi-hire nga wala miagi sa PESO — mo-hurot ug slot

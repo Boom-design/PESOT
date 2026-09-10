@@ -147,6 +147,46 @@ class JobFairAudience
             ->values();
     }
 
+    /**
+     * The people this one vacancy would take who have not applied to it.
+     *
+     * PESO, 2026-09-05: the text used to go only to applicants, and an
+     * applicant can already read their own match on their applications page —
+     * so the message told them what they could see, and the fee bought
+     * nothing. The person worth the fee is the one who qualifies and does not
+     * know it, because nothing has reached them yet.
+     *
+     * Same threshold as qualifiedRegistrations(), and the same classification
+     * rule as the vacancy notice: an overseas vacancy does not text a jobseeker
+     * who registered for local work only.
+     */
+    public static function qualifiedForJob(Job $job): Collection
+    {
+        $threshold  = self::matchThreshold();
+        $controller = new ApplicationController();
+
+        $applied = \App\Models\Application::where('job_id', $job->job_qualifications_id)
+            ->pluck('jobseeker_id')
+            ->flip();
+
+        return JobseekerRegistration::with('nsrp')
+            ->whereHas('user', fn($q) => $q->where('status', 'approved'))
+            ->whereHas('nsrp', fn($q) => $q->whereIn(
+                'type', \App\Support\JobPostingNotice::wantedTypesFor($job)
+            ))
+            ->get()
+            ->reject(fn(JobseekerRegistration $r) => $applied->has($r->jobseeker_registrations_id))
+            ->filter(function (JobseekerRegistration $registration) use ($job, $controller, $threshold) {
+                $breakdown = $controller->computeMatchBreakdownByRegistrationId(
+                    $registration->jobseeker_registrations_id,
+                    $job
+                );
+
+                return ($breakdown['percentage'] ?? 0) >= $threshold;
+            })
+            ->values();
+    }
+
     // ── Usa ka listahan sa mga tawo, parehas ang porma bisan employer o
     // ── jobseeker, aron usa ra ang code nga mo-padala. ──
     public static function resolve(JobFairEvent $event, string $key): Collection

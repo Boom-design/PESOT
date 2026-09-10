@@ -453,22 +453,11 @@
         }
     });
 
-    // ── Naa bay ma-dala nga daan nga vacancy? Kung naa, dili awtomatik nga
-    // ── mag-abli ug blangko nga position form — mahimong ang employer mo-check
-    // ── ra sa iyang daan nga posting ug wala nay bag-o nga i-type. ──
-    function hasBringableList() {
-        return document.querySelectorAll('.bring-existing-check').length > 0;
-    }
-
-    function checkedExistingCount() {
-        return document.querySelectorAll('.bring-existing-check:checked').length;
-    }
-
     // ── Siguraduhon nga naa'y at least usa ka position sa pag-open sa modal, ug
     // ── i-sync ang mga schedule field sa pre-checked nga checkbox (ang listener
     // ── 'change' ra man ang naka-trigger, dili automatic sa pag-load) ──
     document.getElementById('requestJobModal').addEventListener('show.bs.modal', function() {
-        if (document.querySelectorAll('.request-position-row').length === 0 && !hasBringableList()) {
+        if (document.querySelectorAll('.request-position-row').length === 0) {
             addRequestPosition();
         }
         syncScheduleTypeFields();
@@ -487,8 +476,8 @@
             return;
         }
 
-        // Blangko nga request: walay gi-check nga daan ug walay bag-ong position.
-        if (checkedExistingCount() === 0 && document.querySelectorAll('.request-position-row').length === 0) {
+        // Blangko nga request: walay bag-ong position.
+        if (document.querySelectorAll('.request-position-row').length === 0) {
             e.preventDefault();
             const err = document.getElementById('emptyRequestError');
             if (err) {
@@ -496,14 +485,6 @@
                 err.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         }
-    });
-
-    // Pagkahuman ug check sa daan nga vacancy, tagoon na ang error.
-    document.querySelectorAll('.bring-existing-check').forEach(function(box) {
-        box.addEventListener('change', function() {
-            const err = document.getElementById('emptyRequestError');
-            if (err && checkedExistingCount() > 0) err.style.display = 'none';
-        });
     });
 
     // ── Check date availability (AJAX) — venue-aware, ang limit sa PESO
@@ -579,6 +560,14 @@
 
 @if($autoOpenRequestJobModal ?? false)
     // ── Auto-open on load: the company has not posted any job yet ──
-    new bootstrap.Modal(document.getElementById('requestJobModal')).show();
+    //
+    // Opened from an accepted job fair invitation, so it does not close on a
+    // click outside or on Escape either — the X is already gone. Saying yes to
+    // a fair and then dismissing the form leaves PESO holding a booth with
+    // nothing in it, and the office only finds out on the day.
+    new bootstrap.Modal(document.getElementById('requestJobModal'), {
+        backdrop: 'static',
+        keyboard: false,
+    }).show();
 @endif
 </script>

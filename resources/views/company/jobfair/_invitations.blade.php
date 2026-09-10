@@ -165,66 +165,102 @@
     @endif
 @endif
 
-{{-- ── PAST INVITATIONS — collapsed by default, aron dili taason ang tab bisan daghan na nga na-resolve ── --}}
-<div class="mt-3">
-    <button class="btn btn-sm fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#pastInvitationsCollapse"
-        style="border:1px solid var(--n-200);color:var(--g-700);background:#fff;border-radius:8px;font-size:12px;">
-        <i class="ph ph-clock-counter-clockwise me-1"></i> Past Invitations ({{ $pastInvitations->total() }})
-        <i class="ph ph-caret-down ms-1"></i>
-    </button>
-    <div class="collapse mt-2" id="pastInvitationsCollapse">
-        @if($pastInvitations->isEmpty())
-            <div class="text-muted small p-2">No past invitations yet.</div>
-        @else
-            <div class="d-flex flex-column gap-2">
-                @foreach($pastInvitations as $invitation)
-                <div class="card border-0 shadow-sm rounded-3 p-2 px-3">
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                        <div style="font-size:12.5px;">
-                            <span class="fw-semibold" style="color:var(--g-700);">{{ $invitation->jobFair->title ?? 'None' }}</span>
-                            <span style="color:var(--n-500);"> — {{ $invitation->jobFair->event_date?->format('M d, Y') ?? 'None' }}</span>
-                        </div>
-                        @if($invitation->confirmation_status === 'confirmed')
-                            <span class="fw-semibold" style="color:var(--g-700);font-size:10.5px;">
-                                <i class="ph-fill ph-check-circle me-1"></i>Confirmed
-                            </span>
-                        @elseif($invitation->wasNotSelected())
-                            {{-- Dili "Declined". Mitubag siyag oo; ang opisina
-                                 ang wala midala kaniya, ug ang duha managlahi. --}}
-                            <span class="fw-semibold" style="color:var(--n-500);font-size:10.5px;">
-                                <i class="ph-fill ph-minus-circle me-1"></i>Not selected by PESO
-                            </span>
-                        @elseif($invitation->confirmation_status === 'expired')
-                            <span class="fw-semibold" style="color:var(--n-500);font-size:10.5px;">
-                                <i class="ph-fill ph-clock-countdown me-1"></i>Lapsed
-                            </span>
-                        @else
-                            <span class="fw-semibold" style="color:var(--danger);font-size:10.5px;">
-                                <i class="ph-fill ph-x-circle me-1"></i>Declined
-                            </span>
-                        @endif
-                    </div>
-                </div>
-                @endforeach
-            </div>
-
-            @if($pastInvitations->hasPages())
-            <div class="d-flex justify-content-center mt-2">
-                <ul class="pagination pagination-sm mb-0 gap-1">
-                    <li class="page-item {{ $pastInvitations->onFirstPage() ? 'disabled' : '' }}">
-                        <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $pastInvitations->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
-                    </li>
-                    @foreach($pastInvitations->getUrlRange(1, $pastInvitations->lastPage()) as $page => $url)
-                    <li class="page-item {{ $page == $pastInvitations->currentPage() ? 'active' : '' }}">
-                        <a class="page-link rounded-2" style="{{ $page == $pastInvitations->currentPage() ? 'background:var(--g-600);border-color:transparent;color:#fff;' : 'border-color:var(--n-200);color:var(--g-700);' }}" href="{{ $url }}">{{ $page }}</a>
-                    </li>
-                    @endforeach
-                    <li class="page-item {{ !$pastInvitations->hasMorePages() ? 'disabled' : '' }}">
-                        <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $pastInvitations->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
-                    </li>
-                </ul>
-            </div>
-            @endif
-        @endif
+{{-- ── PAST INVITATIONS ──
+     A table, not a collapsed stack of cards. This is a record the employer
+     reads down a column — which fair, when, what they answered — and a
+     dropdown hid every row of it behind a click that gave no reason to be
+     pressed. The pending list above stays as cards because each of those
+     carries an action; nothing here does. --}}
+<div class="mt-4">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <i class="ph ph-clock-counter-clockwise" style="color:var(--g-600);font-size:16px;"></i>
+        <span class="fw-semibold" style="color:var(--g-700);font-size:13px;">Past Invitations</span>
+        <span class="badge" style="background:var(--n-100);color:var(--n-700);font-size:10.5px;">
+            {{ $pastInvitations->total() }}
+        </span>
     </div>
+
+    <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
+                        <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Job Fair Event</th>
+                        <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Event Date</th>
+                        <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Venue</th>
+                        <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Outcome</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($pastInvitations as $i => $invitation)
+                    <tr style="font-size:13px;">
+                        <td style="padding:12px 16px;color:var(--n-500);">
+                            {{ $pastInvitations->firstItem() + $i }}
+                        </td>
+                        <td style="padding:12px 16px;font-weight:600;color:var(--g-700);">
+                            {{ $invitation->jobFair->title ?? 'None' }}
+                        </td>
+                        <td style="padding:12px 16px;color:var(--n-700);">
+                            {{ $invitation->jobFair->event_date?->format('M d, Y') ?? 'None' }}
+                        </td>
+                        <td style="padding:12px 16px;color:var(--n-700);">
+                            {{ $invitation->jobFair->venue ?? 'None' }}
+                        </td>
+                        <td style="padding:12px 16px;">
+                            @if($invitation->confirmation_status === 'confirmed')
+                                <span class="fw-semibold" style="color:var(--g-700);font-size:11.5px;">
+                                    <i class="ph-fill ph-check-circle me-1"></i>Confirmed
+                                </span>
+                            @elseif($invitation->wasNotSelected())
+                                {{-- Dili "Declined". Mitubag siyag oo; ang opisina
+                                     ang wala midala kaniya, ug ang duha managlahi. --}}
+                                <span class="fw-semibold" style="color:var(--n-500);font-size:11.5px;">
+                                    <i class="ph-fill ph-minus-circle me-1"></i>Not selected by PESO
+                                </span>
+                            @elseif($invitation->confirmation_status === 'expired')
+                                <span class="fw-semibold" style="color:var(--n-500);font-size:11.5px;">
+                                    <i class="ph-fill ph-clock-countdown me-1"></i>Lapsed
+                                </span>
+                            @else
+                                <span class="fw-semibold" style="color:var(--danger);font-size:11.5px;">
+                                    <i class="ph-fill ph-x-circle me-1"></i>Declined
+                                </span>
+                            @endif
+                        </td>
+                    </tr>
+                    @empty
+                    {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum
+                         makita gihapon ug ang pahina dili mag-usab ug porma. --}}
+                    <tr>
+                        <td colspan="5" class="text-center"
+                            style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                            <i class="ph ph-calendar-x me-1"
+                               style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                            Invitations you have already answered will appear here
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @if($pastInvitations->hasPages())
+    <div class="d-flex justify-content-center mt-3">
+        <ul class="pagination pagination-sm mb-0 gap-1">
+            <li class="page-item {{ $pastInvitations->onFirstPage() ? 'disabled' : '' }}">
+                <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $pastInvitations->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
+            </li>
+            @foreach($pastInvitations->getUrlRange(1, $pastInvitations->lastPage()) as $page => $url)
+            <li class="page-item {{ $page == $pastInvitations->currentPage() ? 'active' : '' }}">
+                <a class="page-link rounded-2" style="{{ $page == $pastInvitations->currentPage() ? 'background:var(--g-600);border-color:transparent;color:#fff;' : 'border-color:var(--n-200);color:var(--g-700);' }}" href="{{ $url }}">{{ $page }}</a>
+            </li>
+            @endforeach
+            <li class="page-item {{ !$pastInvitations->hasMorePages() ? 'disabled' : '' }}">
+                <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $pastInvitations->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
+            </li>
+        </ul>
+    </div>
+    @endif
 </div>
