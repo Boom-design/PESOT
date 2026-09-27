@@ -710,165 +710,10 @@ if ($type === 'local') {
         $staffRole = request('role', 'lra');
 
         if ($staffRole === 'job_fair') {
-            $tab      = request('tab', 'summary');
-            $eventId  = request('event_id');
-            $allEvents = \App\Models\JobFairEvent::orderByDesc('event_date')->get();
-            $event     = $eventId ? \App\Models\JobFairEvent::find($eventId) : null;
-
-            $eventJobIds = $eventId
-                ? \App\Models\JobFairEmploymentRequest::where('job_fair_id', $eventId)->pluck('job_id')
-                : collect();
-
-            $attendanceFilter = request('attendance_filter', 'all');
-            $registrations = null;
-            $totalRegistered = $totalAttended = $totalLocalAttendance = $totalOverseasAttendance = 0;
-
-            if ($tab === 'attendance' && $eventId) {
-                $regQuery = \App\Models\JobFairRegistration::with(['jobseeker.nsrp', 'jobseeker.user'])
-                    ->where('job_fair_id', $eventId)
-                    ->when($attendanceFilter !== 'all', fn($q) =>
-                        $q->whereHas('jobseeker.nsrp', fn($n) => $n->whereIn('type', [$attendanceFilter, 'both']))
-                    );
-                $registrations = $regQuery->latest()->paginate(10);
-
-                $baseQ = \App\Models\JobFairRegistration::where('job_fair_id', $eventId);
-                $totalRegistered = (clone $baseQ)->count();
-                $totalAttended   = (clone $baseQ)->where('is_attended', true)->count();
-                $totalLocalAttendance    = (clone $baseQ)->whereHas('jobseeker.nsrp', fn($n) => $n->whereIn('type', ['local','both']))->count();
-                $totalOverseasAttendance = (clone $baseQ)->whereHas('jobseeker.nsrp', fn($n) => $n->whereIn('type', ['overseas','both']))->count();
-            }
-
-            $companiesLocal    = collect();
-            $companiesOverseas = collect();
-
-            if ($tab === 'companies' && $eventId) {
-                $confirmed = \App\Models\JobFairParticipant::with('employer')
-                    ->where('job_fair_id', $eventId)
-                    ->where('confirmation_status', 'confirmed')
-                    ->get();
-
-                $companiesLocal    = $confirmed->filter(fn($p) => !($p->employer->is_overseas ?? false))->values();
-                $companiesOverseas = $confirmed->filter(fn($p) => $p->employer->is_overseas ?? false)->values();
-            }
-
-            $furtherInterview = null;
-            if ($tab === 'further_interview' && $eventId) {
-                $furtherInterview = \App\Models\Application::with(['jobseeker.nsrp', 'job.company'])
-                    ->whereIn('job_id', $eventJobIds)
-                    ->where('status', 'waiting')
-                    ->latest()
-                    ->paginate(10);
-            }
-
-            $hots = null;
-            if ($tab === 'hots' && $eventId && $event) {
-                $hots = \App\Models\Application::with(['jobseeker', 'job.company'])
-                    ->whereIn('job_id', $eventJobIds)
-                    ->where('status', 'hired')
-                    ->whereDate('updated_at', $event->event_date)
-                    ->latest()
-                    ->paginate(10);
-            }
-
-            $summaryParticipants = collect();
-            $summaryTotals = ['vacancies' => 0, 'interviewed' => 0, 'male' => 0, 'female' => 0, 'qualified' => 0, 'hired' => 0];
-            $topEmployersFilter = request('top_employers_filter', 'monthly');
-            $topEmployersMonth = request('top_employers_month');
-            $topEmployersYear = request('top_employers_year');
-
-            if ($tab === 'summary' && $eventId) {
-                $participants = \App\Models\JobFairParticipant::with('employer')
-                    ->where('job_fair_id', $eventId)
-                    ->where('confirmation_status', 'confirmed')
-                    ->get();
-
-                $summaryParticipants = $participants->map(function ($p) use ($eventId) {
-                    $jobIds = \App\Models\JobFairEmploymentRequest::where('job_fair_id', $eventId)
-                        ->where('employer_id', $p->employer_id)
-                        ->pluck('job_id');
-
-                    $apps = \App\Models\Application::with('jobseeker')->whereIn('job_id', $jobIds)->get();
-
-                    $p->vacancies   = \App\Models\Job::whereIn('job_qualifications_id', $jobIds)->sum('slots');
-                    $p->interviewed = $apps->count();
-                    $p->male        = $apps->filter(fn($a) => strtolower($a->jobseeker->sex ?? '') === 'male')->count();
-                    $p->female      = $apps->filter(fn($a) => strtolower($a->jobseeker->sex ?? '') === 'female')->count();
-                    $p->qualified   = $apps->where('status', 'qualified')->count();
-                    $p->hired       = $apps->where('status', 'hired')->count();
-                    return $p;
-                });
-
-                foreach (['vacancies', 'interviewed', 'male', 'female', 'qualified', 'hired'] as $key) {
-                    $summaryTotals[$key] = $summaryParticipants->sum($key);
-                }
-            }
-
-            $industryLocal    = collect();
-            $industryOverseas = collect();
-
-            if ($tab === 'industry' && $eventId) {
-                $jobs = \App\Models\Job::with('company')->whereIn('job_qualifications_id', $eventJobIds)->get();
-
-                $industryLocal = $jobs->filter(fn($j) => !($j->company->is_overseas ?? false))
-                    ->groupBy('industry_group')
-                    ->map(fn($group) => $group->sum('slots'));
-
-                $industryOverseas = $jobs->filter(fn($j) => $j->company->is_overseas ?? false)
-                    ->groupBy('industry_group')
-                    ->map(fn($group) => $group->sum('slots'));
-            }
-
-            $topEmployersByInhouseInterviews = collect();
-            if ($tab === 'top_employers' && $eventId) {
-                $topEmployersQuery = \App\Models\JobFairParticipant::with('employer')
-                    ->where('job_fair_id', $eventId)
-                    ->where('confirmation_status', 'confirmed');
-
-                if ($topEmployersFilter === 'yearly') {
-                    $selectedYear = $topEmployersYear ?: now()->year;
-                    $topEmployersQuery->whereYear('created_at', $selectedYear);
-                } else {
-                    $selectedMonth = $topEmployersMonth ?: now()->format('Y-m');
-                    [$year, $month] = array_pad(explode('-', $selectedMonth), 2, now()->month);
-                    $topEmployersQuery->whereYear('created_at', $year)
-                        ->whereMonth('created_at', $month);
-                }
-
-                $topEmployersByInhouseInterviews = $topEmployersQuery->get()
-                    ->groupBy('employer_id')
-                    ->map(function ($participants) {
-                        return [
-                            'employer' => $participants->first()->employer,
-                            'participation_count' => $participants->count(),
-                        ];
-                    })
-                    ->sortByDesc('participation_count')
-                    ->take(5)
-                    ->values();
-            }
-
-            $placementReport = null;
-            if ($tab === 'placement' && $eventId && $event) {
-                $placementReport = \App\Models\Application::with(['jobseeker', 'job.company'])
-                    ->whereIn('job_id', $eventJobIds)
-                    ->where('status', 'hired')
-                    ->whereHas('job.company', fn($q) => $q->where('is_overseas', false))
-                    ->whereDate('updated_at', '>', $event->event_date)
-                    ->latest()
-                    ->paginate(15);
-            }
-
-            return view('staff.reports.index', compact(
-                'staffRole', 'tab', 'allEvents', 'event', 'eventId',
-                'registrations', 'attendanceFilter', 'totalRegistered', 'totalAttended',
-                'totalLocalAttendance', 'totalOverseasAttendance',
-                'companiesLocal', 'companiesOverseas',
-                'furtherInterview', 'hots',
-                'summaryParticipants', 'summaryTotals',
-                'industryLocal', 'industryOverseas',
-                'placementReport', 'topEmployersByInhouseInterviews',
-                'topEmployersFilter', 'topEmployersMonth', 'topEmployersYear'
-            ) + ['layout' => 'admin.layouts.app', 'reportRouteName' => 'admin.reports.staff']);
+            // The Job Fair desk's own report data, built by the same code, so this
+            // copy never lacks a variable the page reads.
+            return view('staff.reports.index', \App\Support\JobFairReportPage::data('job_fair', false)
+                + ['layout' => 'admin.layouts.app', 'reportRouteName' => 'admin.reports.staff']);
         }
 
         $search      = request('search');
@@ -983,10 +828,10 @@ if ($type === 'local') {
 
         $totalReferred = (clone $referredQuery)->count();
 
-        $registeredParticipants = ($tab === 'registered' && $registeredView === 'inhouse') ? $registeredQuery->latest()->paginate(10) : null;
-        $registeredAll          = ($tab === 'registered' && $registeredView === 'all') ? $registeredAllQuery->latest()->paginate(10) : null;
-        $placedApplications     = $tab === 'placed'     ? $placedQuery->latest()->paginate(10)     : null;
-        $referredApplications   = $tab === 'referred'   ? $referredQuery->latest()->paginate(10)   : null;
+        $registeredParticipants = ($tab === 'registered' && $registeredView === 'inhouse') ? $registeredQuery->latest()->paginate(10)->withQueryString() : null;
+        $registeredAll          = ($tab === 'registered' && $registeredView === 'all') ? $registeredAllQuery->latest()->paginate(10)->withQueryString() : null;
+        $placedApplications     = $tab === 'placed'     ? $placedQuery->latest()->paginate(10)->withQueryString()     : null;
+        $referredApplications   = $tab === 'referred'   ? $referredQuery->latest()->paginate(10)->withQueryString()   : null;
 
         // The two lists the desks were missing: who was given a room and who
         // was declined, and (SRA only) the interviews employers ran themselves.
@@ -1010,12 +855,53 @@ if ($type === 'local') {
         // LRA ra, parehas sa desk: ang in-house nga interview sa overseas wala
         // pa gitukod. Ang Download nga buton wala dinhi — ang desk ang tag-iya
         // sa file, parehas sa laing export niini nga panid.
-        $employerPostings = collect();
-        $employerRoomOnly = collect();
+        // ── The two SRA tabs the admin opens through this same view: Job
+        // ── Vacancies Solicited and Archived Job Postings. The view reads
+        // ── these on every render of those tabs, and the admin copy of the
+        // ── report never built them, so both tabs failed outright. Built the
+        // ── way the SRA's own report builds them, so the admin reads the
+        // ── same list the desk does. ──
+        $vacancyMonth = request('vacancy_month', now()->format('Y-m'));
+        if ($vacancyMonth !== 'all' && !preg_match('/^\d{4}-\d{2}$/', $vacancyMonth)) {
+            $vacancyMonth = now()->format('Y-m');
+        }
 
-        if ($tab === 'employer_report' && $staffRole === 'lra') {
-            ['postings' => $employerPostings, 'roomOnly' => $employerRoomOnly] =
-                \App\Support\InhouseEmployerReport::paged(false, $search);
+        $solicitedJobs = collect();
+        $totalVacanciesSolicited = 0;
+        if ($staffRole === 'sra') {
+            $vacancyQuery = \App\Models\Job::query()->overseasSolicited()
+                ->with('company')
+                ->when($vacancyMonth !== 'all', function ($q) use ($vacancyMonth) {
+                    [$y, $m] = explode('-', $vacancyMonth);
+                    $q->whereYear('updated_at', $y)->whereMonth('updated_at', $m);
+                })
+                ->when($search, fn($q) => $q->where(fn($w) => $w->where('title', 'like', "%{$search}%")
+                    ->orWhereHas('company', fn($u) => $u->where('company_name', 'like', "%{$search}%"))
+                ));
+
+            $totalVacanciesSolicited = (clone $vacancyQuery)->count();
+            $solicitedJobs = $tab === 'vacancies' ? $vacancyQuery->latest()->paginate(10)->withQueryString() : collect();
+        }
+
+        // The same query the SRA's own screen runs; the LRA has none there.
+        $archivedJobs = $staffRole === 'sra'
+            ? \App\Models\Job::with('company')
+                ->inactive()
+                ->withGroupHiredCount()
+                ->withCount([
+                    'applications as hired_count' => fn($q) => $q->where('status', 'hired'),
+                ])
+                ->latest()
+                ->paginate(5, ['*'], 'archived_page')
+                ->withQueryString()
+            : new \Illuminate\Pagination\LengthAwarePaginator([], 0, 5, 1, ['path' => request()->url()]);
+
+        // The same Employer Report the desk reads, built by the same helper.
+        $employerHires   = null;
+        $employerFocusId = null;
+
+        if ($tab === 'employer_report') {
+            $employerHires = \App\Support\InhouseEmployerReport::byEmployer($isOverseas, $search);
         }
 
         return view('staff.reports.index', compact(
@@ -1024,7 +910,8 @@ if ($type === 'local') {
             'totalRegistered', 'totalRegisteredAll', 'totalPlaced', 'totalReferred', 'solicitationStats',
             'topEmployersByInhouseInterviews', 'topEmployersFilter', 'topEmployersMonth', 'topEmployersYear',
             'inhouseReport', 'companyInterviews',
-            'employerPostings', 'employerRoomOnly'
+            'employerHires', 'employerFocusId',
+            'vacancyMonth', 'solicitedJobs', 'totalVacanciesSolicited', 'archivedJobs'
         ) + ['layout' => 'admin.layouts.app', 'reportRouteName' => 'admin.reports.staff']);
     }
 

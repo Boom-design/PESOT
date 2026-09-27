@@ -13,11 +13,20 @@
     Pass `noticeOverseas` to say whether this employer is overseas, and
     `noticeAudience` => 'staff' for the desk's wording. Left alone, the notice
     works out the employer from the signed-in user and speaks to them.
+
+    PESO CDO client, 2026-09-14: the hard copies are not an in-house rule only.
+    An overseas agency brings them every time it conducts an interview through
+    PESO — company interview, in-house interview or job fair. `noticeActivity`
+    picks the employer's wording:
+      'inhouse'  — the in-house request (default, the wording above)
+      'any'      — where any of the three can be chosen (Post a Job)
+      'job_fair' — a job fair invitation
 --}}
 @php
     $noticeIsOverseas = $noticeOverseas
         ?? (bool) (auth()->user()?->employerNsrp?->is_overseas ?? false);
     $noticeForStaff   = ($noticeAudience ?? 'employer') === 'staff';
+    $noticeActivity   = $noticeActivity ?? 'inhouse';
 @endphp
 
 @if($noticeIsOverseas)
@@ -32,6 +41,18 @@
                 requirements at the PESO office in person. An overseas in-house interview
                 is not approved on the uploaded copies alone, even when the agency
                 registered and submitted everything online.
+            @elseif($noticeActivity === 'any')
+                <strong style="color:var(--warn);">Must bring the hard copies of your requirements.</strong><br>
+                As an overseas agency, present the original copies of your requirements every time you
+                conduct an interview through PESO — company interview, in-house interview or job fair —
+                even after your account has been approved. The copies you uploaded are not enough on
+                their own, and an in-house schedule is approved only after you present them at the
+                PESO office.
+            @elseif($noticeActivity === 'job_fair')
+                <strong style="color:var(--warn);">Must bring the hard copies of your requirements.</strong><br>
+                As an overseas agency, bring the original copies of your requirements to the job fair.
+                They are required every time you take part in an interview through PESO, even after
+                your account has been approved.
             @else
                 <strong style="color:var(--warn);">Bring the hard copies to the PESO office.</strong><br>
                 Go to the PESO office and present the original copies of your requirements.

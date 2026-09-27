@@ -262,7 +262,19 @@
         @endforeach
 
         <div class="d-flex justify-content-center mt-4">
-            {{ $jobs->links() }}
+            @if($jobs->hasPages())
+        <nav>
+            <ul class="pagination pagination-sm mb-0 gap-1">
+                <li class="page-item {{ $jobs->onFirstPage() ? 'disabled' : '' }}">
+                    <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $jobs->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
+                </li>
+                @include('partials.page-links', ['pager' => $jobs, 'activeStyle' => 'background:var(--g-600);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--n-200);color:var(--g-700);'])
+                <li class="page-item {{ !$jobs->hasMorePages() ? 'disabled' : '' }}">
+                    <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $jobs->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
+                </li>
+            </ul>
+        </nav>
+        @endif
         </div>
 
 @elseif($tab === 'invitations')

@@ -19,7 +19,7 @@ class JobseekerRegistration extends Model
         'same_as_permanent',
         'tin', 'disabilities', 'disability_other',
         'height', 'weight', 'contact_number', 'reg_email',
-        'sms_opt_in',
+        'sms_opt_in', 'job_fair_seen_at',
         // Ang is_walk_in gipasa sa storeWalkinNsrp ug sa pag-link sa account,
         // apan wala siya diri kaniadto — mao nga hilom siyang gilabay sa mass
         // assignment ug ang matag walk-in natala nga 0. Duha ang naguba niini:
@@ -36,6 +36,7 @@ class JobseekerRegistration extends Model
         'same_as_permanent'  => 'boolean',
         'date_of_birth'      => 'date',
         'sms_opt_in'         => 'boolean',
+        'job_fair_seen_at'   => 'datetime',
     ];
 
     // ── RELATIONSHIPS ──

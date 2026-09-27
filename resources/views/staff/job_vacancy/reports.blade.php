@@ -242,15 +242,7 @@
                             <i class="ph ph-caret-left"></i>
                         </a>
                     </li>
-                    @foreach($jobs->getUrlRange(1, $jobs->lastPage()) as $page => $url)
-                    <li class="page-item {{ $page == $jobs->currentPage() ? 'active' : '' }}">
-                        <a class="page-link rounded-2"
-                           style="{{ $page == $jobs->currentPage()
-                                ? 'background:var(--g-600);border-color:transparent;color:#fff;'
-                                : 'border-color:var(--n-200);color:var(--g-700);' }}"
-                           href="{{ $url }}">{{ $page }}</a>
-                    </li>
-                    @endforeach
+                    @include('partials.page-links', ['pager' => $jobs, 'activeStyle' => 'background:var(--g-600);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--n-200);color:var(--g-700);'])
                     <li class="page-item {{ !$jobs->hasMorePages() ? 'disabled' : '' }}">
                         <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);"
                            href="{{ $jobs->nextPageUrl() }}">
@@ -430,7 +422,19 @@
     <div style="font-size:12px;color:var(--n-500);">
         Showing {{ $ciRows->firstItem() }}–{{ $ciRows->lastItem() }} of {{ $ciRows->total() }} interview(s)
     </div>
-    {{ $ciRows->links() }}
+    @if($ciRows->hasPages())
+        <nav>
+            <ul class="pagination pagination-sm mb-0 gap-1">
+                <li class="page-item {{ $ciRows->onFirstPage() ? 'disabled' : '' }}">
+                    <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $ciRows->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
+                </li>
+                @include('partials.page-links', ['pager' => $ciRows, 'activeStyle' => 'background:var(--g-600);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--n-200);color:var(--g-700);'])
+                <li class="page-item {{ !$ciRows->hasMorePages() ? 'disabled' : '' }}">
+                    <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $ciRows->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
+                </li>
+            </ul>
+        </nav>
+        @endif
 </div>
 @endif
 

@@ -9,7 +9,7 @@
         <i class="ph-fill ph-calendar-check me-2" style="color:var(--g-600);"></i>PESO Events
     </h5>
     <p class="mb-0" style="font-size:13px;color:var(--n-500);">
-        The in-house interviews and job fairs you have joined
+        The in-house interviews, company interviews and job fairs you have joined
     </p>
 </div>
 
@@ -23,10 +23,10 @@
 @endphp
 
 {{-- TABS --}}
-<div class="d-flex gap-2 mb-4">
+<div class="d-flex flex-wrap gap-2 mb-4">
     <a href="{{ route('jobseeker.schedules', ['type' => 'inhouse']) }}"
        class="btn btn-sm fw-semibold"
-       style="{{ request('type','inhouse') === 'inhouse'
+       style="{{ $type === 'inhouse'
            ? 'background:var(--g-600);color:#fff;border:none;'
            : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
            border-radius:8px;font-size:12px;padding:6px 18px;">
@@ -36,9 +36,21 @@
             {{ $inhouseApplications->count() }}
         </span>
     </a>
+    <a href="{{ route('jobseeker.schedules', ['type' => 'company_interview']) }}"
+       class="btn btn-sm fw-semibold"
+       style="{{ $type === 'company_interview'
+           ? 'background:var(--g-600);color:#fff;border:none;'
+           : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
+           border-radius:8px;font-size:12px;padding:6px 18px;">
+        <i class="ph ph-briefcase me-1"></i> Company Interviews
+        <span class="badge ms-1"
+            style="background:rgba(255,255,255,0.3);font-size:10px;">
+            {{ $companyInterviewApplications->count() }}
+        </span>
+    </a>
     <a href="{{ route('jobseeker.schedules', ['type' => 'jobfair']) }}"
        class="btn btn-sm fw-semibold"
-       style="{{ request('type') === 'jobfair'
+       style="{{ $type === 'jobfair'
            ? 'background:var(--g-600);color:#fff;border:none;'
            : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
            border-radius:8px;font-size:12px;padding:6px 18px;">
@@ -50,12 +62,12 @@
         {{-- Ang pula nga numero sa PESO Events nga item sa sidebar kay ang
              pangutana sa opisina kung moadto ba sila sa fair, ug ang tubag naa
              ra niini nga tab. Ang puti nga numero sa tapad kay ihap sa laray. --}}
-        @include('partials.tab-dot', ['count' => $scheduleAlerts['schedules'] ?? 0, 'on' => request('type') === 'jobfair'])
+        @include('partials.tab-dot', ['count' => $scheduleAlerts['schedules'] ?? 0, 'on' => $type === 'jobfair'])
     </a>
 </div>
 
 {{-- IN-HOUSE TAB --}}
-@if(request('type', 'inhouse') === 'inhouse')
+@if($type === 'inhouse')
 
         <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
             <div class="table-responsive">
@@ -126,6 +138,75 @@
                                 <i class="ph ph-calendar-x me-1"
                                    style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
                                 In-house interview schedules will appear here once you confirm participation after applying
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+{{-- COMPANY INTERVIEW TAB --}}
+{{-- Interviews the employer holds at their own place. A row reaches this tab
+     once the jobseeker has confirmed they will attend. --}}
+@elseif($type === 'company_interview')
+
+        <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">#</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Company Name</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Job Position</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Slots Needed</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Interview Date</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Invitation Status</th>
+                            <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($companyInterviewApplications as $i => $app)
+                        <tr style="font-size:13px;">
+                            <td style="padding:12px 16px;color:var(--n-500);">{{ $i + 1 }}</td>
+                            <td style="padding:12px 16px;font-weight:600;color:var(--g-700);">
+                                {{ $app->job->company->company_name ?? 'None' }}
+                            </td>
+                            <td style="padding:12px 16px;color:var(--n-700);">
+                                <a href="{{ route('jobseeker.jobs.show', $app->job_id) }}" class="text-decoration-none" style="color:var(--n-700);">
+                                    {{ $app->job->title ?? 'None' }}
+                                </a>
+                            </td>
+                            <td style="padding:12px 16px;color:var(--n-700);">
+                                {{ $app->job->slots ?? 'None' }}
+                            </td>
+                            <td style="padding:12px 16px;color:var(--n-700);">
+                                {{ $app->job->interview_date ? $app->job->interview_date->format('M d, Y') : 'To be announced' }}
+                                @if($app->job->preferred_time)
+                                    <div style="font-size:10.5px;color:var(--n-500);">
+                                        at {{ \Carbon\Carbon::parse($app->job->preferred_time)->format('h:i A') }}
+                                    </div>
+                                @endif
+                            </td>
+                            <td style="padding:12px 16px;">
+                                <span class="fw-semibold" style="color:var(--g-600);font-size:11.5px;">Accepted</span>
+                                <div style="font-size:10.5px;color:var(--n-500);margin-top:2px;">
+                                    Applied {{ $app->created_at->format('F d, Y') }}
+                                </div>
+                            </td>
+                            <td style="padding:12px 16px;text-align:center;">
+                                <span class="fw-semibold" style="color:var(--g-700);font-size:11px;">
+                                    <i class="ph-fill ph-check-circle me-1"></i>Joined
+                                </span>
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="7" class="text-center"
+                                style="padding:26px 16px;color:var(--n-500);font-size:13px;">
+                                <i class="ph ph-calendar-x me-1"
+                                   style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
+                                Company interview schedules will appear here once you confirm participation after applying
                             </td>
                         </tr>
                         @endforelse

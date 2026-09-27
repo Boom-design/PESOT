@@ -469,7 +469,7 @@ class CompanyWebController extends Controller
             'positions.*.location'              => 'required|string|max:255',
             'positions.*.salary'                => 'nullable|string|max:100',
             'positions.*.slots'                 => 'required|integer|min:1',
-            'positions.*.deadline'               => 'nullable|date|after_or_equal:today|before_or_equal:' . now()->addYear()->toDateString(),
+            'positions.*.deadline'               => 'nullable|date|after_or_equal:today|before_or_equal:' . Job::latestDeadline()->toDateString(),
             'positions.*.experience_months'     => 'nullable|integer|min:0',
             'positions.*.religion'              => 'nullable|string|max:100',
             'positions.*.sex_preference'        => 'nullable|in:Male,Female,Any',
@@ -485,6 +485,10 @@ class CompanyWebController extends Controller
             'positions.*.language'              => 'nullable|string|max:255',
             'positions.*.preferred_residence'   => 'nullable|string|max:255',
             'positions.*.accepts_programs'      => 'nullable|array',
+            'positions.*.match_points'          => ['nullable', 'array', function ($attribute, $value, $fail) {
+                if ($message = Job::matchPointsError($value)) $fail($message);
+            }],
+            'positions.*.match_points.*'        => 'nullable|integer|min:0|max:100',
             'positions.*.job_image'             => 'nullable|string',
         ], [
             'preferred_date.after_or_equal'     => \App\Support\OfficeCalendar::leadTimeMessage(),
@@ -556,6 +560,7 @@ class CompanyWebController extends Controller
                 'preferred_residence' => $pos['preferred_residence'] ?? null,
                 'accepts_programs'    => $pos['accepts_programs'] ?? null,
                 'poster_image'       => $this->resolveJobImage($pos),
+                'match_points'        => Job::cleanMatchPoints($pos['match_points'] ?? null),
             ]);
         }
 
@@ -649,7 +654,7 @@ class CompanyWebController extends Controller
             'job_type'       => 'required|in:full_time,part_time,contractual',
             'industry_group' => 'required|string|max:255',
             'slots'          => 'required|integer|min:1',
-            'deadline'       => 'nullable|date|after_or_equal:today|before_or_equal:' . now()->addYear()->toDateString(),
+            'deadline'       => 'nullable|date|after_or_equal:today|before_or_equal:' . Job::latestDeadline()->toDateString(),
         ]);
 
         Job::create([
@@ -775,9 +780,10 @@ class CompanyWebController extends Controller
             'location'             => 'required|string|max:255',
             'salary'               => 'nullable|string|max:100',
             'slots'                => 'required|integer|min:1',
-            // ── Max usa ka tuig (PESO interview: employer nga 100 ka vacancy
-            // ── mahimong hatagan ug hangtod usa ka tuig, dili usa ka bulan). ──
-            'deadline'             => 'nullable|date|after_or_equal:today|before_or_equal:' . now()->addYear()->toDateString(),
+            // ── Max duha ka bulan (PESO CDO client, 2026-09-13). Kaniadto usa
+            // ── ka tuig; ang bakante nga nagpabilin usa ka tuig dili na tinuod
+            // ── nga bakante. Tan-awa ang Job::MAX_DEADLINE_MONTHS. ──
+            'deadline'             => 'nullable|date|after_or_equal:today|before_or_equal:' . Job::latestDeadline()->toDateString(),
             'industry_group'       => 'required|string|max:255',
             'experience_months'    => 'nullable|integer|min:0',
             'religion'             => 'nullable|string|max:100',
@@ -794,6 +800,10 @@ class CompanyWebController extends Controller
             'accepts_disability'   => 'nullable|in:yes,no',
             'disability_types'     => 'nullable|array',
             'disability_types.*'   => 'string|max:50',
+            'match_points'         => ['nullable', 'array', function ($attribute, $value, $fail) {
+                if ($message = Job::matchPointsError($value)) $fail($message);
+            }],
+            'match_points.*'       => 'nullable|integer|min:0|max:100',
         ]);
 
         // Read before the write, so the history can say what moved. See
@@ -830,6 +840,11 @@ class CompanyWebController extends Controller
             'preferred_residence'  => $request->preferred_residence,
             'accepts_disability'   => $acceptsDisability,
             'disability_types'     => $disabilityTypes,
+            // Nothing stored means the posting follows PESO's standard points,
+            // so turning the switch off has to clear what was saved before.
+            'match_points'         => $request->boolean('own_points')
+                                        ? Job::cleanMatchPoints($request->input('match_points'))
+                                        : null,
         ]);
 
         // ── Ang slots gi-ambitan sa TIBUOK posting group — usa ra ka bakante
@@ -849,12 +864,26 @@ class CompanyWebController extends Controller
                     'slots'              => (int) $request->slots,
                     'accepts_disability' => $acceptsDisability,
                     'disability_types'   => $disabilityTypes ? json_encode($disabilityTypes) : null,
+                    // One vacancy, one set of points, whichever channel it runs in.
+                    'match_points'       => $job->match_points ? json_encode($job->match_points) : null,
                 ]);
         }
 
         // Written after the group update, so a change pushed to the sibling
         // channels is in the snapshot too.
         \App\Support\JobChangeLog::recordEdit($job, $beforeEdit, $company);
+
+        // The score an applicant already has was worked out with the old
+        // qualifications and points. Work it out again, so the applicant list
+        // and the jobseeker's own screen agree with what the posting asks now.
+        $matcher = new ApplicationController();
+        foreach (Job::whereIn('job_qualifications_id', $groupIds)->get() as $groupJob) {
+            foreach (Application::where('job_id', $groupJob->job_qualifications_id)->get() as $applied) {
+                $applied->update([
+                    'match_percentage' => $matcher->computeMatchBreakdownByRegistrationId($applied->jobseeker_id, $groupJob)['percentage'],
+                ]);
+            }
+        }
 
         return redirect()->route('company.jobseekers')->with('success', 'Job updated successfully!');
     }
@@ -965,7 +994,20 @@ class CompanyWebController extends Controller
         if (!$company) return redirect()->route('login');
 
         $request->validate([
-            'status' => 'required|in:pending,reviewed,qualified,hired,waiting,rejected',
+            'status'     => 'required|in:pending,reviewed,qualified,hired,waiting,rejected',
+            // ── Ang pag-hire dili kompleto kung walay adlaw sa pagsugod.
+            // ──
+            // ── PESO CDO client, 2026-09-13: ang jobseeker nga gisultihan
+            // ── "you are hired" nga walay petsa dili kabalo kanus-a moadto,
+            // ── ug ang opisina dili makalahi sa hire nga nagsugod gikan sa
+            // ── gisaad ra. Parehas sa tulo ka channel, kay usa ra ka method
+            // ── ang nag-hire. Ang nangaging petsa gitugotan: ang job fair
+            // ── hire mahimong i-record hangtod 30 ka adlaw human, ug ang
+            // ── tawo tingali nagsugod na. ──
+            'start_date' => 'required_if:status,hired|nullable|date',
+        ], [
+            'start_date.required_if' => 'Enter the date this applicant starts work.',
+            'start_date.date'        => 'The start date is not a valid date.',
         ]);
 
         $application = Application::with('job')->whereHas('job', function ($q) use ($company) {
@@ -1039,15 +1081,38 @@ class CompanyWebController extends Controller
         // ── status palayo sa hired, ang petsa mawala pud — dili siya
         // ── na-hire. ──
         $application->update([
-            'status'   => $request->status,
-            'hired_at' => $request->status === 'hired'
+            'status'     => $request->status,
+            'hired_at'   => $request->status === 'hired'
                 ? ($application->hired_at ?: now())
+                : null,
+            // Mawala uban sa hired_at: ang tawo nga dili na hired walay
+            // adlaw sa pagsugod.
+            'start_date' => $request->status === 'hired'
+                ? $request->start_date
                 : null,
         ]);
 
+        // PESO CDO client, 2026-09-14: a hire goes onto the jobseeker's NSRP
+        // work experience and pauses their applying; undoing it takes it back off.
+        \App\Support\PesoEmployment::syncHire($application->fresh(['job.company']));
+
+        // PESO CDO client, 2026-09-14: a hire goes onto the jobseeker's NSRP
+        // work experience and pauses their applying; undoing it takes it back off.
+        \App\Support\PesoEmployment::syncHire($application->fresh(['job.company']));
+
+        // PESO CDO client, 2026-09-14: a hire goes onto the jobseeker's NSRP
+        // work experience and pauses their applying; undoing it takes it back off.
+        \App\Support\PesoEmployment::syncHire($application->fresh(['job.company']));
+
         $messages = [
-            'hired'    => ['title' => 'Application Update — Hired! 🎉', 'text' => 'Congratulations! You have been hired for the position "' . $application->job->title . '" at ' . $company->activeCompany()->company_name . '.'],
-            'waiting'  => ['title' => 'Application Update — Waiting List ⏳', 'text' => 'Your application for "' . $application->job->title . '" at ' . $company->activeCompany()->company_name . ' has been placed on the waiting list.'],
+            'hired'    => ['title' => 'Application Update — Hired! 🎉', 'text' => 'Congratulations! You have been hired for the position "' . $application->job->title . '" at ' . $company->activeCompany()->company_name . '.'
+                . ($request->start_date ? ' You start work on ' . \Carbon\Carbon::parse($request->start_date)->format('F d, Y') . '.' : '')],
+            // On Process, worded for the channel: a fair leads to a further
+            // interview, the others to the rest of the requirements.
+            'waiting'  => ['title' => 'Application Update — On Process ⏳', 'text' => 'Your application for "' . $application->job->title . '" at ' . $company->activeCompany()->company_name . ' is now on process. '
+                . (($application->job->schedule_type ?? null) === 'job_fair'
+                    ? 'The employer will meet you again for a further interview — wait for their schedule.'
+                    : 'The employer is taking you forward; please complete the requirements they ask for.')],
             'rejected' => ['title' => 'Application Update ❌', 'text' => 'Your application for "' . $application->job->title . '" at ' . $company->activeCompany()->company_name . ' was not selected this time.'],
             'reviewed' => ['title' => 'Application Update — Under Review 👀', 'text' => 'Your application for "' . $application->job->title . '" at ' . $company->activeCompany()->company_name . ' is now being reviewed.'],
         ];
@@ -1200,7 +1265,7 @@ class CompanyWebController extends Controller
             'positions.*.salary'                => 'nullable|string|max:100',
             'positions.*.slots'                 => 'required|integer|min:1',
             
-            'positions.*.deadline'              => 'nullable|date|after_or_equal:today|before_or_equal:' . now()->addYear()->toDateString(),
+            'positions.*.deadline'              => 'nullable|date|after_or_equal:today|before_or_equal:' . Job::latestDeadline()->toDateString(),
             'positions.*.experience_months'     => 'nullable|integer|min:0',
             'positions.*.religion'              => 'nullable|string|max:100',
             'positions.*.sex_preference'        => 'nullable|in:Male,Female,Any',
@@ -1216,6 +1281,10 @@ class CompanyWebController extends Controller
             'positions.*.language'              => 'nullable|string|max:255',
             'positions.*.preferred_residence'   => 'nullable|string|max:255',
             'positions.*.accepts_programs'      => 'nullable|array',
+            'positions.*.match_points'          => ['nullable', 'array', function ($attribute, $value, $fail) {
+                if ($message = Job::matchPointsError($value)) $fail($message);
+            }],
+            'positions.*.match_points.*'        => 'nullable|integer|min:0|max:100',
             'positions.*.job_image'             => 'nullable|file|mimes:jpg,jpeg,png|max:5120',
         ], [
             
@@ -1228,8 +1297,8 @@ class CompanyWebController extends Controller
             'inhouse_date_end.after_or_equal' => 'The last available date cannot be before the first.',
             'venue_type.required'     => 'Pick the venue for the In-house interview.',
             'positions.*.deadline.after_or_equal'  => 'The posting deadline cannot be in the past.',
-            'positions.*.deadline.before_or_equal' => 'A posting can run for at most one year. Pick a deadline on or before '
-                                                      . now()->addYear()->format('M d, Y') . '.',
+            'positions.*.deadline.before_or_equal' => 'A posting can run for at most two months. Pick a deadline on or before '
+                                                      . Job::latestDeadline()->format('M d, Y') . '.',
             'positions.required_without'           => 'Tick a vacancy to bring, or add a new position.',
         ]);
 
@@ -1331,6 +1400,7 @@ class CompanyWebController extends Controller
                     'language'            => $pos['language'] ?? null,
                     'preferred_residence' => $pos['preferred_residence'] ?? null,
                     'experience_months'   => $pos['experience_months'] ?: 0,
+                    'match_points'        => Job::cleanMatchPoints($pos['match_points'] ?? null),
                 ]);
 
                 

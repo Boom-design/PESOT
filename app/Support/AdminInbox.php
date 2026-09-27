@@ -80,6 +80,15 @@ class AdminInbox
      * notice, so nothing waits behind a newer arrival. Falls back to the tab
      * the page opens on when there is nothing to see.
      */
+    /**
+     * No longer called by anything.
+     *
+     * The sidebar used this to land on the tab holding the oldest unseen
+     * notice. That made the same menu item open a different page each day, so
+     * the link now always goes to In-house and the per-tab red numbers say
+     * where the news is. Kept because the question it answers is still a real
+     * one, and the next screen that needs it will not have to write it again.
+     */
     public static function firstTabWithNews(): string
     {
         $oldest = null;

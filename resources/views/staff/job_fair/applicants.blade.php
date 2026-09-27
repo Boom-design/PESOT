@@ -354,13 +354,7 @@
                 <li class="page-item {{ $applicants->onFirstPage() ? 'disabled' : '' }}">
                     <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $applicants->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
                 </li>
-                @foreach($applicants->getUrlRange(1, $applicants->lastPage()) as $page => $url)
-                <li class="page-item {{ $page == $applicants->currentPage() ? 'active' : '' }}">
-                    <a class="page-link rounded-2"
-                       style="{{ $page == $applicants->currentPage() ? 'background:var(--g-600);border-color:transparent;color:#fff;' : 'border-color:var(--n-200);color:var(--g-700);' }}"
-                       href="{{ $url }}">{{ $page }}</a>
-                </li>
-                @endforeach
+                @include('partials.page-links', ['pager' => $applicants, 'activeStyle' => 'background:var(--g-600);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--n-200);color:var(--g-700);'])
                 <li class="page-item {{ !$applicants->hasMorePages() ? 'disabled' : '' }}">
                     <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $applicants->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
                 </li>

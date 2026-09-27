@@ -181,17 +181,7 @@
                             <i class="ph ph-caret-left"></i>
                         </a>
                     </li>
-                    @foreach($registrations->getUrlRange(1, $registrations->lastPage()) as $page => $url)
-                    <li class="page-item {{ $page == $registrations->currentPage() ? 'active' : '' }}">
-                        <a class="page-link rounded-2"
-                           style="{{ $page == $registrations->currentPage()
-                                ? 'background:var(--g-600);border-color:transparent;color:#fff;'
-                                : 'border-color:var(--n-200);color:var(--g-700);' }}"
-                           href="{{ $url }}&search={{ request('search') }}&type={{ request('type','local') }}">
-                            {{ $page }}
-                        </a>
-                    </li>
-                    @endforeach
+                    @include('partials.page-links', ['pager' => $registrations, 'activeStyle' => 'background:var(--g-600);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--n-200);color:var(--g-700);'])
                     <li class="page-item {{ !$registrations->hasMorePages() ? 'disabled' : '' }}">
                         <a class="page-link rounded-2"
                            style="border-color:var(--n-200);color:var(--g-700);"

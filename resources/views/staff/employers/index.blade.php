@@ -322,7 +322,7 @@
                                      different set of tabs, and sending it there
                                      would land on nothing. --}}
                                 @if(in_array($staffRole, ['lra', 'sra'], true))
-                                <a href="{{ route('staff.reports', ['tab' => 'employer_hires', 'employer' => $companyRow->employer_nsrp_registrations_id]) }}"
+                                <a href="{{ route('staff.reports', ['tab' => 'employer_report', 'employer' => $companyRow->employer_nsrp_registrations_id]) }}"
                                    class="text-decoration-none"
                                    title="See who this employer hired">
                                     <span class="fw-bold" style="color:var(--g-600);font-size:14px;border-bottom:1px dotted var(--g-600);">
@@ -890,17 +890,7 @@
                             <i class="ph ph-caret-left"></i>
                         </a>
                     </li>
-                    @foreach($employers->getUrlRange(1, $employers->lastPage()) as $page => $url)
-                    <li class="page-item {{ $page == $employers->currentPage() ? 'active' : '' }}">
-                        <a class="page-link rounded-2"
-                           style="{{ $page == $employers->currentPage()
-                                ? 'background:var(--g-600);border-color:transparent;color:#fff;'
-                                : 'border-color:var(--n-200);color:var(--g-700);' }}"
-                           href="{{ $url }}">
-                            {{ $page }}
-                        </a>
-                    </li>
-                    @endforeach
+                    @include('partials.page-links', ['pager' => $employers, 'activeStyle' => 'background:var(--g-600);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--n-200);color:var(--g-700);'])
                     <li class="page-item {{ !$employers->hasMorePages() ? 'disabled' : '' }}">
                         <a class="page-link rounded-2"
                            style="border-color:var(--n-200);color:var(--g-700);"

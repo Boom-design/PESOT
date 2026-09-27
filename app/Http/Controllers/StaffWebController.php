@@ -681,6 +681,19 @@ $nsrp = $registration->nsrp;
             ->sortBy('responded_at')
             ->values();
 
+        // PESO SRA, 2026-09-14: five agencies a page, so the desk is not
+        // scrolling a long table. The counts above are taken from every agency
+        // first, so "not yet invited" and "waiting for your decision" still
+        // speak for the whole fair, not the page.
+        $page = max(1, (int) request('lineup_page', 1));
+        $rows = new \Illuminate\Pagination\LengthAwarePaginator(
+            $rows->forPage($page, 5)->values(),
+            $rows->count(),
+            5,
+            $page,
+            ['path' => request()->url(), 'pageName' => 'lineup_page', 'query' => request()->query()]
+        );
+
         return [$events, $event, $rows, $onTheList, $awaiting, $industries, $industry, $available->count()];
     }
 
@@ -797,7 +810,7 @@ $nsrp = $registration->nsrp;
             'message'        => $confirmed
                 ? 'PESO has confirmed your slot for ' . $event->title . ' on '
                   . $event->event_date->format('M d, Y') . ' at ' . $event->venue
-                  . '. Please post a job vacancy for this event.'
+                  . '. Please post a job vacancy for this event, and bring the hard copies of your requirements to the job fair.'
                 : 'PESO could not bring your agency to ' . $event->title . ' on '
                   . $event->event_date->format('M d, Y') . '. Reason: ' . $request->reason
                   . ' You may still be invited to a future job fair.',
@@ -1743,12 +1756,14 @@ $nsrp = $registration->nsrp;
      */
     private function jobFairProspectSmsText(\App\Models\Job $job, \App\Models\JobFairEvent $event): string
     {
-        $when = $event->event_date?->format('M d, Y') ?? '';
+        $when  = $event->event_date?->format('M d, Y') ?? '';
+        $where = $this->jobFairSmsVenue($event);
 
         $text = 'PESO CDO: You qualify for ' . $job->title
               . ' (' . ($job->company->company_name ?? 'an employer') . ')'
               . ' at ' . $event->title
               . ($when ? ' on ' . $when : '')
+              . ($where ? ', ' . $where : '')
               . '. Log in to the PESO website and apply, then bring your resume'
               . ' and valid ID on the day. Do not reply.';
 
@@ -1947,11 +1962,32 @@ $nsrp = $registration->nsrp;
               . ' at ' . $event->title
               . ($when ? ' on ' . $when : '')
               . ($time ? ' ' . $time : '')
-              . ($event->venue ? ', ' . $event->venue : '')
+              . (($where = $this->jobFairSmsVenue($event)) ? ', ' . $where : '')
               . '. Bring your resume and valid ID. Do not reply.';
 
         // Tulo ka message part ang kinatas-an, parehas sa nawala nga send page.
         return \Illuminate\Support\Str::limit($text, 459, '');
+    }
+
+    /**
+     * Where the fair is, the way a text message should say it.
+     *
+     * PESO CDO client, 2026-09-13: the SMS named the venue ("Limketkai Center
+     * Atrium") but not where it is, and a jobseeker who does not already know
+     * the place has nothing to find it with. The address is added after the
+     * name. Either may be blank on an event, so each is only added when it is
+     * there, and an address that merely repeats the name is not said twice.
+     */
+    private function jobFairSmsVenue(\App\Models\JobFairEvent $event): string
+    {
+        $name    = trim((string) $event->venue);
+        $address = trim((string) $event->venue_address);
+
+        if ($address !== '' && stripos($name, $address) !== false) {
+            $address = '';
+        }
+
+        return implode(', ', array_filter([$name, $address], fn($part) => $part !== ''));
     }
 
     // ───────────────────────────────
@@ -2122,10 +2158,14 @@ $nsrp = $registration->nsrp;
         }
 
         $rows = $filtered()
-            // Ang jobFair wala na gi-eager-load: ang dropdown na ang
-            // nagsulti kung asa nga fair, mao nga wala nay laray nga mobasa
-            // niini.
-            ->with('employer.employer')
+            // Ang jobFair gi-eager-load balik.
+            //
+            // Gikuha siya kaniadto kay "ang dropdown na ang nagsulti kung asa
+            // nga fair". Apan ang dropdown blangko sa una nga pagbukas, ug ang
+            // employer nga gi-invite sa duha ka fair naghatag ug duha ka laray
+            // nga managsama gyud ug hitsura. Ang desk mobasa niana nga sayop,
+            // dili nga duha ka lahi nga imbitasyon.
+            ->with('employer.employer', 'jobFair')
             ->whereIn('confirmation_status', self::JOB_FAIR_INVITE_TABS[$invite])
             ->latest('job_fair_participants_id')
             // Upat kada panid. Ang laray dinhi dili usa ka linya - ang bakante
@@ -4169,7 +4209,8 @@ $nsrp = $registration->nsrp;
             'message'        => 'Your in-house interview request has been accepted for '
                                 . $windowLabel . ' at ' . \Carbon\Carbon::parse($request->confirmed_time)->format('h:i A')
                                 . ' (' . ($schedule->venue_type === 'custom' ? $schedule->venue_address : 'PESO Office') . ').'
-                                . ($isRange ? ' Those dates are reserved for you — hold the interview on whichever of them suits you.' : ''),
+                                . ($isRange ? ' Those dates are reserved for you — hold the interview on whichever of them suits you.' : '')
+                                . (($schedule->employer->is_overseas ?? false) ? ' Please bring the hard copies of your requirements when you conduct this interview.' : ''),
             'reference_type' => 'inhouse_schedule',
             'reference_id'   => $schedule->inhouse_schedules_id,
         ], $schedule->employer_id);
@@ -4395,17 +4436,7 @@ $nsrp = $registration->nsrp;
      */
     private function overseasSolicitedVacancies()
     {
-        return \App\Models\Job::query()
-            ->whereHas('company', fn($q) => $q->where('is_overseas', true))
-            ->where('posting_status', 'approved')
-            ->where(function ($q) {
-                $q->whereNull('schedule_type')
-                  ->orWhere('schedule_type', 'company_interview')
-                  ->orWhere(function ($q2) {
-                      $q2->where('schedule_type', 'inhouse')
-                         ->where('posting_status', 'approved');
-                  });
-            });
+        return \App\Models\Job::query()->overseasSolicited();
     }
 
     /**
@@ -4581,6 +4612,42 @@ $nsrp = $registration->nsrp;
     // ───────────────────────────────
     // WALK-IN NSRP (LRA/SRA) — Staff encodes jobseeker walang account
     // ───────────────────────────────
+    /**
+     * A walk-in hired through PESO has no account to say the job ended from,
+     * so the desk records it for them — the same step the jobseeker takes on
+     * their own dashboard.
+     */
+    public function endEmploymentByStaff(Request $request, $id)
+    {
+        $staff = $this->authStaff();
+        if (!$staff || !in_array($staff->staff_role, ['lra', 'sra'], true)) return redirect()->route('login');
+
+        $registration = JobseekerRegistration::findOrFail($id);
+        $employment   = \App\Support\PesoEmployment::current($registration->jobseeker_registrations_id);
+
+        if (!$employment) {
+            return back()->with('info', 'This jobseeker has no current job recorded through PESO.');
+        }
+
+        $request->validate([
+            'reason'           => 'required|in:' . implode(',', array_keys(\App\Support\PesoEmployment::END_REASONS)),
+            'unemployed_other' => 'required_if:reason,others|nullable|string|max:255',
+            'last_month'       => 'required|date_format:Y-m',
+        ]);
+
+        $lastMonth = \Carbon\Carbon::createFromFormat('!Y-m', $request->last_month);
+        $from      = \App\Support\PesoEmployment::startMonth($employment);
+
+        if ($lastMonth->gt(now()->startOfMonth()) || ($from && $lastMonth->lt($from))) {
+            return back()->with('error', 'Pick the month of the last day, from '
+                . ($from ? $from->format('F Y') : 'the start of the job') . ' up to this month.');
+        }
+
+        \App\Support\PesoEmployment::end($employment, $request->reason, $lastMonth, $request->unemployed_other);
+
+        return back()->with('success', 'Job ended on the NSRP work experience. This jobseeker can be applied for again.');
+    }
+
     public function walkinNsrp()
     {
         $staff = $this->authStaff();
@@ -5007,7 +5074,10 @@ $nsrp = $registration->nsrp;
                 (bool) $confirmedDate => 'Your job posting "' . $job->title . '" has been approved and is now live. '
                               . 'Your in-house interview dates are confirmed for ' . $job->schedule_window_label . '.',
                 default    => 'Your job posting "' . $job->title . '" has been approved and is now live!',
-            },
+            }
+            // PESO CDO client, 2026-09-14: an overseas agency brings the hard
+            // copies of its requirements to every interview it holds through PESO.
+            . ($isOverseas ? ' Please bring the hard copies of your requirements when you conduct this interview.' : ''),
             'reference_type' => 'job',
             'reference_id'   => $job->job_qualifications_id,
         ], $job->company_id);
@@ -5462,225 +5532,21 @@ $nsrp = $registration->nsrp;
 
         if ($staffRole === 'job_fair' || ($staffRole === 'sra' && $reportView === 'jobfair')) {
             $isSraJobFairView = $staffRole === 'sra';
-            // Ang Attendance ang default. Kini ang unang gipangita sa desk
-            // human sa fair — kinsa ang nitunga — ug ang Post Job Fair Summary
-            // usa ka tapos nga dokumento, dili ang unang pangutana.
-            $tab      = request('tab', 'attendance');
-            if ($isSraJobFairView && $tab === 'placement') $tab = 'attendance';
-            $eventId  = request('event_id');
-            $allEvents = \App\Models\JobFairEvent::orderByDesc('event_date')->get();
-            $event     = $eventId ? \App\Models\JobFairEvent::find($eventId) : null;
 
-            // ── Ang matag listahan sa ubos naa na sa JobFairReport.
-            // ──
-            // ── Dinhi sila kaniadto, ug ang download nga gipangayo sa Job Fair
-            // ── staff kinahanglan mokopya unta sa matag query. Karon usa ra
-            // ── ka lugar ang naghubad: ang page mo-paginate, ang CSV mokuha sa
-            // ── tanan, ug dili gyud sila magkalahi ug ihap. ──
-            $eventJobIds = \App\Support\JobFairReport::eventJobIds($eventId ? (int) $eventId : null);
-
-            // ── TAB 1: ATTENDANCE ──
-            // ──
-            // ── Usa ra ka attendance nga tab sa tibuok sistema. Kaniadto duha:
-            // ── usa sa Job Fair Events (ang trabahoan, uban ang Mark Attended)
-            // ── ug usa dinhi (ang rekord, ang miabot ra) — ug managlahi ug ihap
-            // ── ang duha, mao nga nagduha-duha ang staff kung asa ang tinuod.
-            // ──
-            // ── Ang $attendanceState ang nagpuli sa duha ka tab: "joined" mao
-            // ── ang panahon sa fair, "attended" mao ang ipasa sa DOLE. Ang CSV
-            // ── mosunod sa parehas nga pagpili. ──
-            $attendanceFilter = request('attendance_filter', 'all');
-            $attendanceState  = request('attendance_state', $isSraJobFairView ? 'attended' : 'joined');
-            if (!array_key_exists($attendanceState, \App\Support\JobFairReport::STATES)) {
-                $attendanceState = 'joined';
-            }
-            $attendanceSearch = request('attendance_search');
-            $registrations = null;
-            $totalRegistered = $totalAttended = 0;
-
-            if ($tab === 'attendance' && $eventId) {
-                if ($isSraJobFairView) $attendanceFilter = 'overseas';
-
-                $registrations = \App\Support\JobFairReport::attendanceQuery(
-                        (int) $eventId, $attendanceFilter, $attendanceState, $attendanceSearch
-                    )
-                    ->latest()->paginate(10)->withQueryString();
-
-                $totals = \App\Support\JobFairReport::attendanceTotals((int) $eventId);
-                $totalRegistered = $totals['registered'];
-                $totalAttended   = $totals['attended'];
-            }
-
-            // ── TAB 2: LIST OF LOCAL/OVERSEAS COMPANIES FOR JOB FAIR ──
-            $companiesLocal       = collect();
-            $companiesOverseas    = collect();
-            $companyVacancyTotals = ['local' => 0, 'overseas' => 0];
-
-            if ($tab === 'companies' && $eventId) {
-                $confirmed = \App\Support\JobFairReport::confirmedCompanies((int) $eventId);
-
-                // ── Lima kada panid, ug lain ang page name sa matag listahan.
-                // ──
-                // ── Ang duha ka listahan gitapok kaniadto, tibuok. Sa fair nga
-                // ── naay 300 ka lokal nga kompanya, ang overseas naa sa ubos sa
-                // ── 300 ka laray — walay makakita niini gawas kung mo-scroll
-                // ── siya sa tibuok. Ug kung usa ra ang page name, ang pagbalhin
-                // ── sa usa ka listahan mobalhin pud sa lain. ──
-                $paginate = function ($rows, string $pageName) {
-                    $page = \Illuminate\Pagination\Paginator::resolveCurrentPage($pageName);
-
-                    return (new \Illuminate\Pagination\LengthAwarePaginator(
-                        $rows->forPage($page, 5)->values(),
-                        $rows->count(),
-                        5,
-                        $page,
-                        [
-                            'path'     => \Illuminate\Pagination\Paginator::resolveCurrentPath(),
-                            'pageName' => $pageName,
-                        ]
-                    ))->withQueryString();
-                };
-
-                // Ang TOTAL sa papel kay sa tibuok listahan, dili sa lima ka
-                // laray nga makita karon. Gikwenta sa dili pa ma-paginate.
-                $companyVacancyTotals = [
-                    'local'    => (int) $confirmed->filter(fn($p) => !($p->employer->is_overseas ?? false))->sum('vacancies'),
-                    'overseas' => (int) $confirmed->filter(fn($p) => $p->employer->is_overseas ?? false)->sum('vacancies'),
-                ];
-
-                $companiesLocal = $paginate(
-                    $confirmed->filter(fn($p) => !($p->employer->is_overseas ?? false))->values(),
-                    'local_page'
-                );
-                $companiesOverseas = $paginate(
-                    $confirmed->filter(fn($p) => $p->employer->is_overseas ?? false)->values(),
-                    'overseas_page'
-                );
-            }
-
-            // ── TAB 3: LIST OF FURTHER INTERVIEW (waiting status) ──
-            $furtherInterview = null;
-            if ($tab === 'further_interview' && $eventId) {
-                $furtherInterview = \App\Support\JobFairReport::furtherInterviewQuery($eventJobIds, $isSraJobFairView)
-                    ->paginate(10)->withQueryString();
-            }
-
-            // ── TAB 4: HOTS — hired for a job brought to this event (dili na i-match ang eksaktong petsa, kay ang job mismo naka-scope na sa event via eventJobIds) ──
-            $hots = null;
-            if ($tab === 'hots' && $eventId && $event) {
-                $hots = \App\Support\JobFairReport::hotsQuery($eventJobIds, $isSraJobFairView)
-                    ->paginate(10)->withQueryString();
-            }
-
-            // ── TAB 5: POST JOB FAIR SUMMARY REPORT ──
-            $summaryParticipants = collect();
-            $summaryTotals = ['vacancies' => 0, 'interviewed' => 0, 'male' => 0, 'female' => 0, 'qualified' => 0, 'hired' => 0];
-
-            // Ang linya sa ubos sa papel: pila ka tawo ang niapil sa fair,
-            // gibahin sa lokal ug overseas. Lahi ni sa kolum sa ibabaw — didto
-            // ang aplikasyon ang gi-ihap, dinhi ang tawo.
-            $summaryRegistrants = ['local' => 0, 'overseas' => 0];
-
-            if ($tab === 'summary' && $eventId) {
-                $summaryParticipants = \App\Support\JobFairReport::summaryRows((int) $eventId, $isSraJobFairView);
-                $summaryTotals       = \App\Support\JobFairReport::summaryTotals($summaryParticipants);
-                $summaryRegistrants  = \App\Support\JobFairReport::registrantTotals((int) $eventId);
-            }
-
-            // ── TAB 6: TOTAL COMPANIES WITH VACANCIES (per Industry Group) ──
-            $industryLocal    = collect();
-            $industryOverseas = collect();
-
-            if ($tab === 'industry' && $eventId) {
-                $industryTotals   = \App\Support\JobFairReport::industryTotals($eventJobIds);
-                $industryLocal    = $industryTotals['local'];
-                $industryOverseas = $industryTotals['overseas'];
-            }
-
-            // ── TAB: TOP EMPLOYERS — kinsa ang nagdala ug pinakadaghang bakante
-            // ── niining maong fair. Iya na sa usa ka event, dili na kada bulan:
-            // ── ang pangutana kay kinsa ang nagdala ug trabaho ngadto sa fair.
-            // ──
-            // ── PESO Job Fair staff, 2026-09-02: dili na siya nagsalig sa
-            // ── pagpili ug event. Kung walay gipili, ang ranggo sa tanang fair
-            // ── — mao kana ang "Top 10 Employers" nga gipangayo. Kung naay
-            // ── gipili nga fair, ang ranggo niadto lang. ──
-            // ── Duha ka lamesa ang naa sa papel, ug walay usa nila naghisgot
-            // ── ug employer: ang gipangita nga TRABAHO, ug ang bahin sa matag
-            // ── INDUSTRIYA. Ang ulohan mao ang run down: pila ka kompanya ug
-            // ── pila ka bakante, gibahin sa lokal ug overseas. ──
-            // Ang listahan sa bakante nga gipasa sa siyudad. Parehas nga
-            // datos sa Participating Companies, lahi ang pangutana: dinhi ang
-            // bakante ang gi-ihap, dili ang tawo nga hikapon.
-            $vacancyList = collect();
-            if ($tab === 'vacancy_list') {
-                $vacancyList = \App\Support\JobFairReport::localVacancyList($event, $isSraJobFairView);
-            }
-
-            $topOccupations = collect();
-            $industryShares = ['rows' => [], 'total' => 0, 'unclassified' => ['quantity' => 0, 'share' => 0]];
-            $runDown        = null;
-
-            if ($tab === 'top_employers') {
-                $topOccupations = \App\Support\JobFairReport::topOccupations($event, $isSraJobFairView);
-                $industryShares = \App\Support\JobFairReport::industryShares($event, $isSraJobFairView);
-                $runDown        = \App\Support\JobFairReport::runDownTotals($event, $isSraJobFairView);
-            }
-
-            // ── TAB 7: COMPANY PLACEMENT REPORT (local only, hired AFTER event date) ──
-            $placementReport = null;
-            if ($tab === 'placement' && $eventId && $event) {
-                $placementReport = \App\Support\JobFairReport::placementQuery($eventJobIds, $event)
-                    ->paginate(15)->withQueryString();
-            }
-
-            // ── TAB 9: ANG KAUGALINGON NGA REPORT SA STAFF ──
-            // ── Gitipigan lang ug gipakita. Walay bisan usa sa mga numero sa
-            // ── ibabaw nga nagbasa niini. ──
-            // ── Ang tanan nga na-import, dili kadto ra sa usa ka fair.
-            // ──
-            // ── PESO Job Fair staff, 2026-09-02: kining tab wala na sa
-            // ── dropdown sa event. Ang report nga gi-import iya gihapon sa
-            // ── usa ka fair — gipakita ang ngalan sa fair sa matag laray —
-            // ── apan ang listahan mao ang "unsa ang akong gi-upload", ug kana
-            // ── matubag nga walay pagpili. ──
-            $importedReports = collect();
-            if ($tab === 'imported') {
-                $importedReports = \App\Models\JobFairImportedReport::with(['uploader', 'jobFair'])
-                    ->when($eventId, fn($q) => $q->where('job_fair_id', $eventId))
-                    ->latest()
-                    ->get();
-            }
-
-            // ── Nahuman na nga posting — milabay ang deadline o napuno ang
-            // ── slots. Buhi gihapon ang Job row, mao nga bukas ang full details. ──
-            $archivedJobs = \App\Models\Job::with('company')
-                ->inactive()
-                ->withCount([
-                    'applications as hired_count' => fn($q) => $q->where('status', 'hired'),
-                ])
-                ->latest()
-                ->paginate(5, ['*'], 'archived_page')
-                ->withQueryString();
-
-            return view('staff.reports.index', compact(
-                'staffRole', 'tab', 'allEvents', 'event', 'eventId',
-                'registrations', 'attendanceFilter', 'attendanceState', 'attendanceSearch',
-                'totalRegistered', 'totalAttended',
-                'companiesLocal', 'companiesOverseas', 'companyVacancyTotals',
-                'furtherInterview', 'hots',
-                'summaryParticipants', 'summaryTotals', 'summaryRegistrants',
-                'industryLocal', 'industryOverseas',
-                'placementReport', 'isSraJobFairView', 'reportView',
-                'topOccupations', 'industryShares', 'runDown', 'vacancyList',
-                'importedReports', 'archivedJobs'
-            ));
+            return view('staff.reports.index', \App\Support\JobFairReportPage::data($staffRole, $isSraJobFairView, $reportView));
         }
 
         if (!in_array($staffRole, ['lra', 'sra'])) return redirect()->route('staff.dashboard');
 
         $search      = request('search');
         $tab         = request('tab', 'registered');
+
+        // Employer Reports and Employer Report were merged into one tab on
+        // 2026-09-14. Old links — the Total Hired number, a bookmark — still
+        // name the retired key, so they are sent to the tab that replaced it.
+        if ($tab === 'employer_hires') {
+            return redirect()->route('staff.reports', array_merge(request()->query(), ['tab' => 'employer_report']));
+        }
 
         // Ang Archived Job Postings iya sa nagdumala sa posting — Job Vacancy
         // staff sa local, SRA sa overseas. Kung moabot ang LRA pinaagi sa daan
@@ -5784,14 +5650,14 @@ $nsrp = $registration->nsrp;
                 );
 
             $totalVacanciesSolicited = (clone $vacancyQuery)->count();
-            $solicitedJobs = $tab === 'vacancies' ? $vacancyQuery->latest()->paginate(10) : collect();
+            $solicitedJobs = $tab === 'vacancies' ? $vacancyQuery->latest()->paginate(10)->withQueryString() : collect();
         }
 
         // I-paginate lang ang active tab/sub-view para dili mabug-atan
-        $registeredParticipants = ($tab === 'registered' && $registeredView === 'inhouse') ? $registeredQuery->latest()->paginate(10) : null;
-        $registeredAll          = ($tab === 'registered' && $registeredView === 'all')     ? $registeredAllQuery->latest()->paginate(10) : null;
-        $placedApplications     = $tab === 'placed'     ? $placedQuery->latest()->paginate(10)     : null;
-        $referredApplications   = $tab === 'referred'   ? $referredQuery->latest()->paginate(10)   : null;
+        $registeredParticipants = ($tab === 'registered' && $registeredView === 'inhouse') ? $registeredQuery->latest()->paginate(10)->withQueryString() : null;
+        $registeredAll          = ($tab === 'registered' && $registeredView === 'all')     ? $registeredAllQuery->latest()->paginate(10)->withQueryString() : null;
+        $placedApplications     = $tab === 'placed'     ? $placedQuery->latest()->paginate(10)->withQueryString()     : null;
+        $referredApplications   = $tab === 'referred'   ? $referredQuery->latest()->paginate(10)->withQueryString()   : null;
 
         // ── TAB: TOP EMPLOYERS — pila ka in-house nga interview ang gidala sa
         // ── usa ka employer sulod sa gipiling panahon.
@@ -5860,21 +5726,6 @@ $nsrp = $registration->nsrp;
             ->groupBy(fn($a) => $a->updated_at->format('M Y'))
             ->map->count();
 
-        // ── TAB: EMPLOYER REPORT — what came of each in-house interview.
-        // ──
-        // ── LRA staff, 2026-08-23: usa ka semana human sa in-house interview,
-        // ── makita nila ang report sa maong employer ug ang status sa matag
-        // ── jobseeker. LRA ra sa karon; ugma pa ang interview sa SRA. ──
-        $employerPostings = collect();
-        $employerRoomOnly = collect();
-
-        if ($tab === 'employer_report' && $staffRole === 'lra') {
-            // Parehas nga paging sa Admin nga master view — usa ra ka lugar
-            // ang naghubad niini, aron ang parehas nga report dili magbasa ug
-            // lahi depende kung kinsa ang nag-abli.
-            ['postings' => $employerPostings, 'roomOnly' => $employerRoomOnly] =
-                \App\Support\InhouseEmployerReport::paged(false, $search);
-        }
 
         // The two lists the desks were missing: who was given a room and who
         // was declined, and (SRA only) the interviews employers ran themselves.
@@ -5888,38 +5739,18 @@ $nsrp = $registration->nsrp;
             ? \App\Support\CompanyInterviewReport::paginate(null, null, $search, true)
             : null;
 
-        // ── TAB: EMPLOYER REPORTS — pila ang gikuha sa matag employer, ug kinsa.
+        // ── TAB: EMPLOYER REPORT — per employer: jobs offered, who was hired,
+        // ── and what came of each in-house interview. One tab since
+        // ── 2026-09-14; it used to be two a letter apart.
         // ──
-        // ── Ang "Total Hired" nga numero sa Registered Employer nga listahan
-        // ── nagsulti ug ihap lang; kining tab nagsulti kung kinsa ang mga
-        // ── tawo luyo sa maong numero. Mao nga ang numero didto mo-link diri.
-        // ──
-        // ── Walay date range dinhi tinuyo. Ang numero nga gi-click sa listahan
-        // ── sa employer kay tibuok panahon; kung mo-sala ni ug petsa, ang
-        // ── giklik nga numero ug ang mabasa dinhi magkalahi, ug walay
-        // ── makahibalo asa sa duha ang tinuod. ──
+        // ── Hires have no date range on purpose: the Total Hired number on
+        // ── the Registered Employer list opens this tab, and a filtered count
+        // ── would disagree with the number that was clicked. ──
         $employerHires   = null;
         $employerFocusId = (int) request('employer') ?: null;
 
-        if ($tab === 'employer_hires') {
-            $employerHires = EmployerNsrpRegistration::query()
-                ->whereHas('employer', fn($q) => $q->where('role', 'company'))
-                ->where('is_overseas', $isOverseas)
-                ->whereHas('requirement', fn($q) => $q->where('status', 'approved'))
-                // Usa ka kompanya nga giablihan gikan sa listahan sa employer.
-                ->when($employerFocusId, fn($q) =>
-                    $q->where('employer_nsrp_registrations_id', $employerFocusId))
-                ->when($search, fn($q) => $q->where(fn($w) =>
-                    $w->where('company_name', 'like', "%{$search}%")
-                      ->orWhereHas('employer', fn($u) => $u->where('email', 'like', "%{$search}%"))
-                ))
-                ->with([
-                    'employer',
-                    'jobs.applications' => fn($q) => $q->where('status', 'hired')->with('jobseeker'),
-                ])
-                ->orderBy('company_name')
-                ->paginate(5, ['*'], 'page')
-                ->withQueryString();
+        if ($tab === 'employer_report') {
+            $employerHires = \App\Support\InhouseEmployerReport::byEmployer($isOverseas, $search, $employerFocusId);
         }
 
         return view('staff.reports.index', compact(
@@ -5928,7 +5759,7 @@ $nsrp = $registration->nsrp;
             'totalRegistered', 'totalRegisteredAll', 'totalPlaced', 'totalReferred',
             'vacancyMonth', 'solicitedJobs', 'totalVacanciesSolicited',
             'topEmployersFilter', 'topEmployersMonth', 'topEmployersYear', 'topEmployersByCompanyInterviews',
-            'employerPostings', 'employerRoomOnly', 'employerHires', 'employerFocusId',
+            'employerHires', 'employerFocusId',
             'archivedJobs', 'inhouseReport', 'companyInterviews'
         ));
     }

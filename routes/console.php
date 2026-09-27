@@ -9,7 +9,6 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // ── Job Fair — daily check para i-send ang attendance confirmation sa mga jobseeker nga naay event karong adlawa ──
-Schedule::command('jobfair:send-attendance-confirmations')->dailyAt('06:00');
 
 // ── Job Fair — i-lapse ang imbitasyon nga wala natubag sulod sa usa ka semana.
 // ──

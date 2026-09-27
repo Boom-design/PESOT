@@ -292,6 +292,7 @@
 
         // ── STAFF JOBSEEKERS ──
         Route::post('/staff/registrations/{id}/apply',        [ApplicationController::class, 'applyByStaff'])->name('staff.registrations.apply');
+        Route::post('/staff/registrations/{id}/end-employment', [StaffWebController::class, 'endEmploymentByStaff'])->name('staff.registrations.endEmployment');
 
         // ── STAFF WALK-IN NSRP (LRA/SRA) ──
         Route::get('/staff/nsrp',                              [StaffWebController::class, 'walkinNsrp'])->name('staff.nsrp');
@@ -343,12 +344,12 @@
         Route::post('/jobseeker/notifications/mark-all-read', [JobseekerWebController::class, 'markAllNotificationsRead'])->name('jobseeker.notifications.markAllRead');
         Route::get('/jobseeker/jobs/{id}',                    [JobseekerWebController::class, 'showJob'])->name('jobseeker.jobs.show');
         Route::post('/jobseeker/jobs/{id}/apply',             [ApplicationController::class, 'apply'])->name('jobseeker.jobs.apply');
+        Route::post('/jobseeker/employment/end',              [JobseekerWebController::class, 'endEmployment'])->name('jobseeker.employment.end');
         Route::post('/jobseeker/applications/{id}/inhouse-response', [ApplicationController::class, 'respondInhouseParticipation'])->name('jobseeker.applications.inhouseResponse');
         Route::post('/jobseeker/applications/{id}/company-interview-response', [ApplicationController::class, 'respondCompanyInterviewParticipation'])->name('jobseeker.applications.companyInterviewResponse');
         Route::get('/jobseeker/schedules',                    [JobseekerWebController::class, 'schedules'])->name('jobseeker.schedules');
         Route::post('/jobseeker/inhouse/{id}/join',            [JobseekerWebController::class, 'joinInhouse'])->name('jobseeker.inhouse.join');
         Route::post('/jobseeker/jobfair/{id}/join',             [JobseekerWebController::class, 'joinJobFair'])->name('jobseeker.jobfair.join');
-        Route::post('/jobseeker/jobfair-registrations/{id}/attendance-response', [JobseekerWebController::class, 'respondJobFairAttendance'])->name('jobseeker.jobfair.attendanceResponse');
         Route::get('/jobseeker/history',                       [JobseekerWebController::class, 'history'])->name('jobseeker.history');
         Route::get('/jobseeker/notifications',                  [JobseekerWebController::class, 'notifications'])->name('jobseeker.notifications.index');
     });

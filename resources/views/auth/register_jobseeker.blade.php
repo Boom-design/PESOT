@@ -87,6 +87,62 @@
             from { opacity: 0; transform: translateY(18px); }
             to   { opacity: 1; transform: translateY(0); }
         }
+        /* ══════════════════════════════════════════════════════════════
+           SOLID WHITE CARD
+           PESO CDO, 2026-09-14: the registration card was see-through glass
+           over the City Hall photo, and the forms were hard to read. The card
+           is plain white now, with dark text. The photo behind it stays.
+           Written as overrides at the end so the rules above keep their
+           layout; !important is needed where the markup carries inline
+           white colours.
+           ══════════════════════════════════════════════════════════════ */
+        .card-register {
+            background: #fff !important;
+            border: 1px solid var(--n-200) !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            color: var(--n-700);
+        }
+        .peso-label { color: var(--g-700) !important; }
+        .peso-input { background: #fff !important; border-color: var(--n-200) !important; color: #1f2937 !important; }
+        .peso-input::placeholder { color: var(--n-400) !important; }
+        .peso-input:focus { border-color: var(--g-600) !important; box-shadow: 0 0 0 3px rgba(22, 128, 61, 0.15) !important; background: #fff !important; }
+        .peso-input[readonly] { background: var(--n-50) !important; color: var(--n-500) !important; }
+        select.peso-input option,
+        select.peso-input option:hover,
+        select.peso-input option:focus,
+        select.peso-input option:checked { background: #fff; color: #1f2937; }
+        .custom-dropdown-list { background: #fff !important; border-color: var(--n-200) !important; box-shadow: 0 10px 28px rgba(0,0,0,0.12) !important; }
+        .custom-dropdown-item { color: #1f2937 !important; }
+        .custom-dropdown-item:hover { background: var(--g-50) !important; color: var(--g-700) !important; }
+        .custom-dropdown-empty { color: var(--n-500) !important; }
+        .form-check-label { color: var(--n-700) !important; }
+        .form-check-input { background-color: #fff; border-color: var(--n-300); }
+        .form-check-input:checked { background-color: var(--g-600); border-color: var(--g-600); }
+        .radio-box { border-color: var(--n-200) !important; background: var(--n-50) !important; }
+        .radio-group-title { color: var(--g-700) !important; }
+        .toggle-pw { color: var(--n-500) !important; }
+        .toggle-pw:hover { color: var(--g-700) !important; }
+        .section-heading { color: var(--g-700) !important; }
+        .section-heading i { color: var(--g-600) !important; }
+        .alert-error { background: var(--danger-bg) !important; color: var(--danger) !important; border-color: var(--danger-br) !important; }
+        .alert-warn  { background: var(--warn-bg) !important; color: var(--warn) !important; }
+        .cert-box { background: var(--n-50) !important; border-color: var(--n-200) !important; }
+        .cert-box p, .cert-box strong { color: var(--n-700) !important; }
+        .progress-seg { background: var(--n-200) !important; }
+        .progress-seg.active { background: var(--g-600) !important; }
+        .wizard-nav { border-top-color: var(--n-200) !important; }
+        .step-info { color: var(--n-500) !important; }
+        .btn-step { border-color: var(--n-300) !important; color: var(--g-700) !important; }
+        .btn-step:hover:not(:disabled) { background: var(--n-50) !important; }
+        .btn-register { background: var(--g-600) !important; color: #fff !important; box-shadow: 0 4px 14px rgba(22, 128, 61, 0.25) !important; }
+
+        /* Inline colours written for the dark glass. White text becomes dark
+           green, except the white icon on the green logo circle. */
+        .card-register [style*="color:#fff"]:not([style*="background:var(--g-600)"]) { color: var(--g-700) !important; }
+        .card-register [style*="color:rgba(255,255,255"] { color: var(--n-500) !important; }
+        .card-register [style*="background:rgba(255,255,255"] { background: var(--n-50) !important; }
+        .card-register [style*="border:1px solid rgba(255,255,255"] { border-color: var(--n-200) !important; }
     </style>
 </head>
 <body>
@@ -107,19 +163,20 @@
         </div>
 
         @if($errors->any())
-            <div style="background:rgba(198,40,40,0.25);color:var(--danger-br);border:1px solid rgba(198,40,40,0.45);border-radius:10px;padding:10px 14px;
+            <div style="background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger-br);border-radius:10px;padding:10px 14px;
                         font-size:12px;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
                 <i class="ph-fill ph-warning-circle"></i> {{ $errors->first() }}
             </div>
         @endif
 
-        <div id="nameEmailWarning" style="background:rgba(198,40,40,0.25);color:var(--danger-br);border:1px solid rgba(198,40,40,0.45);border-radius:10px;padding:10px 14px;
+        <div id="nameEmailWarning" style="background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger-br);border-radius:10px;padding:10px 14px;
                     font-size:12px;margin-bottom:12px;display:none;align-items:center;gap:8px;">
             <i class="ph-fill ph-warning-circle"></i> <span id="warn-text"></span>
         </div>
 
         <form method="POST" action="{{ route('register.jobseeker.post') }}">
             @csrf
+            @include('partials.data-privacy-notice', ['audience' => 'jobseeker'])
             <div class="row g-3 mb-3">
                 <div class="col-md-4">
                     <label class="peso-label">First Name *</label>
@@ -157,7 +214,7 @@
                             <i class="ph ph-eye" id="icon1"></i>
                         </button>
                     </div>
-                    @include('partials.password-hint', ['onDark' => true])
+                    @include('partials.password-hint', ['onDark' => false])
                 </div>
                 <div class="col-md-4">
                     <label class="peso-label">Confirm Password *</label>
@@ -168,7 +225,7 @@
                             <i class="ph ph-eye" id="icon2"></i>
                         </button>
                     </div>
-                    <div id="pwMismatchWarn" style="display:none;color:var(--danger-br);font-size:11px;margin-top:5px;">
+                    <div id="pwMismatchWarn" style="display:none;color:var(--danger);font-size:11px;margin-top:5px;">
                         <i class="ph-fill ph-warning-circle me-1"></i>Passwords do not match.
                     </div>
                 </div>

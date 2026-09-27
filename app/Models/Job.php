@@ -67,6 +67,7 @@ class Job extends Model
     'poster_image',
     'venue_type',
     'venue_address',
+    'match_points',
 ];
     
     protected $casts = [
@@ -78,6 +79,7 @@ class Job extends Model
         'preferred_date_end' => 'date',
         'confirmed_date'    => 'date',
         'dormant_closed_at' => 'datetime',
+        'match_points'      => 'array',
     ];
 
     /**
@@ -395,6 +397,25 @@ class Job extends Model
             });
     }
 
+    /**
+     * The overseas vacancies the SRA desk solicited.
+     *
+     * One definition for the SRA's Total Jobs card, the SRA's Job Vacancies
+     * Solicited report, and the admin's copy of that report. Separate copies
+     * of this query are how a card comes to state a number the list behind it
+     * does not agree with.
+     */
+    public function scopeOverseasSolicited($query)
+    {
+        return $query->whereHas('company', fn($q) => $q->where('is_overseas', true))
+            ->where('posting_status', 'approved')
+            ->where(function ($q) {
+                $q->whereNull('schedule_type')
+                  ->orWhere('schedule_type', 'company_interview')
+                  ->orWhere('schedule_type', 'inhouse');
+            });
+    }
+
     // ── Accessor: check kung naglapas na ang deadline (real-time, base sa server date) ──
     public function getIsExpiredAttribute()
     {
@@ -530,6 +551,114 @@ class Job extends Model
     // ── approval, gi-balibad (aron matul-id ug ma-resubmit), buhi pa, o
     // ── nag-hulat pa ug job fair event. ──
     public const EDITABLE_LIFECYCLE = ['pending', 'rejected', 'active', 'waiting'];
+
+    /**
+     * How far ahead an employer may set a posting's deadline.
+     *
+     * PESO CDO client, 2026-09-13: two months, not the one year allowed
+     * before. A vacancy left up for a year stops reflecting a real opening,
+     * and jobseekers keep applying to a position long since filled elsewhere.
+     *
+     * One number, read by the validation and by the date pickers, so the form
+     * and the server cannot disagree about the limit.
+     */
+    /**
+     * The qualifications a match is scored on, and the points PESO's survey
+     * gave each one.
+     *
+     * PESO CDO, 2026-09-27: five jobseekers and five employers scored every
+     * qualification out of 100; these are the agreed totals. They add up to 95,
+     * not 100, and that is the survey's own result — the score is a percentage
+     * of whatever the posting actually asks for, so the sum does not matter.
+     *
+     * Sex, civil status, religion, course/major and nature of work were not in
+     * the survey and carry no points. They remain on the posting as plain
+     * requirements.
+     *
+     * An employer may overrule these on their own posting; see matchPoints().
+     */
+    public const MATCH_POINTS = [
+        'skills'               => ['label' => 'Skills',                            'points' => 20, 'hint' => 'for the skills written in Other Qualifications that the applicant has'],
+        'experience'           => ['label' => 'Working Experience',                'points' => 20],
+        'preferred_occupation' => ['label' => 'Job Preference',                    'points' => 15, 'hint' => "when this title is one of the applicant's preferred occupations"],
+        'education'            => ['label' => 'Educational Background',            'points' => 10],
+        'training'             => ['label' => 'Technical / Vocational Training',   'points' => 10],
+        'license'              => ['label' => 'Eligibility / Professional License','points' => 10],
+        'language'             => ['label' => 'Language / Dialect Proficiency',    'points' => 5],
+        'disability'           => ['label' => 'Acceptance of Disability',          'points' => 5,  'hint' => 'counted only for an applicant who is a person with disability'],
+    ];
+
+    /** Points for every qualification on this posting: its own, or the standard. */
+    public function matchPoints(): array
+    {
+        $stored = is_array($this->match_points) ? $this->match_points : [];
+        $points = [];
+
+        foreach (self::MATCH_POINTS as $key => $meta) {
+            $points[$key] = array_key_exists($key, $stored) && $stored[$key] !== null && $stored[$key] !== ''
+                ? max(0, (int) $stored[$key])
+                : $meta['points'];
+        }
+
+        return $points;
+    }
+
+    public function pointsFor(string $key): int
+    {
+        return $this->matchPoints()[$key] ?? 0;
+    }
+
+    /**
+     * The most points one posting can give out in total. PESO CDO, 2026-09-17:
+     * the points read as a percentage, so all of them together may not pass
+     * 100. Less than 100 is allowed; the score is still worked out out of
+     * whatever total the employer gave.
+     */
+    public const MAX_MATCH_POINTS = 100;
+
+    /** What the form sent, kept to the known qualifications. A blank box is 0. */
+    public static function cleanMatchPoints($input): ?array
+    {
+        if (!is_array($input)) {
+            return null;
+        }
+
+        $clean = [];
+        foreach (self::MATCH_POINTS as $key => $meta) {
+            $value = $input[$key] ?? null;
+            $clean[$key] = ($value === null || $value === '') ? 0 : max(0, min(self::MAX_MATCH_POINTS, (int) $value));
+        }
+
+        return $clean;
+    }
+
+    /** Why these points cannot be saved, or null when they can. */
+    public static function matchPointsError($input): ?string
+    {
+        if (!is_array($input)) {
+            return null;
+        }
+
+        $total = array_sum(self::cleanMatchPoints($input));
+
+        if ($total > self::MAX_MATCH_POINTS) {
+            return "The qualification points add up to {$total}. All of them together can be at most " . self::MAX_MATCH_POINTS . '.';
+        }
+
+        // With nothing to score, every applicant would read as 100% qualified.
+        if ($total === 0) {
+            return 'Give points to at least one qualification.';
+        }
+
+        return null;
+    }
+
+    public const MAX_DEADLINE_MONTHS = 2;
+
+    public static function latestDeadline(): \Carbon\Carbon
+    {
+        return now()->addMonths(self::MAX_DEADLINE_MONTHS);
+    }
 
     public function getIsEditableAttribute(): bool
     {

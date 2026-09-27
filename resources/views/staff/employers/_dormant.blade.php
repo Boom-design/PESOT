@@ -118,15 +118,7 @@
         </div>
         <nav>
             <ul class="pagination pagination-sm mb-0 gap-1">
-                @foreach($employers->getUrlRange(1, $employers->lastPage()) as $page => $url)
-                <li class="page-item {{ $page == $employers->currentPage() ? 'active' : '' }}">
-                    <a class="page-link rounded-2"
-                       style="{{ $page == $employers->currentPage()
-                            ? 'background:var(--g-600);border-color:transparent;color:#fff;'
-                            : 'border-color:var(--n-200);color:var(--g-700);' }}"
-                       href="{{ $url }}">{{ $page }}</a>
-                </li>
-                @endforeach
+                @include('partials.page-links', ['pager' => $employers, 'activeStyle' => 'background:var(--g-600);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--n-200);color:var(--g-700);'])
             </ul>
         </nav>
     </div>

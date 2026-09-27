@@ -43,6 +43,7 @@ class JobChangeLog
         'civil_status'         => 'Civil status',
         'sex_preference'       => 'Sex preference',
         'preferred_residence'  => 'Preferred residence',
+        'match_points'         => 'Qualification points',
         'other_qualifications' => 'Other qualifications',
     ];
 

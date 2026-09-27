@@ -39,7 +39,45 @@
         <div style="font-size:12px;color:var(--n-500);margin-bottom:12px;">
             For walk-in jobseekers without an account/contact info to self-apply — staff can apply on their behalf.
         </div>
-        @if($openJobs->isEmpty())
+        @php $pesoJob = \App\Support\PesoEmployment::current($registration->jobseeker_registrations_id); @endphp
+        @if($pesoJob)
+            {{-- Hired through PESO and still in the job: applying is paused
+                 until the desk records that the job ended. --}}
+            <div class="p-3 rounded-3 mb-2" style="background:var(--g-50);border:1px solid var(--g-500);font-size:13px;color:var(--n-700);">
+                <div class="fw-semibold" style="color:var(--g-700);">
+                    <i class="ph-fill ph-briefcase me-1"></i>Employed through PESO
+                </div>
+                {{ $pesoJob->position }} at {{ $pesoJob->company_name }}
+                @if($since = \App\Support\PesoEmployment::startMonth($pesoJob)) since {{ $since->format('F Y') }} @endif
+                <div style="font-size:11.5px;color:var(--n-500);">Applying is paused while they hold this job.</div>
+            </div>
+            <form action="{{ route('staff.registrations.endEmployment', $registration->jobseeker_registrations_id) }}" method="POST"
+                  class="d-flex gap-2 flex-wrap align-items-end">
+                @csrf
+                <div>
+                    <label style="font-size:11px;color:var(--n-500);">Why did the job end?</label>
+                    <select name="reason" class="form-select form-select-sm" style="border-color:var(--n-200);font-size:13px;min-width:190px;" required
+                            onchange="this.form.querySelector('[name=unemployed_other]').hidden = this.value !== 'others'">
+                        <option value="">Select</option>
+                        @foreach(\App\Support\PesoEmployment::END_REASONS as $value => $label)
+                        <option value="{{ $value }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    <input type="text" name="unemployed_other" class="form-control form-control-sm mt-1" maxlength="255"
+                           placeholder="Please specify" style="border-color:var(--n-200);font-size:13px;" hidden>
+                </div>
+                <div>
+                    <label style="font-size:11px;color:var(--n-500);">Month of last day</label>
+                    <input type="month" name="last_month" class="form-control form-control-sm" style="border-color:var(--n-200);font-size:13px;"
+                           value="{{ now()->format('Y-m') }}" max="{{ now()->format('Y-m') }}"
+                           @if($since) min="{{ $since->format('Y-m') }}" @endif required>
+                </div>
+                <button type="submit" class="btn btn-sm fw-semibold"
+                    style="background:var(--g-600);color:#fff;border:none;border-radius:8px;font-size:12px;padding:8px 18px;">
+                    <i class="ph ph-magnifying-glass me-1"></i> Looking for work again
+                </button>
+            </form>
+        @elseif($openJobs->isEmpty())
             <div style="font-size:13px;color:var(--n-500);">No open job postings available at the moment.</div>
         @else
             <form action="{{ route('staff.registrations.apply', $registration->jobseeker_registrations_id) }}" method="POST" class="d-flex gap-2 flex-wrap">

@@ -29,6 +29,8 @@ class User extends Authenticatable
     'status',
     'phone',
     'profile_photo',
+    // When they agreed to the Data Privacy Notice (RA 10173) at registration.
+    'privacy_consented_at',
 ];
 
     protected $hidden = [

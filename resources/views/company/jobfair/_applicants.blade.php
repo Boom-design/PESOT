@@ -33,7 +33,7 @@
                 <i class="ph-fill ph-users-three me-2" style="color:var(--g-600);"></i>Job Fair Applicants
             </h6>
             <p class="mb-0" style="font-size:13px;color:var(--n-500);">
-                Mark applicants as Hired, Waiting, or Rejected during the job fair interview.
+                Mark applicants as Hired, On Process, or Rejected during the job fair interview.
             </p>
         </div>
 
@@ -104,7 +104,7 @@
                     The list stays as a record. Contact PESO if someone still has to be recorded.
                 @elseif($jfSelected && $jfSelected->event_date->isPast())
                     <strong style="color:var(--g-700);">The fair is over — these are the people you met there.</strong>
-                    Anyone you put on <strong>Waiting</strong> and later hired at your own office
+                    Anyone you put on <strong>On Process</strong> and later hired at your own office
                     is recorded here, and that is what the PESO Company Placement report counts.
                     You have <strong>{{ \App\Support\JobFairDecisionWindow::daysLeft($jfSelected) }} day(s)</strong>
                     left — this closes
@@ -112,7 +112,7 @@
                     {{ \App\Support\JobFairDecisionWindow::days() }} days after the fair.
                 @else
                     <strong style="color:var(--g-700);">Not every decision is made at the booth.</strong>
-                    Someone you put on <strong>Waiting</strong> at the fair and hired at your own
+                    Someone you put on <strong>On Process</strong> at the fair and hired at your own
                     office afterwards is recorded here too — that later hire is what the PESO
                     Company Placement report counts. Each fair stays open for
                     {{ \App\Support\JobFairDecisionWindow::days() }} days after its event date,
@@ -208,8 +208,11 @@
                                     $color = $statusColors[$app->status] ?? 'var(--n-500)';
                                 @endphp
                                 <span style="color:{{ $color }};font-weight:600;font-size:12px;">
-                                    {{ ucfirst($app->status) }}
+                                    {{ \App\Support\ApplicationStatus::label($app->status) }}
                                 </span>
+                                @if($app->status === 'waiting')
+                                <div style="font-size:10.5px;color:var(--n-500);">For further interview</div>
+                                @endif
                             </td>
                             <td style="padding:12px 16px;text-align:center;">
                                 @php
@@ -231,29 +234,32 @@
                                         {{ \App\Support\JobFairDecisionWindow::closesOn($jfEvent)->format('M d, Y') }}
                                     </span>
                                 @else
-                                <div class="d-flex gap-1 justify-content-center">
+                                <div class="d-flex gap-1 flex-wrap justify-content-center">
                                     {{-- Hired --}}
                                     <form method="POST" action="{{ route('company.applicants.status', $app->job_matching_id) }}">
                                         @csrf
                                         <input type="hidden" name="status" value="hired">
-                                        <button type="submit" class="btn btn-sm fw-semibold"
-                                            style="font-size:11px;border-radius:8px;padding:4px 10px;
+                                        <input type="hidden" name="start_date" value="{{ $app->start_date?->toDateString() }}">
+                                        <button type="button" class="btn btn-sm fw-semibold confirm-hired"
+                                            data-today="{{ now()->toDateString() }}"
+                                            style="font-size:11px;border-radius:8px;padding:4px 8px;min-width:98px;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;
                                             {{ $app->status === 'hired'
                                                 ? 'background:var(--g-600);color:#fff;border:none;'
                                                 : 'background:var(--g-50);color:var(--g-700);border:1px solid var(--n-200);' }}">
                                             <i class="ph-fill ph-check-circle me-1"></i>Hired
                                         </button>
+                                        @include('company.partials.hire-start-date')
                                     </form>
                                     {{-- Waiting --}}
                                     <form method="POST" action="{{ route('company.applicants.status', $app->job_matching_id) }}">
                                         @csrf
                                         <input type="hidden" name="status" value="waiting">
                                         <button type="submit" class="btn btn-sm fw-semibold"
-                                            style="font-size:11px;border-radius:8px;padding:4px 10px;
+                                            style="font-size:11px;border-radius:8px;padding:4px 8px;min-width:98px;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;
                                             {{ $app->status === 'waiting'
                                                 ? 'background:var(--warn);color:#fff;border:none;'
                                                 : 'background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-br);' }}">
-                                            <i class="ph ph-hourglass-medium me-1"></i>Waiting
+                                            <i class="ph ph-hourglass-medium me-1"></i>On Process
                                         </button>
                                     </form>
                                     {{-- Rejected --}}
@@ -261,7 +267,7 @@
                                         @csrf
                                         <input type="hidden" name="status" value="rejected">
                                         <button type="submit" class="btn btn-sm fw-semibold"
-                                            style="font-size:11px;border-radius:8px;padding:4px 10px;
+                                            style="font-size:11px;border-radius:8px;padding:4px 8px;min-width:98px;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;
                                             {{ $app->status === 'rejected'
                                                 ? 'background:var(--danger);color:#fff;border:none;'
                                                 : 'background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger-br);' }}">
@@ -303,15 +309,7 @@
                                 <i class="ph ph-caret-left"></i>
                             </a>
                         </li>
-                        @foreach($applicants->getUrlRange(1, $applicants->lastPage()) as $page => $url)
-                        <li class="page-item {{ $page == $applicants->currentPage() ? 'active' : '' }}">
-                            <a class="page-link rounded-2"
-                               style="{{ $page == $applicants->currentPage()
-                                    ? 'background:var(--g-600);border-color:transparent;color:#fff;'
-                                    : 'border-color:var(--n-200);color:var(--g-700);' }}"
-                               href="{{ $url }}">{{ $page }}</a>
-                        </li>
-                        @endforeach
+                        @include('partials.page-links', ['pager' => $applicants, 'activeStyle' => 'background:var(--g-600);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--n-200);color:var(--g-700);'])
                         <li class="page-item {{ !$applicants->hasMorePages() ? 'disabled' : '' }}">
                             <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);"
                                href="{{ $applicants->nextPageUrl() }}">

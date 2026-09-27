@@ -31,7 +31,7 @@
 @if(!$actionsUnlocked)
 <div class="alert alert-info mb-3" style="font-size:12px;border-radius:10px;">
     <i class="ph-fill ph-info me-1"></i>
-    Hire, Reject, and Waiting actions will be available once the
+    Hire, Reject, and On Process actions will be available once the
     {{ $job->schedule_type === 'inhouse' ? 'in-house' : 'company' }} interview date
     ({{ $job->interview_date ? $job->interview_date->format('M d, Y') : 'N/A' }}) arrives.
 </div>
@@ -101,8 +101,13 @@
                                 <td style="color:var(--n-500);">{{ $application->created_at->format('M d, Y') }}</td>
                                 <td>
                                     <span class="badge-{{ $application->status }}">
-                                        {{ ucfirst($application->status) }}
+                                        {{ \App\Support\ApplicationStatus::label($application->status) }}
                                     </span>
+                                    @if($application->status === 'waiting')
+                                    <div style="font-size:10.5px;color:var(--n-500);">
+                                        {{ \App\Support\ApplicationStatus::note($application->status, $application->job->schedule_type ?? null) }}
+                                    </div>
+                                    @endif
                                 </td>
                                 <td>
                                     {{-- Hired and rejected keep their buttons. An
@@ -114,31 +119,33 @@
                                             <i class="ph ph-clock me-1"></i>Locked until interview date
                                         </span>
                                     @else
-                                    <div class="d-flex gap-1">
+                                    <div class="d-flex gap-1 flex-wrap">
                                         {{-- Hired --}}
                                         <form method="POST" action="{{ route('company.applicants.status', $application->job_matching_id) }}">
                                             @csrf
                                             <input type="hidden" name="status" value="hired">
-                                            <button type="submit" class="btn btn-sm fw-semibold"
-                                                style="font-size:11px;border-radius:8px;padding:4px 10px;
+                                            <input type="hidden" name="start_date" value="{{ $application->start_date?->toDateString() }}">
+                                            <button type="button" class="btn btn-sm fw-semibold confirm-hired"
+                                                data-today="{{ now()->toDateString() }}"
+                                                style="font-size:11px;border-radius:8px;padding:4px 8px;min-width:98px;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;
                                                 {{ $application->status === 'hired'
                                                     ? 'background:var(--g-600);color:#fff;border:none;'
-                                                    : 'background:var(--g-50);color:var(--g-700);border:1px solid var(--n-200);' }}"
-                                                onclick="return confirm('Mark this applicant as HIRED? They will be notified. You can change this later if they do not report for work.')">
+                                                    : 'background:var(--g-50);color:var(--g-700);border:1px solid var(--n-200);' }}">
                                                 <i class="ph-fill ph-check-circle me-1"></i>Hired
                                             </button>
+                                            @include('company.partials.hire-start-date')
                                         </form>
                                         {{-- Waiting --}}
                                         <form method="POST" action="{{ route('company.applicants.status', $application->job_matching_id) }}">
                                             @csrf
                                             <input type="hidden" name="status" value="waiting">
                                             <button type="submit" class="btn btn-sm fw-semibold"
-                                                style="font-size:11px;border-radius:8px;padding:4px 10px;
+                                                style="font-size:11px;border-radius:8px;padding:4px 8px;min-width:98px;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;
                                                 {{ $application->status === 'waiting'
                                                     ? 'background:var(--warn);color:#fff;border:none;'
                                                     : 'background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-br);' }}"
-                                                title="Mark as Waiting">
-                                                <i class="ph ph-hourglass-medium me-1"></i>Waiting
+                                                title="Mark as On Process — taken forward, something still outstanding">
+                                                <i class="ph ph-hourglass-medium me-1"></i>On Process
                                             </button>
                                         </form>
                                         {{-- Rejected --}}
@@ -146,7 +153,7 @@
                                             @csrf
                                             <input type="hidden" name="status" value="rejected">
                                             <button type="submit" class="btn btn-sm fw-semibold"
-                                                style="font-size:11px;border-radius:8px;padding:4px 10px;
+                                                style="font-size:11px;border-radius:8px;padding:4px 8px;min-width:98px;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;
                                                 {{ $application->status === 'rejected'
                                                     ? 'background:var(--danger);color:#fff;border:none;'
                                                     : 'background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger-br);' }}"

@@ -67,12 +67,21 @@
                 @php
                     $isAct = request()->routeIs('admin.job.activities*');
 
-                    // The number says how many; the link says where. Landing on
-                    // the tab holding the oldest unseen notice saves opening all
-                    // four to find the red one.
-                    $actTarget = ($navAlerts['job_activities'] ?? 0) > 0
-                        ? route('admin.job.activities', ['tab' => \App\Support\AdminInbox::firstTabWithNews()])
-                        : route('admin.job.activities');
+                    // Kanunay In-house, dili ang tab nga naay pinakadaan nga
+                    // pahibalo.
+                    //
+                    // Kaniadto ang link mo-landing sa tab nga naghupot sa
+                    // pinakadaan nga wala pa nabasa, aron dili pangitaon ang
+                    // pula. Apan kana nagpasabot nga ang parehas nga item sa
+                    // sidebar mo-abli ug lain nga panid kada adlaw, ug ang
+                    // admin nga nagtuo nga nahibalo siya asa siya padulong
+                    // nagsugod sa sayop nga lamesa.
+                    //
+                    // Ang tulo ka tab naay kaugalingong pula nga numero, mao
+                    // nga makita gihapon asa ang balita sa usa ka pagtan-aw —
+                    // wala nawala ang pagpangita, ang padulngan ra ang naghunong
+                    // sa paglihok.
+                    $actTarget = route('admin.job.activities');
                 @endphp
                 <a href="{{ $actTarget }}" class="nav-link {{ $isAct ? 'active' : '' }}">
                     <i class="{{ $isAct ? 'ph-fill' : 'ph' }} ph-calendar-check"></i> Job Activities

@@ -48,15 +48,6 @@
         $jobseekerRegistration = \App\Models\JobseekerRegistration::where('user_id', Auth::id())->first();
         $hasNsrp = $jobseekerRegistration !== null;
 
-        // ── Job Fair Attendance Confirmation — naa bay unresolved (na-notify na pero wala pa nag-respond) ──
-        $pendingAttendanceConfirmation = $jobseekerRegistration
-            ? \App\Models\JobFairRegistration::with('jobFair')
-                ->where('user_id', $jobseekerRegistration->jobseeker_registrations_id)
-                ->whereNull('is_attended')
-                ->whereNotNull('attendance_notified_at')
-                ->first()
-            : null;
-
         // Red dot per nav item — see App\Support\NavAlerts for what counts.
         $navAlerts = \App\Support\NavAlerts::forJobseeker(
             $jobseekerRegistration?->jobseeker_registrations_id
@@ -161,16 +152,18 @@
         @if($hasNsrp)
         {{-- Notification Bell --}}
         <div class="dropdown">
-            <a class="icon-btn" data-bs-toggle="dropdown" href="#">
+            <a class="icon-btn" id="jobseekerNotifBell" data-bs-toggle="dropdown" href="#">
                 <i class="ph ph-bell"></i>
                 @php
                     $unreadCount = $jobseekerRegistration
                         ? \App\Models\Announcement::where('jobseeker_id', $jobseekerRegistration->jobseeker_registrations_id)->where('is_read', false)->count()
                         : 0;
                 @endphp
-                @if($unreadCount > 0)
-                    <span class="notif-badge">{{ $unreadCount }}</span>
-                @endif
+                {{-- Ang badge kanunay naa sa markup, gitago kung wala. Ang
+                     pagtukod niya sa JavaScript human sa pag-abli nagpasabot
+                     nga walay matangtang kung wala pa siya nahimo. --}}
+                <span class="notif-badge" id="jobseekerNotifBadge"
+                      style="{{ $unreadCount > 0 ? '' : 'display:none;' }}">{{ $unreadCount }}</span>
             </a>
             <ul class="dropdown-menu dropdown-menu-end peso-dropdown notif-dropdown">
                 <li class="notif-head">Notifications</li>
@@ -279,6 +272,43 @@
         link.addEventListener('click', closeSidebar);
     });
 
+    // ── Ang pag-abli sa bell mao ang pagbasa ──
+    //
+    // Kaniadto ang usa ka item ra ang mamarkahan, ug kana kung pislitan siya.
+    // Ang tawo nga nag-abli sa bell, nagbasa sa napulog-upat ka linya ug
+    // nisira niini nakakita gihapon ug 14 sa sunod nga panid — ug walay
+    // buhaton nga makahawan niini. Ang numero nga dili mahawan sa pagbuhat sa
+    // butang nga iyang gisulti kay saba.
+    //
+    // Parehas nga buhat sa staff nga layout: i-markahan tanan sa pag-abli, ug
+    // tangtangon ang numero dayon aron dili maghulat sa tubag sa network.
+    (function () {
+        const bell  = document.getElementById('jobseekerNotifBell');
+        const badge = document.getElementById('jobseekerNotifBadge');
+        if (!bell) return;
+
+        bell.addEventListener('show.bs.dropdown', function () {
+            if (badge) badge.style.display = 'none';
+
+            fetch('{{ route('jobseeker.notifications.markAllRead') }}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Content-Type': 'application/json',
+                },
+            }).catch(() => {
+                // Napakyas ang network: ibalik ang numero imbes magpakaaron-
+                // ingnon nga nabasa na sila. Ang sunod nga pag-abli mosulay ug usab.
+                if (badge && badge.textContent.trim() !== '0') badge.style.display = '';
+            });
+
+            // Ang bold nga laray mag-uli ug normal dayon, aron ang listahan
+            // magbasa nga parehas sa gisulti sa numero.
+            document.querySelectorAll('.notif-dropdown .notif-item.unread')
+                .forEach(el => el.classList.remove('unread'));
+        });
+    })();
+
     function markRead(id) {
         fetch(`/jobseeker/notifications/${id}/read`, {
             method: 'POST',
@@ -328,31 +358,6 @@
         });
     @endif
 
-    @if($pendingAttendanceConfirmation)
-    document.addEventListener('DOMContentLoaded', function () {
-        Swal.fire({
-            title: 'Job Fair Attendance',
-            text: 'Did you attend/participate in {{ addslashes($pendingAttendanceConfirmation->jobFair->title ?? 'the job fair') }} today at {{ addslashes($pendingAttendanceConfirmation->jobFair->venue ?? '') }}?',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#28812F',
-            cancelButtonColor: '#C4271B',
-            confirmButtonText: 'Yes, I attended',
-            cancelButtonText: 'No, I did not attend',
-            allowOutsideClick: false,
-        }).then((result) => {
-            const response = result.isConfirmed ? 'yes' : 'no';
-            fetch('{{ url("/jobseeker/jobfair-registrations") }}/{{ $pendingAttendanceConfirmation->job_fair_registrations_id }}/attendance-response', {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ response: response }),
-            }).then(() => location.reload());
-        });
-    });
-    @endif
 </script>
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 @yield('scripts')

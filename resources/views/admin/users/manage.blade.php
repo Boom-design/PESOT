@@ -80,11 +80,14 @@
                         $rowRole = ($user->role === 'staff' && $user->status === 'deactivated') ? 'inactive' : $user->role;
 
                         if ($user->role === 'jobseeker') {
+                            // An account exists from the moment someone registers; the
+                            // NSRP form comes later, and some never come back for it.
+                            // Hiding those rows made the admin search say "no such
+                            // account" for a person who is plainly in the database.
                             $nsrpType = $user->registration?->nsrp?->type;
-                            if (!$nsrpType) {
-                                continue;
-                            }
-                            $placement = ['local' => 'LRA', 'overseas' => 'SRA', 'both' => 'Both'][$nsrpType];
+                            $placement = $nsrpType
+                                ? ['local' => 'LRA', 'overseas' => 'SRA', 'both' => 'Both'][$nsrpType]
+                                : null;
                         } elseif ($user->role === 'company') {
                             $placement = ($user->employerNsrp?->is_overseas ?? false) ? 'Overseas' : 'Local';
 
@@ -99,14 +102,18 @@
                                 ? \App\Models\EmployerRequirement::where('user_id', $user->employerNsrp->employer_nsrp_registrations_id)->first()
                                 : null;
 
-                            $reqFieldLabels = [
-                                'business_permit'             => 'Business Permit',
-                                'sec_dti'                      => 'SEC / DTI Registration',
-                                'company_profile'               => 'Company Profile',
-                                'nsrp_establishment_form'       => 'NSRP Establishment Form',
-                                'no_pending_case_certificate'   => 'No Pending Case Certificate',
-                                'vacancy_posting'               => 'Vacancy Posting Document',
-                            ];
+                            // ── Ang lima ka papel nga tinuod nga gibasa sa desk.
+                            //
+                            // Gikan sa modelo, dili gisulat pag-usab dinhi. Ang
+                            // kopya niini nagdala ug NSRP Establishment Form ug
+                            // gilista siya nga "missing" sa matag employer —
+                            // apan gikan man siya sa rehistro ug wala gyud siya
+                            // gihukman sa desk, mao nga ang admin nagbasa ug
+                            // kulang nga wala gyud gipangayo.
+                            //
+                            // Usa ka tinubdan karon: ang pag-usab sa listahan
+                            // sa modelo mo-usab niini nga panid uban niini.
+                            $reqFieldLabels = \App\Models\EmployerRequirement::DOCUMENT_LABELS;
 
                             $missingReqs   = [];
                             $submittedReqs = [];
@@ -142,7 +149,14 @@
                             {{ $user->email }}
                         </td>
                         <td style="font-size:13px;padding:12px 16px;">
-                            {{ $placement }}
+                            @if($placement)
+                                {{ $placement }}
+                            @else
+                                <span style="display:inline-block;background:var(--warn-bg);color:var(--warn);
+                                             border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;">
+                                    NSRP form not filled up yet
+                                </span>
+                            @endif
                         </td>
                         <td style="font-size:13px;padding:12px 16px;color:var(--n-700);">
                             {{ $user->phone ?? 'None' }}

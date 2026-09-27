@@ -70,7 +70,7 @@
         </div>
         @endif
 
-        <form method="POST" action="{{ route('company.jobs.update', $job->job_qualifications_id) }}">
+        <form id="editJobForm" method="POST" action="{{ route('company.jobs.update', $job->job_qualifications_id) }}">
             @csrf
             @method('PUT')
 
@@ -81,12 +81,18 @@
                 </span>
             </div>
 
+            @php
+                $ownPoints     = is_array($job->match_points);
+                $currentPoints = $ownPoints ? $job->match_points : collect(\App\Models\Job::MATCH_POINTS)->map->points->all();
+                $ownPoints     = (bool) old('own_points', $ownPoints);
+            @endphp
             <div class="row g-3 mb-3">
                 <div class="col-12">
                     <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Position Title *</label>
                     <input type="text" name="title" class="form-control"
                         style="border-color:var(--n-200);font-size:13px;border-radius:8px;"
                         value="{{ old('title', $job->title) }}" required>
+                    @include('company.jobs.partials.points-input', ['key' => 'preferred_occupation', 'value' => old('match_points.preferred_occupation', $currentPoints['preferred_occupation'] ?? '')])
                 </div>
                 <div class="col-12">
                     <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Job Description *</label>
@@ -143,17 +149,38 @@
                     <input type="date" name="deadline" class="form-control"
                         style="border-color:var(--n-200);font-size:13px;border-radius:8px;"
                         min="{{ now()->toDateString() }}"
-                        max="{{ now()->addYear()->toDateString() }}"
+                        max="{{ \App\Models\Job::latestDeadline()->toDateString() }}"
                         value="{{ old('deadline', $job->deadline ? \Carbon\Carbon::parse($job->deadline)->format('Y-m-d') : '') }}">
-                    <small style="font-size:11px;color:var(--n-500);">A posting can run for at most one year.</small>
+                    <small style="font-size:11px;color:var(--n-500);">A posting can run for at most two months.</small>
                 </div>
             </div>
 
-            {{-- IV. QUALIFICATION REQUIREMENTS --}}
+            {{-- IV. QUALIFICATION REQUIREMENTS — each one carries the points it
+                 is worth in the match score, right under it. Saving rescores
+                 everyone who already applied. --}}
             <div class="mb-3 pb-2 mt-4" style="border-bottom:2px solid var(--n-200);">
                 <span class="fw-bold" style="color:var(--g-700);font-size:13px;">
                     <i class="ph ph-clipboard-text me-1" style="color:var(--g-600);"></i> IV. Qualification Requirements
                 </span>
+                <div style="font-size:11.5px;color:var(--n-500);margin-top:2px;">
+                    Each qualification carries points toward an applicant's match score. The points below are
+                    PESO's standard. Turn on the switch to set your own. Saving updates the match score of
+                    everyone who already applied.
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center flex-wrap gap-2 mb-3 px-3 py-2"
+                style="border:1px solid var(--n-200);border-radius:8px;background:#fff;">
+                <div class="form-check form-switch m-0">
+                    <input class="form-check-input" type="checkbox" role="switch" id="ownPoints" name="own_points" value="1"
+                        {{ $ownPoints ? 'checked' : '' }} style="cursor:pointer;">
+                    <label class="form-check-label" for="ownPoints"
+                        style="font-size:12px;font-weight:700;color:var(--g-700);cursor:pointer;">Set my own points</label>
+                </div>
+                <span id="matchPointsTotal" style="font-size:11.5px;color:var(--n-500);"></span>
+                @error('match_points')
+                <div style="font-size:12px;color:var(--danger);width:100%;">{{ $message }}</div>
+                @enderror
             </div>
 
             <div class="row g-3 mb-3">
@@ -162,6 +189,7 @@
                     <input type="number" name="experience_months" class="form-control" min="0"
                         style="border-color:var(--n-200);font-size:13px;border-radius:8px;"
                         value="{{ old('experience_months', $job->experience_months) }}">
+                    @include('company.jobs.partials.points-input', ['key' => 'experience', 'value' => old('match_points.experience', $currentPoints['experience'] ?? '')])
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Religion</label>
@@ -211,6 +239,7 @@
                     <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Other Qualifications</label>
                     <textarea name="other_qualifications" class="form-control" rows="2"
                         style="border-color:var(--n-200);font-size:13px;border-radius:8px;">{{ old('other_qualifications', $job->other_qualifications) }}</textarea>
+                    @include('company.jobs.partials.points-input', ['key' => 'skills', 'value' => old('match_points.skills', $currentPoints['skills'] ?? '')])
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Educational Level</label>
@@ -221,6 +250,7 @@
                         <option value="{{ $level }}" {{ old('education_required', $job->education_required) === $level ? 'selected' : '' }}>{{ $level }}</option>
                         @endforeach
                     </select>
+                    @include('company.jobs.partials.points-input', ['key' => 'education', 'value' => old('match_points.education', $currentPoints['education'] ?? '')])
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Course / Major</label>
@@ -233,6 +263,7 @@
                     <input type="text" name="license" class="form-control"
                         style="border-color:var(--n-200);font-size:13px;border-radius:8px;"
                         value="{{ old('license', $job->license) }}">
+                    @include('company.jobs.partials.points-input', ['key' => 'license', 'value' => old('match_points.license', $currentPoints['license'] ?? '')])
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Eligibility</label>
@@ -245,13 +276,16 @@
                     <input type="text" name="certification" class="form-control"
                         style="border-color:var(--n-200);font-size:13px;border-radius:8px;"
                         value="{{ old('certification', $job->certification) }}">
+                    @include('company.jobs.partials.points-input', ['key' => 'training', 'value' => old('match_points.training', $currentPoints['training'] ?? '')])
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Language / Dialect Spoken</label>
                     <input type="text" name="language" class="form-control"
                         style="border-color:var(--n-200);font-size:13px;border-radius:8px;"
                         value="{{ old('language', $job->language) }}">
+                    @include('company.jobs.partials.points-input', ['key' => 'language', 'value' => old('match_points.language', $currentPoints['language'] ?? '')])
                 </div>
+
                 {{-- Gipangutana kini sa dihang gi-post ang bakante, apan wala
                      siya dinhi, mao nga dili na siya matul-id. Gigamit siya karon
                      sa Job Fair desk: ang fair nga para sa PWD modawat lang sa
@@ -269,6 +303,7 @@
                         </div>
                         @endforeach
                     </div>
+                    @include('company.jobs.partials.points-input', ['key' => 'disability', 'value' => old('match_points.disability', $currentPoints['disability'] ?? '')])
                     @php
                         $chosenDisabilities = (array) old('disability_types', $job->disability_types ?? []);
                     @endphp
@@ -313,6 +348,52 @@
 
 @section('scripts')
 <script>
+    // Qualification points: locked on PESO's standard until the switch is on,
+    // then a running total, and no save past the limit.
+    (function () {
+        const form   = document.getElementById('editJobForm');
+        const box    = document.getElementById('matchPointsTotal');
+        const toggle = document.getElementById('ownPoints');
+        const max    = {{ \App\Models\Job::MAX_MATCH_POINTS }};
+        if (!form || !box || !toggle) return;
+
+        function sync() {
+            const own = toggle.checked;
+            let total = 0;
+            form.querySelectorAll('.match-points-input').forEach(function (input) {
+                // A disabled box is not submitted, so the posting keeps
+                // following the standard instead of copying it.
+                input.disabled = !own;
+                input.style.opacity = own ? '1' : '0.55';
+                total += parseInt(input.value, 10) || 0;
+            });
+
+            if (!own) {
+                box.textContent = "Using PESO's standard points.";
+                box.style.color = 'var(--n-500)';
+                return false;
+            }
+
+            const bad = total > max || total === 0;
+            box.textContent = 'Total points: ' + total + ' / ' + max
+                + (total > max ? ' — too many, lower some.' : (total === 0 ? ' — give points to at least one qualification.' : ''));
+            box.style.color = bad ? 'var(--danger)' : 'var(--g-700)';
+            return bad;
+        }
+
+        form.addEventListener('input', function (e) {
+            if (e.target.classList.contains('match-points-input')) sync();
+        });
+        toggle.addEventListener('change', sync);
+        form.addEventListener('submit', function (e) {
+            if (sync()) {
+                e.preventDefault();
+                box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
+        sync();
+    })();
+
     // Ang tipo sa disability walay kahulogan kung "No" ang tubag, mao nga
     // gitago siya hangtod nga "Yes". Gilimpyohan pud ang na-tsek: ang natago
     // nga checkbox mopadala gihapon kung mabilin siya nga naka-tsek.

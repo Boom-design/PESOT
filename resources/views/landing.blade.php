@@ -623,18 +623,16 @@
                                 </span>
                                 @endif
                             </div>
-                            <button type="button" class="btn-view-more"
-                                onclick="showJobModal(
-                                    '{{ addslashes($job->title) }}',
-                                    '{{ addslashes($job->company->company_name ?? 'Company') }}',
-                                    '{{ addslashes($job->location) }}',
-                                    '{{ ucfirst(str_replace('_', ' ', $job->type)) }}',
-                                    '{{ $job->slots }}',
-                                    '{{ $job->deadline ? \Carbon\Carbon::parse($job->deadline)->format('M d, Y') : '' }}',
-                                    '{{ addslashes(strip_tags($job->description ?? '')) }}',
-                                    '{{ $job->poster_image ? asset('storage/' . $job->poster_image) : '' }}'
-                                )">
-                                View More
+                            <button type="button" class="btn-view-more js-view-more"
+                                data-title="{{ $job->title }}"
+                                data-company="{{ $job->company->company_name ?? 'Company' }}"
+                                data-location="{{ $job->location }}"
+                                data-type="{{ ucfirst(str_replace('_', ' ', $job->type)) }}"
+                                data-slots="{{ $job->slots }}"
+                                data-deadline="{{ $job->deadline ? \Carbon\Carbon::parse($job->deadline)->format('M d, Y') : '' }}"
+                                data-description="{{ strip_tags($job->description ?? '') }}"
+                                data-poster="{{ $job->poster_image ? asset('storage/' . $job->poster_image) : '' }}">
+                            View More
                             </button>
                         </div>
                         @endforeach
@@ -896,6 +894,20 @@
 
                 document.getElementById('jobModalOverlay').style.display = 'flex';
             }
+
+
+            // One listener for every card. The posting's details ride along in
+            // data- attributes, so a quote or a line break in the description
+            // cannot break the click the way an inline onclick did.
+            document.addEventListener('click', function (e) {
+                const btn = e.target.closest('.js-view-more');
+                if (!btn) return;
+                showJobModal(
+                    btn.dataset.title, btn.dataset.company, btn.dataset.location,
+                    btn.dataset.type, btn.dataset.slots, btn.dataset.deadline,
+                    btn.dataset.description, btn.dataset.poster
+                );
+            });
 
             function closeJobModal() {
                 document.getElementById('jobModalOverlay').style.display = 'none';

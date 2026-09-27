@@ -160,8 +160,11 @@ class UnifiedAuthController extends Controller
             'last_name'   => 'required|string|max:255',
             'email'       => 'required|email|unique:users,email',
             'password'    => PasswordPolicy::required(),
+            // Data Privacy Act of 2012 (RA 10173): no account without consent.
+            'privacy_agreed' => 'accepted',
         ], [
             'email.unique' => 'This email address is already registered. Please use a different email or sign in instead.',
+            'privacy_agreed.accepted' => 'Please agree to the Data Privacy Notice to register.',
         ]);
 
         $user = User::create([
@@ -175,6 +178,7 @@ class UnifiedAuthController extends Controller
             'phone'          => $request->phone ?? null,
             'role'           => 'jobseeker',
             'status'         => 'approved',
+            'privacy_consented_at' => now(),
         ]);
 
         $this->linkWalkInRecord($user, $request);
@@ -278,12 +282,15 @@ class UnifiedAuthController extends Controller
                 [
                     'email'    => 'required|email|unique:users,email',
                     'password' => PasswordPolicy::required(),
+                    // Data Privacy Act of 2012 (RA 10173): no account without consent.
+                    'privacy_agreed' => 'accepted',
                 ],
                 \App\Support\EmployerRegistration::companyRules(),
                 self::requirementFileRules()
             ),
             array_merge(\App\Support\EmployerRegistration::messages(), [
                 'email.unique' => 'This email address is already registered. Please use a different email or sign in instead.',
+                'privacy_agreed.accepted' => 'Please agree to the Data Privacy Notice to register.',
                 'business_permit_expires_at.required_with' => 'Enter the expiry date printed on this business permit.',
             ])
         );
@@ -295,6 +302,7 @@ class UnifiedAuthController extends Controller
             'password' => \Illuminate\Support\Facades\Hash::make($request->password),
             'role'     => 'company',
             'status'   => 'approved',
+            'privacy_consented_at' => now(),
         ]);
 
         \App\Support\EmployerRegistration::create($user, $request);

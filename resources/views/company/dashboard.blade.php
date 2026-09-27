@@ -91,6 +91,38 @@
 </div>
 @endif
 
+{{-- ── HARD COPY NOTE ──
+     PESO CDO client, 2026-09-13. Uploading the requirements is not the whole
+     of it: the office still checks the paper originals, and the rule differs
+     by kind of employer.
+
+       Local    — a new partner brings the hard copy to the PESO Office once.
+                  After that verification, in-house interviews and other
+                  activities do not need the papers again.
+       Overseas — the hard copy comes along every time an interview or
+                  activity is conducted through PESO, approved account or not.
+
+     A note only; nothing here blocks a booking. --}}
+@php $isOverseasEmployer = (bool) optional($company->activeCompany())->is_overseas; @endphp
+<div class="peso-notice is-info mb-4 fade-in">
+    <i class="ph-fill ph-files"></i>
+    <div>
+        <div class="fw-semibold">Note: Hard copy of your requirements</div>
+        <div class="t-muted" style="font-size:12.5px;line-height:1.6;">
+            @if($isOverseasEmployer)
+                As an <strong>overseas recruitment agency</strong>, please bring the <strong>hard copy</strong> of your
+                requirements to the PESO Office <strong>every time</strong> you conduct an interview or activity
+                through PESO — including in-house interviews — even after your account has been approved.
+            @else
+                As a <strong>new partner</strong> of PESO CDO, please bring the <strong>hard copy</strong> of your
+                requirements to the PESO Office so they can be verified against what you uploaded.
+                Once verified, you <strong>do not need to bring them again</strong> when you conduct an in-house
+                interview or other activity with PESO.
+            @endif
+        </div>
+    </div>
+</div>
+
 {{-- ── STAT CARDS, WHICH ARE ALSO THE QUICK LINKS ──
      There used to be a separate Quick Links card underneath saying the same
      three or four words again. A number the employer is already looking at is

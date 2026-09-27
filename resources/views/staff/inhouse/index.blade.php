@@ -112,11 +112,15 @@
                             </span>
                         </td>
                         <td style="padding:12px 16px;text-align:center;">
+                            {{-- PESO SRA, 2026-09-14: a room request waiting on the desk is
+                                 the same decision as a pending in-house posting, so it
+                                 carries the same Decide button. Opening it is where the
+                                 desk picks the date and accepts the schedule. --}}
                             <a href="{{ route('staff.inhouse.view', $item->inhouse_schedules_id) }}"
                                class="btn btn-sm fw-semibold"
-                               style="background:var(--g-600);
+                               style="background:{{ $item->status === 'pending' ? 'var(--info)' : 'var(--g-600)' }};
                                       color:#fff;border:none;border-radius:8px;font-size:12px;">
-                                <i class="ph-fill ph-eye me-1"></i>View
+                                <i class="ph-fill {{ $item->status === 'pending' ? 'ph-gavel' : 'ph-eye' }} me-1"></i>{{ $item->status === 'pending' ? 'Decide' : 'View' }}
                             </a>
                         </td>
                     </tr>
@@ -153,7 +157,7 @@
                         </td>
                         <td style="padding:12px 16px;text-align:center;">
                             <button type="button" class="btn btn-sm fw-semibold"
-                                style="background:{{ $item->posting_status === 'pending' ? 'var(--warn)' : 'var(--g-600)' }};color:#fff;border:none;border-radius:8px;font-size:12px;"
+                                style="background:{{ $item->posting_status === 'pending' ? 'var(--info)' : 'var(--g-600)' }};color:#fff;border:none;border-radius:8px;font-size:12px;"
                                 data-bs-toggle="modal" data-bs-target="#jobInhouseModal{{ $item->job_qualifications_id }}">
                                 <i class="ph-fill {{ $item->posting_status === 'pending' ? 'ph-gavel' : 'ph-eye' }} me-1"></i>{{ $item->posting_status === 'pending' ? 'Decide' : 'View' }}
                             </button>
@@ -366,17 +370,7 @@
                             <i class="ph ph-caret-left"></i>
                         </a>
                     </li>
-                    @foreach($schedules->getUrlRange(1, $schedules->lastPage()) as $page => $url)
-                    <li class="page-item {{ $page == $schedules->currentPage() ? 'active' : '' }}">
-                        <a class="page-link rounded-2"
-                           style="{{ $page == $schedules->currentPage()
-                                ? 'background:var(--g-600);border-color:transparent;color:#fff;'
-                                : 'border-color:var(--n-200);color:var(--g-700);' }}"
-                           href="{{ $url }}&status={{ request('status','all') }}&search={{ request('search') }}">
-                            {{ $page }}
-                        </a>
-                    </li>
-                    @endforeach
+                    @include('partials.page-links', ['pager' => $schedules, 'activeStyle' => 'background:var(--g-600);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--n-200);color:var(--g-700);'])
                     <li class="page-item {{ !$schedules->hasMorePages() ? 'disabled' : '' }}">
                         <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);"
                            href="{{ $schedules->nextPageUrl() }}&status={{ request('status','all') }}&search={{ request('search') }}">

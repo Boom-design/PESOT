@@ -34,6 +34,43 @@ class JobseekerWebController extends Controller
     // ───────────────────────────────
     // DASHBOARD
     // ───────────────────────────────
+    /**
+     * "I'm looking for work again" — the job they got through PESO has ended.
+     *
+     * Closes the job on their NSRP work experience, marks them unemployed with
+     * the reason they gave, and lets them apply again.
+     */
+    public function endEmployment(Request $request)
+    {
+        $jobseeker = $this->authJobseeker();
+        if (!$jobseeker) return redirect()->route('login');
+
+        $employment = \App\Support\PesoEmployment::currentForUser($jobseeker->users_id);
+        if (!$employment) {
+            return back()->with('info', 'You have no current job recorded through PESO, so you can already apply.');
+        }
+
+        $request->validate([
+            'reason'           => 'required|in:' . implode(',', array_keys(\App\Support\PesoEmployment::END_REASONS)),
+            'unemployed_other' => 'required_if:reason,others|nullable|string|max:255',
+            'last_month'       => 'required|date_format:Y-m',
+        ], [
+            'unemployed_other.required_if' => 'Please say why the job ended.',
+        ]);
+
+        $lastMonth = \Carbon\Carbon::createFromFormat('!Y-m', $request->last_month);
+        $from      = \App\Support\PesoEmployment::startMonth($employment);
+
+        if ($lastMonth->gt(now()->startOfMonth()) || ($from && $lastMonth->lt($from))) {
+            return back()->withInput()->with('error', 'Pick the month of your last day, from '
+                . ($from ? $from->format('F Y') : 'when you started') . ' up to this month.');
+        }
+
+        \App\Support\PesoEmployment::end($employment, $request->reason, $lastMonth, $request->unemployed_other);
+
+        return back()->with('success', 'Your NSRP work experience is updated. You can apply for jobs again.');
+    }
+
     public function dashboard()
     {
         $jobseeker = $this->authJobseeker();
@@ -48,7 +85,12 @@ class JobseekerWebController extends Controller
         $pendingApplications = $regId ? Application::where('jobseeker_id', $regId)->where('status', 'pending')->count() : 0;
         $hiredApplications   = $regId ? Application::where('jobseeker_id', $regId)->where('status', 'hired')->count() : 0;
 
-        // ── HIGHLY QUALIFIED MATCH — preferred occupation MATCHED + overall match score ≥75% ──
+        // ── MATCH PROMPT — preferred occupation MATCHED + overall match score ≥50% ──
+        //
+        // PESO CDO, 2026-09-16: the prompt is about the position, not the
+        // score. It only ever names a vacancy whose title is one of their
+        // preferred occupations; the score decides whether they are worth
+        // telling, and qualified (50%) is enough for that.
         $highlyQualifiedMatch = null;
         $preferredOccupations = $nsrp->preferred_occupations ?? [];
         if (!empty($preferredOccupations) && $regId) {
@@ -78,7 +120,7 @@ class JobseekerWebController extends Controller
                 if (!$occMatched) continue;
 
                 $breakdown = $appController->computeMatchBreakdownPublic($jobseeker->users_id, $job);
-                if ($breakdown['percentage'] >= 75 && $breakdown['percentage'] > $bestPercentage) {
+                if ($breakdown['percentage'] >= 50 && $breakdown['percentage'] > $bestPercentage) {
                     $bestPercentage = $breakdown['percentage'];
                     $bestMatch = $job;
                 }
@@ -362,9 +404,11 @@ return view('jobseeker.nsrp.index', compact('jobseeker', 'registration', 'nsrp',
         // ══════════════════════════════════════════
 // PART 3: Work Experiences → jobseeker_work_experiences (naka-link na sa NSRP Form)
 // ══════════════════════════════════════════
+// The rows PESO wrote for a hire are not on the form as inputs, so they are
+// kept rather than replaced.
 \App\Models\JobseekerWorkExperience::where(
     'jobseeker_nsrp_registration_id', $nsrp->jobseeker_nsrp_registrations_id
-)->delete();
+)->whereNull('job_matching_id')->delete();
 
 $workExperiences = $request->work_experiences ?? [];
 foreach ($workExperiences as $exp) {
@@ -472,8 +516,15 @@ foreach ($workExperiences as $exp) {
         $classification = $registration->nsrp->type ?? null;
 
         $query = Job::with('company')->active()
-            ->when($classification === 'local',    fn($q) => $q->whereHas('company', fn($c) => $c->where('is_overseas', false)))
-            ->when($classification === 'overseas', fn($q) => $q->whereHas('company', fn($c) => $c->where('is_overseas', true)))
+            // PESO CDO, 2026-09-16: a job fair is open to whoever walks in, so
+            // its vacancies are shown to every jobseeker whatever their
+            // classification says. The gate still holds for everything else.
+            ->when($classification === 'local', fn($q) => $q->where(fn($w) =>
+                $w->where('schedule_type', 'job_fair')
+                  ->orWhereHas('company', fn($c) => $c->where('is_overseas', false))))
+            ->when($classification === 'overseas', fn($q) => $q->where(fn($w) =>
+                $w->where('schedule_type', 'job_fair')
+                  ->orWhereHas('company', fn($c) => $c->where('is_overseas', true))))
             ->when($jobType === 'local', fn($q) => $q->whereHas('company', fn($c) => $c->where('is_overseas', false)))
             ->when($jobType === 'overseas', fn($q) => $q->whereHas('company', fn($c) => $c->where('is_overseas', true)))
             ->when($jobType === 'job_fair', fn($q) => $q->where('schedule_type', 'job_fair'));
@@ -587,8 +638,9 @@ foreach ($workExperiences as $exp) {
         $classification = $nsrp->type ?? null;
         $isOverseasJob  = (bool) optional($job->company)->is_overseas;
 
-        if (($classification === 'local' && $isOverseasJob) ||
-            ($classification === 'overseas' && !$isOverseasJob)) {
+        if ($job->schedule_type !== 'job_fair' &&
+            (($classification === 'local' && $isOverseasJob) ||
+             ($classification === 'overseas' && !$isOverseasJob))) {
             return redirect()->route('jobseeker.jobs')->with('info',
                 $isOverseasJob
                     ? 'That is an overseas vacancy. Change your classification to Overseas or Both on your profile to see it.'
@@ -738,9 +790,18 @@ foreach ($workExperiences as $exp) {
         if (!$jobseeker) return redirect()->route('login');
         if ($guard = $this->requireNsrp($jobseeker)) return $guard;
 
-        $type = request('type', 'inhouse');
+        // Three tabs; anything else in the address opens the first one.
+        $type = in_array(request('type'), ['inhouse', 'company_interview', 'jobfair'], true)
+            ? request('type')
+            : 'inhouse';
 
         $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
+
+        // Opening the Job Fair tab is reading it: the red number on PESO Events
+        // clears, and comes back when a fair is announced after this moment.
+        if ($type === 'jobfair' && $registration) {
+            $registration->forceFill(['job_fair_seen_at' => now()])->save();
+        }
 
         // ── In-house interviews nga na-ACCEPT sa jobseeker (gikan sa Job-based in-house postings) ──
         $inhouseApplications = Application::with('job.company')
@@ -749,6 +810,16 @@ foreach ($workExperiences as $exp) {
             ->whereHas('job', function ($q) {
                 $q->where('schedule_type', 'inhouse');
             })
+            ->latest()
+            ->get();
+
+        // Company interviews the jobseeker confirmed they will attend. The
+        // employer holds these at their own place, so this list is the only
+        // reminder of the day the jobseeker gets from PESO.
+        $companyInterviewApplications = Application::with('job.company')
+            ->where('jobseeker_id', $registration->jobseeker_registrations_id ?? 0)
+            ->where('company_interview_participation', 'accepted')
+            ->whereHas('job', fn($q) => $q->where('schedule_type', 'company_interview'))
             ->latest()
             ->get();
 
@@ -769,7 +840,7 @@ foreach ($workExperiences as $exp) {
             ->toArray();
 
         return view('jobseeker.schedules.index', compact(
-            'inhouseApplications', 'jobFairSchedules', 'type', 'joinedJobFairIds'
+            'inhouseApplications', 'companyInterviewApplications', 'jobFairSchedules', 'type', 'joinedJobFairIds'
         ));
     }
 
@@ -832,30 +903,6 @@ foreach ($workExperiences as $exp) {
         ]);
 
         return back()->with('success', 'You have successfully joined the job fair! Your slip number is ' . $slipNumber . '.');
-    }
-
-    // ───────────────────────────────
-    // RESPOND TO JOB FAIR ATTENDANCE CONFIRMATION (sent on event day)
-    // ───────────────────────────────
-    public function respondJobFairAttendance(Request $request, $registrationId)
-    {
-        $jobseeker = $this->authJobseeker();
-        if (!$jobseeker) return response()->json(['error' => 'Unauthorized'], 401);
-
-        $request->validate(['response' => 'required|in:yes,no']);
-
-        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
-
-        $reg = \App\Models\JobFairRegistration::where('job_fair_registrations_id', $registrationId)
-            ->where('user_id', $registration->jobseeker_registrations_id ?? 0)
-            ->firstOrFail();
-
-        $reg->update([
-            'is_attended' => $request->response === 'yes',
-            'attended_at' => $request->response === 'yes' ? now() : null,
-        ]);
-
-        return response()->json(['success' => true]);
     }
 
     // ───────────────────────────────

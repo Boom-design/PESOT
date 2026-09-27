@@ -174,7 +174,9 @@
             <div class="nav-section">Manage</div>
             <ul>
                 <li>
-                    <a href="{{ route('staff.jobs') }}" class="nav-link {{ $isJobsOnly ? 'active' : '' }}">
+                    {{-- PESO Job Vacancy staff, 2026-09-14: Manage Job Activities opens on
+                         Pending Company Interview, the tab that waits on the desk. --}}
+                    <a href="{{ route('staff.jobs', ['type' => 'company_interview_pending']) }}" class="nav-link {{ $isJobsOnly ? 'active' : '' }}">
                         <i class="{{ $isJobsOnly ? 'ph-fill' : 'ph' }} ph-briefcase"></i> Manage Job Activities
                         @include('partials.nav-dot', ['navKey' => 'job_activities'])
                     </a>

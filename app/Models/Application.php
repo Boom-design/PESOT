@@ -18,6 +18,7 @@ class Application extends Model
     'jobseeker_id',
     'status',
     'hired_at',
+    'start_date',
     'match_percentage',
     'inhouse_participation',
     'inhouse_participation_notified_at',
@@ -27,6 +28,7 @@ class Application extends Model
     protected $casts = [
         'inhouse_participation_notified_at' => 'datetime',
         'hired_at' => 'datetime',
+        'start_date' => 'date',
     ];
 
     // Relationship: Application belongs to a Job

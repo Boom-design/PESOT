@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Application;
+use App\Models\EmployerNsrpRegistration;
 use App\Models\InhouseSchedule;
 use App\Models\Job;
 use Carbon\Carbon;
@@ -36,7 +37,7 @@ class InhouseEmployerReport
     public const RESULT_LABELS = [
         'hired'     => 'Hired',
         'rejected'  => 'Not hired',
-        'waiting'   => 'Waiting for the employer',
+        'waiting'   => 'On Process — complying with requirements',
         'qualified' => 'Waiting for the employer',
         'reviewed'  => 'Waiting for the employer',
         'pending'   => 'No decision recorded',
@@ -158,6 +159,47 @@ class InhouseEmployerReport
      *
      * @return array{postings:LengthAwarePaginator, roomOnly:LengthAwarePaginator}
      */
+    /**
+     * The Employer Report tab: one row per approved employer.
+     *
+     * Each row carries every job it offered (counted), the hires those jobs
+     * produced, and the in-house interviews old enough to report on — both
+     * the ones with a posting and the room-only bookings. Five employers a
+     * page, so the interview lookups stay to the employers on screen.
+     */
+    public static function byEmployer(bool $overseas, ?string $search = null, ?int $focusId = null)
+    {
+        $employers = EmployerNsrpRegistration::query()
+            ->whereHas('employer', fn($q) => $q->where('role', 'company'))
+            ->where('is_overseas', $overseas)
+            ->whereHas('requirement', fn($q) => $q->where('status', 'approved'))
+            ->when($focusId, fn($q) => $q->where('employer_nsrp_registrations_id', $focusId))
+            ->when($search, fn($q) => $q->where(fn($w) =>
+                $w->where('company_name', 'like', "%{$search}%")
+                  ->orWhereHas('employer', fn($u) => $u->where('email', 'like', "%{$search}%"))
+            ))
+            ->withCount('jobs')
+            ->with([
+                'employer',
+                'jobs.applications' => fn($q) => $q->where('status', 'hired')->with('jobseeker'),
+            ])
+            ->orderBy('company_name')
+            ->paginate(5, ['*'], 'page')
+            ->withQueryString();
+
+        $ids      = $employers->getCollection()->pluck('employer_nsrp_registrations_id')->all();
+        $postings = self::completedPostings($overseas)->whereIn('company_id', $ids)->groupBy('company_id');
+        $rooms    = self::completedScheduleOnly($overseas)->whereIn('employer_id', $ids)->groupBy('employer_id');
+
+        $employers->getCollection()->each(function ($employer) use ($postings, $rooms) {
+            $id = $employer->employer_nsrp_registrations_id;
+            $employer->setRelation('interviewPostings', $postings->get($id, collect())->values());
+            $employer->setRelation('roomBookings', $rooms->get($id, collect())->values());
+        });
+
+        return $employers;
+    }
+
     public static function paged(bool $overseas, ?string $search = null): array
     {
         $page = function (Collection $rows, int $perPage, string $pageName) {

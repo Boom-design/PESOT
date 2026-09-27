@@ -147,11 +147,7 @@
                         <li class="{{ $archivedJobs->onFirstPage() ? 'disabled' : '' }}">
                             <a href="{{ $archivedJobs->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
                         </li>
-                        @foreach($archivedJobs->getUrlRange(1, $archivedJobs->lastPage()) as $page => $url)
-                        <li class="{{ $page == $archivedJobs->currentPage() ? 'active' : '' }}">
-                            <a href="{{ $url }}">{{ $page }}</a>
-                        </li>
-                        @endforeach
+                        @include('partials.page-links', ['pager' => $archivedJobs, 'plain' => true])
                         <li class="{{ !$archivedJobs->hasMorePages() ? 'disabled' : '' }}">
                             <a href="{{ $archivedJobs->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
                         </li>
@@ -277,11 +273,7 @@
                         <li class="{{ $jobs->onFirstPage() ? 'disabled' : '' }}">
                             <a href="{{ $jobs->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
                         </li>
-                        @foreach($jobs->getUrlRange(1, $jobs->lastPage()) as $page => $url)
-                        <li class="{{ $page == $jobs->currentPage() ? 'active' : '' }}">
-                            <a href="{{ $url }}">{{ $page }}</a>
-                        </li>
-                        @endforeach
+                        @include('partials.page-links', ['pager' => $jobs, 'plain' => true])
                         <li class="{{ !$jobs->hasMorePages() ? 'disabled' : '' }}">
                             <a href="{{ $jobs->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
                         </li>

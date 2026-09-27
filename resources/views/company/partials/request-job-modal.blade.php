@@ -68,7 +68,7 @@
                             It stays open until the deadline you set passes, or until every slot is
                             filled — whichever comes first. The interview date you pick below is the
                             day you meet applicants, not the day the posting ends. A posting can run
-                            for at most one year. Nothing is deleted: a closed posting moves
+                            for at most two months. Nothing is deleted: a closed posting moves
                             to Archived Job Postings in Reports, with its requirements and hiring
                             record intact.
                         </div>
@@ -160,6 +160,12 @@
                         <div id="scheduleTypeError" class="mt-2" style="display:none;font-size:11.5px;color:var(--danger);">
                             Pick at least one schedule type.
                         </div>
+
+                        {{-- Overseas agencies only: the hard copies go with every one of
+                             the three, so it is said once, under the choice itself. --}}
+                        <div class="mt-3">
+                            @include('partials.overseas-inhouse-notice', ['noticeActivity' => $jobFairId ?? null ? 'job_fair' : 'any'])
+                        </div>
                     </div>
 
                     {{-- Company Interview date --}}
@@ -177,9 +183,6 @@
 
                     {{-- In-house date + venue --}}
                     <div id="inhouseFields" class="row g-3 mb-4" style="display:none;">
-                        <div class="col-12">
-                            @include('partials.overseas-inhouse-notice')
-                        </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">
                                 <i class="ph ph-calendar-check me-1" style="color:var(--g-600);"></i>In-house — Available Dates *

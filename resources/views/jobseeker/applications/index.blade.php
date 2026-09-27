@@ -46,7 +46,7 @@
             $statusMeta = match($application->status) {
                 'hired'     => ['Hired',            'background:#e6f7f1;color:#0f7a5f;', 'ph-fill ph-check-circle'],
                 'qualified' => ['Qualified',        'background:#e8eefc;color:#1c3f8a;', 'ph-fill ph-seal-check'],
-                'waiting'   => ['Waiting',          'background:#fff5e0;color:#8a5c00;', 'ph-fill ph-hourglass-medium'],
+                'waiting'   => ['On Process',       'background:#fff5e0;color:#8a5c00;', 'ph-fill ph-hourglass-medium'],
                 'reviewed'  => ['Reviewed',         'background:#eef0f3;color:#4a5260;', 'ph-fill ph-eye'],
                 'rejected'  => ['Not selected',     'background:#fdecea;color:#8a1c13;', 'ph-fill ph-x-circle'],
                 default     => ['Pending review',   'background:#fff5e0;color:#8a5c00;', 'ph-fill ph-clock'],
@@ -69,6 +69,12 @@
                             <div style="font-size:12px; color:var(--n-500);">
                                 {{ $job->company->company_name ?? 'Company' }}
                             </div>
+                            @if($application->status === 'waiting')
+                            {{-- On Process on its own says nothing; the reason is the point. --}}
+                            <div style="font-size:11px; color:#8a5c00;">
+                                {{ \App\Support\ApplicationStatus::note($application->status, $job->schedule_type ?? null) }}
+                            </div>
+                            @endif
                         </div>
                         <span class="d-inline-flex align-items-center gap-1" style="{{ $statusMeta[1] }}font-size:10.5px;font-weight:600;">
                             <i class="{{ $statusMeta[2] }}" style="font-size:12px;"></i>{{ $statusMeta[0] }}

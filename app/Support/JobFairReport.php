@@ -73,6 +73,34 @@ class JobFairReport
         'attended' => 'Attended only',
     ];
 
+    /**
+     * The jobseekers an employer decided on at this fair.
+     *
+     * PESO CDO, 2026-09-16: attendance used to wait for the jobseeker to answer
+     * "did you attend?" on the day. Somebody who was there and answered No — or
+     * never answered — was missing from the list the office sends to DOLE.
+     *
+     * An employer only marks a jobseeker hired, waiting or rejected for a job
+     * fair vacancy after meeting them at the fair, so that decision is the
+     * record of attendance. Mark Attended at the door still works and still
+     * counts; this adds to it.
+     */
+    public static function decidedJobseekerIds(int $eventId): array
+    {
+        $jobIds = self::eventJobIds($eventId);
+
+        if ($jobIds->isEmpty()) {
+            return [];
+        }
+
+        return Application::whereIn('job_id', $jobIds)
+            ->whereIn('status', ['hired', 'waiting', 'rejected'])
+            ->pluck('jobseeker_id')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
     public static function attendanceQuery(
         int $eventId,
         string $filter = 'all',
@@ -81,7 +109,16 @@ class JobFairReport
     ): Builder {
         return JobFairRegistration::with(['jobseeker.nsrp', 'jobseeker.user'])
             ->where('job_fair_id', $eventId)
-            ->when($state !== 'joined', fn($q) => $q->where('is_attended', true))
+            ->when($state !== 'joined', function ($q) use ($eventId) {
+                $decided = self::decidedJobseekerIds($eventId);
+
+                $q->where(function ($w) use ($decided) {
+                    $w->where('is_attended', true);
+                    if ($decided) {
+                        $w->orWhereIn('user_id', $decided);
+                    }
+                });
+            })
             ->when($filter !== 'all', fn($q) =>
                 $q->whereHas('jobseeker.nsrp', fn($n) => $n->whereIn('type', [$filter, 'both']))
             )
@@ -97,26 +134,31 @@ class JobFairReport
             }));
     }
 
-    // Tulo ka kahimtang ang is_attended: null = ni-join, wala pa mitubag;
-    // true = miabot; false = misulti nga dili siya makaadto. Usa ra ka lugar
-    // ang naghubad niini, aron parehas ang badge sa screen ug ang teksto sa file.
-    public static function attendanceLabel(?bool $isAttended): string
+    // Duha ra ka kahimtang karon: miabot, o wala. Ang miabot mao ang gimarkahan
+    // sa pultahan O ang gidesisyunan sa employer sa iyang bakante sa fair. Usa ra
+    // ka lugar ang naghubad niini, aron parehas ang badge sa screen ug ang
+    // teksto sa file.
+    public static function attendanceLabel(?bool $isAttended, bool $decidedByEmployer = false): string
     {
-        return match ($isAttended) {
-            true    => 'Attended',
-            false   => 'Said they cannot come',
-            default => 'Joined — no reply',
-        };
+        return ($isAttended || $decidedByEmployer) ? 'Attended' : 'Not attended';
     }
 
     public static function attendanceTotals(int $eventId): array
     {
         $base = JobFairRegistration::where('job_fair_id', $eventId);
 
+        $decided  = self::decidedJobseekerIds($eventId);
+        $attended = (clone $base)->where(function ($q) use ($decided) {
+            $q->where('is_attended', true);
+            if ($decided) {
+                $q->orWhereIn('user_id', $decided);
+            }
+        })->count();
+
         return [
             'registered' => (clone $base)->count(),
-            'attended'   => (clone $base)->where('is_attended', true)->count(),
-            'no_reply'   => (clone $base)->whereNull('is_attended')->count(),
+            'attended'   => $attended,
+            'no_reply'   => (clone $base)->count() - $attended,
             'local'      => (clone $base)->whereHas('jobseeker.nsrp', fn($n) => $n->whereIn('type', ['local', 'both']))->count(),
             'overseas'   => (clone $base)->whereHas('jobseeker.nsrp', fn($n) => $n->whereIn('type', ['overseas', 'both']))->count(),
         ];
@@ -552,6 +594,7 @@ class JobFairReport
     {
         $eventId    = $event?->job_fair_events_id;
         $eventJobs  = self::eventJobIds($eventId);
+        $decidedIds = $eventId ? self::decidedJobseekerIds((int) $eventId) : [];
         $title      = self::TABS[$tab] ?? $tab;
         $fullName   = fn($person) => trim(($person->first_name ?? '') . ' ' . ($person->surname ?? '')) ?: '';
 
@@ -576,7 +619,7 @@ class JobFairReport
                         $r->slip_number,
                         $fullName($r->jobseeker),
                         ucfirst($r->jobseeker->nsrp->type ?? ''),
-                        self::attendanceLabel($r->is_attended === null ? null : (bool) $r->is_attended),
+                        self::attendanceLabel((bool) $r->is_attended, in_array($r->user_id, $decidedIds, true)),
                         $r->attended_at?->format('Y-m-d H:i') ?? '',
                     ]),
             ],

@@ -61,13 +61,7 @@
                     <li class="page-item {{ $archivedJobs->onFirstPage() ? 'disabled' : '' }}">
                         <a class="page-link rounded-2" style="border-color:var(--warn-br);color:var(--warn);" href="{{ $archivedJobs->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
                     </li>
-                    @foreach($archivedJobs->getUrlRange(1, $archivedJobs->lastPage()) as $page => $url)
-                    <li class="page-item {{ $page == $archivedJobs->currentPage() ? 'active' : '' }}">
-                        <a class="page-link rounded-2"
-                           style="{{ $page == $archivedJobs->currentPage() ? 'background:var(--warn);border-color:transparent;color:#fff;' : 'border-color:var(--warn-br);color:var(--warn);' }}"
-                           href="{{ $url }}">{{ $page }}</a>
-                    </li>
-                    @endforeach
+                    @include('partials.page-links', ['pager' => $archivedJobs, 'activeStyle' => 'background:var(--warn);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--warn-br);color:var(--warn);'])
                     <li class="page-item {{ !$archivedJobs->hasMorePages() ? 'disabled' : '' }}">
                         <a class="page-link rounded-2" style="border-color:var(--warn-br);color:var(--warn);" href="{{ $archivedJobs->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
                     </li>

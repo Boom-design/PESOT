@@ -194,7 +194,7 @@
                     <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">#</th>
                     <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Company</th>
                     <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Industry</th>
-                    <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Vacancies</th>
+                    <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;min-width:300px;">Vacancies</th>
                     <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;text-align:center;">Potential Applicants</th>
                 </tr>
             </thead>
@@ -216,6 +216,16 @@
                         <div style="font-size:11px;font-weight:400;color:var(--n-500);">
                             {{ $company->employer->email ?? 'None' }}
                         </div>
+                        {{-- Ang laray usa ka IMBITASYON, dili usa ka kompanya.
+                             Ang employer nga gi-invite sa duha ka fair naay duha
+                             ka laray, ug kung walay ngalan sa fair, managsama
+                             gyud sila ug hitsura ug mabasa nga sayop. --}}
+                        <div class="mt-1" style="font-size:11px;font-weight:600;color:var(--g-600);">
+                            <i class="ph-fill ph-calendar-dots me-1"></i>{{ $row->jobFair->title ?? 'Fair not found' }}
+                            <span style="font-weight:400;color:var(--n-500);">
+                                · {{ $row->jobFair?->event_date?->format('M d, Y') ?? 'no date' }}
+                            </span>
+                        </div>
                     </td>
                     <td style="padding:12px 16px;color:var(--n-700);font-size:12px;">
                         {{ $company->industry_group ?? 'Not set' }}
@@ -228,20 +238,35 @@
                              ── aplikante ug ang buton nga mo-text kanila naabot
                              ── ra pinaagi niini, mao nga ang tinago nga link
                              ── nagtago sa tibuok trabaho. Buton na siya karon. --}}
+                        {{-- Usa ka linya kada bakante, dili tulo.
+                             ──
+                             PESO Job Fair staff, 2026-09-12: ang employer nga
+                             nagdala ug walo ka bakante naghimo sa usa ka laray
+                             nga mas taas pa sa screen, ug ang sunod nga employer
+                             maabot ra pinaagi sa pag-scroll. Ang titulo, ang
+                             slots ug ang buton nagpuyo na sa parehas nga linya,
+                             ug ang linya dili mo-wrap. --}}
                         @forelse($vacancies as $vacancy)
-                            <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
-                                <span class="fw-semibold" style="color:var(--g-700);font-size:12px;">
-                                    {{ $vacancy->title }}
-                                </span>
+                            <div class="d-flex align-items-center gap-2 text-nowrap"
+                                 style="padding:2px 0;{{ !$loop->last ? 'border-bottom:1px dashed var(--n-100);' : '' }}">
+                                <span class="fw-semibold text-truncate" style="color:var(--g-700);font-size:12px;max-width:190px;"
+                                      title="{{ $vacancy->title }}">{{ $vacancy->title }}</span>
                                 <span style="color:var(--n-500);font-size:11px;">
-                                    · {{ $vacancy->slots }} slot(s)@if($vacancy->acceptsPwd()) · accepts PWD @endif
+                                    · {{ $vacancy->slots }}@if($vacancy->acceptsPwd()) · PWD @endif
                                 </span>
+                                {{-- PESO Job Fair staff, 2026-09-14: applicants belong to an
+                                     employer that is coming. A pending or declined
+                                     invitation has no one to send them to, so the
+                                     button is on the Accepted tab only. --}}
+                                @if($invite === 'accepted')
                                 <a href="{{ route('staff.jobfair.postings.applicants', $vacancy->job_qualifications_id) }}"
-                                   class="btn btn-sm fw-semibold text-nowrap"
+                                   class="btn btn-sm fw-semibold ms-auto"
+                                   title="View applicants for {{ $vacancy->title }}"
                                    style="border:1px solid var(--g-500);color:var(--g-700);background:var(--g-50);
-                                          border-radius:8px;font-size:11px;padding:3px 10px;">
-                                    <i class="ph ph-users-three me-1"></i>View applicants
+                                          border-radius:8px;font-size:11px;padding:2px 9px;line-height:1.5;">
+                                    <i class="ph ph-users-three me-1"></i>Applicants
                                 </a>
+                                @endif
                             </div>
                         @empty
                             <span style="font-size:11.5px;color:var(--n-400);">No job fair vacancy posted</span>
@@ -291,13 +316,7 @@
                 <li class="page-item {{ $invitations->onFirstPage() ? 'disabled' : '' }}">
                     <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $invitations->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
                 </li>
-                @foreach($invitations->getUrlRange(1, $invitations->lastPage()) as $page => $url)
-                <li class="page-item {{ $page == $invitations->currentPage() ? 'active' : '' }}">
-                    <a class="page-link rounded-2"
-                       style="{{ $page == $invitations->currentPage() ? 'background:var(--g-600);border-color:transparent;color:#fff;' : 'border-color:var(--n-200);color:var(--g-700);' }}"
-                       href="{{ $url }}">{{ $page }}</a>
-                </li>
-                @endforeach
+                @include('partials.page-links', ['pager' => $invitations, 'activeStyle' => 'background:var(--g-600);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--n-200);color:var(--g-700);'])
                 <li class="page-item {{ !$invitations->hasMorePages() ? 'disabled' : '' }}">
                     <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $invitations->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
                 </li>

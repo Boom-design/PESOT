@@ -12,6 +12,9 @@ class JobseekerWorkExperience extends Model
 
     protected $fillable = [
         'jobseeker_nsrp_registration_id',
+        'job_matching_id',
+        'job_matching_id',
+        'job_matching_id',
         'company_name',
         'position',
         'industry',
@@ -19,10 +22,12 @@ class JobseekerWorkExperience extends Model
         'date_to',
         'is_current',
         'employment_status',
+        'status_before',
     ];
 
     protected $casts = [
-        'is_current' => 'boolean',
+        'is_current'    => 'boolean',
+        'status_before' => 'array',
     ];
 
     public function nsrpRegistration()

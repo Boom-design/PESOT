@@ -80,6 +80,13 @@
                                 <div style="font-size:11px;color:var(--n-500);margin-top:2px;">
                                     since {{ $app->hired_at?->format('M d, Y') ?? 'None' }}
                                 </div>
+                                {{-- The day to report, given by the employer at hiring.
+                                     Older hires were recorded before it was asked. --}}
+                                @if($app->start_date)
+                                <div style="font-size:11px;color:var(--g-700);margin-top:1px;">
+                                    starts work {{ $app->start_date->format('M d, Y') }}
+                                </div>
+                                @endif
                             @else
                                 <span class="fw-semibold" style="color:var(--warn);font-size:11.5px;">
                                     <i class="ph ph-magnifying-glass me-1"></i>Looking for Work
@@ -106,7 +113,19 @@
 
     @if($history->hasPages())
     <div class="d-flex justify-content-center mt-4">
-        {{ $history->links() }}
+        @if($history->hasPages())
+        <nav>
+            <ul class="pagination pagination-sm mb-0 gap-1">
+                <li class="page-item {{ $history->onFirstPage() ? 'disabled' : '' }}">
+                    <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $history->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
+                </li>
+                @include('partials.page-links', ['pager' => $history, 'activeStyle' => 'background:var(--g-600);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--n-200);color:var(--g-700);'])
+                <li class="page-item {{ !$history->hasMorePages() ? 'disabled' : '' }}">
+                    <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $history->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
+                </li>
+            </ul>
+        </nav>
+        @endif
     </div>
     @endif
 

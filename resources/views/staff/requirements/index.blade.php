@@ -288,17 +288,7 @@
                             <i class="ph ph-caret-left"></i>
                         </a>
                     </li>
-                    @foreach($requirements->getUrlRange(1, $requirements->lastPage()) as $page => $url)
-                    <li class="page-item {{ $page == $requirements->currentPage() ? 'active' : '' }}">
-                        <a class="page-link rounded-2"
-                           style="{{ $page == $requirements->currentPage()
-                                ? 'background:var(--g-600);border-color:transparent;color:#fff;'
-                                : 'border-color:var(--n-200);color:var(--g-700);' }}"
-                           href="{{ $url }}&status={{ request('status','pending') }}&search={{ request('search') }}">
-                            {{ $page }}
-                        </a>
-                    </li>
-                    @endforeach
+                    @include('partials.page-links', ['pager' => $requirements, 'activeStyle' => 'background:var(--g-600);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--n-200);color:var(--g-700);'])
                     <li class="page-item {{ !$requirements->hasMorePages() ? 'disabled' : '' }}">
                         <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);"
                            href="{{ $requirements->nextPageUrl() }}&status={{ request('status','pending') }}&search={{ request('search') }}">

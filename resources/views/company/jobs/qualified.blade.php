@@ -150,7 +150,7 @@
 @if(($isInhouse || $isCompanyInterview) && !$actionsUnlocked)
 <div class="alert alert-info mb-3" style="font-size:12px;border-radius:10px;">
     <i class="ph-fill ph-info me-1"></i>
-    Hire, Reject, and Waiting actions will be available once the
+    Hire, Reject, and On Process actions will be available once the
     {{ $isInhouse ? 'in-house' : 'company' }} interview date
     ({{ $job->interview_date ? $job->interview_date->format('M d, Y') : 'N/A' }}) arrives.
 </div>
@@ -230,7 +230,7 @@
                                     <div style="font-size:12px;color:var(--n-500);"><i class="ph ph-envelope-simple me-1" style="color:var(--g-600);"></i>{{ $app->jobseeker->reg_email ?? 'None' }}</div>
                                 </td>
                                 <td style="text-align:center;"><span class="fw-bold" style="font-size:15px;color:var(--g-700);">{{ $app->match_percentage }}%</span></td>
-                                <td style="text-align:center;"><span class="badge-{{ $app->status }}">{{ ucfirst($app->status) }}</span></td>
+                                <td style="text-align:center;"><span class="badge-{{ $app->status }}">{{ \App\Support\ApplicationStatus::label($app->status) }}</span></td>
                                 <td style="text-align:center;">
                                     @include('company.jobs.partials.applicant-actions', ['app' => $app])
                                 </td>
@@ -286,7 +286,7 @@
                                     <div style="font-size:12px;color:var(--n-500);"><i class="ph ph-envelope-simple me-1" style="color:var(--g-600);"></i>{{ $app->jobseeker->reg_email ?? 'None' }}</div>
                                 </td>
                                 <td style="text-align:center;"><span class="fw-bold" style="font-size:15px;color:var(--warn);">{{ $app->match_percentage }}%</span></td>
-                                <td style="text-align:center;"><span class="badge-{{ $app->status }}">{{ ucfirst($app->status) }}</span></td>
+                                <td style="text-align:center;"><span class="badge-{{ $app->status }}">{{ \App\Support\ApplicationStatus::label($app->status) }}</span></td>
                                 <td style="text-align:center;">
                                     @include('company.jobs.partials.applicant-actions', ['app' => $app])
                                 </td>
@@ -342,7 +342,7 @@
                                     <div style="font-size:12px;color:var(--n-500);"><i class="ph ph-envelope-simple me-1" style="color:var(--g-600);"></i>{{ $app->jobseeker->reg_email ?? 'None' }}</div>
                                 </td>
                                 <td style="text-align:center;"><span class="fw-bold" style="font-size:15px;color:var(--danger);">{{ $app->match_percentage }}%</span></td>
-                                <td style="text-align:center;"><span class="badge-{{ $app->status }}">{{ ucfirst($app->status) }}</span></td>
+                                <td style="text-align:center;"><span class="badge-{{ $app->status }}">{{ \App\Support\ApplicationStatus::label($app->status) }}</span></td>
                                 <td style="text-align:center;">
                                     @include('company.jobs.partials.applicant-actions', ['app' => $app])
                                 </td>
@@ -379,20 +379,9 @@
         });
     });
 
-    document.querySelectorAll('.confirm-hired').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            const form = btn.closest('form');
-            Swal.fire({
-                title: 'Mark as Hired?',
-                text: 'This jobseeker will be marked as HIRED and will be notified. You can change this later if they do not report for work.',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonColor: '#28812F',
-                cancelButtonColor: 'var(--n-400)',
-                confirmButtonText: 'Yes, mark as hired',
-            }).then((result) => { if (result.isConfirmed) form.submit(); });
-        });
-    });
+    // The Hired button is handled by company.partials.hire-start-date, which
+    // also asks for the start date. A second listener here would open two
+    // dialogs and submit without the date.
 
     document.querySelectorAll('.confirm-rejected').forEach(function (btn) {
         btn.addEventListener('click', function () {

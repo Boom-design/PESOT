@@ -44,6 +44,7 @@
                         <th style="background:var(--g-100);color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Contact</th>
                         <th style="background:var(--g-100);color:var(--g-700);font-size:12px;border:none;padding:12px 16px;text-align:center;">Match %</th>
                         <th style="background:var(--g-100);color:var(--g-700);font-size:12px;border:none;padding:12px 16px;text-align:center;">Date Hired</th>
+                        <th style="background:var(--g-100);color:var(--g-700);font-size:12px;border:none;padding:12px 16px;text-align:center;">Start of Work</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -78,15 +79,20 @@
                                 {{ $match }}%
                             </span>
                         </td>
+                        {{-- hired_at, not updated_at: updated_at moves whenever anything
+                             touches the row, so it was never the day of hiring. --}}
                         <td style="padding:12px 16px;text-align:center;color:var(--n-700);">
-                            {{ $app->updated_at?->format('M d, Y') ?? 'None' }}
+                            {{ ($app->hired_at ?? $app->updated_at)?->format('M d, Y') ?? 'None' }}
+                        </td>
+                        <td style="padding:12px 16px;text-align:center;color:var(--n-700);">
+                            {{ $app->start_date?->format('M d, Y') ?? 'Not recorded' }}
                         </td>
                     </tr>
                     @empty
                     {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
                          gihapon ug ang pahina dili mag-usab ug porma. --}}
                     <tr>
-                        <td colspan="5" class="text-center"
+                        <td colspan="6" class="text-center"
                             style="padding:26px 16px;color:var(--n-500);font-size:13px;">
                             <i class="ph ph-user-list me-1"
                                style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>
@@ -108,13 +114,7 @@
                     <li class="page-item {{ $hired->onFirstPage() ? 'disabled' : '' }}">
                         <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $hired->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
                     </li>
-                    @foreach($hired->getUrlRange(1, $hired->lastPage()) as $page => $url)
-                    <li class="page-item {{ $page == $hired->currentPage() ? 'active' : '' }}">
-                        <a class="page-link rounded-2"
-                           style="{{ $page == $hired->currentPage() ? 'background:var(--g-600);border-color:transparent;color:#fff;' : 'border-color:var(--n-200);color:var(--g-700);' }}"
-                           href="{{ $url }}">{{ $page }}</a>
-                    </li>
-                    @endforeach
+                    @include('partials.page-links', ['pager' => $hired, 'activeStyle' => 'background:var(--g-600);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--n-200);color:var(--g-700);'])
                     <li class="page-item {{ !$hired->hasMorePages() ? 'disabled' : '' }}">
                         <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $hired->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
                     </li>

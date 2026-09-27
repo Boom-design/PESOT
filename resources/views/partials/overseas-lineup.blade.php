@@ -118,7 +118,7 @@
         <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
             <div class="card-header border-0 py-2 px-3" style="background:var(--g-600);border-radius:12px 12px 0 0;">
                 <h6 class="mb-0 fw-bold text-white" style="font-size:13px;">
-                    <i class="ph ph-buildings me-2"></i>Overseas agencies for this fair ({{ $lineupRows->count() }})
+                    <i class="ph ph-buildings me-2"></i>Overseas agencies for this fair ({{ $lineupRows->total() }})
                     @if($lineupIndustry ?? null)
                     <span style="font-weight:500;opacity:0.85;"> · {{ $lineupIndustry }}</span>
                     @endif
@@ -153,7 +153,7 @@
                             $participant = $row->participant;
                         @endphp
                         <tr style="font-size:13px;">
-                            <td style="padding:10px 16px;color:var(--n-500);">{{ $loop->iteration }}</td>
+                            <td style="padding:10px 16px;color:var(--n-500);">{{ $lineupRows->firstItem() + $loop->index }}</td>
                             <td style="padding:10px 16px;font-weight:600;color:var(--g-700);">
                                 {{ $agency->company_name ?? 'None' }}
                                 @if($agency->contact_person)
@@ -286,6 +286,26 @@
                     </tbody>
                 </table>
             </div>
+
+            {{-- Five agencies a page. Same pager as the other lists on this desk. --}}
+            @if($lineupRows->hasPages())
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 px-3 py-3" style="border-top:1px solid var(--n-50);">
+                <div style="font-size:12px;color:var(--n-500);">
+                    Showing {{ $lineupRows->firstItem() }}–{{ $lineupRows->lastItem() }} of {{ $lineupRows->total() }} agencies
+                </div>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0 gap-1">
+                        <li class="page-item {{ $lineupRows->onFirstPage() ? 'disabled' : '' }}">
+                            <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $lineupRows->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
+                        </li>
+                        @include('partials.page-links', ['pager' => $lineupRows, 'activeStyle' => 'background:var(--g-600);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--n-200);color:var(--g-700);'])
+                        <li class="page-item {{ !$lineupRows->hasMorePages() ? 'disabled' : '' }}">
+                            <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $lineupRows->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+            @endif
         </div>
 
         {{-- ── ONE MODAL PER UNINVITED AGENCY ──
@@ -414,6 +434,7 @@
         const url = new URL(window.location.href);
         url.searchParams.set('lineup_event', this.value);
         url.searchParams.delete('lineup_industry');
+        url.searchParams.delete('lineup_page');
         window.location.href = url.toString();
     });
 
@@ -424,6 +445,7 @@
         } else {
             url.searchParams.delete('lineup_industry');
         }
+        url.searchParams.delete('lineup_page');
         window.location.href = url.toString();
     });
 </script>

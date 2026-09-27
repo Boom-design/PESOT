@@ -30,6 +30,14 @@ class ApplicationController extends Controller
                 ->with('info', 'Please complete your NSRP Registration Form first before applying.');
         }
 
+        // Someone holding a job they got through PESO does not apply for
+        // another until they say that job has ended.
+        if ($employment = \App\Support\PesoEmployment::current($registration->jobseeker_registrations_id)) {
+            return redirect()->route('jobseeker.jobs.show', $jobId)->with('error',
+                'You are currently employed as ' . $employment->position . ' at ' . rtrim($employment->company_name, '.')
+                . '. Press "I\'m looking for work again" when that job ends, then apply.');
+        }
+
         // ── Job::active() ang basihan, dili ang status ra. Tulo ka rason nga
         // ── dili na dawaton ang aplikasyon, ug ang status ra nakakita sa usa:
         // ──   1. gisira ang posting
@@ -132,6 +140,12 @@ class ApplicationController extends Controller
         if (!$registration->is_walk_in) {
             return back()->with('error',
                 'This jobseeker registered online and applies from their own account.');
+        }
+
+        if ($employment = \App\Support\PesoEmployment::current($registration->jobseeker_registrations_id)) {
+            return back()->with('error',
+                'This jobseeker is currently employed as ' . $employment->position . ' at ' . rtrim($employment->company_name, '.')
+                . '. Record that the job has ended before applying for another.');
         }
 
         // Parehas nga lagda sa walk-in nga gi-apply sa staff: ang nalabyan ug
@@ -342,29 +356,8 @@ class ApplicationController extends Controller
                     break;
                 }
             }
-            $addCriterion('Preferred Occupation: ' . $job->title, 25, $matched,
+            $addCriterion('Preferred Occupation: ' . $job->title, $job->pointsFor('preferred_occupation'), $matched,
                 $matched ? null : 'Not listed in your preferred occupations');
-        }
-
-        // ── Sex Preference ──
-        if ($job->sex_preference && $job->sex_preference !== 'Any') {
-            $matched = strtolower($registration->sex ?? '') === strtolower($job->sex_preference);
-            $addCriterion('Sex: ' . $job->sex_preference, 10, $matched,
-                $matched ? null : 'Your record: ' . ($registration->sex ?? 'N/A'));
-        }
-
-        // ── Civil Status ──
-        if ($job->civil_status && $job->civil_status !== 'Any') {
-            $matched = strtolower($registration->civil_status ?? '') === strtolower($job->civil_status);
-            $addCriterion('Civil Status: ' . $job->civil_status, 8, $matched,
-                $matched ? null : 'Your record: ' . ($registration->civil_status ?? 'N/A'));
-        }
-
-        // ── Religion ──
-        if ($job->religion && strtolower(trim($job->religion)) !== 'any') {
-            $matched = strtolower(trim($registration->religion ?? '')) === strtolower(trim($job->religion));
-            $addCriterion('Religion: ' . $job->religion, 7, $matched,
-                $matched ? null : 'Your record: ' . ($registration->religion ?: 'N/A'));
         }
 
         // ── Educational Level ──
@@ -378,7 +371,7 @@ class ApplicationController extends Controller
                 'Graduate Studies'   => 5,
             ];
             $requiredRank = $eduMap[$job->education_required] ?? 0;
-            $weight = 15;
+            $weight = $job->pointsFor('education');
             if ($eduStatus['completed'] >= $requiredRank) {
                 $addCriterion('Education: ' . $job->education_required, $weight, true);
             } elseif ($eduStatus['attempted'] >= $requiredRank) {
@@ -394,24 +387,11 @@ class ApplicationController extends Controller
             }
         }
 
-        // ── Course / Major ──
-        if ($job->course_major) {
-            $education = is_array($nsrp->education) ? $nsrp->education : (json_decode($nsrp->education ?? '{}', true) ?: []);
-            $courses = [];
-            foreach (['Tertiary / College', 'Graduate Studies/Post-graduate/Masters'] as $lvl) {
-                if (!empty($education[$lvl]['course']))       $courses[] = $education[$lvl]['course'];
-                if (!empty($education[$lvl]['course_other'])) $courses[] = $education[$lvl]['course_other'];
-            }
-            $matched = $this->courseMatches($job->course_major, $courses);
-            $addCriterion('Course/Major: ' . $job->course_major, 8, $matched,
-                $matched ? null : (empty($courses) ? 'No course on record' : 'Your course: ' . implode(', ', $courses)));
-        }
-
         // ── Work Experience (months) ──
         if ($job->experience_months) {
             $totalMonths = $this->computeTotalWorkMonths($nsrp->workExperiences);
             $required = (int) $job->experience_months;
-            $weight = 15;
+            $weight = $job->pointsFor('experience');
             if ($required > 0) {
                 $ratio = min($totalMonths / $required, 1);
                 $total += $weight;
@@ -424,47 +404,34 @@ class ApplicationController extends Controller
             }
         }
 
-        // ── Nature of Work vs jobseeker's work experience status history ──
-        if ($job->type) {
-            $typeMap = [
-                'permanent'   => 'Permanent',
-                'contractual' => 'Contractual',
-                'part_time'   => 'Part-time',
-            ];
-            if (isset($typeMap[$job->type])) {
-                $target = $typeMap[$job->type];
-                $has = $nsrp->workExperiences->contains(function ($exp) use ($target) {
-                    return strtolower($exp->employment_status ?? '') === strtolower($target);
-                });
-                $addCriterion('Nature of Work: ' . $target, 8, $has,
-                    $has ? null : 'No recorded work experience with this employment status');
+        // ── Eligibility / Professional License ──
+        // One criterion: the survey asked about them together, and a posting
+        // that names either one is asking for the same kind of paper.
+        if ($job->license || $job->eligibility) {
+            $asked = array_filter([$job->license, $job->eligibility]);
+            $names = $nsrp->certifications
+                ->whereIn('category', ['license', 'eligibility'])
+                ->pluck('name')
+                ->toArray();
+            $matched = false;
+            foreach ($asked as $want) {
+                if ($this->textListMatches($want, $names)) {
+                    $matched = true;
+                    break;
+                }
             }
+            $addCriterion('Eligibility / License: ' . implode(', ', $asked), $job->pointsFor('license'), $matched,
+                $matched ? null : 'No matching eligibility or license on record');
         }
 
-        // ── License ──
-        if ($job->license) {
-            $names = $nsrp->certifications->where('category', 'license')->pluck('name')->toArray();
-            $matched = $this->textListMatches($job->license, $names);
-            $addCriterion('License: ' . $job->license, 5, $matched,
-                $matched ? null : 'No matching license on record');
-        }
-
-        // ── Eligibility ──
-        if ($job->eligibility) {
-            $names = $nsrp->certifications->where('category', 'eligibility')->pluck('name')->toArray();
-            $matched = $this->textListMatches($job->eligibility, $names);
-            $addCriterion('Eligibility: ' . $job->eligibility, 5, $matched,
-                $matched ? null : 'No matching eligibility on record');
-        }
-
-        // ── Certification (Training OR Eligibility/License) ──
+        // ── Technical / Vocational Training ──
         if ($job->certification) {
             $trainings = is_array($nsrp->trainings) ? $nsrp->trainings : (json_decode($nsrp->trainings ?? '[]', true) ?: []);
             $trainingNames = array_filter(array_map(fn($t) => $t['course'] ?? '', $trainings));
             $certNames = $nsrp->certifications->pluck('name')->toArray();
             $pool = array_merge($trainingNames, $certNames);
             $matched = $this->textListMatches($job->certification, $pool);
-            $addCriterion('Certification: ' . $job->certification, 9, $matched,
+            $addCriterion('Technical / Vocational Training: ' . $job->certification, $job->pointsFor('training'), $matched,
                 $matched ? null : 'No matching training or certification on record');
         }
 
@@ -481,7 +448,7 @@ class ApplicationController extends Controller
             $otherLangs = is_array($nsrp->other_language) ? $nsrp->other_language : (json_decode($nsrp->other_language ?? '[]', true) ?: []);
             $spokenLangs = array_merge($spokenLangs, $otherLangs);
             $matched = $this->textListMatches($job->language, $spokenLangs);
-            $addCriterion('Language: ' . $job->language, 5, $matched,
+            $addCriterion('Language: ' . $job->language, $job->pointsFor('language'), $matched,
                 $matched ? null : 'Not listed in your language proficiency');
         }
 
@@ -496,7 +463,7 @@ class ApplicationController extends Controller
                 array_map('strtolower', $mentionedSkills),
                 array_map('strtolower', $jobseekerSkills)
             ));
-            $weight = 5;
+            $weight = $job->pointsFor('skills');
             $total += $weight;
             $ratio = $matched / count($mentionedSkills);
             $score += $ratio * $weight;
@@ -505,6 +472,26 @@ class ApplicationController extends Controller
                 'matched' => $ratio >= 1 ? true : ($ratio > 0 ? 'partial' : false),
                 'note'    => 'Required from job\'s other qualifications',
             ];
+        }
+
+        // ── Acceptance of Disability ──
+        // Counted only for an applicant who is a person with disability. For
+        // everyone else the posting's answer says nothing about their fit, so
+        // the criterion is left out of their score entirely.
+        $ownDisabilities = array_filter((array) ($registration->disabilities ?? []));
+        if (!empty($ownDisabilities)) {
+            $accepts = $job->accepts_disability === 'yes';
+            $wanted  = array_filter((array) ($job->disability_types ?? []));
+
+            // A posting that names the disabilities it can take is only a match
+            // for those; one that names none accepts any.
+            $matched = $accepts && (empty($wanted) || array_intersect(
+                array_map('strtolower', $wanted),
+                array_map('strtolower', $ownDisabilities)
+            ));
+
+            $addCriterion('Acceptance of Disability', $job->pointsFor('disability'), (bool) $matched,
+                $matched ? null : 'This posting does not accept your disability');
         }
 
         $percentage = $total === 0 ? 100 : round(($score / $total) * 100, 2);

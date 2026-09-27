@@ -71,14 +71,6 @@ class NavAlerts
             ->whereHas('job', fn($q) => $q->active())
             ->count();
 
-        // Job fair attendance the office asked about and the jobseeker has not
-        // answered. The layout also raises a modal for this, but the modal can
-        // be dismissed and the question stays open.
-        $pendingAttendance = \App\Models\JobFairRegistration::where('user_id', $registrationId)
-            ->whereNull('is_attended')
-            ->whereNotNull('attendance_notified_at')
-            ->count();
-
         // A fair the jobseeker can join and has not joined.
         //
         // The attendance question above only exists after they have joined, so
@@ -92,8 +84,16 @@ class NavAlerts
         $joinedFairIds = \App\Models\JobFairRegistration::where('user_id', $registrationId)
             ->pluck('job_fair_id');
 
+        // Fairs announced since the jobseeker last opened the Job Fair tab.
+        // Reading the tab clears the number; the next fair raises it again.
+        $seenAt = \App\Models\JobseekerRegistration::where('jobseeker_registrations_id', $registrationId)
+            ->value('job_fair_seen_at');
+
         $openFairs = \App\Models\JobFairEvent::where('status', '!=', 'completed')
             ->whereNotIn('job_fair_events_id', $joinedFairIds)
+            ->when($seenAt, fn($q) => $q->where(fn($w) =>
+                $w->where('jobseekers_invited_at', '>', $seenAt)
+                  ->orWhere('created_at', '>', $seenAt)))
             ->withCount(['participants as confirmed_count' => fn($q) =>
                 $q->where('confirmation_status', 'confirmed')])
             ->having('confirmed_count', '>=', JobFairAudience::threshold())
@@ -102,7 +102,7 @@ class NavAlerts
 
         return self::pruned([
             'job_vacancies' => $pendingParticipation,
-            'schedules'     => $pendingAttendance + $openFairs,
+            'schedules'     => $openFairs,
         ]);
     }
 

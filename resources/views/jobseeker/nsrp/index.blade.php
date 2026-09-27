@@ -963,7 +963,37 @@
                     </div>
                     <p style="font-size:11px;color:var(--n-500);">Limit to 10 year period, start with the most recent employment.</p>
 
-                    @php $workExps = $nsrp ? $nsrp->workExperiences : collect([]); @endphp
+                    @php
+                        $allWorkExps = $nsrp ? $nsrp->workExperiences : collect([]);
+                        // Jobs got through PESO are written by the system when the
+                        // employer marks the hire. They are shown, not edited here.
+                        $pesoWorkExps = $allWorkExps->whereNotNull('job_matching_id')->values();
+                        $workExps     = $allWorkExps->whereNull('job_matching_id')->values();
+                    @endphp
+
+                    @foreach($pesoWorkExps as $pesoExp)
+                    <div class="p-3 mb-3 rounded-3" style="border:1px solid var(--g-500);background:var(--g-50);">
+                        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                            <div>
+                                <div style="font-size:13px;font-weight:700;color:var(--g-700);">
+                                    {{ $pesoExp->position }} <span style="font-weight:400;color:var(--n-700);">at {{ $pesoExp->company_name }}</span>
+                                </div>
+                                <div style="font-size:12px;color:var(--n-500);">
+                                    {{ $pesoExp->industry ?: 'Location not stated' }}
+                                    &nbsp;•&nbsp; {{ $pesoExp->date_from }} – {{ $pesoExp->is_current ? 'Present' : $pesoExp->date_to }}
+                                    @if($pesoExp->employment_status) &nbsp;•&nbsp; {{ $pesoExp->employment_status }} @endif
+                                </div>
+                            </div>
+                            <span class="badge rounded-pill" style="background:var(--g-600);font-size:10.5px;">
+                                <i class="ph-fill ph-seal-check me-1"></i>Hired through PESO
+                            </span>
+                        </div>
+                        <div style="font-size:11px;color:var(--n-500);margin-top:6px;">
+                            Added when the employer marked you hired, so it cannot be edited here.
+                            @if($pesoExp->is_current) When this job ends, use <strong>I'm looking for work again</strong> on your dashboard. @endif
+                        </div>
+                    </div>
+                    @endforeach
 
                     <div id="workExpContainer">
                         @if($workExps->count() > 0)
@@ -1221,6 +1251,15 @@
             style="border:none;border-radius:8px;color:#fff;padding:6px 14px;background:var(--g-600);">
             Next <i class="ph ph-caret-right ms-1"></i>
         </button>
+        {{-- PESO CDO, 2026-09-14: correcting one detail on step 1 used to mean
+             paging through to step 8 to reach the save button. A form already
+             on file can be saved from any step. --}}
+        @if($nsrp)
+        <button type="button" id="nsrpSaveAnyStep" class="btn btn-sm fw-semibold"
+            style="border:none;border-radius:8px;color:#fff;padding:6px 14px;background:var(--info);white-space:nowrap;">
+            <i class="ph ph-floppy-disk me-1"></i> Update &amp; Save
+        </button>
+        @endif
     </div>
 
     @section('scripts')
@@ -1295,6 +1334,30 @@
     });
 
     showNsrpStep(nsrpCurrentStep);
+
+    // ── UPDATE & SAVE FROM ANY STEP ──
+    // Every step is one form, so a required field left empty on a step that is
+    // not on screen would stop the save with nothing to show why. Open the step
+    // that holds it and point at the field; otherwise save.
+    document.getElementById('nsrpSaveAnyStep')?.addEventListener('click', () => {
+        const form = document.getElementById('nsrpForm');
+        syncPresentAddressIfSame();
+
+        const invalid = form.querySelector(':invalid');
+        if (invalid) {
+            const stepEl = invalid.closest('.nsrp-step');
+            if (stepEl) {
+                nsrpCurrentStep = parseInt(stepEl.dataset.step);
+                showNsrpStep(nsrpCurrentStep);
+            }
+            invalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => invalid.reportValidity(), 300);
+            return;
+        }
+
+        form.dispatchEvent(new Event('submit')); // clears the unsaved-changes guard
+        form.submit();
+    });
 
     // ── Signature Auto-fill ──
     function updateSignature() {

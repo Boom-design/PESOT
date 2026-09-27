@@ -138,7 +138,15 @@ if ($staffRole !== 'sra') {
      Fair Reports (Overseas) — mao nga ang pagpislit sa Top 10 mibalik siya sa
      Overseas Reports, diin ang parehas nga tab gibalibaran ug usa ka note.
      Ang buton nagpakita ug report nga naa, apan wala siya kaabot didto. --}}
-@php $fairViewQuery = $staffRole === 'sra' ? ['report_view' => $reportView ?? 'jobfair'] : []; @endphp
+{{-- The admin copy is one route for every desk, told apart by ?role=. Without
+     it these links opened the admin's default desk — the LRA's reports — so
+     Top 10 Occupation on the Job Fair view landed on the LRA's Top 5. --}}
+@php
+    $fairViewQuery = $staffRole === 'sra' ? ['report_view' => $reportView ?? 'jobfair'] : [];
+    if (($reportRouteName ?? 'staff.reports') !== 'staff.reports') {
+        $fairViewQuery['role'] = request('role', 'job_fair');
+    }
+@endphp
 
 <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
     @if($sraViewSelector ?? false)
@@ -285,7 +293,10 @@ if ($staffRole !== 'sra') {
 {{-- Ang "pagpili ug event" nga pahimangno para sa tab nga nagsalig gyud sa usa
      ka fair. Ang Top 10 Employers wala niini: kung walay gipili, ang ranggo sa
      tanang fair, ug kana ang tubag nga gipangita. --}}
-@elseif(!$eventId && $tab !== 'top_employers')
+{{-- PESO Job Fair staff, 2026-09-14: Attendance is the page Reports opens on,
+     so it is drawn before a fair is picked — its columns and an empty row that
+     says to pick one — rather than replaced by this notice. --}}
+@elseif(!$eventId && !in_array($tab, ['top_employers', 'attendance'], true))
     <div class="card border-0 shadow-sm rounded-3 p-5 text-center">
         <i class="ph ph-calendar-dots" style="font-size:48px;color:var(--n-300);"></i>
         <div class="mt-3 fw-semibold" style="color:var(--g-700);">Select a job fair event to view reports</div>
@@ -373,7 +384,7 @@ if ($staffRole !== 'sra') {
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($registrations as $i => $r)
+                        @forelse($registrations ?? [] as $i => $r)
                         <tr style="font-size:13px;">
                             <td style="padding:12px 16px;color:var(--n-500);">{{ $registrations->firstItem() + $i }}</td>
                             <td style="padding:12px 16px;color:var(--n-700);">{{ $r->slip_number }}</td>
@@ -383,20 +394,26 @@ if ($staffRole !== 'sra') {
                             <td style="padding:12px 16px;text-align:center;color:var(--n-700);">
                                 {{ ucfirst($r->jobseeker->nsrp->type ?? 'None') }}
                             </td>
-                            {{-- Tulo ka kahimtang, dili duha: ang wala mitubag ug ang
-                                 misulti nga dili siya makaadto managlahi ug buhaton. --}}
+                            {{-- Attended means one of two things: the desk marked them at
+                                 the door, or an employer decided on them for a vacancy at
+                                 this fair — which only happens after meeting them. --}}
+                            @php
+                                $rDecided  = in_array($r->user_id, $attendanceDecided ?? [], true);
+                                $rAttended = $r->is_attended || $rDecided;
+                            @endphp
                             <td style="padding:12px 16px;text-align:center;">
-                                @if($r->is_attended)
+                                @if($rAttended)
                                     <span class="fw-semibold" style="color:var(--g-700);font-size:11px;">
                                         <i class="ph-fill ph-check-circle me-1"></i>Attended
                                     </span>
-                                @elseif($r->is_attended === null)
-                                    <span class="fw-semibold" style="color:var(--n-500);font-size:11px;">
-                                        Joined — no reply
-                                    </span>
+                                    @if(!$r->is_attended)
+                                    <div style="font-size:10px;color:var(--n-500);margin-top:2px;">
+                                        From an employer's decision
+                                    </div>
+                                    @endif
                                 @else
-                                    <span class="fw-semibold" style="color:var(--warn);font-size:11px;">
-                                        Said they cannot come
+                                    <span class="fw-semibold" style="color:var(--n-500);font-size:11px;">
+                                        Not attended
                                     </span>
                                 @endif
                             </td>
@@ -429,7 +446,10 @@ if ($staffRole !== 'sra') {
                         </tr>
                         @empty
                         <tr><td colspan="{{ $canMarkAttendance ? 7 : 6 }}" class="text-center py-4" style="color:var(--n-500);font-size:13px;">
-                            @if($attState === 'attended')
+                            @if(!$eventId)
+                                <i class="ph ph-calendar-dots me-1" style="color:var(--n-300);font-size:16px;vertical-align:-2px;"></i>
+                                Select a job fair event above to see who joined and who attended.
+                            @elseif($attState === 'attended')
                                 No one has been marked as attended for this event yet.
                             @else
                                 No jobseeker has joined this event yet.
@@ -449,13 +469,7 @@ if ($staffRole !== 'sra') {
                         <li class="page-item {{ $registrations->onFirstPage() ? 'disabled' : '' }}">
                             <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $registrations->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
                         </li>
-                        @foreach($registrations->getUrlRange(1, $registrations->lastPage()) as $page => $url)
-                        <li class="page-item {{ $page == $registrations->currentPage() ? 'active' : '' }}">
-                            <a class="page-link rounded-2"
-                               style="{{ $page == $registrations->currentPage() ? 'background:var(--g-600);border-color:transparent;color:#fff;' : 'border-color:var(--n-200);color:var(--g-700);' }}"
-                               href="{{ $url }}">{{ $page }}</a>
-                        </li>
-                        @endforeach
+                        @include('partials.page-links', ['pager' => $registrations, 'activeStyle' => 'background:var(--g-600);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--n-200);color:var(--g-700);'])
                         <li class="page-item {{ !$registrations->hasMorePages() ? 'disabled' : '' }}">
                             <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $registrations->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
                         </li>
@@ -590,15 +604,7 @@ if ($staffRole !== 'sra') {
                             <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);"
                                href="{{ $rows->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
                         </li>
-                        @foreach($rows->getUrlRange(1, $rows->lastPage()) as $page => $url)
-                        <li class="page-item {{ $page == $rows->currentPage() ? 'active' : '' }}">
-                            <a class="page-link rounded-2"
-                               style="{{ $page == $rows->currentPage()
-                                    ? 'background:var(--g-600);border-color:transparent;color:#fff;'
-                                    : 'border-color:var(--n-200);color:var(--g-700);' }}"
-                               href="{{ $url }}">{{ $page }}</a>
-                        </li>
-                        @endforeach
+                        @include('partials.page-links', ['pager' => $rows, 'activeStyle' => 'background:var(--g-600);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--n-200);color:var(--g-700);'])
                         <li class="page-item {{ !$rows->hasMorePages() ? 'disabled' : '' }}">
                             <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);"
                                href="{{ $rows->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
@@ -736,13 +742,7 @@ if ($staffRole !== 'sra') {
                         <li class="page-item {{ $furtherInterview->onFirstPage() ? 'disabled' : '' }}">
                             <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $furtherInterview->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
                         </li>
-                        @foreach($furtherInterview->getUrlRange(1, $furtherInterview->lastPage()) as $page => $url)
-                        <li class="page-item {{ $page == $furtherInterview->currentPage() ? 'active' : '' }}">
-                            <a class="page-link rounded-2"
-                               style="{{ $page == $furtherInterview->currentPage() ? 'background:var(--g-600);border-color:transparent;color:#fff;' : 'border-color:var(--n-200);color:var(--g-700);' }}"
-                               href="{{ $url }}">{{ $page }}</a>
-                        </li>
-                        @endforeach
+                        @include('partials.page-links', ['pager' => $furtherInterview, 'activeStyle' => 'background:var(--g-600);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--n-200);color:var(--g-700);'])
                         <li class="page-item {{ !$furtherInterview->hasMorePages() ? 'disabled' : '' }}">
                             <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $furtherInterview->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
                         </li>
@@ -814,13 +814,7 @@ if ($staffRole !== 'sra') {
                         <li class="page-item {{ $hots->onFirstPage() ? 'disabled' : '' }}">
                             <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $hots->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
                         </li>
-                        @foreach($hots->getUrlRange(1, $hots->lastPage()) as $page => $url)
-                        <li class="page-item {{ $page == $hots->currentPage() ? 'active' : '' }}">
-                            <a class="page-link rounded-2"
-                               style="{{ $page == $hots->currentPage() ? 'background:var(--g-600);border-color:transparent;color:#fff;' : 'border-color:var(--n-200);color:var(--g-700);' }}"
-                               href="{{ $url }}">{{ $page }}</a>
-                        </li>
-                        @endforeach
+                        @include('partials.page-links', ['pager' => $hots, 'activeStyle' => 'background:var(--g-600);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--n-200);color:var(--g-700);'])
                         <li class="page-item {{ !$hots->hasMorePages() ? 'disabled' : '' }}">
                             <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $hots->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
                         </li>
@@ -1192,13 +1186,7 @@ if ($staffRole !== 'sra') {
                         <li class="page-item {{ $placementReport->onFirstPage() ? 'disabled' : '' }}">
                             <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $placementReport->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
                         </li>
-                        @foreach($placementReport->getUrlRange(1, $placementReport->lastPage()) as $page => $url)
-                        <li class="page-item {{ $page == $placementReport->currentPage() ? 'active' : '' }}">
-                            <a class="page-link rounded-2"
-                               style="{{ $page == $placementReport->currentPage() ? 'background:var(--g-600);border-color:transparent;color:#fff;' : 'border-color:var(--n-200);color:var(--g-700);' }}"
-                               href="{{ $url }}">{{ $page }}</a>
-                        </li>
-                        @endforeach
+                        @include('partials.page-links', ['pager' => $placementReport, 'activeStyle' => 'background:var(--g-600);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--n-200);color:var(--g-700);'])
                         <li class="page-item {{ !$placementReport->hasMorePages() ? 'disabled' : '' }}">
                             <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $placementReport->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
                         </li>
@@ -1250,13 +1238,13 @@ if ($staffRole !== 'sra') {
             <i class="ph-fill ph-video-camera me-1"></i>Company Interviews
         </a>
         @if(($reportRouteName ?? 'staff.reports') === 'staff.reports')
-        <a href="{{ route('staff.reports', array_merge(request()->except('employer'), ['tab' => 'employer_hires', 'page' => 1])) }}"
+        <a href="{{ route('staff.reports', array_merge(request()->except('employer'), ['tab' => 'employer_report', 'page' => 1])) }}"
            class="btn btn-sm fw-semibold"
-           style="{{ request('tab') === 'employer_hires'
+           style="{{ request('tab') === 'employer_report'
                ? 'background:var(--g-600);color:#fff;border:none;'
                : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
                border-radius:8px;font-size:11px;padding:5px 12px;white-space:nowrap;flex-shrink:0;">
-            <i class="ph-fill ph-buildings me-1"></i>Employer Reports
+            <i class="ph-fill ph-clipboard-text me-1"></i>Employer Report
         </a>
         @endif
         {{-- The same list of lapsed postings the Job Fair Reports view shows.
@@ -1337,20 +1325,6 @@ if ($staffRole !== 'sra') {
                : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
                border-radius:8px;font-size:12px;padding:5px 16px;">
             <i class="ph-fill ph-buildings me-1"></i> Top 5 Employers
-        </a>
-        @endif
-        {{-- Pila ang gikuha sa matag employer, ug kinsa. Ang "Total Hired" nga
-             numero sa Registered Employer nga listahan mo-abot diri, mao nga
-             ang duha ka desk naay usa — ang SRA sa overseas, ang LRA sa local.
-             Wala sa admin nga kopya sa parehas nga blade. --}}
-        @if($staffRole !== 'sra' && ($reportRouteName ?? 'staff.reports') === 'staff.reports')
-        <a href="{{ route('staff.reports', array_merge(request()->except('employer'), ['tab' => 'employer_hires', 'page' => 1])) }}"
-           class="btn btn-sm fw-semibold"
-           style="{{ request('tab') === 'employer_hires'
-               ? 'background:var(--g-600);color:#fff;border:none;'
-               : 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;' }}
-               border-radius:8px;font-size:12px;padding:5px 16px;">
-            <i class="ph-fill ph-buildings me-1"></i> Employer Reports
         </a>
         @endif
         {{-- LRA staff, 2026-08-23: unsay nahitabo sa usa ka employer usa ka
@@ -1485,13 +1459,7 @@ if ($staffRole !== 'sra') {
                             <li class="page-item {{ $registeredAll->onFirstPage() ? 'disabled' : '' }}">
                                 <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $registeredAll->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
                             </li>
-                            @foreach($registeredAll->getUrlRange(1, $registeredAll->lastPage()) as $page => $url)
-                            <li class="page-item {{ $page == $registeredAll->currentPage() ? 'active' : '' }}">
-                                <a class="page-link rounded-2"
-                                   style="{{ $page == $registeredAll->currentPage() ? 'background:var(--g-600);border-color:transparent;color:#fff;' : 'border-color:var(--n-200);color:var(--g-700);' }}"
-                                   href="{{ $url }}">{{ $page }}</a>
-                            </li>
-                            @endforeach
+                            @include('partials.page-links', ['pager' => $registeredAll, 'activeStyle' => 'background:var(--g-600);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--n-200);color:var(--g-700);'])
                             <li class="page-item {{ !$registeredAll->hasMorePages() ? 'disabled' : '' }}">
                                 <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $registeredAll->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
                             </li>
@@ -1553,13 +1521,7 @@ if ($staffRole !== 'sra') {
                         <li class="page-item {{ $registeredParticipants->onFirstPage() ? 'disabled' : '' }}">
                             <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $registeredParticipants->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
                         </li>
-                        @foreach($registeredParticipants->getUrlRange(1, $registeredParticipants->lastPage()) as $page => $url)
-                        <li class="page-item {{ $page == $registeredParticipants->currentPage() ? 'active' : '' }}">
-                            <a class="page-link rounded-2"
-                               style="{{ $page == $registeredParticipants->currentPage() ? 'background:var(--g-600);border-color:transparent;color:#fff;' : 'border-color:var(--n-200);color:var(--g-700);' }}"
-                               href="{{ $url }}">{{ $page }}</a>
-                        </li>
-                        @endforeach
+                        @include('partials.page-links', ['pager' => $registeredParticipants, 'activeStyle' => 'background:var(--g-600);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--n-200);color:var(--g-700);'])
                         <li class="page-item {{ !$registeredParticipants->hasMorePages() ? 'disabled' : '' }}">
                             <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $registeredParticipants->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
                         </li>
@@ -1633,13 +1595,7 @@ if ($staffRole !== 'sra') {
                         <li class="page-item {{ $placedApplications->onFirstPage() ? 'disabled' : '' }}">
                             <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $placedApplications->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
                         </li>
-                        @foreach($placedApplications->getUrlRange(1, $placedApplications->lastPage()) as $page => $url)
-                        <li class="page-item {{ $page == $placedApplications->currentPage() ? 'active' : '' }}">
-                            <a class="page-link rounded-2"
-                               style="{{ $page == $placedApplications->currentPage() ? 'background:var(--g-600);border-color:transparent;color:#fff;' : 'border-color:var(--n-200);color:var(--g-700);' }}"
-                               href="{{ $url }}">{{ $page }}</a>
-                        </li>
-                        @endforeach
+                        @include('partials.page-links', ['pager' => $placedApplications, 'activeStyle' => 'background:var(--g-600);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--n-200);color:var(--g-700);'])
                         <li class="page-item {{ !$placedApplications->hasMorePages() ? 'disabled' : '' }}">
                             <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $placedApplications->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
                         </li>
@@ -1776,13 +1732,7 @@ if ($staffRole !== 'sra') {
                         <li class="page-item {{ $solicitedJobs->onFirstPage() ? 'disabled' : '' }}">
                             <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $solicitedJobs->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
                         </li>
-                        @foreach($solicitedJobs->getUrlRange(1, $solicitedJobs->lastPage()) as $page => $url)
-                        <li class="page-item {{ $page == $solicitedJobs->currentPage() ? 'active' : '' }}">
-                            <a class="page-link rounded-2"
-                               style="{{ $page == $solicitedJobs->currentPage() ? 'background:var(--g-600);border-color:transparent;color:#fff;' : 'border-color:var(--n-200);color:var(--g-700);' }}"
-                               href="{{ $url }}">{{ $page }}</a>
-                        </li>
-                        @endforeach
+                        @include('partials.page-links', ['pager' => $solicitedJobs, 'activeStyle' => 'background:var(--g-600);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--n-200);color:var(--g-700);'])
                         <li class="page-item {{ !$solicitedJobs->hasMorePages() ? 'disabled' : '' }}">
                             <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $solicitedJobs->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
                         </li>
@@ -1793,11 +1743,7 @@ if ($staffRole !== 'sra') {
         </div>
 
 {{-- ── TAB 4: JOB APPLICANTS REFERRED ── --}}
-@elseif(request('tab') === 'employer_hires')
-
-    @include('staff.reports._employer_hires')
-
-@elseif(request('tab') === 'employer_report' && $staffRole === 'lra')
+@elseif(request('tab') === 'employer_report')
 
     @include('staff.reports._employer')
 
@@ -1828,7 +1774,7 @@ if ($staffRole !== 'sra') {
                             <td style="padding:12px 16px;color:var(--n-700);">{{ $app->job->company->company_name ?? 'None' }}</td>
                             <td style="padding:12px 16px;text-align:center;">
                                 <span class="fw-semibold" style="color:{{ $app->status === 'waiting' ? 'var(--warn)' : 'var(--danger)' }};font-size:11px;">
-                                    {{ ucfirst($app->status) }}
+                                    {{ \App\Support\ApplicationStatus::full($app->status, $app->job->schedule_type ?? null) }}
                                 </span>
                             </td>
                             <td style="padding:12px 16px;text-align:center;color:var(--n-500);">{{ $app->updated_at->format('M d, Y') }}</td>
@@ -1854,13 +1800,7 @@ if ($staffRole !== 'sra') {
                         <li class="page-item {{ ($referredApplications ?? collect())->onFirstPage() ? 'disabled' : '' }}">
                             <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ ($referredApplications ?? collect())->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
                         </li>
-                        @foreach(($referredApplications ?? collect())->getUrlRange(1, ($referredApplications ?? collect())->lastPage()) as $page => $url)
-                        <li class="page-item {{ $page == $referredApplications->currentPage() ? 'active' : '' }}">
-                            <a class="page-link rounded-2"
-                               style="{{ $page == $referredApplications->currentPage() ? 'background:var(--g-600);border-color:transparent;color:#fff;' : 'border-color:var(--n-200);color:var(--g-700);' }}"
-                               href="{{ $url }}">{{ $page }}</a>
-                        </li>
-                        @endforeach
+                        @include('partials.page-links', ['pager' => $referredApplications, 'activeStyle' => 'background:var(--g-600);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--n-200);color:var(--g-700);'])
                         <li class="page-item {{ !$referredApplications->hasMorePages() ? 'disabled' : '' }}">
                             <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $referredApplications->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
                         </li>
@@ -1913,7 +1853,7 @@ if ($staffRole !== 'sra') {
                             {{ $sc->confirmed_date ? \Carbon\Carbon::parse($sc->confirmed_date)->format('M d, Y') : '—' }}
                         </td>
                         <td style="font-size:13px;padding:12px 14px;color:var(--n-700);">
-                            {{ $sc->venue_type === 'other' ? ($sc->venue_address ?: 'Other venue') : 'PESO Office' }}
+                            {{ $sc->venue_type === 'custom' ? ($sc->venue_address ?: 'Other venue') : 'PESO Office' }}
                         </td>
                         <td style="font-size:13px;padding:12px 14px;text-align:center;color:var(--n-700);">{{ $sc->num_applicants }}</td>
                         <td style="font-size:13px;padding:12px 14px;">
@@ -1956,7 +1896,22 @@ if ($staffRole !== 'sra') {
         <div style="font-size:12px;color:var(--n-500);">
             Showing {{ $ihRows->firstItem() }}–{{ $ihRows->lastItem() }} of {{ $ihRows->total() }} request(s)
         </div>
-        {{ $ihRows->links() }}
+        {{-- The same pager as every other list on this page. links() drew
+             Laravel's default Tailwind pager, which this Bootstrap page has no
+             styles for, so it came out as bare oversized arrows. --}}
+        @if($ihRows->hasPages())
+        <nav>
+            <ul class="pagination pagination-sm mb-0 gap-1">
+                <li class="page-item {{ $ihRows->onFirstPage() ? 'disabled' : '' }}">
+                    <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $ihRows->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
+                </li>
+                @include('partials.page-links', ['pager' => $ihRows, 'activeStyle' => 'background:var(--g-600);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--n-200);color:var(--g-700);'])
+                <li class="page-item {{ !$ihRows->hasMorePages() ? 'disabled' : '' }}">
+                    <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $ihRows->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
+                </li>
+            </ul>
+        </nav>
+        @endif
     </div>
     @endif
 
@@ -2029,7 +1984,19 @@ if ($staffRole !== 'sra') {
         <div style="font-size:12px;color:var(--n-500);">
             Showing {{ $sraCi->firstItem() }}–{{ $sraCi->lastItem() }} of {{ $sraCi->total() }} interview(s)
         </div>
-        {{ $sraCi->links() }}
+        @if($sraCi->hasPages())
+        <nav>
+            <ul class="pagination pagination-sm mb-0 gap-1">
+                <li class="page-item {{ $sraCi->onFirstPage() ? 'disabled' : '' }}">
+                    <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $sraCi->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
+                </li>
+                @include('partials.page-links', ['pager' => $sraCi, 'activeStyle' => 'background:var(--g-600);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--n-200);color:var(--g-700);'])
+                <li class="page-item {{ !$sraCi->hasMorePages() ? 'disabled' : '' }}">
+                    <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $sraCi->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
+                </li>
+            </ul>
+        </nav>
+        @endif
     </div>
     @endif
 

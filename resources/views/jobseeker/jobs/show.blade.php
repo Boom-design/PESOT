@@ -261,8 +261,13 @@
                             Status
                         </div>
                         <div style="font-size:22px; font-weight:800; letter-spacing:.02em; text-transform:uppercase; color:{{ $stFg }}; line-height:1.2;">
-                            {{ $application->status }}
+                            {{ \App\Support\ApplicationStatus::label($application->status) }}
                         </div>
+                        @if(\App\Support\ApplicationStatus::note($application->status, $job->schedule_type))
+                        <div style="font-size:12px;color:var(--n-500);margin-top:4px;text-transform:none;">
+                            {{ \App\Support\ApplicationStatus::note($application->status, $job->schedule_type) }}
+                        </div>
+                        @endif
                     </div>
 
                     {{-- ── NI-DECLINE, APAN PWEDE PA MOBALIK ──
@@ -305,6 +310,8 @@
                             @endif
                         </div>
                     @endif
+                @elseif($pesoJob = \App\Support\PesoEmployment::currentForUser(auth()->id()))
+                    @include('jobseeker.partials.employment-status', ['employment' => $pesoJob, 'compact' => true])
                 @elseif(!$nsrp)
                     <div class="text-center p-3 rounded-3 mb-3"
                          style="background:var(--warn-bg); border:1px solid var(--warn);">

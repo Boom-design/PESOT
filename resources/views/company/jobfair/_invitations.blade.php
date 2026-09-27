@@ -38,6 +38,12 @@
                             <i class="ph ph-map-pin me-1"></i>{{ $invitation->jobFair->venue ?? 'None' }}
                         </div>
 
+                        {{-- Overseas agencies bring the hard copies to every PESO interview,
+                             a job fair included. Shown only to them. --}}
+                        <div class="mt-2" style="max-width:520px;">
+                            @include('partials.overseas-inhouse-notice', ['noticeActivity' => 'job_fair'])
+                        </div>
+
                         {{-- Ang deadline. Kaniadto walay gisulti ang card kung
                              hangtod kanus-a — ug ang employer nga wala mitubag
                              sulod sa usa ka semana walay paagi nga masayod nga
@@ -152,11 +158,7 @@
             <li class="page-item {{ $pendingInvitations->onFirstPage() ? 'disabled' : '' }}">
                 <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $pendingInvitations->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
             </li>
-            @foreach($pendingInvitations->getUrlRange(1, $pendingInvitations->lastPage()) as $page => $url)
-            <li class="page-item {{ $page == $pendingInvitations->currentPage() ? 'active' : '' }}">
-                <a class="page-link rounded-2" style="{{ $page == $pendingInvitations->currentPage() ? 'background:var(--g-600);border-color:transparent;color:#fff;' : 'border-color:var(--n-200);color:var(--g-700);' }}" href="{{ $url }}">{{ $page }}</a>
-            </li>
-            @endforeach
+            @include('partials.page-links', ['pager' => $pendingInvitations, 'activeStyle' => 'background:var(--g-600);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--n-200);color:var(--g-700);'])
             <li class="page-item {{ !$pendingInvitations->hasMorePages() ? 'disabled' : '' }}">
                 <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $pendingInvitations->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
             </li>
@@ -252,11 +254,7 @@
             <li class="page-item {{ $pastInvitations->onFirstPage() ? 'disabled' : '' }}">
                 <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $pastInvitations->previousPageUrl() }}"><i class="ph ph-caret-left"></i></a>
             </li>
-            @foreach($pastInvitations->getUrlRange(1, $pastInvitations->lastPage()) as $page => $url)
-            <li class="page-item {{ $page == $pastInvitations->currentPage() ? 'active' : '' }}">
-                <a class="page-link rounded-2" style="{{ $page == $pastInvitations->currentPage() ? 'background:var(--g-600);border-color:transparent;color:#fff;' : 'border-color:var(--n-200);color:var(--g-700);' }}" href="{{ $url }}">{{ $page }}</a>
-            </li>
-            @endforeach
+            @include('partials.page-links', ['pager' => $pastInvitations, 'activeStyle' => 'background:var(--g-600);border-color:transparent;color:#fff;', 'idleStyle' => 'border-color:var(--n-200);color:var(--g-700);'])
             <li class="page-item {{ !$pastInvitations->hasMorePages() ? 'disabled' : '' }}">
                 <a class="page-link rounded-2" style="border-color:var(--n-200);color:var(--g-700);" href="{{ $pastInvitations->nextPageUrl() }}"><i class="ph ph-caret-right"></i></a>
             </li>

@@ -11,6 +11,68 @@
 --}}
 <script>
     const COMPANY_INDUSTRY_GROUP = @json($company->activeCompany()->industry_group ?? '');
+    // The qualifications a match is scored on, with their standard points.
+    const MATCH_POINTS = @json(\App\Models\Job::MATCH_POINTS);
+    const MAX_MATCH_POINTS = {{ \App\Models\Job::MAX_MATCH_POINTS }};
+
+    // Adds up the points in one position and says whether they can be saved.
+    // A locked position is on PESO's standard and always saveable.
+    function syncPointsTotal(row) {
+        const toggle = row.querySelector('.match-points-toggle');
+        const own    = toggle && toggle.checked;
+        const note   = row.querySelector('.match-points-total');
+
+        let total = 0;
+        row.querySelectorAll('.match-points-input').forEach(function (input) {
+            // A disabled box is not submitted, which is what makes the posting
+            // follow the standard instead of a copy of it.
+            input.disabled = !own;
+            input.style.opacity = own ? '1' : '0.55';
+            total += parseInt(input.value, 10) || 0;
+        });
+
+        if (!note) return 0;
+
+        if (!own) {
+            note.textContent = "Using PESO's standard points.";
+            note.style.color = 'var(--n-500)';
+            return 0;
+        }
+
+        const bad = total > MAX_MATCH_POINTS || total === 0;
+        note.textContent = 'Total points: ' + total + ' / ' + MAX_MATCH_POINTS
+            + (total > MAX_MATCH_POINTS ? ' — too many, lower some.' : (total === 0 ? ' — give points to at least one qualification.' : ''));
+        note.style.color = bad ? 'var(--danger)' : 'var(--g-700)';
+        return total;
+    }
+
+    document.addEventListener('input', function (e) {
+        if (e.target.classList && e.target.classList.contains('match-points-input')) {
+            const row = e.target.closest('.request-position-row');
+            if (row) syncPointsTotal(row);
+        }
+    });
+
+    document.addEventListener('change', function (e) {
+        if (e.target.classList && e.target.classList.contains('match-points-toggle')) {
+            const row = e.target.closest('.request-position-row');
+            if (row) syncPointsTotal(row);
+        }
+    });
+
+    // The points one qualification is worth, placed right under that
+    // qualification so the employer fills both in one go. Same markup as
+    // company/jobs/partials/points-input.blade.php on the Edit page.
+    function pointsInput(idx, key) {
+        const meta = MATCH_POINTS[key];
+        return `<div class="d-flex align-items-center flex-wrap gap-2 mt-1">
+                        <span style="font-size:11px;font-weight:600;color:var(--n-600);">Points</span>
+                        <input type="number" name="positions[${idx}][match_points][${key}]" class="form-control form-control-sm match-points-input"
+                            min="0" max="100" step="1" value="${meta.points}" disabled
+                            style="width:76px;border-color:var(--n-200);font-size:12px;border-radius:8px;">
+                        ${meta.hint ? `<span style="font-size:11px;color:var(--n-500);">${meta.hint}</span>` : ''}
+                    </div>`;
+    }
 
     // ── Pila ka kompanya ang kasyahan sa PESO Office kada adlaw. Gikan sa
     // ── config aron usa ra ka lugar ang mausab kung mausab ang numero — ang
@@ -232,6 +294,11 @@
     // ── Post a Job — Dynamic Add Position ──
     let requestPositionCount = 0;
 
+    // Called right after a position row is added to the page.
+    function initPositionPoints(row) {
+        if (row) syncPointsTotal(row);
+    }
+
     function buildRequestPositionRow(idx) {
         return `
         <div class="request-position-row mb-3 p-3" style="border:1px solid var(--n-200);border-radius:12px;background:var(--n-50);position:relative;">
@@ -247,6 +314,7 @@
                     <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Position Title *</label>
                     <input type="text" name="positions[${idx}][title]" class="form-control" required
                         placeholder="e.g. Sales Associate" style="border-color:var(--n-200);font-size:13px;border-radius:8px;">
+                    ${pointsInput(idx, 'preferred_occupation')}
                 </div>
                 <div class="col-md-8">
                     <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Job Description *</label>
@@ -285,26 +353,43 @@
                 </div>
                 <div class="col-md-12 deadline-field-wrap">
                     <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Deadline</label>
-                    {{-- Default usa ka bulan, max usa ka tuig (PESO interview
-                         2026-08-13). Ang server nagsusi pud niini — dili igo
-                         ang min/max sa browser. --}}
+                    {{-- Default usa ka bulan, max duha ka bulan (PESO CDO
+                         client, 2026-09-13 — kaniadto usa ka tuig). Ang server
+                         nagsusi pud niini — dili igo ang min/max sa browser. --}}
                     <input type="date" name="positions[${idx}][deadline]" class="form-control"
                         value="{{ now()->addMonth()->toDateString() }}"
                         min="{{ now()->toDateString() }}"
-                        max="{{ now()->addYear()->toDateString() }}"
+                        max="{{ \App\Models\Job::latestDeadline()->toDateString() }}"
                         style="border-color:var(--n-200);font-size:13px;border-radius:8px;">
                     <small style="font-size:11px;color:var(--n-500);">
-                        Defaults to one month. A posting can run for at most one year.
+                        Defaults to one month. A posting can run for at most two months.
                     </small>
                 </div>
 
                 <div class="col-12 mt-2 pt-2" style="border-top:1px dashed var(--n-200);">
-                    <div style="font-size:11px;font-weight:700;color:var(--g-700);margin-bottom:8px;">IV. Qualification Requirements</div>
+                    <div style="font-size:11px;font-weight:700;color:var(--g-700);">IV. Qualification Requirements</div>
+                    <div style="font-size:11px;color:var(--n-500);margin-bottom:8px;">
+                        Each qualification carries points toward an applicant's match score. The points below are
+                        PESO's standard. Turn on the switch to set your own.
+                    </div>
+                    <div class="d-flex align-items-center flex-wrap gap-2 mb-2 px-3 py-2"
+                        style="border:1px solid var(--n-200);border-radius:8px;background:#fff;">
+                        <div class="form-check form-switch m-0">
+                            <input class="form-check-input match-points-toggle" type="checkbox" role="switch"
+                                id="ownPoints${idx}" style="cursor:pointer;">
+                            <label class="form-check-label" for="ownPoints${idx}"
+                                style="font-size:11.5px;font-weight:700;color:var(--g-700);cursor:pointer;">Set my own points</label>
+                        </div>
+                        <span class="match-points-total" style="font-size:11px;color:var(--n-500);">
+                            Using PESO's standard points.
+                        </span>
+                    </div>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Work Experience (months)</label>
                     <input type="number" name="positions[${idx}][experience_months]" class="form-control" min="0"
                         style="border-color:var(--n-200);font-size:13px;border-radius:8px;">
+                    ${pointsInput(idx, 'experience')}
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Religion</label>
@@ -331,6 +416,7 @@
                     <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Other Qualifications</label>
                     <textarea name="positions[${idx}][other_qualifications]" class="form-control" rows="2"
                         style="border-color:var(--n-200);font-size:13px;border-radius:8px;"></textarea>
+                    ${pointsInput(idx, 'skills')}
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Educational Level</label>
@@ -344,6 +430,7 @@
                         <option value="Tertiary / College">Tertiary / College</option>
                         <option value="Graduate Studies">Graduate Studies</option>
                     </select>
+                    ${pointsInput(idx, 'education')}
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Course / Major</label>
@@ -354,6 +441,7 @@
                     <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">License</label>
                     <input type="text" name="positions[${idx}][license]" class="form-control"
                         placeholder="e.g. Driver's License" style="border-color:var(--n-200);font-size:13px;border-radius:8px;">
+                    ${pointsInput(idx, 'license')}
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Eligibility</label>
@@ -364,11 +452,13 @@
                     <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Certification</label>
                     <input type="text" name="positions[${idx}][certification]" class="form-control"
                         placeholder="e.g. TESDA NC II" style="border-color:var(--n-200);font-size:13px;border-radius:8px;">
+                    ${pointsInput(idx, 'training')}
                 </div>
                 <div class="col-md-6">
                     <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Language / Dialect Spoken</label>
                     <input type="text" name="positions[${idx}][language]" class="form-control"
                         placeholder="e.g. Filipino, English, Bisaya" style="border-color:var(--n-200);font-size:13px;border-radius:8px;">
+                    ${pointsInput(idx, 'language')}
                 </div>
                 <div class="col-12">
                     <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Preferred Residence</label>
@@ -388,6 +478,7 @@
                             <label class="form-check-label" style="font-size:12px;color:var(--n-700);">No</label>
                         </div>
                     </div>
+                    ${pointsInput(idx, 'disability')}
                     <div class="req-disability-types-wrap d-none gap-3 flex-wrap">
                         ${['Visual','Hearing','Speech','Physical','Others'].map(t => `
                         <div class="form-check">
@@ -415,6 +506,8 @@
         document.getElementById('requestPositionsContainer').insertAdjacentHTML('beforeend', buildRequestPositionRow(requestPositionCount));
         requestPositionCount++;
         updateRequestRemoveButtons();
+        // The new row starts locked on PESO's standard points.
+        initPositionPoints(document.querySelector('.request-position-row:last-child'));
         // Ang bag-o nga row naay Deadline field pud — i-sync dayon sa gipili
         // nga schedule type, kay dili siya maapil sa checkbox nga listener.
         syncScheduleTypeFields();
@@ -473,6 +566,20 @@
                 err.style.display = 'block';
                 err.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
+            return;
+        }
+
+        // The points of every position that set its own: at most 100 together,
+        // and not all zero.
+        const badRow = Array.from(document.querySelectorAll('.request-position-row')).find(function (row) {
+            const toggle = row.querySelector('.match-points-toggle');
+            if (!toggle || !toggle.checked) return false;
+            const total = syncPointsTotal(row);
+            return total > MAX_MATCH_POINTS || total === 0;
+        });
+        if (badRow) {
+            e.preventDefault();
+            badRow.querySelector('.match-points-total').scrollIntoView({ behavior: 'smooth', block: 'center' });
             return;
         }
 

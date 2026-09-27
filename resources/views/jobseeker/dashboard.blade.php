@@ -16,6 +16,12 @@
     </div>
 </div>
 
+{{-- ── EMPLOYED THROUGH PESO ── --}}
+@php $pesoJob = \App\Support\PesoEmployment::currentForUser(auth()->id()); @endphp
+@if($pesoJob)
+    @include('jobseeker.partials.employment-status', ['employment' => $pesoJob])
+@endif
+
 {{-- ── NSRP STATUS BANNER ── --}}
 @if(!$nsrp)
 <div class="d-flex align-items-center justify-content-between p-3 mb-4 rounded-3 fade-in"
@@ -151,7 +157,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     Swal.fire({
-        title: 'You\'re Highly Qualified! 🎉',
+        title: '{{ $highlyQualifiedMatch["percentage"] >= 75 ? "You are Highly Qualified!" : "You are Qualified!" }} 🎉',
         html: 'You matched <strong>{{ $highlyQualifiedMatch["percentage"] }}%</strong> with <strong>{{ $highlyQualifiedMatch["job"]->title }}</strong> at {{ $highlyQualifiedMatch["job"]->company->company_name ?? "an employer" }} — matching your preferred occupation and other requirements!',
         icon: 'success',
         confirmButtonText: 'View & Apply',
@@ -163,7 +169,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (result.isConfirmed) {
             {{-- job_qualifications_id, dili ->id: ang Job walay column nga
                  "id" sukad sa PK rename, mao nga ang ->id null ug mo-500 ang
-                 route(). Nagpakita ra ni kung naa gyuy match nga ≥75%. --}}
+                 route(). Nagpakita ra ni kung ang titulo sa bakante usa sa
+                 iyang preferred occupation ug ang score ≥50%. --}}
             window.location.href = "{{ route('jobseeker.jobs.show', $highlyQualifiedMatch['job']->job_qualifications_id) }}";
         }
     });
