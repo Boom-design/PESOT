@@ -53,10 +53,27 @@ class DemoPopulationSeeder extends Seeder
     private const EMPLOYERS_OVERSEAS = 6;
     private const JOBSEEKERS         = 220;
 
-    private const STAFF_SRA      = 1;
-    private const STAFF_LRA      = 2;
-    private const STAFF_JOB_FAIR = 3;
-    private const STAFF_JOB_VACANCY = 4;
+    /*
+     * The four desks used to be written here as staff_id 1, 2, 3 and 4 — the
+     * ids they happen to hold in a freshly seeded development database.
+     *
+     * On the deployed server they are 3, 4, 5 and 6: the demo accounts were
+     * cleared before the office's own run-through and the real staff were
+     * created afterwards. Seeded with the constants, `reviewed_by` and
+     * `created_by` would have pointed at staff_id 1 and 2, which exist nowhere,
+     * and at 3 and 4 — which do exist there, as the SRA and the LRA, so a job
+     * fair would have been recorded as created by the SRA.
+     *
+     * staffFor() reads the seat by its role instead, at run time. There are no
+     * constants left to drift, and the seeder now fills any database rather
+     * than only the one it was written against.
+     */
+
+    /** The desk that holds each role now, or null when nobody does. */
+    private function staffFor(string $role): ?int
+    {
+        return $this->staffIds[$role][0] ?? null;
+    }
 
     private const WHOLESALE = 'Wholesale, Retail Trade, Repair of Motor Vehicles, Motorcycles, & Personal and Household Goods';
     private const OVERSEAS  = 'Overseas Manpower Services';
@@ -395,13 +412,13 @@ class DemoPopulationSeeder extends Seeder
 
         $requirement = match ($state) {
             'approved' => array_merge($requirement, [
-                'reviewed_by'     => $overseas ? self::STAFF_SRA : self::STAFF_JOB_VACANCY,
+                'reviewed_by'     => $overseas ? $this->staffFor('sra') : $this->staffFor('job_vacancy'),
                 'status'          => 'approved',
                 'approved_fields' => json_encode($documents),
                 'updated_at'      => $reviewedAt,
             ]),
             'rejected' => array_merge($requirement, [
-                'reviewed_by'                => $overseas ? self::STAFF_SRA : self::STAFF_JOB_VACANCY,
+                'reviewed_by'                => $overseas ? $this->staffFor('sra') : $this->staffFor('job_vacancy'),
                 'status'                     => 'rejected',
                 'business_permit_year'       => 2025,
                 'business_permit_expires_at' => '2025-12-31',
@@ -722,7 +739,7 @@ class DemoPopulationSeeder extends Seeder
             }
 
             $eventId = DB::table('job_fair_events')->insertGetId([
-                'created_by'            => self::STAFF_JOB_FAIR,
+                'created_by'            => $this->staffFor('job_fair'),
                 'title'                 => $title,
                 'event_date'            => $eventDate->toDateString(),
                 'event_time'            => '08:00:00',
@@ -754,8 +771,8 @@ class DemoPopulationSeeder extends Seeder
                     'employer_id'         => $emp['id'],
                     'confirmation_status' => 'confirmed',
                     'invited_at'          => $invited,
-                    'invited_by'          => $emp['overseas'] ? self::STAFF_SRA : self::STAFF_JOB_FAIR,
-                    'sra_decided_by'      => $emp['overseas'] ? self::STAFF_SRA : null,
+                    'invited_by'          => $emp['overseas'] ? $this->staffFor('sra') : $this->staffFor('job_fair'),
+                    'sra_decided_by'      => $emp['overseas'] ? $this->staffFor('sra') : null,
                     'sra_decided_at'      => $emp['overseas'] ? $responded->copy()->addDays(2) : null,
                     'sra_decision_note'   => $emp['overseas'] ? 'Brought to the fair.' : null,
                     'responded_at'        => $responded,
@@ -1424,7 +1441,7 @@ class DemoPopulationSeeder extends Seeder
         $safe = fn($emp) => !$blocksAll && !in_array($emp['industry'], $blocked, true);
 
         $eventId = DB::table('job_fair_events')->insertGetId([
-            'created_by'        => self::STAFF_JOB_FAIR,
+            'created_by'        => $this->staffFor('job_fair'),
             'title'             => $title,
             'event_date'        => $date->toDateString(),
             'event_time'        => '08:00:00',
@@ -1496,8 +1513,8 @@ class DemoPopulationSeeder extends Seeder
                 'employer_id'         => $emp['id'],
                 'confirmation_status' => $state,
                 'invited_at'          => $inviteAt,
-                'invited_by'          => $isOverseas ? self::STAFF_SRA : self::STAFF_JOB_FAIR,
-                'sra_decided_by'      => $sraAt ? self::STAFF_SRA : null,
+                'invited_by'          => $isOverseas ? $this->staffFor('sra') : $this->staffFor('job_fair'),
+                'sra_decided_by'      => $sraAt ? $this->staffFor('sra') : null,
                 'sra_decided_at'      => $sraAt,
                 'sra_decision_note'   => $sraAt ? ($state === 'confirmed'
                     ? 'Approved by the PESO head. The agency has an active job order.'
@@ -1629,7 +1646,7 @@ class DemoPopulationSeeder extends Seeder
 
             $id = DB::table('inhouse_schedules')->insertGetId([
                 'employer_id'        => $emp['id'],
-                'reviewed_by'        => $reviewed ? ($overseas ? self::STAFF_SRA : self::STAFF_LRA) : null,
+                'reviewed_by'        => $reviewed ? ($overseas ? $this->staffFor('sra') : $this->staffFor('lra')) : null,
                 'preferred_date'     => $day->copy()->subDays($status === 'accepted' ? mt_rand(0, 1) : 0)->toDateString(),
                 'preferred_date_end' => $day->copy()->addDays(mt_rand(0, 2))->toDateString(),
                 'preferred_time'     => $time,
@@ -1747,7 +1764,7 @@ class DemoPopulationSeeder extends Seeder
             }
 
             $this->manifest['jv_imported'][] = DB::table('job_vacancy_imported_reports')->insertGetId([
-                'uploaded_by'       => self::STAFF_JOB_VACANCY,
+                'uploaded_by'       => $this->staffFor('job_vacancy'),
                 'title'             => 'Job Vacancies Solicited - ' . $month->format('F Y'),
                 'period'            => $month->format('Y-m'),
                 'original_filename' => 'JV Solicited ' . $month->format('F Y') . '.xlsx',
@@ -1778,7 +1795,7 @@ class DemoPopulationSeeder extends Seeder
 
             $this->manifest['jf_imported'][] = DB::table('job_fair_imported_reports')->insertGetId([
                 'job_fair_id'       => $event->job_fair_events_id,
-                'uploaded_by'       => self::STAFF_JOB_FAIR,
+                'uploaded_by'       => $this->staffFor('job_fair'),
                 'title'             => 'Registrant Masterlist',
                 'original_filename' => 'Masterlist - ' . $event->title . '.xlsx',
                 'headers'           => json_encode(['No.', 'Surname', 'First Name', 'Sex', 'Age', 'Barangay', 'Attended']),
