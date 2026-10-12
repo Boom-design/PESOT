@@ -146,6 +146,37 @@ class EmployerNsrpRegistration extends Model
                     ];
                 }
             }
+
+            // ── About to run out, and not yet run out.
+            // ──
+            // ── PESO Job Vacancy staff, 2026-10-13: the dashboard counted these
+            // ── and the list could be narrowed to them, but no row said WHICH
+            // ── paper was about to lapse — so the desk had the companies and
+            // ── still had to open each one to learn what to ask for. The same
+            // ── seven days the warning email uses, so the screen and the letter
+            // ── name the same document.
+            // ──
+            // ── The soonest one, when more than one is in the window: that is
+            // ── the one the next phone call is about.
+            $soonest = null;
+            foreach (array_keys(EmployerRequirement::DOCUMENT_LABELS) as $field) {
+                if (!$requirement->isFieldExpiringSoon($field)) {
+                    continue;
+                }
+                $date = $requirement->{"{$field}_expires_at"};
+                if (!$soonest || $date->lt($soonest['date'])) {
+                    $soonest = ['field' => $field, 'date' => $date];
+                }
+            }
+
+            if ($soonest) {
+                return [
+                    'label'  => 'Requirements expiring',
+                    'color'  => 'var(--warn)',
+                    'detail' => strtolower(EmployerRequirement::DOCUMENT_LABELS[$soonest['field']])
+                                . ' — ' . $soonest['date']->format('M d, Y'),
+                ];
+            }
         }
 
         // How long the office has been waiting for a vacancy. A company that

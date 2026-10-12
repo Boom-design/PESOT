@@ -46,6 +46,11 @@
                         <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;">Company Name</th>
                         <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Job Match %</th>
                         <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Application Status</th>
+                        {{-- The day the employer asked them to report. It sat as a
+                             small line under the status, where it read as a footnote
+                             to the word "Employed" — and the one thing a hired
+                             jobseeker opens this page for is the date they start. --}}
+                        <th style="background:var(--g-600);color:#fff;font-size:12px;border:none;padding:12px 16px;text-align:center;">Start of Work</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -80,17 +85,25 @@
                                 <div style="font-size:11px;color:var(--n-500);margin-top:2px;">
                                     since {{ $app->hired_at?->format('M d, Y') ?? 'None' }}
                                 </div>
-                                {{-- The day to report, given by the employer at hiring.
-                                     Older hires were recorded before it was asked. --}}
-                                @if($app->start_date)
-                                <div style="font-size:11px;color:var(--g-700);margin-top:1px;">
-                                    starts work {{ $app->start_date->format('M d, Y') }}
-                                </div>
-                                @endif
                             @else
                                 <span class="fw-semibold" style="color:var(--warn);font-size:11.5px;">
                                     <i class="ph ph-magnifying-glass me-1"></i>Looking for Work
                                 </span>
+                            @endif
+                        </td>
+                        <td style="padding:12px 16px;text-align:center;">
+                            @if($app->status === 'hired' && $app->start_date)
+                                <span class="fw-semibold" style="color:var(--g-700);font-size:12px;">
+                                    <i class="ph-fill ph-calendar-check me-1"></i>{{ $app->start_date->format('M d, Y') }}
+                                </span>
+                            @elseif($app->status === 'hired')
+                                {{-- The employer gives this date at hiring. Hires
+                                     recorded before it was asked for have none, and
+                                     saying so is better than an empty cell that
+                                     reads as a page fault. --}}
+                                <span style="color:var(--n-500);font-size:11.5px;">Not given</span>
+                            @else
+                                <span style="color:var(--n-300);">—</span>
                             @endif
                         </td>
                     </tr>
@@ -98,7 +111,7 @@
                     {{-- Ang lamesa nagpabilin bisan walay laray, aron ang kolum makita
                          gihapon ug ang pahina dili mag-usab ug porma. --}}
                     <tr>
-                        <td colspan="5" class="text-center"
+                        <td colspan="6" class="text-center"
                             style="padding:26px 16px;color:var(--n-500);font-size:13px;">
                             <i class="ph ph-clock-counter-clockwise me-1"
                                style="color:var(--n-200);font-size:18px;vertical-align:-3px;"></i>

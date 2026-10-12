@@ -175,6 +175,28 @@
             <i class="ph ph-x"></i>
         </a>
     </span>
+    @elseif($tab === 'approved' && $totalExpiring > 0)
+    {{-- The way in.
+
+         PESO Job Vacancy staff, 2026-10-13: this filter had no switch of its
+         own. The only door to it was the dashboard's Nearly Expired
+         Requirements card, so a desk that came to Employers by the sidebar —
+         which is how it is usually reached — could not get at the list at all,
+         and the chip explaining the filter only ever appeared once it was
+         already on. --}}
+    <a href="{{ route('staff.employers', array_filter([
+            'tab'      => 'approved',
+            'filter'   => 'expiring',
+            'industry' => $industry,
+            'search'   => request('search'),
+       ])) }}"
+       class="d-inline-flex align-items-center gap-1 fw-semibold text-decoration-none"
+       title="Show only the employers whose requirements lapse within 7 days"
+       style="background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn);
+              border-radius:8px;font-size:11.5px;padding:5px 10px;white-space:nowrap;">
+        <i class="ph-fill ph-hourglass-medium"></i>
+        Nearly expired ({{ $totalExpiring }})
+    </a>
     @endif
 
     <a href="{{ route('staff.employers.export', array_filter([

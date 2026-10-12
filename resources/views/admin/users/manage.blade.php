@@ -117,12 +117,36 @@
 
                             $missingReqs   = [];
                             $submittedReqs = [];
+
+                            // ── Ang papel mismo, dili ang ngalan niini lamang.
+                            // ──
+                            // ── PESO admin, 2026-10-13: ang listahan nagsulti nga
+                            // ── "CDO Business Permit — submitted" ug mihunong didto.
+                            // ── Ang pangutana sa admin kay unsa ang nakasulat sa
+                            // ── papel, ug ang bugtong tubag kay pangayoon sa staff.
+                            // ──
+                            // ── Ang dalan moagi sa DocumentController — ang file naa
+                            // ── sa `local` nga disk nga dili gani gisirbihan sa web
+                            // ── server, ug ang matag pagbasa gisusi kung kinsa ang
+                            // ── nangayo. Basa ra: walay buton sa pag-approve dinhi,
+                            // ── iya kana sa desk nga tag-iya sa employer. ──
+                            $submittedDocs = [];
+
                             foreach ($reqFieldLabels as $field => $label) {
                                 if (empty($requirement?->{$field})) {
                                     $missingReqs[] = $label;
-                                } else {
-                                    $submittedReqs[] = $label;
+                                    continue;
                                 }
+
+                                $submittedReqs[] = $label;
+                                $submittedDocs[] = [
+                                    'label' => $label,
+                                    'url'   => route('documents.requirement',
+                                                     [$requirement->employer_requirements_id, $field]),
+                                    'pdf'   => str_ends_with(
+                                        strtolower((string) $requirement->{$field}), '.pdf'
+                                    ),
+                                ];
                             }
                         } else {
                             $placement = ['job_fair' => 'Job Fair', 'job_vacancy' => 'Job Vacancy', 'lra' => 'LRA', 'sra' => 'SRA'][$user->staff_role] ?? strtoupper($user->staff_role ?? 'Staff');
@@ -194,7 +218,8 @@
                                     data-placement="{{ $placement }}"
                                     data-contact="{{ $user->employerNsrp->mobile_number ?? $user->phone ?? 'None' }}"
                                     data-submitted="{{ implode('|', $submittedReqs) }}"
-                                    data-missing="{{ implode('|', $missingReqs) }}">
+                                    data-missing="{{ implode('|', $missingReqs) }}"
+                                    data-docs="{{ json_encode($submittedDocs) }}">
                                     <i class="ph-fill ph-eye me-1"></i>View
                                 </button>
                                 {{-- Backup ra kini kung wala ang LRA/SRA nga mo-handle
@@ -582,11 +607,31 @@
             <div class="modal-header border-0 pb-0"
                 style="background:var(--g-600);padding:16px 20px;">
                 <h6 class="modal-title fw-bold text-white mb-0">
-                    <i class="ph-fill ph-file-text me-2"></i>Company Details
+                    <i class="ph-fill ph-file-text me-2"></i><span id="viewReqHeading">Company Details</span>
                 </h6>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-4" style="padding-top:24px !important;">
+
+            {{-- THE DOCUMENT ITSELF.
+                 A second modal on top of this one is a stacking problem and a
+                 new tab loses the list the admin was reading, so the same modal
+                 swaps between the two panes. Read only — approving a document
+                 belongs to the desk that answers for that employer. --}}
+            <div class="modal-body p-4 d-none" id="viewReqDocPane">
+                <button type="button" class="btn btn-sm fw-semibold mb-3" id="viewReqBack"
+                    style="border:1px solid var(--n-200);background:#fff;color:var(--g-700);
+                           border-radius:8px;font-size:12px;">
+                    <i class="ph ph-caret-left me-1"></i>Back to the list
+                </button>
+                <div style="font-size:11px;color:var(--n-500);">Viewing</div>
+                <div id="viewReqDocLabel" class="fw-bold mb-2" style="color:var(--g-700);font-size:14px;"></div>
+                <div id="viewReqDocFrame"
+                     style="border:1px solid var(--n-200);border-radius:10px;background:var(--n-50);
+                            min-height:320px;display:flex;align-items:center;justify-content:center;
+                            overflow:auto;padding:8px;"></div>
+            </div>
+
+            <div class="modal-body p-4" id="viewReqDetailsPane" style="padding-top:24px !important;">
 
                 {{-- COMPANY INFO --}}
                 <div class="row g-3 mb-4" style="font-size:13px;">
@@ -949,14 +994,73 @@
             const submittedList = document.getElementById('viewReqSubmittedList');
             const missingList   = document.getElementById('viewReqMissingList');
 
+            // Every submitted document opens, so the label is a button rather
+            // than a word. `docs` carries the same documents in the same order
+            // as `submitted`; the index lines them up.
+            let docs = [];
+            try { docs = JSON.parse(this.dataset.docs || '[]'); } catch (e) { docs = []; }
+
             submittedList.innerHTML = submitted.length > 0
-                ? submitted.map(label => `<li style="font-size:12.5px;color:var(--n-700);margin-bottom:6px;">${label}</li>`).join('')
+                ? submitted.map((label, i) => {
+                    const doc = docs[i];
+                    if (!doc) {
+                        return `<li style="font-size:12.5px;color:var(--n-700);margin-bottom:6px;">${label}</li>`;
+                    }
+                    return `<li style="font-size:12.5px;margin-bottom:6px;">
+                        <button type="button" class="view-req-doc"
+                                data-url="${doc.url}" data-label="${label}" data-pdf="${doc.pdf ? '1' : ''}"
+                                style="border:none;background:none;padding:0;color:var(--g-600);
+                                       font-weight:600;font-size:12.5px;cursor:pointer;text-align:left;">
+                            ${label}
+                            <i class="ph ph-arrow-square-out ms-1" style="font-size:12px;"></i>
+                        </button>
+                    </li>`;
+                }).join('')
                 : `<li style="font-size:12.5px;color:var(--n-400);list-style:none;margin-left:-18px;">None yet</li>`;
 
             missingList.innerHTML = missing.length > 0
                 ? missing.map(label => `<li style="font-size:12.5px;color:var(--n-700);margin-bottom:6px;">${label}</li>`).join('')
                 : `<li style="font-size:12.5px;color:var(--n-400);list-style:none;margin-left:-18px;">None — all complete</li>`;
+
+            showReqDetails();
         });
+    });
+
+    // ── THE DOCUMENT PANE ──
+    const reqDetailsPane = document.getElementById('viewReqDetailsPane');
+    const reqDocPane     = document.getElementById('viewReqDocPane');
+    const reqDocFrame    = document.getElementById('viewReqDocFrame');
+    const reqHeading     = document.getElementById('viewReqHeading');
+
+    function showReqDetails() {
+        reqDetailsPane?.classList.remove('d-none');
+        reqDocPane?.classList.add('d-none');
+        // The frame is emptied on the way out: a PDF left in an iframe keeps
+        // its plugin alive behind the closed modal.
+        if (reqDocFrame) reqDocFrame.innerHTML = '';
+        if (reqHeading)  reqHeading.textContent = 'Company Details';
+    }
+
+    document.getElementById('viewReqBack')?.addEventListener('click', showReqDetails);
+    document.getElementById('viewReqModal')?.addEventListener('hidden.bs.modal', showReqDetails);
+
+    // Delegated: the list is rebuilt on every open, so a listener bound to the
+    // buttons themselves would be bound to buttons that no longer exist.
+    document.getElementById('viewReqSubmittedList')?.addEventListener('click', function (event) {
+        const btn = event.target.closest('.view-req-doc');
+        if (!btn) return;
+
+        document.getElementById('viewReqDocLabel').textContent = btn.dataset.label;
+        reqHeading.textContent = 'Document';
+
+        reqDocFrame.innerHTML = btn.dataset.pdf
+            ? `<iframe src="${btn.dataset.url}#toolbar=0" title="${btn.dataset.label}"
+                       style="width:100%;height:60vh;border:none;border-radius:8px;"></iframe>`
+            : `<img src="${btn.dataset.url}" alt="${btn.dataset.label}"
+                    style="max-width:100%;max-height:60vh;object-fit:contain;border-radius:8px;">`;
+
+        reqDetailsPane.classList.add('d-none');
+        reqDocPane.classList.remove('d-none');
     });
 </script>
 
