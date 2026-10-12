@@ -175,7 +175,7 @@
             <i class="ph ph-x"></i>
         </a>
     </span>
-    @elseif($tab === 'approved' && $totalExpiring > 0)
+    @elseif($tab === 'approved')
     {{-- The way in.
 
          PESO Job Vacancy staff, 2026-10-13: this filter had no switch of its
@@ -183,7 +183,13 @@
          Requirements card, so a desk that came to Employers by the sidebar —
          which is how it is usually reached — could not get at the list at all,
          and the chip explaining the filter only ever appeared once it was
-         already on. --}}
+         already on.
+
+         Shown even when the count is zero, and greyed rather than hidden. The
+         dashboard card it mirrors is always on screen; a button that comes and
+         goes with the number teaches the desk that it is not there, and the
+         answer "nothing is expiring" is one the desk came here for. --}}
+    @php $hasExpiring = $totalExpiring > 0; @endphp
     <a href="{{ route('staff.employers', array_filter([
             'tab'      => 'approved',
             'filter'   => 'expiring',
@@ -191,10 +197,14 @@
             'search'   => request('search'),
        ])) }}"
        class="d-inline-flex align-items-center gap-1 fw-semibold text-decoration-none"
-       title="Show only the employers whose requirements lapse within 7 days"
-       style="background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn);
+       title="{{ $hasExpiring
+                 ? 'Show only the employers whose requirements lapse within 7 days'
+                 : 'No requirements lapse within the next 7 days' }}"
+       style="background:{{ $hasExpiring ? 'var(--warn-bg)' : 'var(--n-50)' }};
+              color:{{ $hasExpiring ? 'var(--warn)' : 'var(--n-500)' }};
+              border:1px solid {{ $hasExpiring ? 'var(--warn)' : 'var(--n-200)' }};
               border-radius:8px;font-size:11.5px;padding:5px 10px;white-space:nowrap;">
-        <i class="ph-fill ph-hourglass-medium"></i>
+        <i class="ph{{ $hasExpiring ? '-fill' : '' }} ph-hourglass-medium"></i>
         Nearly expired ({{ $totalExpiring }})
     </a>
     @endif
