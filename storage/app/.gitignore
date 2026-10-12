@@ -2,3 +2,19 @@
 !private/
 !public/
 !.gitignore
+
+# The Philippine address list — 86 provinces and the cities and barangays under
+# them, as flat JSON. It is reference data, not anything a user uploaded, and
+# the app cannot draw an address form without it.
+#
+# It was caught by the `*` above and therefore never deployed. On the server the
+# three /ph-address endpoints answered 404 "Address data not found", the walk-in
+# employer form's province dropdown filled itself from that answer, and so it
+# stayed empty. Nothing said why: the fetch fails inside a promise.
+#
+# It belongs in the repository because `peso-deploy` is a `git pull`, so
+# anything outside git has to be remembered and copied by hand to every server
+# this is ever put on — and the thing that goes wrong when it is forgotten is a
+# silent empty dropdown.
+!/ph_address/
+!/ph_address/**
