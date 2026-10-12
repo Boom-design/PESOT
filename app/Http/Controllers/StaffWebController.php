@@ -3089,7 +3089,9 @@ $nsrp = $registration->nsrp;
             // ── I. Establishment Details ──
             'company_name'          => 'required|string|max:255',
             'trade_name'            => 'nullable|string|max:255',
-            'tin'                   => 'required|string|max:50',
+            // Same rule as the public form. The desk encoding a walk-in is
+            // reading the same card, so it cannot be looser here.
+            'tin'                   => ['required', 'string', 'max:50', new \App\Rules\TaxIdentificationNumber],
             'tin_type'              => 'nullable|in:main,branch',
             'employer_type'         => 'required|string',
             'total_workforce'       => 'nullable|in:micro,small,medium,large',

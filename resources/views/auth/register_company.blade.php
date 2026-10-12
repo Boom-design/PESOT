@@ -312,6 +312,26 @@
             </div>
         @endif
 
+        {{-- A file input cannot be refilled by any form, so the documents
+             attached before the rejection are genuinely gone. Every typed
+             answer came back, which is exactly why this has to be said: the
+             page looks complete, and the registration would otherwise reach
+             PESO with no papers on it. --}}
+        @if(session('uploads_lost'))
+            <div class="alert-warn" style="border-radius:10px;padding:10px 14px;font-size:12px;
+                                           margin-bottom:12px;display:flex;align-items:flex-start;gap:8px;">
+                <i class="ph-fill ph-paperclip" style="margin-top:1px;"></i>
+                <span>
+                    Your {{ session('uploads_lost') }}
+                    attached {{ \Illuminate\Support\Str::plural('file', session('uploads_lost')) }}
+                    {{ session('uploads_lost') === 1 ? 'was' : 'were' }} not kept — a browser cannot
+                    hold on to a chosen file when a form comes back. Everything you typed is still
+                    here. Please attach {{ session('uploads_lost') === 1 ? 'it' : 'them' }} again on
+                    <strong>Step 3</strong> before submitting.
+                </span>
+            </div>
+        @endif
+
         <div class="progress-track">
             <div class="progress-seg" data-seg="1"></div>
             <div class="progress-seg" data-seg="2"></div>
@@ -349,7 +369,21 @@
                     </div>
                     <div class="col-md-4">
                         <label class="peso-label">Tax Identification Number (TIN) *</label>
-                        <input type="text" name="tin" class="peso-input" placeholder="e.g. 123-456-789-000" value="{{ old('tin') }}" required>
+                        {{-- maxlength is 17, not 14: the longest valid TIN is
+                             nine digits plus a five-digit branch code, and the
+                             three dashes printed on the card are typed too.
+                             inputmode="numeric" brings up the number pad on a
+                             phone, where this was being filled in. --}}
+                        <input type="text" name="tin" id="tinInput" class="peso-input"
+                               placeholder="e.g. 123-456-789" value="{{ old('tin') }}"
+                               inputmode="numeric" maxlength="17" required>
+                        <div style="font-size:11px;line-height:1.5;margin-top:4px;color:rgba(255,255,255,0.78);">
+                            <i class="ph ph-info me-1"></i>9 digits. A branch adds its branch code —
+                            3 or 5 more digits, as printed on the card.
+                        </div>
+                        @error('tin')
+                            <div style="font-size:11px;color:var(--danger);margin-top:2px;">{{ $message }}</div>
+                        @enderror
                         {{-- Main/Branch belongs to the TIN itself, so it sits directly
                              under the input rather than in a field of its own. --}}
                         <div class="d-flex align-items-center gap-4 mt-2">
@@ -465,18 +499,26 @@
                 <div class="row g-2">
                     <div class="col-md-3">
                         <label class="peso-label">Title</label>
+                        {{-- "Miss" and "Ms." were both on the list and mean the
+                             same thing to anyone filling this in, so one of the
+                             two was always a coin toss. "Mrs." was the one
+                             actually missing. --}}
+                        @php $contactTitles = ['Mr.', 'Ms.', 'Mrs.']; @endphp
                         <select name="contact_title" id="contactTitleSelect" class="peso-input">
                             <option value="">Select</option>
-                            <option value="Mr." {{ old('contact_title')=='Mr.'?'selected':'' }}>Mr.</option>
-                            <option value="Ms." {{ old('contact_title')=='Ms.'?'selected':'' }}>Ms.</option>
-                            <option value="Miss" {{ old('contact_title')=='Miss'?'selected':'' }}>Miss</option>
-                            <option value="Others" {{ old('contact_title')=='Others' || (old('contact_title') && !in_array(old('contact_title'), ['Mr.','Ms.','Miss'])) ? 'selected' : '' }}>Others (please specify)</option>
+                            @foreach($contactTitles as $title)
+                                <option value="{{ $title }}" {{ old('contact_title') === $title ? 'selected' : '' }}>{{ $title }}</option>
+                            @endforeach
+                            <option value="Others" {{ old('contact_title')=='Others' || (old('contact_title') && !in_array(old('contact_title'), $contactTitles)) ? 'selected' : '' }}>Others (please specify)</option>
                         </select>
                     </div>
                     <div class="col-md-3" id="contactTitleOtherWrap" style="display:none;">
                         <label class="peso-label">Please specify</label>
+                        {{-- Anyone who picked "Miss" before this change comes
+                             back through Others with their answer intact, rather
+                             than finding the field blank. --}}
                         <input type="text" name="contact_title_other" id="contactTitleOther" class="peso-input"
-                            placeholder="e.g. Dr." value="{{ old('contact_title') && !in_array(old('contact_title'), ['Mr.','Ms.','Miss','Others']) ? old('contact_title') : '' }}">
+                            placeholder="e.g. Dr." value="{{ old('contact_title') && !in_array(old('contact_title'), array_merge($contactTitles, ['Others'])) ? old('contact_title') : '' }}">
                     </div>
                     <div class="col-md-5">
                         <label class="peso-label">Contact Person (Full name) *</label>
@@ -559,9 +601,28 @@
                     @foreach($regDocs as $i => $doc)
                     <div class="col-md-6">
                         <label class="peso-label">{{ $i + 1 }}. {{ $doc['label'] }} <span style="font-weight:400;color:rgba(255,255,255,0.65);">(to be followed)</span></label>
-                        <input type="file" name="{{ $doc['field'] }}" class="peso-input" accept=".jpg,.jpeg,.png,.pdf" style="padding:6px 12px;">
-                        <input type="date" name="{{ $doc['field'] }}_expires_at" class="peso-input mt-1"
-                               placeholder="Expiry date" value="{{ old($doc['field'].'_expires_at') }}"
+                        {{-- The MIME types are listed beside the extensions on
+                             purpose. A phone's picker matches on type, not on
+                             the file name, so an extension-only accept list
+                             leaves the gallery greyed out on some of them. --}}
+                        <input type="file" name="{{ $doc['field'] }}" class="peso-input"
+                               accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf"
+                               style="padding:6px 12px;">
+
+                        {{-- A date input ignores `placeholder` — it has a format
+                             of its own to show. Desktop Chrome draws
+                             "mm/dd/yyyy" inside the empty box, which is where
+                             the label came from; a phone draws nothing at all,
+                             so this second box arrived blank and unexplained
+                             right under a file picker. The label is written out
+                             instead of left to the browser. --}}
+                        <label class="peso-label mt-1"
+                               style="font-weight:400;font-size:10.5px;color:rgba(255,255,255,0.7);">
+                            Expiry date (mm/dd/yyyy)
+                        </label>
+                        <input type="date" name="{{ $doc['field'] }}_expires_at" class="peso-input"
+                               value="{{ old($doc['field'].'_expires_at') }}"
+                               aria-label="{{ $doc['label'] }} expiry date"
                                style="padding:6px 12px;">
                         @error($doc['field'].'_expires_at')
                             <div style="font-size:11px;color:var(--danger);margin-top:2px;">{{ $message }}</div>
@@ -572,7 +633,12 @@
                     {{-- Logo — dili siya requirement nga i-review, ug walay expiry. --}}
                     <div class="col-md-6">
                         <label class="peso-label">6. Company Logo <span style="font-weight:400;color:rgba(255,255,255,0.65);">(optional, no expiry)</span></label>
-                        <input type="file" name="company_logo" class="peso-input" accept=".jpg,.jpeg,.png" style="padding:6px 12px;">
+                        <input type="file" name="company_logo" class="peso-input"
+                               accept="image/jpeg,image/png,.jpg,.jpeg,.png"
+                               style="padding:6px 12px;">
+                        <div style="font-size:10.5px;color:rgba(255,255,255,0.7);margin-top:4px;">
+                            <i class="ph ph-info me-1"></i>Leave this empty if you have no logo — it is not required.
+                        </div>
                         @error('company_logo')
                             <div style="font-size:11px;color:var(--danger);margin-top:2px;">{{ $message }}</div>
                         @enderror
@@ -629,6 +695,17 @@
                             <button type="button" class="toggle-pw" onclick="togglePw('pw2','icon2')">
                                 <i class="ph ph-eye" id="icon2"></i>
                             </button>
+                        </div>
+                        {{-- This has to be caught here, not by the server.
+                             A browser cannot refill a file input — there is no
+                             value a server may write into one — so every
+                             document attached on this step is gone the moment
+                             the form bounces. A mistyped password therefore
+                             cost an employer all six uploads, which is the one
+                             mistake on this form that cannot be undone by
+                             scrolling back up. --}}
+                        <div id="pwMismatchWarn" style="display:none;color:var(--danger);font-size:11px;margin-top:5px;">
+                            <i class="ph-fill ph-warning-circle me-1"></i>Passwords do not match.
                         </div>
                     </div>
                 </div>
@@ -721,9 +798,51 @@
             }
         });
 
+        // ══════════════════════════════════════════
+        // THE TWO PASSWORDS MUST MATCH BEFORE THIS FORM IS SENT
+        // ══════════════════════════════════════════
+        //
+        // HTML has no "same as that field" constraint, so a mismatch passed
+        // checkValidity(), went to the server, and came back as a rejection.
+        // That round trip empties every file input on step 3 — a browser cannot
+        // refill one, and no server may write a value into it — so an employer
+        // who mistyped their password lost all six uploaded documents and had
+        // to find and attach them again. On a phone, where this was being
+        // filled in, that means going back through the gallery six times.
+        //
+        // setCustomValidity rather than a flag of our own: the browser then
+        // treats the field as invalid, so the existing submit handler below
+        // turns to step 3 and reports it like any other bad field, and the
+        // constraint cannot be bypassed by a route that forgets to check.
+        const pw1 = document.getElementById('pw1');
+        const pw2 = document.getElementById('pw2');
+        const pwMismatchWarn = document.getElementById('pwMismatchWarn');
+
+        function checkPasswordsMatch() {
+            if (!pw1 || !pw2) return;
+
+            // Nothing is wrong yet while the confirmation is still empty.
+            const mismatch = pw2.value !== '' && pw1.value !== pw2.value;
+
+            pw2.setCustomValidity(mismatch ? 'Passwords do not match.' : '');
+            pw2.style.borderColor = mismatch ? 'var(--danger)' : '';
+
+            if (pwMismatchWarn) {
+                pwMismatchWarn.style.display = mismatch ? 'block' : 'none';
+            }
+        }
+
+        pw1?.addEventListener('input', checkPasswordsMatch);
+        pw2?.addEventListener('input', checkPasswordsMatch);
+        checkPasswordsMatch();
+
         // Safety net: a required field on a hidden step cannot be focused, so the
         // browser would silently refuse to submit. Jump to the offending step first.
         registerForm.addEventListener('submit', function (e) {
+            // Re-check rather than trust the last keystroke: a password manager
+            // or an autofill can change either field without firing `input`.
+            checkPasswordsMatch();
+
             if (registerForm.checkValidity()) return;
             e.preventDefault();
 
@@ -736,6 +855,7 @@
                 showRegStep(regCurrentStep);
             }
             bad.reportValidity();
+            bad.scrollIntoView({ block: 'center', behavior: 'smooth' });
         });
 
         showRegStep(regCurrentStep);

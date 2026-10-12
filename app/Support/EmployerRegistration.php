@@ -40,7 +40,7 @@ class EmployerRegistration
 
             // ── I. Establishment Details ──
             'trade_name'       => 'nullable|string|max:255',
-            'tin'              => 'required|string|max:50',
+            'tin'              => ['required', 'string', 'max:50', new \App\Rules\TaxIdentificationNumber],
             'tin_type'         => 'nullable|in:main,branch',
             'total_workforce'  => 'nullable|in:micro,small,medium,large',
             'line_of_business' => 'nullable|string|max:255',

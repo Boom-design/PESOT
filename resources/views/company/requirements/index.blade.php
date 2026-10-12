@@ -205,18 +205,26 @@
                             @endif
 
                             {{-- File input --}}
+                            {{-- MIME types beside the extensions: a phone's
+                                 picker matches on type, not on the file name,
+                                 and an extension-only list leaves the gallery
+                                 greyed out on some of them. --}}
                             <input type="file"
                                    name="{{ $doc['field'] }}"
                                    class="form-control @error($doc['field']) is-invalid @enderror"
-                                   accept=".jpg,.jpeg,.png,.pdf"
+                                   accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf"
                                    style="font-size:12px; border-radius:8px; border-color:{{ $isFlagged ? 'var(--danger)' : 'var(--n-200)' }};">
 
                             @error($doc['field'])
                                 <div class="invalid-feedback" style="font-size:11px;">{{ $message }}</div>
                             @enderror
 
-                            {{-- Expiry date (required together with a new file) — pre-filled sa naa nang saved date kung naa --}}
-                            <label class="mt-2 mb-1" style="font-size:10.5px;color:var(--n-500);display:block;">Expiry Date</label>
+                            {{-- Expiry date (required together with a new file) — pre-filled sa naa nang saved date kung naa.
+                                 The format is written into the label because a
+                                 date input ignores `placeholder`: desktop Chrome
+                                 draws "mm/dd/yyyy" in the empty box, a phone
+                                 draws nothing. --}}
+                            <label class="mt-2 mb-1" style="font-size:10.5px;color:var(--n-500);display:block;">Expiry Date (mm/dd/yyyy)</label>
                             <input type="date"
                                    name="{{ $doc['field'] }}_expires_at"
                                    class="form-control @error($doc['field'].'_expires_at') is-invalid @enderror"
@@ -309,7 +317,7 @@
 
                         <input type="file" name="company_logo"
                                class="form-control @error('company_logo') is-invalid @enderror"
-                               accept=".jpg,.jpeg,.png"
+                               accept="image/jpeg,image/png,.jpg,.jpeg,.png"
                                style="font-size:12px; border-radius:8px; border-color:var(--n-200);">
                         @error('company_logo')
                             <div class="invalid-feedback" style="font-size:11px;">{{ $message }}</div>

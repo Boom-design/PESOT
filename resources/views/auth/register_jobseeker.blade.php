@@ -285,16 +285,28 @@
         const pw2Input     = document.getElementById('pw2');
         const pwMismatchEl = document.getElementById('pwMismatchWarn');
 
+        // The warning used to only appear. The form still submitted, the server
+        // rejected it, and everything typed came back through old() — except
+        // the two passwords, which no form may ever repopulate. So the person
+        // was returned to a page that looked complete with two empty boxes and
+        // one message at the top.
+        //
+        // setCustomValidity rather than a flag of our own: the browser then
+        // refuses to submit and points at the field itself.
         function checkPasswordMatch() {
-            if (!pw2Input.value) {
-                pwMismatchEl.style.display = 'none';
-                return;
-            }
-            pwMismatchEl.style.display = (pw1Input.value !== pw2Input.value) ? 'block' : 'none';
+            const mismatch = pw2Input.value !== '' && pw1Input.value !== pw2Input.value;
+
+            pw2Input.setCustomValidity(mismatch ? 'Passwords do not match.' : '');
+            pw2Input.style.borderColor = mismatch ? 'var(--danger)' : '';
+            pwMismatchEl.style.display = mismatch ? 'block' : 'none';
         }
 
         pw1Input.addEventListener('input', checkPasswordMatch);
         pw2Input.addEventListener('input', checkPasswordMatch);
+
+        // A password manager can fill both boxes without firing `input`.
+        pw1Input.form?.addEventListener('submit', checkPasswordMatch);
+        checkPasswordMatch();
     </script>
 </body>
 </html>

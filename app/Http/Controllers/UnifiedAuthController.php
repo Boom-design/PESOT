@@ -314,7 +314,8 @@ class UnifiedAuthController extends Controller
         // Ang email ug ang password ra ang bahin sa TAWO. Ang tanan sa ubos
         // niini bahin sa KOMPANYA, ug parehas gyud sa gigamit sa "Add another
         // company" nga porma, mao nga usa ra ka lugar ang naghubad niini.
-        $request->validate(
+        $validator = \Illuminate\Support\Facades\Validator::make(
+            $request->all(),
             array_merge(
                 [
                     'email'    => 'required|email|unique:users,email',
@@ -331,6 +332,30 @@ class UnifiedAuthController extends Controller
                 'business_permit_expires_at.required_with' => 'Enter the expiry date printed on this business permit.',
             ])
         );
+
+        // ── Say that the attachments did not survive, when they did not.
+        // ──
+        // ── A rejected form comes back with every typed answer restored by
+        // ── old(), so it looks as though nothing was lost. The file inputs are
+        // ── empty, and no form may ever refill one — there is no value a server
+        // ── is allowed to write into a file input, by design, or a page could
+        // ── make a browser upload a file nobody chose.
+        // ──
+        // ── So an employer who attached six documents and got one field wrong
+        // ── was returned to a page that looked complete and was not, and PESO
+        // ── received the registration without the papers. The form cannot keep
+        // ── them; it can at least not pretend otherwise. ──
+        if ($validator->fails()) {
+            $attached = collect(array_keys(self::requirementFileRules()))
+                ->filter(fn($field) => $request->hasFile($field))
+                ->count();
+
+            $back = back()
+                ->withInput($request->except(['password', 'password_confirmation']))
+                ->withErrors($validator);
+
+            return $attached === 0 ? $back : $back->with('uploads_lost', $attached);
+        }
 
         $user = User::create([
             'name'     => $request->company_name,
