@@ -341,7 +341,7 @@ document.querySelectorAll('.sidebar a').forEach(function(link) {
 });
 
 function staffMarkRead(id) {
-    fetch('/staff/notifications/' + id + '/read', {
+    fetch('{{ url('/staff/notifications') }}/' + id + '/read', {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': '{{ csrf_token() }}',

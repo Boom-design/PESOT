@@ -847,7 +847,11 @@ $nsrp = $registration->nsrp;
     {
         $staff = $this->authStaff();
         if (!$staff) return redirect()->route('login');
-        if (!in_array($staff->staff_role, ['lra', 'sra', 'job_vacancy'])) return redirect()->route('staff.dashboard');
+        // Ang Job Vacancy gitangtang 2026-10-13 uban sa iyang tab: walay
+        // ma-approve dinhi, ug ang jobfair:open-postings mao ang modawat sa
+        // posting sa cutoff. Ang route gisirado pud, dili ang tab lamang —
+        // ang daan nga bookmark modala gihapon kaniya didto.
+        if (!in_array($staff->staff_role, ['lra', 'sra'])) return redirect()->route('staff.dashboard');
 
         $staffRole = $staff->staff_role;
         $events = \App\Models\JobFairEvent::orderByDesc('event_date')->paginate(3, ['*'], 'event_page');
@@ -875,24 +879,17 @@ $nsrp = $registration->nsrp;
         // ── siya — ang pag-approve iya sa Job Fair desk — ug ang tab niya karon
         // ── usa ra ka butang: ang pag-imbita sa ahensya nga haom sa fair. Ang
         // ── LRA nagbasa gihapon sa events nga lamesa sa ubos. ──
-        if ($staffRole === 'job_vacancy') {
-            $isOverseas = false;
-
-            $baseJobQuery = \App\Models\Job::where('schedule_type', 'job_fair')
-                ->whereIn('posting_status', ['pending', 'approved'])
-                ->whereHas('company', fn($n) => $n->where('is_overseas', $isOverseas));
-
-            $totalApprovedJobs = (clone $baseJobQuery)->where('posting_status', 'approved')->count();
-            $totalPendingJobs  = (clone $baseJobQuery)->where('posting_status', 'pending')->count();
-
-            // Ang naghulat una. Kana ang naay buhaton; ang na-approve rekord na.
-            $jobs = (clone $baseJobQuery)->with('company')
-                ->when($eventId, fn($q) => $q->where('requested_job_fair_id', $eventId))
-                ->orderByRaw("CASE WHEN posting_status = 'pending' THEN 0 ELSE 1 END")
-                ->latest()
-                ->paginate(5, ['*'], 'job_page')
-                ->withQueryString();
-        }
+        // ── Ang lista sa posting kaniadto para sa Job Vacancy nga desk. Wala na.
+        // ──
+        // ── PESO Job Vacancy staff, 2026-10-13: walay desisyon nga mahitabo
+        // ── dinhi. Ang posting nga job fair maghulat ug fair nga mohaom sa
+        // ── industriya sa employer; ang jobfair:open-postings mao ang modawat
+        // ── ug mo-abli niini sa cutoff, lima ka adlaw sa dili pa ang event. Ang
+        // ── lista usa ka lista nga gitan-aw lamang, ug ang `Pending` nga numero
+        // ── sa ibabaw niini nagsulti ug trabaho nga walay tag-iya.
+        // ──
+        // ── $jobs magpabilin nga null, ug ang panid mismo nagtago sa tibuok
+        // ── bahin kung null siya. ──
 
         // Ang tanang fair nga mapilian sa dropdown — bag-o ang una, kay didto
         // man ang trabaho.

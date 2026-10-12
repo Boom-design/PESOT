@@ -417,7 +417,7 @@
         });
 
         function markRead(id, hasTarget) {
-            fetch(`/company/notifications/${id}/read`, {
+            fetch(`{{ url('/company/notifications') }}/${id}/read`, {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',

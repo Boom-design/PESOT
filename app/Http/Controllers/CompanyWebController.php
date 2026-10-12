@@ -152,7 +152,37 @@ class CompanyWebController extends Controller
                 ? \App\Models\Job::where('company_id', $employer->employer_nsrp_registrations_id)
                     ->whereNotNull('dormant_closed_at')->count()
                 : 0,
+            'disableReason' => $this->disableReasonFor($employer),
         ]);
+    }
+
+    /**
+     * What the office wrote down when it switched this account off.
+     *
+     * PESO, 2026-10-13: staff type a reason, and it was kept where only staff
+     * could read it — the transfer log — plus one line inside a bell notice the
+     * employer cannot reach, because a dormant account is held on this one
+     * screen. So the page said the account was off and never said why, and the
+     * employer was asked to explain themselves without being told what for.
+     *
+     * The reason lives on employer_account_transfers, which records every staff
+     * action on the account and does not say which direction a status change
+     * went. The switch-off writes `dormant_at` and the transfer row in the same
+     * breath, so the status change at or after `dormant_at` is the one that
+     * turned the account off — anything earlier belongs to a previous round.
+     */
+    private function disableReasonFor(?\App\Models\EmployerNsrpRegistration $employer): ?string
+    {
+        if (!$employer || !$employer->dormant_at) {
+            return null;
+        }
+
+        return \App\Models\EmployerAccountTransfer::query()
+            ->where('employer_id', $employer->employer_nsrp_registrations_id)
+            ->where('method', 'status_change')
+            ->where('created_at', '>=', $employer->dormant_at)
+            ->latest()
+            ->value('reason');
     }
 
     public function submitDormantNotice(Request $request)
@@ -199,8 +229,24 @@ class CompanyWebController extends Controller
             ], $staffIds);
         }
 
-        return back()->with('success',
-            'Thank you — your answer has been sent to PESO. Your account will be reopened once staff have read it.');
+        // ── Pagkahuman sa pagtubag, pagawsa siya.
+        // ──
+        // ── PESO, 2026-10-13: ang `back()` nagbalik kaniya sa samang pahina,
+        // ── nga mao ra gihapon ang bugtong pahina nga iyang maabot — ug ang
+        // ── porma didto gihapon, nga daw gipangayo pag-usab ang iyang tubag.
+        // ── Wala nay mabuhat ang account hangtod nga ang staff mo-abli niini,
+        // ── mao nga walay pulos ang pagpabilin niya nga naka-login.
+        // ──
+        // ── Ang logout mao ang naghimo niini nga molihok: kung mo-redirect ra
+        // ── ta sa login nga naka-login pa siya, ang guard modala kaniya sa
+        // ── dashboard, ug ang EnsureEmployerActive mobalik kaniya dinhi. ──
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('login')->with('success',
+            'Thank you — your answer has been sent to PESO. Your account will be reopened once'
+            . ' staff have read it, and you will get an email when it is.');
     }
 
     // ── HELPER — naa bay adlaw nga puliki ang opisina sulod sa gipili?
@@ -587,7 +633,14 @@ class CompanyWebController extends Controller
                           . $window . ' at ' . $venueLabel . '. Those dates are held while you decide. '
                           . 'The vacancy stays hidden from jobseekers until you accept.';
         } elseif ($request->schedule_type === 'job_fair') {
-            $staffRole = $employerNsrp->is_overseas ? 'sra' : 'job_vacancy';
+            // Ang Job Fair desk, dili ang Job Vacancy.
+            //
+            // PESO, 2026-10-13: ang Job Vacancy wala nay Job Fair nga tab — walay
+            // ma-approve didto, ug ang jobfair:open-postings mao ang modawat sa
+            // posting sa cutoff. Ang notice ngadto kaniya usa ka notice ngadto sa
+            // page nga dili na niya maablihan. Ang Job Fair desk ang tag-iya sa
+            // fair ug siya ang naay Job Fair Vacancies nga panid.
+            $staffRole = $employerNsrp->is_overseas ? 'sra' : 'job_fair';
             $title     = 'New Job Fair Posting 🎪';
             $message   = $employerNsrp->company_name . ' posted their initial job vacancy for job fair use. '
                          . \App\Support\JobFairPostingWindow::liveNote();
@@ -1459,7 +1512,8 @@ class CompanyWebController extends Controller
                               . '. Those dates are held while you decide, and the vacancy stays'
                               . ' hidden from jobseekers until you accept.';
             } elseif ($type === 'job_fair') {
-                $role    = $isOverseas ? 'sra' : 'job_vacancy';
+                // Parehas sa ibabaw: ang Job Fair desk ang tag-iya niini karon.
+                $role    = $isOverseas ? 'sra' : 'job_fair';
                 $title   = 'New Job Fair Posting 🎪';
                 $message = $company->activeCompany()->company_name . ' posted "' . $titleSummary
                            . '" for job fair use. ' . \App\Support\JobFairPostingWindow::liveNote();
@@ -1857,6 +1911,46 @@ class CompanyWebController extends Controller
                     'remarks'        => 'Withdrawn — the employer declined the invitation to '
                                         . $participant->jobFair->title . '.',
                 ]);
+        }
+
+        // ── Ang desk nga tag-iya sa fair kinahanglan masayod kinsa ang miapil.
+        // ──
+        // ── PESO Job Fair staff, 2026-10-13: ang SRA gipahibalo kung ang
+        // ── overseas nga ahensya mitubag ug oo, apan ang Job Fair desk — nga
+        // ── naghimo sa event, nag-invite sa employer, ug naghulat sa gidaghanon
+        // ── nga mo-abli sa pagpahibalo sa jobseeker — walay nadawat bisan usa.
+        // ── Ang bugtong paagi niya nga mahibaw-an mao ang pag-abli sa panid ug
+        // ── pag-ihap pag-usab.
+        // ──
+        // ── Giapil ang gidaghanon kay kana gyud ang iyang gipangutana: ang
+        // ── jobseeker dili masultihan hangtod maabot ang gikinahanglan nga
+        // ── na-confirm, ug ang kada laray nagsulti kung unsa kalayo pa. ──
+        if (in_array($newStatus, ['confirmed', 'accepted'], true)) {
+            $jobFairStaffIds = \App\Models\Staff::where('staff_role', 'job_fair')->pluck('staff_id');
+
+            if ($jobFairStaffIds->isNotEmpty()) {
+                $event     = $participant->jobFair;
+                $confirmed = \App\Support\JobFairAudience::confirmedCount($event);
+                $threshold = \App\Support\JobFairAudience::threshold();
+
+                \App\Models\Announcement::sendToStaff([
+                    'type'    => 'job_fair_employer_confirmed',
+                    'title'   => 'Employer joined the job fair 🎪',
+                    'message' => $company->activeCompany()->company_name
+                        . ($needsSelection
+                            ? ' accepted the invitation to '
+                            : ' confirmed for ')
+                        . $event->title . ' on ' . $event->event_date->format('M d, Y') . '. '
+                        . ($needsSelection
+                            ? 'The SRA decides whether they are brought to this fair.'
+                            : ($confirmed >= $threshold
+                                ? $confirmed . ' employer(s) confirmed — jobseekers can be notified.'
+                                : $confirmed . ' of ' . $threshold
+                                  . ' confirmed. Jobseekers are told once the rest reply.')),
+                    'reference_type' => 'job_fair',
+                    'reference_id'   => $participant->job_fair_id,
+                ], $jobFairStaffIds);
+            }
         }
 
         // Kung walay mosulti sa SRA nga naay mitubag, ang ahensya maghulat sa

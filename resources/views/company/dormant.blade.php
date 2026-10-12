@@ -98,6 +98,18 @@
             <div class="error-msg"><i class="ph-fill ph-warning-circle me-1"></i>{{ $errors->first() }}</div>
         @endif
 
+        {{-- What the office wrote down when it switched this account off.
+             It was kept in the staff transfer log and in a bell notice a
+             dormant account cannot reach, so this page asked the employer to
+             explain themselves without saying what for. --}}
+        @if($disableReason)
+            <div class="notice" style="border-left:3px solid var(--warn);">
+                <i class="ph-fill ph-note-pencil me-1"></i>
+                <strong>Why PESO switched this account off:</strong>
+                <div style="margin-top:4px;">{{ $disableReason }}</div>
+            </div>
+        @endif
+
         <div class="notice">
             <i class="ph-fill ph-info me-1"></i>
             @if($lastPosted)

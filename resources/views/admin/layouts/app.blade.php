@@ -263,7 +263,7 @@ document.querySelectorAll('.sidebar a').forEach(function(link) {
 });
 
 function markRead(id) {
-    fetch('/admin/notifications/' + id + '/read', {
+    fetch('{{ url('/admin/notifications') }}/' + id + '/read', {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': '{{ csrf_token() }}',

@@ -310,7 +310,7 @@
     })();
 
     function markRead(id) {
-        fetch(`/jobseeker/notifications/${id}/read`, {
+        fetch(`{{ url('/jobseeker/notifications') }}/${id}/read`, {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': '{{ csrf_token() }}',

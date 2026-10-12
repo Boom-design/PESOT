@@ -101,10 +101,23 @@
     </a>
     @endif
 
-    @if($tabRole !== 'lra')
-    {{-- Dili iya sa LRA ang event mismo, mao nga wala siya niining tab. Ang
-         jobseeker nga niapil sa usa ka fair iya gihapon nga tubagan, ug para
-         niana naa siyay kaugalingong Job Fair nga tab sa ubos. --}}
+    @if($tabRole === 'sra')
+    {{-- SRA ra.
+
+         Dili iya sa LRA ang event mismo. Ang jobseeker nga niapil sa usa ka fair
+         iya gihapon nga tubagan, ug para niana naa siyay kaugalingong Job Fair
+         nga tab sa ubos.
+
+         PESO Job Vacancy staff, 2026-10-13: gitangtang pud sa Job Vacancy. Ang
+         gisulod niini nga tab para niya kay usa ka lista sa job fair nga posting
+         nga wala gyud niyay mabuhat — walay ma-approve dinhi. Ang job fair nga
+         posting maghulat ug fair nga mohaom sa industriya sa employer, ug ang
+         jobfair:open-postings mao ang modawat ug mo-abli niini sa cutoff, lima
+         ka adlaw sa dili pa ang event. Usa ka tab nga naghulat ug desisyon nga
+         dili na mahitabo.
+
+         Ang SRA nagbilin niini kay lahi ang sulod para niya: didto niya
+         gipili ang overseas nga ahensya nga dad-on sa fair. --}}
     <a href="{{ route('staff.inhouse.jobfair') }}" class="btn btn-sm fw-semibold"
        style="{{ $tabRoute === 'staff.inhouse.jobfair' ? $tabOn : $tabOff }}{{ $tabBase }}">
         <i class="ph-fill ph-calendar-dots me-1"></i> Job Fair

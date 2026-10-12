@@ -264,7 +264,7 @@
             const first = firstNameInput.value.trim();
             const last  = lastNameInput.value.trim();
             if (!first || !last) { hideWarn(); return; }
-            fetch(`/check-name?first_name=${encodeURIComponent(first)}&last_name=${encodeURIComponent(last)}`)
+            fetch(`{{ route('check.name') }}?first_name=${encodeURIComponent(first)}&last_name=${encodeURIComponent(last)}`)
                 .then(r => r.json())
                 .then(data => data.taken ? showWarn('This name is already registered. If this is you, please sign in instead.') : hideWarn());
         }
@@ -272,7 +272,7 @@
         function checkEmail() {
             const email = emailInput.value.trim();
             if (!email) { hideWarn(); return; }
-            fetch(`/check-email?email=${encodeURIComponent(email)}`)
+            fetch(`{{ route('check.email') }}?email=${encodeURIComponent(email)}`)
                 .then(r => r.json())
                 .then(data => data.taken ? showWarn('This email address is already registered. Please sign in instead.') : hideWarn());
         }

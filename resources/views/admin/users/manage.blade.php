@@ -228,6 +228,67 @@
                         </td>
                     </tr>
                     @endforelse
+
+                    {{-- The jobseekers PESO encoded from the paper form.
+                         They carry no `users` row — the account is created only
+                         if the person later registers and claims the record — so
+                         the loop above, which walks accounts, cannot reach them.
+                         data-role="jobseeker" puts them on the Jobseekers tab
+                         with everyone else, and the badge says what they are. --}}
+                    @foreach($walkinJobseekers as $walkin)
+                        @php
+                            $walkinName = trim(($walkin->first_name ?? '') . ' ' . ($walkin->surname ?? ''));
+                            $walkinType = $walkin->nsrp?->type;
+                            $walkinPlacement = $walkinType
+                                ? ['local' => 'LRA', 'overseas' => 'SRA', 'both' => 'Both'][$walkinType]
+                                : null;
+                        @endphp
+                        <tr data-role="jobseeker"
+                            data-id="walkin-{{ $walkin->jobseeker_registrations_id }}"
+                            data-name="{{ strtolower($walkinName) }}"
+                            data-email="{{ strtolower($walkin->reg_email ?? '') }}">
+                            <td class="row-number" style="font-size:13px;padding:12px 16px;"></td>
+                            <td style="font-size:13px;padding:12px 16px;font-weight:600;">
+                                {{ $walkinName !== '' ? $walkinName : 'Unnamed record' }}
+                                <span style="display:inline-block;background:var(--n-50);color:var(--n-700);
+                                             border:1px solid var(--n-200);border-radius:6px;
+                                             padding:1px 7px;font-size:10px;font-weight:700;
+                                             margin-left:6px;vertical-align:1px;">
+                                    WALK-IN
+                                </span>
+                                <div style="font-size:11px;color:var(--n-500);font-weight:400;margin-top:2px;">
+                                    Encoded at the office — no online account yet.
+                                </div>
+                            </td>
+                            <td style="font-size:13px;padding:12px 16px;color:var(--n-700);">
+                                {{ $walkin->reg_email ?: 'None' }}
+                            </td>
+                            <td style="font-size:13px;padding:12px 16px;">
+                                @if($walkinPlacement)
+                                    {{ $walkinPlacement }}
+                                @else
+                                    <span style="display:inline-block;background:var(--warn-bg);color:var(--warn);
+                                                 border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;">
+                                        NSRP form not filled up yet
+                                    </span>
+                                @endif
+                            </td>
+                            <td style="font-size:13px;padding:12px 16px;color:var(--n-700);">
+                                {{ $walkin->contact_number ?: 'None' }}
+                            </td>
+                            <td style="font-size:13px;padding:12px 16px;color:var(--n-500);text-align:center;">
+                                {{ optional($walkin->created_at)->format('M d, Y') ?? '—' }}
+                            </td>
+                            <td style="padding:12px 16px;">
+                                <a href="{{ route('admin.registration.view', $walkin->jobseeker_registrations_id) }}"
+                                   class="btn btn-sm fw-semibold"
+                                   style="background:var(--g-600);color:#fff;border:none;
+                                          border-radius:8px;font-size:12px;text-decoration:none;">
+                                    <i class="ph-fill ph-eye me-1"></i>View
+                                </a>
+                            </td>
+                        </tr>
+                    @endforeach
                 </tbody>
             </table>
         </div>

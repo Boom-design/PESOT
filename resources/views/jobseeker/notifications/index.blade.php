@@ -37,7 +37,7 @@
             <a href="{{ $notifTargetUrl($notif) ?? '#' }}"
                class="list-group-item list-group-item-action py-3 px-4 {{ !$notif->is_read ? 'bg-light' : '' }}"
                style="border-color:var(--n-50);text-decoration:none;"
-               onclick="fetch('/jobseeker/notifications/{{ $notif->announcements_id }}/read', {method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}'}})">
+               onclick="fetch('{{ route('jobseeker.notifications.markRead', $notif->announcements_id) }}', {method:'POST', headers:{'X-CSRF-TOKEN':'{{ csrf_token() }}'}})">
                 <div style="font-size:13px;font-weight:{{ !$notif->is_read ? '700' : '600' }};color:var(--g-700);">
                     {{ $notif->title }}
                 </div>

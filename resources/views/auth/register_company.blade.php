@@ -906,7 +906,7 @@
         document.getElementById('emailInput')?.addEventListener('blur', function() {
             const email = this.value.trim();
             if (!email) return;
-            fetch(`/check-email?email=${encodeURIComponent(email)}`)
+            fetch(`{{ route('check.email') }}?email=${encodeURIComponent(email)}`)
                 .then(r => r.json())
                 .then(data => {
                     const existing = document.getElementById('emailWarn');
@@ -927,7 +927,7 @@
             const name = this.value.trim();
             const warnDiv = document.getElementById('companyNameWarn');
             if (!name) { warnDiv.style.display = 'none'; return; }
-            fetch(`/check-company-name?company_name=${encodeURIComponent(name)}`)
+            fetch(`{{ route('check.companyName') }}?company_name=${encodeURIComponent(name)}`)
                 .then(r => r.json())
                 .then(data => {
                     warnDiv.style.display = data.exists ? 'block' : 'none';

@@ -53,9 +53,10 @@ class AdminController extends Controller
         // ──
         // ── Ang wala pa nakahuman makita gihapon sa Manage Users, naay amber
         // ── nga badge, ug ang admin masultihan sa bell inig-create sa account. ──
-        $jobseekerCount    = User::where('role', 'jobseeker')
-                                 ->whereHas('registration.nsrp')
-                                 ->count();
+        // ── Giihap ang REGISTRATION, dili ang account. Ang gi-encode sa opisina
+        // ── gikan sa papel walay account — dose sila — ug jobseeker gihapon sila
+        // ── sa listahan nga giablihan sa card. ──
+        $jobseekerCount    = JobseekerRegistration::whereHas('nsrp')->count();
         $jobseekerNoNsrp   = User::where('role', 'jobseeker')
                                  ->whereDoesntHave('registration.nsrp')
                                  ->count();
@@ -260,6 +261,24 @@ class AdminController extends Controller
                      ->latest()
                      ->get();
 
+        // ── Ang gi-encode sa opisina walay account, mao nga wala gyud siya dinhi.
+        // ──
+        // ── PESO admin, 2026-10-13: kining panid naglista ug `users` rows, ug ang
+        // ── walk-in nga jobseeker walay usa — gi-type siya sa staff gikan sa
+        // ── papel nga porma, ug ang `user_id` niya magpabilin nga null hangtod
+        // ── siya mismo mo-register ug mo-angkon niini. Dose sila, ug ang admin
+        // ── nangita sa usa kanila sa Jobseekers nga tab nga wala gyud sila didto.
+        // ──
+        // ── Gidala sila isip registration, dili isip account, kay kana gyud ang
+        // ── naa — ug ang laray nagsulti niini. Ang na-angkon na nga rekord dili
+        // ── na walk-in (gi-set sa linkWalkInRecord ang is_walk_in ngadto sa
+        // ── false), mao nga dili siya madoble dinhi. ──
+        $walkinJobseekers = \App\Models\JobseekerRegistration::with('nsrp')
+            ->where('is_walk_in', true)
+            ->whereNull('user_id')
+            ->latest()
+            ->get();
+
         // ── Pila ang naghupot sa matag desk karon.
         // ──
         // ── PESO, 2026-08-26: usa ka desk mahimong duha o tulo ka tawo. Ang
@@ -277,7 +296,7 @@ class AdminController extends Controller
             ->map->count()
             ->all();
 
-        return view('admin.users.manage', compact('users', 'staffRoleCounts'));
+        return view('admin.users.manage', compact('users', 'walkinJobseekers', 'staffRoleCounts'));
     }
 
     // ───────────────────────────────

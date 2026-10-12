@@ -152,7 +152,14 @@ class Announcement extends Model
         $job = Job::find($this->reference_id);
 
         if ($job?->schedule_type === 'job_fair') {
-            return route('staff.inhouse.jobfair');
+            // The Job Fair desk has a page of its own for these, and cannot
+            // open staff.inhouse.jobfair at all — that route is the LRA's
+            // events table and the SRA's agency line-up. Sending them there
+            // bounced them to their dashboard, which is the link failing
+            // quietly rather than the desk being taken to the vacancy.
+            return optional(optional(auth()->user())->staff)->staff_role === 'job_fair'
+                ? route('staff.jobfair.postings')
+                : route('staff.inhouse.jobfair');
         }
 
         if ($job?->schedule_type === 'inhouse') {

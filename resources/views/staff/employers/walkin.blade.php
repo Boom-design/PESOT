@@ -1012,7 +1012,7 @@ function loadCities(keepCity, keepBarangay) {
         fillSelect(barangaySelect, [], 'Select city first');
         return;
     }
-    fetch(`/ph-address/provinces/${encodeURIComponent(code)}/cities`)
+    fetch(`{{ url('/ph-address/provinces') }}/${encodeURIComponent(code)}/cities`)
         .then(r => r.json())
         .then(cities => {
             fillSelect(citySelect, cities, 'Select city / municipality', keepCity);
@@ -1027,7 +1027,7 @@ function loadBarangays(keepBarangay) {
         fillSelect(barangaySelect, [], 'Select city first');
         return;
     }
-    fetch(`/ph-address/cities/${encodeURIComponent(code)}/barangays`)
+    fetch(`{{ url('/ph-address/cities') }}/${encodeURIComponent(code)}/barangays`)
         .then(r => r.json())
         .then(barangays => fillSelect(barangaySelect, barangays, 'Select barangay', keepBarangay));
 }
@@ -1035,7 +1035,7 @@ function loadBarangays(keepBarangay) {
 provinceSelect.addEventListener('change', () => loadCities(null, null));
 citySelect.addEventListener('change', () => loadBarangays(null));
 
-fetch('/ph-address/provinces')
+fetch('{{ route('address.provinces') }}')
     .then(r => r.json())
     .then(provinces => {
         // Repopulate the whole chain after a validation bounce.
