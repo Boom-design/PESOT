@@ -326,12 +326,17 @@
                                 <i class="ph ph-eye" id="updateUserPwIcon"></i>
                             </button>
                         </div>
+                        @error('password')
+                            <div style="font-size:11.5px;margin-top:6px;color:var(--danger);">
+                                <i class="ph-fill ph-warning-circle me-1"></i>{{ $message }}
+                            </div>
+                        @enderror
                         <div class="d-flex align-items-center gap-2 mt-2">
-                            <button type="button" id="useFirstNameBtn"
-                                style="border:1px solid var(--n-200);border-radius:8px;background:#fff;
-                                       color:var(--g-700);font-size:11.5px;font-weight:600;
-                                       padding:4px 10px;cursor:pointer;">
-                                <i class="ph ph-user me-1"></i>Use their first name
+                            {{-- White on white with a hairline border, it read
+                                 as a caption. It fills a field in, so it looks
+                                 like something that can be pressed. --}}
+                            <button type="button" id="useFirstNameBtn" class="btn-use-first-name">
+                                <i class="ph-fill ph-user me-1"></i>Use their first name
                             </button>
                         </div>
                         {{-- Anything set here is a starter, never a password
@@ -402,37 +407,71 @@
                                 @endif
                             </button>
                             @endforeach
+                            {{-- No `required` here. A hidden input is barred from
+                                 constraint validation, so the attribute did
+                                 nothing: the form submitted with no desk chosen
+                                 and the server bounced it. The submit handler
+                                 below checks it and marks the row instead. --}}
                             <input type="hidden" name="staff_role" id="staffRoleInput"
-                                value="{{ old('staff_role') }}" required>
+                                value="{{ old('staff_role') }}">
                         </div>
+                        <div id="staffRoleError" class="d-none"
+                             style="font-size:11.5px;margin-top:6px;color:var(--danger);">
+                            <i class="ph-fill ph-warning-circle me-1"></i>Choose which desk this staff member is on.
+                        </div>
+                        @error('staff_role')
+                            <div style="font-size:11.5px;margin-top:6px;color:var(--danger);">
+                                <i class="ph-fill ph-warning-circle me-1"></i>{{ $message }}
+                            </div>
+                        @enderror
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold small" style="color:var(--g-700);">
                             Full Name <span class="text-danger">*</span>
                         </label>
-                        <input type="text" name="name" class="form-control"
+                        {{-- The order matters: storeUser reads the first word as
+                             the given name, a bare initial after it as the
+                             middle name, and the rest as the surname. Asking for
+                             "Juan Dela Cruz C." would file the initial as part
+                             of the surname. --}}
+                        <input type="text" name="name"
+                            class="form-control @error('name') is-invalid @enderror"
                             style="border:1px solid var(--n-200);border-radius:10px;font-size:13px;"
-                            placeholder="e.g. Juan Dela Cruz"
+                            placeholder="First name, M.I., Last name"
                             value="{{ old('name') }}" required>
+                        <div style="font-size:11px;line-height:1.5;margin-top:5px;color:var(--n-500);">
+                            <i class="ph ph-info me-1"></i>e.g. Juan C. Dela Cruz
+                        </div>
+                        @error('name')
+                            <div class="invalid-feedback d-block" style="font-size:11.5px;">{{ $message }}</div>
+                        @enderror
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold small" style="color:var(--g-700);">
                             Email Address <span class="text-danger">*</span>
                         </label>
-                        <input type="email" name="email" class="form-control"
+                        <input type="email" name="email"
+                            class="form-control @error('email') is-invalid @enderror"
                             style="border:1px solid var(--n-200);border-radius:10px;font-size:13px;"
                             placeholder="e.g. juan@peso.gov.ph"
                             value="{{ old('email') }}" required>
+                        @error('email')
+                            <div class="invalid-feedback d-block" style="font-size:11.5px;">{{ $message }}</div>
+                        @enderror
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold small" style="color:var(--g-700);">
                             Phone Number
                         </label>
-                        <input type="text" name="phone" class="form-control"
+                        <input type="text" name="phone"
+                            class="form-control @error('phone') is-invalid @enderror"
                             style="border:1px solid var(--n-200);border-radius:10px;font-size:13px;"
                             inputmode="numeric" maxlength="11" pattern="09[0-9]{9}"
                             placeholder="e.g. 09171234567"
                             value="{{ old('phone') }}">
+                        @error('phone')
+                            <div class="invalid-feedback d-block" style="font-size:11.5px;">{{ $message }}</div>
+                        @enderror
                     </div>
                     <div class="mb-4">
                         <label class="form-label fw-semibold small" style="color:var(--g-700);">
@@ -548,6 +587,17 @@
         background: var(--g-50) !important;
         box-shadow: inset 3px 0 0 var(--g-600);
     }
+    .btn-use-first-name {
+        display: inline-flex; align-items: center;
+        border: none; border-radius: 8px;
+        background: var(--g-600); color: #fff;
+        font-size: 11.5px; font-weight: 600;
+        padding: 6px 12px; cursor: pointer;
+        transition: background 0.15s, box-shadow 0.15s;
+        box-shadow: 0 1px 3px rgba(22, 128, 61, 0.25);
+    }
+    .btn-use-first-name:hover  { background: var(--g-700); }
+    .btn-use-first-name:active { box-shadow: none; }
 </style>
 
 <script>
@@ -712,27 +762,66 @@
         }
     }
 
-    @if(session('staff_error') || ($errors->any() && old('staff_role')))
+    {{-- Reopen the form the error belongs to, with what was typed still in it.
+         This used to require old('staff_role') to be set, so the one bounce the
+         admin was most likely to cause — submitting without choosing a desk —
+         closed the modal and left only the error popup, with every field they
+         had filled in apparently gone. name and email are validated by this
+         form alone, so they identify it. --}}
+    @if(session('staff_error') || $errors->hasAny(['name', 'email', 'staff_role']))
         document.addEventListener('DOMContentLoaded', function() {
             new bootstrap.Modal(document.getElementById('addUserModal')).show();
         });
     @endif
 
+    function paintStaffRole(selected) {
+        document.querySelectorAll('.staff-role-btn').forEach(b => {
+            const on = b === selected;
+            b.style.background  = on ? 'var(--g-600)' : '#fff';
+            b.style.color       = on ? '#fff' : 'var(--g-700)';
+            b.style.borderColor = on ? 'transparent' : 'var(--n-200)';
+        });
+    }
+
     document.querySelectorAll('.staff-role-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             if (this.disabled) return;
 
-            document.querySelectorAll('.staff-role-btn').forEach(b => {
-                b.style.background = '#fff';
-                b.style.color = 'var(--g-700)';
-                b.style.borderColor = 'var(--n-200)';
-            });
-            this.style.background = 'var(--g-600)';
-            this.style.color = '#fff';
-            this.style.borderColor = 'transparent';
+            paintStaffRole(this);
             document.getElementById('staffRoleInput').value = this.dataset.value;
+            document.getElementById('staffRoleError')?.classList.add('d-none');
         });
     });
+
+    // A bounced form comes back with the desk still chosen in the hidden input
+    // but no button looking chosen, so the admin re-picked a desk they had
+    // already picked.
+    (function () {
+        const current = document.getElementById('staffRoleInput')?.value;
+        if (!current) return;
+        const btn = document.querySelector(`.staff-role-btn[data-value="${current}"]`);
+        if (btn) paintStaffRole(btn);
+    })();
+
+    // The desk is a hidden input, which the browser will not validate, so this
+    // is the only thing standing between a half-filled form and a round trip
+    // to the server that comes back as a popup.
+    (function () {
+        const form = document.querySelector('#addUserModal form');
+        if (!form) return;
+
+        form.addEventListener('submit', function (event) {
+            const role  = document.getElementById('staffRoleInput');
+            const error = document.getElementById('staffRoleError');
+
+            if (role && role.value === '') {
+                event.preventDefault();
+                error?.classList.remove('d-none');
+                document.querySelector('#staffRoleGroup')
+                    ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            }
+        });
+    })();
 
     const oldRole = '{{ old('staff_role') }}';
     if (oldRole) {

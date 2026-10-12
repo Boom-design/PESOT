@@ -152,6 +152,7 @@
 
     <div class="page">
     <div class="card-register">
+        @include('partials.back-to-login')
         <div class="text-center mb-4">
             <div style="width:52px;height:52px;background:var(--g-600);
                         border-radius:50%;display:flex;align-items:center;justify-content:center;

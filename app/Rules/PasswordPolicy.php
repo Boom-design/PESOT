@@ -50,12 +50,16 @@ class PasswordPolicy
         return ['nullable', 'string', self::rule()];
     }
 
-    /**
-     * Shown next to the input so the requirement is visible before submitting,
-     * not only after a validation error.
+    /*
+     * There was a hint() here returning the rule as one sentence: "Must be at
+     * least 8 characters and include an uppercase letter, a lowercase letter, a
+     * number, and a special character."
+     *
+     * PESO, 2026-10-13: nobody read to the end of it, so a rejected password
+     * left the person with no idea which of the four things they had missed.
+     * resources/views/partials/password-hint.blade.php now shows the rule as a
+     * checklist that ticks as each part is met, and it is the only place the
+     * rule is written out for a person to read. rule() above stays the only
+     * place it is enforced.
      */
-    public static function hint(): string
-    {
-        return 'Must be at least 8 characters and include an uppercase letter, a lowercase letter, a number, and a special character.';
-    }
 }

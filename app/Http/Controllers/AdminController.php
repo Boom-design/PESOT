@@ -404,14 +404,14 @@ class AdminController extends Controller
             'must_change_password' => true,
         ]);
 
-        $nameParts = explode(' ', $request->name, 2);
+        $parts = self::splitStaffName($request->name);
 
         \App\Models\Staff::create([
             'user_id'     => $newStaff->users_id,
             'staff_role'  => $request->staff_role,
-            'first_name'  => $nameParts[0] ?? $request->name,
-            'last_name'   => $nameParts[1] ?? '',
-            'middle_name' => null,
+            'first_name'  => $parts['first'],
+            'last_name'   => $parts['last'],
+            'middle_name' => $parts['middle'],
             'phone'       => $request->phone,
         ]);
 
@@ -421,6 +421,39 @@ class AdminController extends Controller
             ->with('success', 'Staff account created for ' . $request->name
                 . '. Read the starter password below to them — they will be asked to'
                 . ' replace it the first time they log in.');
+    }
+
+    /**
+     * One typed line into a given name, a middle initial and a surname.
+     *
+     * The form asks for "First name, M.I., Last name", because that is how the
+     * office writes a name and because `staff` keeps the three apart. This used
+     * to be `explode(' ', $name, 2)`, which filed everything after the first
+     * word as the surname — "Juan C. Dela Cruz" was surnamed "C. Dela Cruz",
+     * and middle_name was hardcoded null for everybody.
+     *
+     * The middle name is only taken when the second word is an initial: one
+     * letter, with or without a period. A spelled-out middle name is
+     * indistinguishable from the first word of a two-word surname — "Juan Dela
+     * Cruz" would lose "Dela" — so those stay with the surname, which is where
+     * the whole name used to go in any case.
+     */
+    private static function splitStaffName(string $name): array
+    {
+        $words = preg_split('/\s+/', trim($name), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        $first  = array_shift($words) ?? $name;
+        $middle = null;
+
+        if (count($words) > 1 && preg_match('/^\p{L}\.?$/u', $words[0])) {
+            $middle = array_shift($words);
+        }
+
+        return [
+            'first'  => $first,
+            'middle' => $middle,
+            'last'   => implode(' ', $words),
+        ];
     }
 
     // ───────────────────────────────

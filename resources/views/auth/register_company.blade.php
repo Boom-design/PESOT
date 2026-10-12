@@ -266,6 +266,7 @@
     <div class="bg-overlay"></div>
     <div class="page">
     <div class="card-register">
+        @include('partials.back-to-login')
         <div class="text-center mb-3">
             <div style="width:42px;height:42px;background:var(--g-600);
                         border-radius:50%;display:flex;align-items:center;justify-content:center;
