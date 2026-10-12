@@ -65,6 +65,74 @@ class Announcement extends Model
     }
 
     /**
+     * Where an admin bell notification should land when it is clicked.
+     *
+     * Both admin views used to work this out inline, with the same expression
+     * in each:
+     *
+     *     $notif->reference_type === 'registration'
+     *         ? route('admin.registration.view', $notif->reference_id)
+     *         : route('admin.dashboard')
+     *
+     * Nothing in the system writes `reference_type = 'registration'` — the
+     * jobseeker one is `jobseeker_registration` — so the test never passed and
+     * every notice in the admin's bell, whatever it was about, opened the
+     * dashboard. The admin was told something had happened and then shown the
+     * page they were already on.
+     *
+     * The admin sees every notice in the office, not only the ones addressed to
+     * them, so this has to answer for the employer and vacancy references too.
+     * Written here beside staffLinkUrl() for the reason that one gives: two
+     * copies of a link map drift apart.
+     */
+    public function adminLinkUrl(): string
+    {
+        return match ($this->reference_type) {
+            // An account with no NSRP form yet has no registration row to open,
+            // so the reference is the users row and the link is the list that
+            // shows them — where the amber "NSRP form not filled up yet" badge
+            // already marks who they are.
+            'jobseeker_account'      => route('admin.users.manage', [
+                                            'tab'       => 'jobseeker',
+                                            'highlight' => $this->reference_id,
+                                        ]),
+            'jobseeker_registration' => route('admin.registration.view', $this->reference_id),
+            'jobseeker_notice'       => route('admin.registrations'),
+
+            // The employer references point at an employer or requirement row,
+            // not at a users row, so there is no id to highlight by. The tab is
+            // as far as the link can honestly go.
+            'employer_registration',
+            'employer_requirement',
+            'employer_inactivity'    => route('admin.users.manage', ['tab' => 'company']),
+
+            'job'                    => $this->adminJobNoticeUrl(),
+            'inhouse_schedule'       => route('admin.job.activities', ['tab' => 'inhouse']),
+            'job_fair',
+            'job_fair_selection',
+            // Nothing writes this one any more — the rows carrying it are
+            // historic, from when a jobseeker's attendance was confirmed by a
+            // notice of its own. The admin bell reads every row in the table,
+            // including the old ones, so it still needs an answer.
+            'job_fair_registration'  => route('admin.job.activities', ['tab' => 'jobfair']),
+
+            default                  => route('admin.notifications.index'),
+        };
+    }
+
+    /** A vacancy notice opens the Job Activities tab that vacancy is listed on. */
+    private function adminJobNoticeUrl(): string
+    {
+        $tab = match (Job::find($this->reference_id)?->schedule_type) {
+            'job_fair' => 'jobfair',
+            'inhouse'  => 'inhouse',
+            default    => 'companyinterview',
+        };
+
+        return route('admin.job.activities', ['tab' => $tab]);
+    }
+
+    /**
      * A posting notice opens the tab that posting is listed on.
      *
      * Every one of them used to land on staff.jobs, which is the Company

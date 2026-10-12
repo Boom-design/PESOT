@@ -30,11 +30,16 @@
 @else
     <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
         @foreach($notifications as $notif)
-        <a href="{{ $notif->reference_type === 'registration' ? route('admin.registration.view', $notif->reference_id) : route('admin.dashboard') }}"
-           class="d-block text-decoration-none px-4 py-3 {{ !$notif->is_read ? '' : '' }}"
-           style="border-bottom:1px solid var(--n-50); background:{{ !$notif->is_read ? 'var(--g-50)' : '#fff' }};"
+        {{-- `is_read` belongs to the jobseeker, employer or staff member the
+             notice was addressed to, and the admin reads over their shoulder.
+             $newIds is the admin's own answer: what was unseen when this page
+             was opened. --}}
+        @php $isNew = in_array($notif->announcements_id, $newIds, true); @endphp
+        <a href="{{ $notif->adminLinkUrl() }}"
+           class="d-block text-decoration-none px-4 py-3"
+           style="border-bottom:1px solid var(--n-50); background:{{ $isNew ? 'var(--g-50)' : '#fff' }};"
            onclick="event.stopPropagation();">
-            <div style="font-size:13px;font-weight:{{ !$notif->is_read ? '700' : '500' }};color:var(--g-700);">
+            <div style="font-size:13px;font-weight:{{ $isNew ? '700' : '500' }};color:var(--g-700);">
                 <i class="ph-fill ph-user-list me-1" style="color:var(--g-600);"></i>
                 {{ $notif->title }}
             </div>

@@ -45,6 +45,22 @@
                 </div>
                 <div class="fw-bold" style="color:var(--g-700);font-size:14px;">Jobseekers</div>
                 <div class="fs-4 fw-bold mt-1" style="color:var(--g-600);">{{ $jobseekerCount }}</div>
+                {{-- The card opens Registrations, which lists NSRP forms, so the
+                     number counts NSRP forms. Saying so stops it reading as a
+                     miscount against Total Users, and the second line is where
+                     the admin learns there is somebody to follow up.
+
+                     Plain text, not a link to Manage Users: the whole card is
+                     already one anchor, and an anchor inside an anchor is not
+                     valid HTML — the browser keeps the outer one and the inner
+                     never fires. The bell notice is what carries the admin to
+                     Manage Users. --}}
+                <div class="text-muted small mt-1">with NSRP form</div>
+                @if($jobseekerNoNsrp > 0)
+                    <div class="small fw-semibold" style="color:var(--warn);">
+                        {{ $jobseekerNoNsrp }} {{ Str::plural('account', $jobseekerNoNsrp) }} without one
+                    </div>
+                @endif
             </div>
         </a>
     </div>

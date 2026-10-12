@@ -183,8 +183,45 @@ class UnifiedAuthController extends Controller
 
         $this->linkWalkInRecord($user, $request);
 
+        $this->tellAdminAboutNewAccount($user);
+
         return redirect()->route('login')
             ->with('success', 'Account created successfully! Please login.');
+    }
+
+    /**
+     * Tell the admin an account was made, before any NSRP form exists.
+     *
+     * PESO admin, 2026-10-13: the office heard nothing until the NSRP form was
+     * submitted, and some people register and never come back for it. Those
+     * accounts sat in Manage Users with nobody aware they were there, so the
+     * office could not follow them up.
+     *
+     * Addressed to nobody — jobseeker_id, employer_id and staff_id all stay
+     * null. Every other bell asks for its own id (`where('jobseeker_id', ...)`),
+     * so a row with none of them reaches only the admin's list, which reads
+     * every notice in the office. There is no desk to address it to anyway: the
+     * NSRP form is what says local or overseas, and it has not been filled in.
+     *
+     * Deliberately NOT added to AdminInbox::REGISTRATION_REFERENCES. That list
+     * counts for the Registrations page, which lists jobseeker_registrations
+     * rows — and this person has none yet. Putting it there would light a dot on
+     * a page that cannot show them, which is the exact fault that list's own
+     * comment records being fixed. The bell counts it, because the bell counts
+     * everything unseen.
+     */
+    private function tellAdminAboutNewAccount(User $user): void
+    {
+        \App\Models\Announcement::create([
+            'type'           => 'jobseeker_account_created',
+            'title'          => 'New Jobseeker Account 🧑',
+            'message'        => $user->name . ' created a jobseeker account. '
+                                . 'The NSRP registration form has not been filled up yet.',
+            // The users row, not a registration: there is no registration row
+            // until the NSRP form is submitted.
+            'reference_type' => 'jobseeker_account',
+            'reference_id'   => $user->users_id,
+        ]);
     }
 
     /**

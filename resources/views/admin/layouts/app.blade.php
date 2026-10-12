@@ -170,8 +170,13 @@
                 </li>
                 @forelse($notifications as $notif)
                 <li>
-                    <a href="{{ $notif->reference_type === 'registration' ? route('admin.registration.view', $notif->reference_id) : route('admin.dashboard') }}"
-                       class="notif-item {{ !$notif->is_read ? 'unread' : '' }}"
+                    {{-- `admin_seen_at`, never `is_read`: is_read belongs to the
+                         jobseeker, employer or staff member the notice was
+                         written for. The badge above already counts the admin's
+                         own column, so reading the bold from is_read made one
+                         bell disagree with itself. --}}
+                    <a href="{{ $notif->adminLinkUrl() }}"
+                       class="notif-item {{ $notif->admin_seen_at === null ? 'unread' : '' }}"
                        onclick="markRead({{ $notif->announcements_id }})">
                         <div style="font-weight:{{ !$notif->is_read ? '600' : '500' }};color:var(--n-900);">
                             <i class="ph-fill ph-user-list me-1" style="color:var(--g-700);"></i>{{ $notif->title }}

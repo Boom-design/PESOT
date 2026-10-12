@@ -42,7 +42,23 @@ class AdminController extends Controller
         $totalUsers        = User::whereIn('role', ['jobseeker', 'company'])->count();
         $activeUsers       = User::whereIn('role', ['jobseeker', 'company'])->where('status', 'approved')->count();
         $deactivatedUsers  = User::whereIn('role', ['jobseeker', 'company'])->where('status', 'deactivated')->count();
-        $jobseekerCount    = User::where('role', 'jobseeker')->count();
+        // ── Ang giihap kay ang nakahuman sa NSRP, dili ang naka-create ug
+        // ── account.
+        // ──
+        // ── PESO admin, 2026-10-13: ang account matawo dayon pag-sign up, apan
+        // ── ang NSRP form mosunod pa — ug naay dili na gyud mobalik. Ang card
+        // ── gi-klik aron adto sa Registrations, nga naglista sa NSRP; mao nga
+        // ── ang numero nga dili mosibo sa gilista nagpasabot ug rekord nga
+        // ── nawala.
+        // ──
+        // ── Ang wala pa nakahuman makita gihapon sa Manage Users, naay amber
+        // ── nga badge, ug ang admin masultihan sa bell inig-create sa account. ──
+        $jobseekerCount    = User::where('role', 'jobseeker')
+                                 ->whereHas('registration.nsrp')
+                                 ->count();
+        $jobseekerNoNsrp   = User::where('role', 'jobseeker')
+                                 ->whereDoesntHave('registration.nsrp')
+                                 ->count();
         $companyCount      = User::where('role', 'company')->count();
         $registrationCount = JobseekerRegistration::count();
 
@@ -75,6 +91,7 @@ class AdminController extends Controller
             'activeUsers',
             'deactivatedUsers',
             'jobseekerCount',
+            'jobseekerNoNsrp',
             'companyCount',
             'registrationCount',
             'monthlyJobFairCount',
@@ -593,7 +610,14 @@ if ($type === 'local') {
     // ───────────────────────────────
     public function markNotificationRead($id)
     {
-        \App\Models\Announcement::find($id)?->update(['is_read' => true]);
+        // `admin_seen_at`, not `is_read` — the same correction markAllRead and
+        // clearAll already carry. The admin clicking one notice in their bell
+        // was clearing the red dot in a jobseeker's, employer's or staff
+        // member's own bell for a notice that person had never opened.
+        \App\Models\Announcement::whereKey($id)
+            ->whereNull('admin_seen_at')
+            ->update(['admin_seen_at' => now()]);
+
         return response()->json(['success' => true]);
     }
 
@@ -601,10 +625,18 @@ if ($type === 'local') {
     {
         $notifications = \App\Models\Announcement::latest()->get();
 
+        // Which ones were new when the page was opened. Marking them seen first
+        // and then asking would highlight nothing at all: markAllSeen() stamps
+        // every row, so by render time none of them is new any more and the page
+        // could not show the admin what had just come in.
+        $newIds = $notifications->whereNull('admin_seen_at')
+            ->pluck('announcements_id')
+            ->all();
+
         // Opening the full list is the admin saying they have seen everything.
         \App\Support\AdminInbox::markAllSeen();
 
-        return view('admin.notifications.index', compact('notifications'));
+        return view('admin.notifications.index', compact('notifications', 'newIds'));
     }
 
     public function markAllNotificationsRead()

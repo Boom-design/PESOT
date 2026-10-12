@@ -129,6 +129,7 @@
                         }
                     @endphp
                     <tr data-role="{{ $rowRole }}"
+                        data-id="{{ $user->users_id }}"
                         data-name="{{ strtolower($user->name) }}"
                         data-email="{{ strtolower($user->email) }}">
                         <td class="row-number" style="font-size:13px;padding:12px 16px;">{{ $index + 1 }}</td>
@@ -542,19 +543,38 @@
         opacity: 0.55;
         cursor: not-allowed;
     }
+    /* The one row a notification pointed at. */
+    #usersTable tbody tr.row-highlight > td {
+        background: var(--g-50) !important;
+        box-shadow: inset 3px 0 0 var(--g-600);
+    }
 </style>
 
 <script>
-    let activeTab   = 'jobseeker';
+    // A notification links here to show one person, so the link says which tab
+    // to open and which row it means. Without this the page always opened on
+    // Jobseekers — right by luck for a jobseeker notice, wrong for every other
+    // one — and the row could be on any page of five.
+    const params      = new URLSearchParams(window.location.search);
+    const wantedTab   = params.get('tab');
+    const knownTabs   = ['jobseeker', 'company', 'staff', 'inactive'];
+    let   highlightId = params.get('highlight');
+
+    let activeTab   = knownTabs.includes(wantedTab) ? wantedTab : 'jobseeker';
     let currentPage = 1;
     const perPage   = 5;
 
     document.querySelectorAll('#userTabs .nav-link').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === activeTab);
+
         btn.addEventListener('click', function () {
             document.querySelectorAll('#userTabs .nav-link').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
             activeTab   = this.dataset.tab;
             currentPage = 1;
+            // The admin has moved on by hand; stop dragging them back to the
+            // row the link named.
+            highlightId = null;
             filterTable();
         });
     });
@@ -607,14 +627,32 @@
         const totalPages = Math.max(1, Math.ceil(matched.length / perPage));
         if (currentPage > totalPages) currentPage = totalPages;
 
+        // The row the link named may sit on any page. Turn to its page before
+        // slicing, or the admin is sent to a list that does not contain the
+        // person they were just told about.
+        if (highlightId !== null) {
+            const at = matched.findIndex(row => row.dataset.id === highlightId);
+            if (at !== -1) {
+                currentPage = Math.floor(at / perPage) + 1;
+            }
+        }
+
         const start = (currentPage - 1) * perPage;
         const pageRows = matched.slice(start, start + perPage);
 
-        allRows.forEach(row => row.style.display = 'none');
+        allRows.forEach(row => {
+            row.style.display = 'none';
+            row.classList.remove('row-highlight');
+        });
         pageRows.forEach((row, i) => {
             row.style.display = '';
             const numCell = row.querySelector('.row-number');
             if (numCell) numCell.textContent = start + i + 1;
+
+            if (highlightId !== null && row.dataset.id === highlightId) {
+                row.classList.add('row-highlight');
+                row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            }
         });
 
         document.getElementById('noResults').style.display = matched.length === 0 ? 'block' : 'none';
