@@ -1,2 +1,26 @@
+# PESO CDO
+#
+# Two pages are meant to be found: the landing page and the job list. The rest
+# is behind a login and holds the jobseekers' own records, so it is kept out of
+# the index. A crawler that follows this file will not reach any of it anyway —
+# it has no password — but a URL can still be indexed from a link alone, and a
+# search result pointing at /staff/dashboard helps nobody.
+
 User-agent: *
-Disallow:
+Allow: /$
+Allow: /jobs
+Allow: /css/
+Allow: /images/
+
+Disallow: /admin/
+Disallow: /staff/
+Disallow: /company/
+Disallow: /jobseeker/
+Disallow: /login
+Disallow: /logout
+Disallow: /register/
+Disallow: /forgot-password
+Disallow: /password/
+Disallow: /notifications
+
+Sitemap: https://pesocdo.online/sitemap.xml

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    The two pages a visitor can reach without an account. Everything else needs
+    a login, so there is nothing for a crawler to list.
+
+    A job posting has no page of its own — the list opens each one in a modal —
+    so there is no third URL to add here. If postings ever get their own URLs,
+    this file should be generated rather than written by hand.
+-->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+        <loc>https://pesocdo.online/</loc>
+        <changefreq>daily</changefreq>
+        <priority>1.0</priority>
+    </url>
+    <url>
+        <loc>https://pesocdo.online/jobs</loc>
+        <changefreq>daily</changefreq>
+        <priority>0.9</priority>
+    </url>
+</urlset>

@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    @include('partials.head-brand')
+    @include('partials.head-brand', ['pageTitle' => 'Job Vacancies in Cagayan de Oro — PESO CDO'])
+    @include('partials.seo', [
+        'seoTitle'       => 'Job Vacancies in Cagayan de Oro — PESO CDO',
+        'seoDescription' => 'Browse local, overseas and job fair vacancies posted through the Public Employment Service Office of Cagayan de Oro City. Free to view; register to apply.',
+    ])
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css" rel="stylesheet">
