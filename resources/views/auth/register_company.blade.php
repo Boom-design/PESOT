@@ -369,21 +369,38 @@
                     </div>
                     <div class="col-md-4">
                         <label class="peso-label">Tax Identification Number (TIN) *</label>
-                        {{-- maxlength is 17, not 14: the longest valid TIN is
-                             nine digits plus a five-digit branch code, and the
-                             three dashes printed on the card are typed too.
-                             inputmode="numeric" brings up the number pad on a
+                        {{-- Behaves like the mobile number field below: digits
+                             only, capped, and refused by the browser before the
+                             form is sent. maxlength stops the twelfth digit
+                             being passed, pattern refuses any length between the
+                             two, and the script strips anything that is not a
+                             digit as it is typed — maxlength and pattern alone
+                             still let letters be typed and only complain on
+                             submit. inputmode brings up the number pad on a
                              phone, where this was being filled in. --}}
+                        @php
+                            $tinRule    = \App\Rules\TaxIdentificationNumber::class;
+                            $tinMax     = $tinRule::BRANCH_DIGITS;
+                            $tinPattern = implode('|', array_map(
+                                fn(int $n) => "[0-9]{{$n}}", $tinRule::LENGTHS
+                            ));
+                        @endphp
                         <input type="text" name="tin" id="tinInput" class="peso-input"
-                               placeholder="e.g. 123-456-789" value="{{ old('tin') }}"
-                               inputmode="numeric" maxlength="17" required>
+                               placeholder="e.g. 123456789" value="{{ old('tin') }}"
+                               inputmode="numeric" autocomplete="off"
+                               maxlength="{{ $tinMax }}"
+                               pattern="{{ $tinPattern }}"
+                               title="{{ $tinRule::hint() }}"
+                               required>
                         <div style="font-size:11px;line-height:1.5;margin-top:4px;color:rgba(255,255,255,0.78);">
-                            <i class="ph ph-info me-1"></i>9 digits. A branch adds its branch code —
-                            3 or 5 more digits, as printed on the card.
+                            <i class="ph ph-info me-1"></i>Digits only —
+                            {{ $tinRule::BASE_DIGITS }} digits, or
+                            {{ $tinRule::BRANCH_DIGITS }} with a branch code.
                         </div>
                         @error('tin')
                             <div style="font-size:11px;color:var(--danger);margin-top:2px;">{{ $message }}</div>
                         @enderror
+                        @include('partials.digits-only', ['for' => 'tinInput'])
                         {{-- Main/Branch belongs to the TIN itself, so it sits directly
                              under the input rather than in a field of its own. --}}
                         <div class="d-flex align-items-center gap-4 mt-2">

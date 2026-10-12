@@ -139,8 +139,31 @@
 
                     <div class="col-md-6">
                         <label class="peso-label">Tax Identification Number (TIN) *</label>
-                        <input type="text" name="tin" class="form-control peso-input"
-                            value="{{ old('tin') }}" placeholder="e.g. 123-456-789-000" required>
+                        {{-- Same field as the public form: digits only, capped,
+                             and refused before the form is sent. The desk is
+                             reading the same card, so it cannot be looser. --}}
+                        @php
+                            $tinRule    = \App\Rules\TaxIdentificationNumber::class;
+                            $tinPattern = implode('|', array_map(
+                                fn(int $n) => "[0-9]{{$n}}", $tinRule::LENGTHS
+                            ));
+                        @endphp
+                        <input type="text" name="tin" id="tinInput" class="form-control peso-input"
+                            value="{{ old('tin') }}" placeholder="e.g. 123456789"
+                            inputmode="numeric" autocomplete="off"
+                            maxlength="{{ $tinRule::BRANCH_DIGITS }}"
+                            pattern="{{ $tinPattern }}"
+                            title="{{ $tinRule::hint() }}"
+                            required>
+                        <div style="font-size:11px;line-height:1.5;margin-top:4px;color:var(--n-500);">
+                            <i class="ph ph-info me-1"></i>Digits only —
+                            {{ $tinRule::BASE_DIGITS }} digits, or
+                            {{ $tinRule::BRANCH_DIGITS }} with a branch code.
+                        </div>
+                        @error('tin')
+                            <div style="font-size:11px;color:var(--danger);margin-top:2px;">{{ $message }}</div>
+                        @enderror
+                        @include('partials.digits-only', ['for' => 'tinInput'])
                         {{-- Main/Branch belongs to the TIN itself, so it sits directly
                              under the input rather than in a field of its own. --}}
                         <div class="d-flex align-items-center gap-4 mt-2">
