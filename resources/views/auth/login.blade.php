@@ -280,7 +280,7 @@
                 </div>
             </div>
 
-            <div class="footer-note">© {{ date('Y') }} Decierdo · Tagarao · Rivas · Santizo — All rights reserved</div>
+            <div class="footer-note">© {{ date('Y') }} Southern de Oro Philippines College, Bachelor of Science in Information Technology Researchers — All rights reserved</div>
 
         </div>
 

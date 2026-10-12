@@ -198,7 +198,7 @@
         <a href="https://www.facebook.com/PESOCDO" target="_blank" rel="noopener" class="footer-fb-link" aria-label="PESO CDO Facebook Page">
             <i class="ph-fill ph-facebook-logo"></i>
         </a>
-        <div>© {{ date('Y') }} Decierdo · Tagarao · Rivas · Santizo — All rights reserved</div>
+        <div>© {{ date('Y') }} Southern de Oro Philippines College, Bachelor of Science in Information Technology Researchers — All rights reserved</div>
     </div>
 
     <div id="jobModalOverlay" class="job-modal-overlay">

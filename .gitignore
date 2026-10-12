@@ -40,6 +40,10 @@ yarn-error.log
 /ocr_service/poc_crops
 /ocr_service/output
 
+# Scratch bootstrap files the editor's language server drops here while it
+# indexes. They are regenerated on demand and belong to no one's checkout.
+/storage/framework/lsp-*.php
+
 # Demo helper, not part of the system (see the header inside the file).
 /test-clock.php
 /philsms-check.php

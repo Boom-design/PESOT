@@ -14,9 +14,9 @@
             Browse available job postings from verified employers.
         </p>
     </div>
-    <form method="GET" action="{{ route('jobseeker.jobs') }}" class="d-flex gap-2 align-items-center">
+    <form method="GET" action="{{ route('jobseeker.jobs') }}" class="d-flex gap-2 align-items-center flex-wrap">
         <input type="hidden" name="job_type" value="{{ $jobType }}">
-        <select name="sort" class="form-select peso-input" style="width:180px;font-size:12px;"
+        <select name="sort" class="form-select peso-input" style="flex:1 1 150px;min-width:140px;max-width:180px;font-size:12px;"
                 onchange="this.form.submit()">
             <option value="latest"     {{ $sort === 'latest'     ? 'selected' : '' }}>Newest first</option>
             <option value="location"   {{ $sort === 'location'   ? 'selected' : '' }}>Nearest to me</option>
@@ -24,7 +24,7 @@
         </select>
         <input type="text" name="search" class="form-control peso-input"
                placeholder="Search by job title or location..."
-               style="width:260px;"
+               style="flex:2 1 180px;min-width:150px;max-width:260px;"
                value="{{ request('search') }}">
         <button type="submit" class="btn btn-peso">
             <i class="ph ph-magnifying-glass me-1"></i> Search

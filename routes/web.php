@@ -14,13 +14,19 @@
     // ───────────────────────────────
     // ROOT → Public Landing Page
     // ───────────────────────────────
-    Route::get('/', [LandingController::class, 'index'])->name('landing');
+    // The landing page carries the login form, so a copy kept by the phone's
+    // browser hands back a CSRF token the server has already forgotten — the
+    // "419 Page Expired" people hit on a second visit. no-store makes the
+    // browser fetch it again, token and all.
+    Route::get('/', [LandingController::class, 'index'])->name('landing')
+        ->middleware('cache.headers:no_store,no_cache,must_revalidate,max_age=0');
     Route::get('/jobs', [LandingController::class, 'allJobs'])->name('jobs.all');
 
     // ───────────────────────────────
     // UNIFIED LOGIN
     // ───────────────────────────────
-    Route::get('/login',  [LandingController::class, 'index'])->name('login');
+    Route::get('/login',  [LandingController::class, 'index'])->name('login')
+        ->middleware('cache.headers:no_store,no_cache,must_revalidate,max_age=0');
     Route::post('/login', [UnifiedAuthController::class, 'login'])->name('login.post');
     Route::post('/logout',[UnifiedAuthController::class, 'logout'])->name('logout');
 

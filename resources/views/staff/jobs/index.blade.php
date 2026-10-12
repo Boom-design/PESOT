@@ -168,7 +168,7 @@
                                      usa ka lista, usa ka pulong. --}}
                                 @php $jobNeedsDecision = $job->posting_status === 'pending'; @endphp
                                 <button type="button" class="btn btn-sm fw-semibold d-flex align-items-center justify-content-center gap-1"
-                                    style="background:{{ $jobNeedsDecision ? 'var(--warn)' : 'var(--g-600)' }};color:#fff;border:none;border-radius:8px;font-size:12px;padding:6px 12px;"
+                                    style="background:{{ $jobNeedsDecision ? 'var(--info)' : 'var(--g-600)' }};color:#fff;border:none;border-radius:8px;font-size:12px;padding:6px 12px;"
                                     data-bs-toggle="modal" data-bs-target="#jobModal{{ $job->job_qualifications_id }}">
                                     <i class="ph-fill {{ $jobNeedsDecision ? 'ph-gavel' : 'ph-eye' }}"></i>
                                     {{ $jobNeedsDecision ? 'Decide' : 'View Details' }}

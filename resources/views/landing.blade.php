@@ -117,6 +117,27 @@
             .btn-hero-primary { background: #fff; color: var(--g-700); }
             .btn-hero-secondary { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.5); color: #fff; }
 
+            /* On a phone the screen is portrait and the hero photo is not, so
+               cropping it to fill hid most of the picture. Below 768px the
+               photo sits whole in its own band and the text moves under it,
+               where it no longer needs a scrim to stay readable. */
+            @media (max-width: 767.98px) {
+                /* The hero fills the phone screen, so the job list starts
+                   below the fold and is reached by scrolling, not met on
+                   arrival. */
+                .hero-section { padding: 0 0 26px; background: var(--g-700);
+                                min-height: 100vh; min-height: 100svh;
+                                display: flex; flex-direction: column; }
+                .hero-slides  { position: relative; inset: auto; width: 100%;
+                                aspect-ratio: 16 / 9; background: var(--g-700); }
+                .hero-slide   { object-fit: contain; }
+                .hero-scrim   { display: none; }
+                .hero-content { flex: 1; display: flex; align-items: center;
+                                padding: 20px 20px 24px; }
+                .hero-section p    { height: auto; }
+                .hero-btns    { margin-bottom: 0; }
+            }
+
             @media (min-width: 768px) {
                 .hero-section { padding: 90px 24px 64px; }
                 .hero-section h1 { font-size: 40px; }
@@ -789,7 +810,7 @@
             </div>
 
             <div class="footer-bottom">
-                <p>&copy; {{ date('Y') }} Public Employment Service Office — Cagayan de Oro City. All rights reserved.</p>
+                <p>&copy; {{ date('Y') }} Southern de Oro Philippines College, Bachelor of Science in Information Technology Researchers — All rights reserved</p>
             </div>
         </div>
 

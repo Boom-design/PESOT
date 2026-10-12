@@ -566,10 +566,11 @@ class Job extends Model
      * The qualifications a match is scored on, and the points PESO's survey
      * gave each one.
      *
-     * PESO CDO, 2026-09-27: five jobseekers and five employers scored every
-     * qualification out of 100; these are the agreed totals. They add up to 95,
-     * not 100, and that is the survey's own result — the score is a percentage
-     * of whatever the posting actually asks for, so the sum does not matter.
+     * PESO CDO, 2026-10-08: the survey was run again with a wider group —
+     * eleven jobseekers (J1-J11) and ten employers (E1-E10) scored every
+     * qualification out of 100. These are the agreed totals, and they now add
+     * up to exactly 100. Only Language moved, from 5 to 10, against the first
+     * round of 2026-09-27.
      *
      * Sex, civil status, religion, course/major and nature of work were not in
      * the survey and carry no points. They remain on the posting as plain
@@ -584,7 +585,7 @@ class Job extends Model
         'education'            => ['label' => 'Educational Background',            'points' => 10],
         'training'             => ['label' => 'Technical / Vocational Training',   'points' => 10],
         'license'              => ['label' => 'Eligibility / Professional License','points' => 10],
-        'language'             => ['label' => 'Language / Dialect Proficiency',    'points' => 5],
+        'language'             => ['label' => 'Language / Dialect Proficiency',    'points' => 10],
         'disability'           => ['label' => 'Acceptance of Disability',          'points' => 5,  'hint' => 'counted only for an applicant who is a person with disability'],
     ];
 

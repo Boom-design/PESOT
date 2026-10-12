@@ -43,6 +43,23 @@
                 @endif
                 <div class="modal-body p-4" style="overflow-y:auto;flex:1;">
 
+                    {{-- Why the posting came back. Without this the modal
+                         reopens filled in and the employer cannot tell what
+                         was wrong with it. --}}
+                    @if(isset($errors) && $errors->any())
+                    <div class="request-error-list mb-3 px-3 py-2"
+                        style="background:var(--danger-bg);border:1px solid var(--danger-br);border-radius:10px;color:var(--danger);font-size:12px;">
+                        <div class="fw-bold mb-1">
+                            <i class="ph-fill ph-warning-circle me-1"></i>This posting was not saved.
+                        </div>
+                        <ul class="mb-0 ps-3">
+                            @foreach($errors->all() as $message)
+                            <li>{{ $message }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                    @endif
+
                     @if($jobFairId ?? null)
                     <div class="d-flex align-items-start gap-2 p-3 mb-4 rounded-3"
                          style="background:var(--g-50);border:1px solid var(--n-200);">

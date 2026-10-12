@@ -13,6 +13,11 @@
     const COMPANY_INDUSTRY_GROUP = @json($company->activeCompany()->industry_group ?? '');
     // The qualifications a match is scored on, with their standard points.
     const MATCH_POINTS = @json(\App\Models\Job::MATCH_POINTS);
+
+    // What the employer had typed when the server refused the posting, and the
+    // messages that refused it. Both are empty on a normal page load.
+    const OLD_INPUT  = @json(old());
+    const HAS_ERRORS = @json(isset($errors) && $errors->any());
     const MAX_MATCH_POINTS = {{ \App\Models\Job::MAX_MATCH_POINTS }};
 
     // Adds up the points in one position and says whether they can be saved.
@@ -309,6 +314,21 @@
                     <i class="ph-fill ph-trash"></i>
                 </button>
             </div>
+            {{-- The switch sits above the first field, because the first field —
+                 Position Title — already carries a Points box of its own. --}}
+            <div class="d-flex align-items-center flex-wrap gap-2 mb-2 px-3 py-2"
+                style="border:1px solid var(--n-200);border-radius:8px;background:#fff;">
+                <div class="form-check form-switch m-0">
+                    <input class="form-check-input match-points-toggle" type="checkbox" role="switch"
+                        id="ownPoints${idx}" style="cursor:pointer;">
+                    <label class="form-check-label" for="ownPoints${idx}"
+                        style="font-size:11.5px;font-weight:700;color:var(--g-700);cursor:pointer;">Set my own points</label>
+                </div>
+                <span class="match-points-total" style="font-size:11px;color:var(--n-500);">
+                    Using PESO's standard points.
+                </span>
+            </div>
+
             <div class="row g-2">
                 <div class="col-12">
                     <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Position Title *</label>
@@ -369,20 +389,7 @@
                 <div class="col-12 mt-2 pt-2" style="border-top:1px dashed var(--n-200);">
                     <div style="font-size:11px;font-weight:700;color:var(--g-700);">IV. Qualification Requirements</div>
                     <div style="font-size:11px;color:var(--n-500);margin-bottom:8px;">
-                        Each qualification carries points toward an applicant's match score. The points below are
-                        PESO's standard. Turn on the switch to set your own.
-                    </div>
-                    <div class="d-flex align-items-center flex-wrap gap-2 mb-2 px-3 py-2"
-                        style="border:1px solid var(--n-200);border-radius:8px;background:#fff;">
-                        <div class="form-check form-switch m-0">
-                            <input class="form-check-input match-points-toggle" type="checkbox" role="switch"
-                                id="ownPoints${idx}" style="cursor:pointer;">
-                            <label class="form-check-label" for="ownPoints${idx}"
-                                style="font-size:11.5px;font-weight:700;color:var(--g-700);cursor:pointer;">Set my own points</label>
-                        </div>
-                        <span class="match-points-total" style="font-size:11px;color:var(--n-500);">
-                            Using PESO's standard points.
-                        </span>
+                        Each qualification carries points toward an applicant's match score.
                     </div>
                 </div>
                 <div class="col-md-6">
@@ -546,6 +553,88 @@
         }
     });
 
+    // ── Putting a refused posting back together ──
+    //
+    // The rows do not exist in the HTML; they are built here. So nothing the
+    // employer typed survives the round trip unless it is written back by
+    // hand, field by field, from what the server returned.
+    function applyValue(name, value) {
+        const fields = document.getElementsByName(name);
+        if (!fields.length) return;
+
+        const first = fields[0];
+
+        if (first.type === 'checkbox') {
+            const wanted = Array.isArray(value) ? value.map(String) : [String(value)];
+            fields.forEach(function (box) {
+                box.checked = wanted.includes(box.value);
+                box.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+            return;
+        }
+
+        if (first.type === 'radio') {
+            fields.forEach(function (radio) {
+                radio.checked = String(radio.value) === String(value);
+                if (radio.checked) radio.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+            return;
+        }
+
+        // A file input cannot be refilled by script — the employer picks the
+        // poster again. Everything else takes its old value back.
+        if (first.type !== 'file') {
+            first.value = value ?? '';
+            first.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    }
+
+    function restorePosition(idx, position) {
+        Object.entries(position || {}).forEach(function ([field, value]) {
+            if (field === 'match_points' && value && typeof value === 'object') {
+                Object.entries(value).forEach(function ([key, points]) {
+                    applyValue(`positions[${idx}][match_points][${key}]`, points);
+                });
+                return;
+            }
+            const name = Array.isArray(value)
+                ? `positions[${idx}][${field}][]`
+                : `positions[${idx}][${field}]`;
+            applyValue(name, value);
+        });
+
+        // Points typed by hand mean the employer had the switch on.
+        const row = document.querySelectorAll('.request-position-row')[idx];
+        if (row && position && position.match_points) {
+            const toggle = row.querySelector('.match-points-toggle');
+            if (toggle) {
+                toggle.checked = true;
+                toggle.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }
+    }
+
+    function restoreRefusedPosting() {
+        const positions = OLD_INPUT.positions || [];
+        if (!HAS_ERRORS || positions.length === 0) return false;
+
+        // The schedule type and its dates sit outside the position rows.
+        Object.entries(OLD_INPUT).forEach(function ([field, value]) {
+            if (field === 'positions' || field === '_token') return;
+            applyValue(Array.isArray(value) ? field + '[]' : field, value);
+        });
+        syncScheduleTypeFields();
+
+        positions.forEach(function (position, idx) {
+            if (document.querySelectorAll('.request-position-row').length <= idx) {
+                addRequestPosition();
+            }
+            restorePosition(idx, position);
+        });
+
+        return true;
+    }
+
     // ── Siguraduhon nga naa'y at least usa ka position sa pag-open sa modal, ug
     // ── i-sync ang mga schedule field sa pre-checked nga checkbox (ang listener
     // ── 'change' ra man ang naka-trigger, dili automatic sa pag-load) ──
@@ -554,6 +643,24 @@
             addRequestPosition();
         }
         syncScheduleTypeFields();
+    });
+
+    // A refused posting reopens the form as the employer left it, so nothing is
+    // typed twice.
+    document.addEventListener('DOMContentLoaded', function () {
+        if (!HAS_ERRORS || !(OLD_INPUT.positions || []).length) return;
+
+        const modalEl = document.getElementById('requestJobModal');
+        const modal   = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+        modalEl.addEventListener('shown.bs.modal', function once() {
+            modalEl.removeEventListener('shown.bs.modal', once);
+            restoreRefusedPosting();
+            const firstError = modalEl.querySelector('.request-error-list');
+            if (firstError) firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+
+        modal.show();
     });
 
     // ── Ang checkbox walay "required", mao nga ang browser dili mo-pugong sa

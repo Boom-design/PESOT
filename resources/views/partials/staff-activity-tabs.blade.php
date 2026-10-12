@@ -24,7 +24,7 @@
 
     $tabOn  = 'background:var(--g-600);color:#fff;border:none;';
     $tabOff = 'border:1px solid var(--n-200);color:var(--g-700);background:#fff;';
-    $tabBase = 'border-radius:8px;font-size:12px;padding:5px 16px;white-space:nowrap;flex-shrink:0;';
+    $tabBase = 'border-radius:8px;font-size:11.5px;padding:5px 10px;white-space:nowrap;';
 
     // Ang Job Vacancy walay In-house Schedule nga page; ang In-house niya kay
     // ang posting mismo. Ang SRA nagsugod sa In-house kung walay type. Ang LRA
@@ -53,7 +53,7 @@
      full-width stat card of its own above the table, alongside Open and Closed
      cards for a filter that no longer exists; one number does not need a card,
      and next to the tabs it reads as a count of what the lit tab is showing. --}}
-<div class="d-flex align-items-center gap-2 mb-4" style="overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;padding-bottom:4px;">
+<div class="d-flex align-items-center gap-2 mb-4" style="flex-wrap:wrap;row-gap:8px;">
 
     @if($tabRole !== 'job_vacancy')
     <a href="{{ route('staff.inhouse') }}" class="btn btn-sm fw-semibold"

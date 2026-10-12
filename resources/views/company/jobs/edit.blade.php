@@ -86,6 +86,23 @@
                 $currentPoints = $ownPoints ? $job->match_points : collect(\App\Models\Job::MATCH_POINTS)->map->points->all();
                 $ownPoints     = (bool) old('own_points', $ownPoints);
             @endphp
+
+            {{-- The switch sits above the first field, because the first field —
+                 Position Title — already carries a Points box of its own. --}}
+            <div class="d-flex align-items-center flex-wrap gap-2 mb-3 px-3 py-2"
+                style="border:1px solid var(--n-200);border-radius:8px;background:#fff;">
+                <div class="form-check form-switch m-0">
+                    <input class="form-check-input" type="checkbox" role="switch" id="ownPoints" name="own_points" value="1"
+                        {{ $ownPoints ? 'checked' : '' }} style="cursor:pointer;">
+                    <label class="form-check-label" for="ownPoints"
+                        style="font-size:12px;font-weight:700;color:var(--g-700);cursor:pointer;">Set my own points</label>
+                </div>
+                <span id="matchPointsTotal" style="font-size:11.5px;color:var(--n-500);"></span>
+                @error('match_points')
+                <div style="font-size:12px;color:var(--danger);width:100%;">{{ $message }}</div>
+                @enderror
+            </div>
+
             <div class="row g-3 mb-3">
                 <div class="col-12">
                     <label class="form-label fw-semibold" style="color:var(--g-700);font-size:12px;">Position Title *</label>
@@ -167,20 +184,6 @@
                     PESO's standard. Turn on the switch to set your own. Saving updates the match score of
                     everyone who already applied.
                 </div>
-            </div>
-
-            <div class="d-flex align-items-center flex-wrap gap-2 mb-3 px-3 py-2"
-                style="border:1px solid var(--n-200);border-radius:8px;background:#fff;">
-                <div class="form-check form-switch m-0">
-                    <input class="form-check-input" type="checkbox" role="switch" id="ownPoints" name="own_points" value="1"
-                        {{ $ownPoints ? 'checked' : '' }} style="cursor:pointer;">
-                    <label class="form-check-label" for="ownPoints"
-                        style="font-size:12px;font-weight:700;color:var(--g-700);cursor:pointer;">Set my own points</label>
-                </div>
-                <span id="matchPointsTotal" style="font-size:11.5px;color:var(--n-500);"></span>
-                @error('match_points')
-                <div style="font-size:12px;color:var(--danger);width:100%;">{{ $message }}</div>
-                @enderror
             </div>
 
             <div class="row g-3 mb-3">
