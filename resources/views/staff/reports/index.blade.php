@@ -106,6 +106,21 @@ if ($staffRole !== 'sra') {
 </div>
 @endif
 
+@php
+    // Ang Archived Job Postings wala giapil: rekord kadto sa posting mismo,
+    // dili ihap sa tawo sulod sa usa ka panahon.
+    $exportableTab = in_array(request('tab', 'registered'), ['registered', 'placed', 'referred'], true);
+
+    // Ang Registered naay kaugalingong linya sa filter ug didto na ang search.
+    // Ang Placed ug Referred walay ingon, mao nga ang linya sa petsa ang
+    // modawat niini — kung tinuod nga madrawing siya. Ang kopya sa admin walay
+    // date range, mao nga didto ang search magpabilin sa laray sa tab.
+    $searchSitsWithDates = request('tab', 'registered') === 'registered'
+        || (isset($range)
+            && in_array(request('tab', 'registered'), ['placed', 'referred'], true)
+            && ($reportRouteName ?? 'staff.reports') === 'staff.reports');
+@endphp
+
 {{-- The view selector is drawn inside each view's own first row rather than on
      a line of its own above them. It is the first thing on that line, the fair
      picker is next to it, and the reports that do not read a fair sit at the
@@ -1353,25 +1368,28 @@ if ($staffRole !== 'sra') {
          narrows. It is part of the same question — which of these rows do I
          want — so it shares the line with the filter, at the far end. The
          markup is a partial because three tabs draw this line. --}}
-    @if(request('tab', 'registered') !== 'registered')
+    {{-- The tab row keeps the search only where nothing below it will take it.
+         The three tabs with a date range put it on that line instead, beside
+         the dates, because the two narrow the same list between them. --}}
+    @unless($searchSitsWithDates ?? false)
         @include('partials.reports-search')
-    @endif
+    @endunless
 </div>
 
 {{-- ── DATE RANGE + EXPORT — para sa tulo ka listahan nga isumite sa
      Mayor's Office ug DOLE (PESO interview 2026-08-13). Ang job fair nga
      report naay kaugalingon nga event filter, mao nga dili siya apil dinhi. ── --}}
 @php
-    // Ang Archived Job Postings wala giapil: rekord kadto sa posting mismo,
-    // dili ihap sa tawo sulod sa usa ka panahon.
-    $exportableTab = in_array(request('tab', 'registered'), ['registered', 'placed', 'referred'], true);
-    $exportTab     = request('tab', 'registered');
+    $exportTab = request('tab', 'registered');
 @endphp
 
 @if(isset($range) && $exportableTab && ($reportRouteName ?? 'staff.reports') === 'staff.reports')
     @include('partials.date-range-filter', [
         'range'   => $range,
         'action'  => route('staff.reports'),
+        'trailing' => in_array($exportTab, ['placed', 'referred'], true)
+            ? view('partials.reports-search')->render()
+            : null,
         'keep'    => array_filter([
             'tab'             => $exportTab,
             'registered_view' => request('registered_view'),

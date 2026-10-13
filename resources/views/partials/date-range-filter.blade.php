@@ -91,7 +91,18 @@
         </a>
     @endforeach
 
-    <div class="ms-auto" style="font-size:11.5px;color:var(--n-500);align-self:center;">
-        Showing: <strong style="color:var(--g-700);">{{ $range->label() }}</strong>
+    {{-- Everything from here sits at the far right of the same line.
+
+         $trailing is for a control that narrows the same list the dates do —
+         the reports pass their search box in. It was a line above, where it
+         read as something separate; the two ask one question between them.
+         It carries no name attribute, so Apply does not submit it. --}}
+    <div class="ms-auto d-flex align-items-center gap-3" style="flex-wrap:wrap;">
+        <span style="font-size:11.5px;color:var(--n-500);white-space:nowrap;">
+            Showing: <strong style="color:var(--g-700);">{{ $range->label() }}</strong>
+        </span>
+        @isset($trailing)
+            {!! $trailing !!}
+        @endisset
     </div>
 </form>
