@@ -687,7 +687,10 @@ if ($type === 'local') {
         $q->where('type', 'both');
     });
 }
-    $registrations = $baseQuery->latest()->paginate(10);
+    // Lima, parehas sa ubang lista sa admin. Napulo ang gibuhat niini nga
+    // panid nga doble ang gitas-on sa bisan unsa nga iyang katapad, ug ang
+    // pagination gitulod ngadto sa ubos sa screen.
+    $registrations = $baseQuery->latest()->paginate(5)->withQueryString();
 
     return view('admin.registrations.index', compact(
         'registrations',
