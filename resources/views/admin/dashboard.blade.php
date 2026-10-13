@@ -27,6 +27,12 @@
                 </div>
                 <div class="fw-bold" style="color:var(--g-700);font-size:14px;">Total Users</div>
                 <div class="fs-4 fw-bold text-dark mt-1">{{ $totalUsers }}</div>
+                {{-- The two cards beside it, added up. It counted accounts
+                     while the Jobseekers card counted registrations, and the
+                     gap was the walk-ins the office typed in from paper, who
+                     have no account — so the page did not agree with its own
+                     arithmetic. --}}
+                <div class="text-muted small mt-1">jobseekers + companies</div>
             </div>
         </a>
     </div>
@@ -79,6 +85,10 @@
                 </div>
                 <div class="fw-bold" style="color:var(--g-700);font-size:14px;">Companies</div>
                 <div class="fs-4 fw-bold mt-1" style="color:var(--g-700);">{{ $companyCount }}</div>
+                {{-- Establishments, not accounts: one HR may hold two companies
+                     on one email, and the company is what attends a fair, posts
+                     a vacancy and carries its own papers. --}}
+                <div class="text-muted small mt-1">establishments</div>
             </div>
         </a>
     </div>

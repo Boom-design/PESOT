@@ -39,7 +39,21 @@ class AdminController extends Controller
     // ───────────────────────────────
     public function dashboard()
     {
-        $totalUsers        = User::whereIn('role', ['jobseeker', 'company'])->count();
+        // ── Ang sumada sa duha ka card sa ilawom niini.
+        // ──
+        // ── PESO admin, 2026-10-13: ang card nag-ihap ug ACCOUNT samtang ang
+        // ── Jobseekers nga card sa ilawom niini nag-ihap ug REGISTRATION. Ang
+        // ── kalainan mao ang 14 ka walk-in nga gi-encode sa opisina gikan sa
+        // ── papel ug walay account, mao nga 235 + 45 = 280 ug ang Total Users
+        // ── nag-ingon ug 266. Usa ka panid nga dili mo-sibo sa kaugalingon
+        // ── niyang aritmetika.
+        // ──
+        // ── Ang tulo ka card nag-ihap na ug TAWO karon: ang jobseeker nga
+        // ── nakapuno sa NSRP, bisan asa gikan ang porma, ug ang establisemento.
+        // ── Ang card mismo nagsulti kung unsa ang sulod niini. ──
+        $jobseekerTotal    = JobseekerRegistration::whereHas('nsrp')->count();
+        $companyTotal      = \App\Models\EmployerNsrpRegistration::count();
+        $totalUsers        = $jobseekerTotal + $companyTotal;
         $activeUsers       = User::whereIn('role', ['jobseeker', 'company'])->where('status', 'approved')->count();
         $deactivatedUsers  = User::whereIn('role', ['jobseeker', 'company'])->where('status', 'deactivated')->count();
         // ── Ang giihap kay ang nakahuman sa NSRP, dili ang naka-create ug
@@ -56,11 +70,15 @@ class AdminController extends Controller
         // ── Giihap ang REGISTRATION, dili ang account. Ang gi-encode sa opisina
         // ── gikan sa papel walay account — dose sila — ug jobseeker gihapon sila
         // ── sa listahan nga giablihan sa card. ──
-        $jobseekerCount    = JobseekerRegistration::whereHas('nsrp')->count();
+        $jobseekerCount    = $jobseekerTotal;
         $jobseekerNoNsrp   = User::where('role', 'jobseeker')
                                  ->whereDoesntHave('registration.nsrp')
                                  ->count();
-        $companyCount      = User::where('role', 'company')->count();
+        // Ang ESTABLISEMENTO, dili ang account: usa ka HR mahimong maghupot ug
+        // duha ka kompanya sa usa ka email, ug ang mo-adto sa fair, ang
+        // nagpost ug bakante ug ang naay kaugalingong papel kay ang kompanya.
+        // Mao pud ni ang giihap sa Registered Employer nga listahan.
+        $companyCount      = $companyTotal;
         $registrationCount = JobseekerRegistration::count();
 
         $monthlyJobFairCount = \App\Models\JobFairEvent::whereMonth('event_date', now()->month)
