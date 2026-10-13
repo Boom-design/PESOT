@@ -5674,14 +5674,16 @@ $nsrp = $registration->nsrp;
                 );
 
             $totalVacanciesSolicited = (clone $vacancyQuery)->count();
-            $solicitedJobs = $tab === 'vacancies' ? $vacancyQuery->latest()->paginate(10)->withQueryString() : collect();
+            $solicitedJobs = $tab === 'vacancies' ? $vacancyQuery->latest()->paginate(5)->withQueryString() : collect();
         }
 
         // I-paginate lang ang active tab/sub-view para dili mabug-atan
-        $registeredParticipants = ($tab === 'registered' && $registeredView === 'inhouse') ? $registeredQuery->latest()->paginate(10)->withQueryString() : null;
-        $registeredAll          = ($tab === 'registered' && $registeredView === 'all')     ? $registeredAllQuery->latest()->paginate(10)->withQueryString() : null;
-        $placedApplications     = $tab === 'placed'     ? $placedQuery->latest()->paginate(10)->withQueryString()     : null;
-        $referredApplications   = $tab === 'referred'   ? $referredQuery->latest()->paginate(10)->withQueryString()   : null;
+        // Lima ka laray, parehas sa ubang lista sa panid — ug parehas sa
+        // gibuhat sa kopya sa admin, nga mao ra gihapon kini nga Blade.
+        $registeredParticipants = ($tab === 'registered' && $registeredView === 'inhouse') ? $registeredQuery->latest()->paginate(5)->withQueryString() : null;
+        $registeredAll          = ($tab === 'registered' && $registeredView === 'all')     ? $registeredAllQuery->latest()->paginate(5)->withQueryString() : null;
+        $placedApplications     = $tab === 'placed'     ? $placedQuery->latest()->paginate(5)->withQueryString()     : null;
+        $referredApplications   = $tab === 'referred'   ? $referredQuery->latest()->paginate(5)->withQueryString()   : null;
 
         // ── TAB: TOP EMPLOYERS — pila ka in-house nga interview ang gidala sa
         // ── usa ka employer sulod sa gipiling panahon.
