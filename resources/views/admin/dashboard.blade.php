@@ -25,14 +25,20 @@
                             font-size:24px;color:#fff;">
                     <i class="ph-fill ph-users-three"></i>
                 </div>
-                <div class="fw-bold" style="color:var(--g-700);font-size:14px;">Total Users</div>
+                <div class="fw-bold" style="color:var(--g-700);font-size:14px;">Total Active Users</div>
                 <div class="fs-4 fw-bold text-dark mt-1">{{ $totalUsers }}</div>
                 {{-- Spelled out, because it used to count accounts while the
                      Jobseekers card counted registrations — and the gap, the
                      walk-ins the office types in from paper, have no account.
                      The page did not agree with its own arithmetic and nothing
                      on it said why. Staff are in it: they use the system, and
-                     Manage Users — which this card opens — lists them. --}}
+                     Manage Users — which this card opens — lists them.
+
+                     Active only. A deactivated account cannot sign in and a
+                     dormant employer reaches one page, so counting them made
+                     the number a count of records rather than of people. The
+                     walk-ins have no account to switch off; they are real
+                     jobseekers the office typed in, and they count. --}}
                 <div class="text-muted small mt-1" style="line-height:1.5;">
                     {{ $jobseekerCount }} jobseekers · {{ $companyCount }} companies
                     · {{ $staffTotal }} staff

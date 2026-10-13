@@ -51,13 +51,30 @@ class AdminController extends Controller
         // ── Ang tulo ka card nag-ihap na ug TAWO karon: ang jobseeker nga
         // ── nakapuno sa NSRP, bisan asa gikan ang porma, ug ang establisemento.
         // ── Ang card mismo nagsulti kung unsa ang sulod niini. ──
-        $jobseekerTotal    = JobseekerRegistration::whereHas('nsrp')->count();
-        $companyTotal      = \App\Models\EmployerNsrpRegistration::count();
+        // ── Ang BUHI ra.
+        // ──
+        // ── PESO admin, 2026-10-13: ang card nag-ihap sa tanan, apil ang
+        // ── gipatay. Ang account nga na-deactivate dili na makasulod, ug ang
+        // ── dormant nga employer usa ra ka pahina ang maabot — wala silay
+        // ── gigamit nga sistema, mao nga ang pag-ihap kanila sa "Total Users"
+        // ── naghimo sa numero nga ihap sa rekord, dili sa tawo.
+        // ──
+        // ── Ang walk-in walay account, mao nga wala siyay status nga mapatay:
+        // ── tinuod siya nga jobseeker nga gi-encode sa opisina, ug giihap. ──
+        $live = fn($q) => $q->whereNotIn('status', ['deactivated', 'dormant']);
+
+        $jobseekerTotal    = JobseekerRegistration::whereHas('nsrp')
+                                 ->where(fn($q) => $q->whereNull('user_id')
+                                                     ->orWhereHas('user', $live))
+                                 ->count();
+        $companyTotal      = \App\Models\EmployerNsrpRegistration::whereHas('employer', $live)
+                                 ->whereNull('dormant_at')
+                                 ->count();
         // Ang staff tawo pud nga naggamit sa sistema, ug ang Manage Users —
         // nga mao ang giablihan niini nga card — naglista kanila uban sa
         // jobseeker ug sa kompanya. Apil ang na-deactivate: naa pa sila didto,
         // sa Inactive nga tab.
-        $staffTotal        = User::where('role', 'staff')->count();
+        $staffTotal        = User::where('role', 'staff')->where($live)->count();
         $totalUsers        = $jobseekerTotal + $companyTotal + $staffTotal;
         $activeUsers       = User::whereIn('role', ['jobseeker', 'company'])->where('status', 'approved')->count();
         $deactivatedUsers  = User::whereIn('role', ['jobseeker', 'company'])->where('status', 'deactivated')->count();
