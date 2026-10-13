@@ -32,6 +32,12 @@ class CompanyInterviewReport
     {
         return Job::with('company')
             ->where('schedule_type', 'company_interview')
+            // Parehas nga lagda sa in-house nga report: ang nadesisyunan ra,
+            // ug ang nahitabo na ra. Ang posting nga naghulat pa sa desk kay
+            // trabaho, dili rekord, ug ang interview nga ugma pa dili pa
+            // mareport — walay nahitabo nga isulti.
+            ->whereIn('posting_status', ['approved', 'rejected'])
+            ->whereRaw('COALESCE(confirmed_date, preferred_date) < CURDATE()')
             ->whereHas('company', fn($q) => $q->where('is_overseas', $overseas))
             // The month is optional: the Job Vacancy report asks one month at a
             // time, the SRA report lists the whole thing and searches instead.
