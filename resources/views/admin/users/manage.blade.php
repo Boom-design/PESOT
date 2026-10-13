@@ -122,6 +122,12 @@
                             // sa modelo mo-usab niini nga panid uban niini.
                             $reqFieldLabels = \App\Models\EmployerRequirement::DOCUMENT_LABELS;
 
+                            // Usa ka laray kada requirement, sa han-ay sa
+                            // DOCUMENT_LABELS — ang nawala naa gihapon sa
+                            // listahan, pula, aron makita kung UNSA ang
+                            // nawala ug dili lang pila.
+                            $reqRows = [];
+
                             $missingReqs   = [];
                             $submittedReqs = [];
 
@@ -142,8 +148,26 @@
                             foreach ($reqFieldLabels as $field => $label) {
                                 if (empty($requirement?->{$field})) {
                                     $missingReqs[] = $label;
+                                    $reqRows[] = [
+                                        'label'  => $label,
+                                        'status' => 'missing',
+                                        'url'    => null,
+                                        'pdf'    => false,
+                                        'note'   => 'Not submitted yet',
+                                    ];
                                     continue;
                                 }
+
+                                $expiresAt = $requirement->{$field . '_expires_at'} ?? null;
+
+                                $reqRows[] = [
+                                    'label'  => $label,
+                                    'status' => 'submitted',
+                                    'url'    => route('documents.requirement',
+                                                      [$requirement->employer_requirements_id, $field]),
+                                    'pdf'    => str_ends_with(strtolower((string) $requirement->{$field}), '.pdf'),
+                                    'note'   => $expiresAt ? 'Valid until ' . $expiresAt->format('M d, Y') : '',
+                                ];
 
                                 $submittedReqs[] = $label;
                                 $submittedDocs[] = [
@@ -226,7 +250,8 @@
                                     data-contact="{{ $user->employerNsrp->mobile_number ?? $user->phone ?? 'None' }}"
                                     data-submitted="{{ implode('|', $submittedReqs) }}"
                                     data-missing="{{ implode('|', $missingReqs) }}"
-                                    data-docs="{{ json_encode($submittedDocs) }}">
+                                    data-docs="{{ json_encode($submittedDocs) }}"
+                                    data-reqs="{{ json_encode($reqRows) }}">
                                     <i class="ph-fill ph-eye me-1"></i>View
                                 </button>
                                 {{-- Backup ra kini kung wala ang LRA/SRA nga mo-handle
@@ -674,21 +699,26 @@
 
                 <hr style="border-color:var(--n-50);">
 
-                {{-- REQUIREMENTS — TWO COLUMNS --}}
-                <div class="row g-3 mt-1">
-                    <div class="col-md-6">
-                        <p class="fw-semibold small mb-2" style="color:var(--g-700);">
-                            <i class="ph-fill ph-check-circle me-1"></i>Submitted
-                        </p>
-                        <ul class="mb-0 ps-3" id="viewReqSubmittedList"></ul>
-                    </div>
-                    <div class="col-md-6">
-                        <p class="fw-semibold small mb-2" style="color:var(--danger);">
-                            <i class="ph-fill ph-warning-circle me-1"></i>Missing
-                        </p>
-                        <ul class="mb-0 ps-3" id="viewReqMissingList"></ul>
-                    </div>
+                {{-- REQUIREMENTS — ONE TABLE.
+
+                     Two lists side by side made the admin count: four names on
+                     the left, one on the right, and no way to see WHICH of the
+                     five was missing without holding both lists in your head.
+                     One row per requirement, always all five, in the order the
+                     office asks for them. The status column answers it. --}}
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0" style="font-size:12.5px;">
+                        <thead>
+                            <tr>
+                                <th style="color:var(--g-700);font-size:11px;border-top:none;">Requirement</th>
+                                <th style="color:var(--g-700);font-size:11px;border-top:none;width:120px;">Status</th>
+                                <th style="color:var(--g-700);font-size:11px;border-top:none;">Note</th>
+                            </tr>
+                        </thead>
+                        <tbody id="viewReqTable"></tbody>
+                    </table>
                 </div>
+                <div id="viewReqSummary" style="font-size:11.5px;color:var(--n-500);margin-top:8px;"></div>
 
             </div>
         </div>
@@ -1030,39 +1060,48 @@
             document.getElementById('viewReqPlacement').textContent   = this.dataset.placement;
             document.getElementById('viewReqContact').textContent     = this.dataset.contact;
 
-            const submitted = this.dataset.submitted ? this.dataset.submitted.split('|') : [];
-            const missing   = this.dataset.missing   ? this.dataset.missing.split('|')   : [];
+            let reqs = [];
+            try { reqs = JSON.parse(this.dataset.reqs || '[]'); } catch (e) { reqs = []; }
 
-            const submittedList = document.getElementById('viewReqSubmittedList');
-            const missingList   = document.getElementById('viewReqMissingList');
+            const submittedCount = reqs.filter(r => r.status === 'submitted').length;
+            const missingCount   = reqs.length - submittedCount;
 
-            // Every submitted document opens, so the label is a button rather
-            // than a word. `docs` carries the same documents in the same order
-            // as `submitted`; the index lines them up.
-            let docs = [];
-            try { docs = JSON.parse(this.dataset.docs || '[]'); } catch (e) { docs = []; }
+            // A submitted document opens; a missing one has nothing to open, so
+            // it is plain text rather than a button that does nothing.
+            document.getElementById('viewReqTable').innerHTML = reqs.length === 0
+                ? `<tr><td colspan="3" class="text-center" style="color:var(--n-500);padding:18px;">
+                       No requirements on file yet.</td></tr>`
+                : reqs.map(req => {
+                    const name = req.status === 'submitted'
+                        ? `<button type="button" class="view-req-doc"
+                                   data-url="${req.url}" data-label="${req.label}" data-pdf="${req.pdf ? '1' : ''}"
+                                   style="border:none;background:none;padding:0;color:var(--g-600);
+                                          font-weight:600;font-size:12.5px;cursor:pointer;text-align:left;">
+                               ${req.label}
+                               <i class="ph ph-arrow-square-out ms-1" style="font-size:12px;"></i>
+                           </button>`
+                        : `<span style="color:var(--n-700);">${req.label}</span>`;
 
-            submittedList.innerHTML = submitted.length > 0
-                ? submitted.map((label, i) => {
-                    const doc = docs[i];
-                    if (!doc) {
-                        return `<li style="font-size:12.5px;color:var(--n-700);margin-bottom:6px;">${label}</li>`;
-                    }
-                    return `<li style="font-size:12.5px;margin-bottom:6px;">
-                        <button type="button" class="view-req-doc"
-                                data-url="${doc.url}" data-label="${label}" data-pdf="${doc.pdf ? '1' : ''}"
-                                style="border:none;background:none;padding:0;color:var(--g-600);
-                                       font-weight:600;font-size:12.5px;cursor:pointer;text-align:left;">
-                            ${label}
-                            <i class="ph ph-arrow-square-out ms-1" style="font-size:12px;"></i>
-                        </button>
-                    </li>`;
-                }).join('')
-                : `<li style="font-size:12.5px;color:var(--n-400);list-style:none;margin-left:-18px;">None yet</li>`;
+                    const badge = req.status === 'submitted'
+                        ? `<span style="display:inline-block;background:var(--g-50);color:var(--g-700);
+                                 border:1px solid var(--g-600);border-radius:6px;padding:1px 8px;
+                                 font-size:10.5px;font-weight:700;">SUBMITTED</span>`
+                        : `<span style="display:inline-block;background:var(--danger-bg);color:var(--danger);
+                                 border:1px solid var(--danger);border-radius:6px;padding:1px 8px;
+                                 font-size:10.5px;font-weight:700;">MISSING</span>`;
 
-            missingList.innerHTML = missing.length > 0
-                ? missing.map(label => `<li style="font-size:12.5px;color:var(--n-700);margin-bottom:6px;">${label}</li>`).join('')
-                : `<li style="font-size:12.5px;color:var(--n-400);list-style:none;margin-left:-18px;">None — all complete</li>`;
+                    const note = req.status === 'submitted'
+                        ? `<span style="color:var(--n-500);font-size:11.5px;">${req.note || ''}</span>`
+                        : `<span style="color:var(--danger);font-size:11.5px;">${req.note}</span>`;
+
+                    return `<tr><td>${name}</td><td>${badge}</td><td>${note}</td></tr>`;
+                }).join('');
+
+            document.getElementById('viewReqSummary').innerHTML = missingCount === 0
+                ? `<i class="ph-fill ph-check-circle me-1" style="color:var(--g-600);"></i>
+                   All ${submittedCount} requirements submitted.`
+                : `<i class="ph-fill ph-warning-circle me-1" style="color:var(--danger);"></i>
+                   ${submittedCount} submitted, <strong style="color:var(--danger);">${missingCount} missing</strong>.`;
 
             showReqDetails();
         });
@@ -1086,9 +1125,9 @@
     document.getElementById('viewReqBack')?.addEventListener('click', showReqDetails);
     document.getElementById('viewReqModal')?.addEventListener('hidden.bs.modal', showReqDetails);
 
-    // Delegated: the list is rebuilt on every open, so a listener bound to the
+    // Delegated: the table is rebuilt on every open, so a listener bound to the
     // buttons themselves would be bound to buttons that no longer exist.
-    document.getElementById('viewReqSubmittedList')?.addEventListener('click', function (event) {
+    document.getElementById('viewReqTable')?.addEventListener('click', function (event) {
         const btn = event.target.closest('.view-req-doc');
         if (!btn) return;
 
