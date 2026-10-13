@@ -434,7 +434,14 @@ class AdminController extends Controller
             'phone'       => $request->phone,
         ]);
 
-        return back()
+        // ── Ang Staff nga tab, dili ang gigikanan.
+        // ──
+        // ── PESO admin, 2026-10-13: ang buton makita sa tanang tab, mao nga ang
+        // ── admin nga naa sa Jobseekers mohimo ug staff account ug mobalik sa
+        // ── Jobseekers — ug ang account nga iyang bag-ong gibuhat wala gyud sa
+        // ── iyang atubangan. Ang highlight magtudlo kaniya sa laray mismo. ──
+        return redirect()
+            ->route('admin.users.manage', ['tab' => 'staff', 'highlight' => $newStaff->users_id])
             ->with('recovery_temp_password', $starterPassword)
             ->with('recovery_contact', $request->name)
             ->with('success', 'Staff account created for ' . $request->name

@@ -110,6 +110,19 @@
                             <span style="color:{{ $badge['color'] }};font-weight:600;font-size:12px;">
                                 {{ $badge['label'] }}
                             </span>
+                            {{-- Who decided it.
+
+                                 PESO, 2026-10-13: a desk can be two people —
+                                 two SRAs, two LRAs — and reviewed_by has been
+                                 recorded since the start without ever being
+                                 shown. "Accepted" named the desk, not the
+                                 person, so neither of them could tell whether
+                                 the other had already answered it. --}}
+                            @if($item->status !== 'pending' && $item->reviewer)
+                                <div style="font-size:10.5px;color:var(--n-500);margin-top:2px;">
+                                    by {{ $item->reviewer->full_name ?: 'PESO staff' }}
+                                </div>
+                            @endif
                         </td>
                         <td style="padding:12px 16px;text-align:center;">
                             {{-- PESO SRA, 2026-09-14: a room request waiting on the desk is

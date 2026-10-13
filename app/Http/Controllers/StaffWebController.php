@@ -4049,7 +4049,7 @@ $nsrp = $registration->nsrp;
         };
 
         // ── SOURCE 1: InhouseSchedule (schedule-only requests) — pending ra ──
-        $scheduleItems = \App\Models\InhouseSchedule::with('employer')
+        $scheduleItems = \App\Models\InhouseSchedule::with('employer', 'reviewer')
             ->where('status', 'pending')
             ->where($employerRoleFilter)
             ->when($search, fn($q) => $q->whereHas('employer', fn($u) =>

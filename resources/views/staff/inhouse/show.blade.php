@@ -111,6 +111,18 @@
                         <td style="color:var(--danger);">{{ $schedule->rejection_reason ?? 'None' }}</td>
                     </tr>
                     @endif
+                    {{-- Who decided it. A desk can be two people — two SRAs, two
+                         LRAs — and reviewed_by has been recorded since the start
+                         without ever being shown, so "Accepted" named the desk
+                         and not the person who answered. --}}
+                    @if($schedule->status !== 'pending')
+                    <tr>
+                        <td class="fw-semibold" style="color:var(--g-700);">
+                            {{ $schedule->status === 'accepted' ? 'Accepted by' : 'Rejected by' }}
+                        </td>
+                        <td>{{ optional($schedule->reviewer)->full_name ?: 'PESO staff' }}</td>
+                    </tr>
+                    @endif
                 </table>
             </div>
         </div>

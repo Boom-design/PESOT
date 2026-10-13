@@ -33,11 +33,14 @@
         </button>
     </li>
 </ul>
-    {{-- Only on the Staff tab. It makes a staff account and nothing else, so on
-         Jobseekers it offered an action that had no bearing on the list being
-         read — and read as though it would add a jobseeker. The tab buttons
-         show and hide it; it starts hidden unless Staff is the opening tab. --}}
-    <button class="btn btn-sm fw-semibold d-none" id="addStaffBtn"
+    {{-- On every tab. It was hidden off the Staff tab for a moment, on the
+         reasoning that it had no bearing on the list being read — but the admin
+         reaches for it from wherever they are, and hunting for a tab first is
+         worse than a button that names exactly what it makes. What was actually
+         wrong is that creating a staff account left the page on whatever tab it
+         started from, so the new account was nowhere in sight. storeUser sends
+         the page to the Staff tab now, where the account it just made is. --}}
+    <button class="btn btn-sm fw-semibold" id="addStaffBtn"
         style="background:var(--g-600);color:#fff;
                border:none;border-radius:8px;padding:8px 18px;font-size:13px;white-space:nowrap;"
         data-bs-toggle="modal" data-bs-target="#addUserModal">
@@ -724,11 +727,6 @@
     let currentPage = 1;
     const perPage   = 5;
 
-    function syncAddStaffButton() {
-        document.getElementById('addStaffBtn')
-            ?.classList.toggle('d-none', activeTab !== 'staff');
-    }
-
     document.querySelectorAll('#userTabs .nav-link').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tab === activeTab);
 
@@ -740,12 +738,10 @@
             // The admin has moved on by hand; stop dragging them back to the
             // row the link named.
             highlightId = null;
-            syncAddStaffButton();
             filterTable();
         });
     });
 
-    syncAddStaffButton();
 
     document.getElementById('searchInput')?.addEventListener('input', function () {
         currentPage = 1;
