@@ -1251,8 +1251,13 @@ if ($staffRole !== 'sra') {
                border-radius:8px;font-size:11px;padding:5px 12px;white-space:nowrap;flex-shrink:0;">
             <i class="ph-fill ph-video-camera me-1"></i>Company Interviews
         </a>
-        @if(($reportRouteName ?? 'staff.reports') === 'staff.reports')
-        <a href="{{ route('staff.reports', array_merge(request()->except('employer'), ['tab' => 'employer_report', 'page' => 1])) }}"
+        {{-- Hidden from the admin's copy until 2026-10-14, because the link
+             named route('staff.reports') outright and would have carried the
+             admin off their own page. The data was being built for them all
+             along — AdminController runs the same byEmployer() helper — so the
+             tab was missing from the master view for a reason that was only
+             ever about this href. --}}
+        <a href="{{ route($reportRouteName ?? 'staff.reports', array_merge(request()->except('employer'), ['tab' => 'employer_report', 'page' => 1])) }}"
            class="btn btn-sm fw-semibold"
            style="{{ request('tab') === 'employer_report'
                ? 'background:var(--g-600);color:#fff;border:none;'
@@ -1260,7 +1265,6 @@ if ($staffRole !== 'sra') {
                border-radius:8px;font-size:11px;padding:5px 12px;white-space:nowrap;flex-shrink:0;">
             <i class="ph-fill ph-clipboard-text me-1"></i>Employer Report
         </a>
-        @endif
         {{-- The same list of lapsed postings the Job Fair Reports view shows.
              One tab key, one partial: the two views are two ways into the same
              record, not two records. --}}

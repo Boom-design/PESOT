@@ -1052,7 +1052,10 @@ if ($type === 'local') {
 
         // The same Employer Report the desk reads, built by the same helper.
         $employerHires   = null;
-        $employerFocusId = null;
+        // The Total Hired number on Registered Employer opens this tab with one
+        // company named. The desk's page has always read it; this copy did not,
+        // so the same link landed on the whole list.
+        $employerFocusId = (int) request('employer') ?: null;
 
         if ($tab === 'employer_report') {
             $employerHires = \App\Support\InhouseEmployerReport::byEmployer($isOverseas, $search);
