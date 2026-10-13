@@ -66,7 +66,7 @@
     </a>
     @endif
 
-    @if($tabRole !== 'lra')
+    @if($tabRole === 'sra')
     <a href="{{ route('staff.jobs', ['type' => 'company_interview_pending']) }}" class="btn btn-sm fw-semibold"
        style="{{ $onPendingInterview ? $tabOn : $tabOff }}{{ $tabBase }}">
         {{-- Ang posting nga wala pa nadesisyunan — posting_status = 'pending'.
@@ -78,7 +78,18 @@
 
              Karon, ang overseas ra ang makasulod dinhi. Ang lokal nga company
              interview buhi dayon sa pag-post, mao nga wala gyud siyay pending
-             nga hugna. --}}
+             nga hugna.
+
+             SRA RA, sukad 2026-10-13. Ang tab gidugang sa Job Vacancy ug sa SRA
+             nga magkauban niadtong 2026-09-03, sa panahon nga ang initialState()
+             nagpadala sa TANANG company interview ngadto sa approved+open — mao
+             nga blangko siya sa duha ka desk sa adlaw mismo nga gibuhat. Ang
+             lagda nga nagpuno kaniya niabot usa ka semana human niana, ug
+             overseas ra ang gisakop niini, nga iya sa SRA.
+
+             Ang Job Vacancy lokal ra ang employer. Ang iyang kopya niini nga
+             tab wala gyud nakakita ug usa ka laray, ug dili gyud siya makakita
+             — usa ka tab nga naghulat ug desisyon nga wala gyud mahitabo. --}}
         <i class="ph-fill ph-hourglass-medium me-1"></i> Pending Company Interview
         @include('partials.tab-dot', ['count' => $tabAlerts['company_interview_pending'] ?? 0, 'on' => $onPendingInterview])
     </a>

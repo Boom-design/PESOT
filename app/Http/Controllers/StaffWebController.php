@@ -4338,9 +4338,15 @@ $nsrp = $registration->nsrp;
         }
         $monthFilter = $month === 'all' ? null : $month;
 
-        // Ang Pending Company Interview nga tab. Ang LRA walay company
-        // interview, mao nga dili gyud siya makasulod dinhi.
-        $isPendingInterview = $staffRole !== 'lra'
+        // ── Ang Pending Company Interview nga tab. SRA ra.
+        // ──
+        // ── Ang LRA walay company interview. Ang Job Vacancy naa, apan lokal ra
+        // ── ang iyang employer, ug ang lokal nga company interview buhi dayon
+        // ── sa pag-post — walay pending nga hugna, mao nga walay laray. Gikuha
+        // ── ang iyang tab 2026-10-13; gikuha pud ang agianan dinhi, aron ang
+        // ── daan nga bookmark dili makapakita ug blangko nga lamesa nga walay
+        // ── tab nga nagdan-ag. ──
+        $isPendingInterview = $staffRole === 'sra'
             && request('type') === 'company_interview_pending';
 
         $query = \App\Models\Job::with('company')
@@ -4361,9 +4367,6 @@ $nsrp = $registration->nsrp;
 
                 if (request('type') === 'inhouse') {
                     $q->where('schedule_type', 'inhouse')->where('posting_status', 'approved');
-                } elseif (request('type') === 'company_interview_pending') {
-                    // Pending Company Interview — ang wala pa nahitabo.
-                    $this->pendingCompanyInterviewFilter($q);
                 } else {
                     // Company Interview. Ang Job Fair naa sa kaugalingon niyang tab.
                     //

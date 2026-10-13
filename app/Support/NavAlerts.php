@@ -202,14 +202,19 @@ class NavAlerts
                 : 0,
 
             // Pending Company Interview — posting_status = 'pending'. Ang lokal
-            // buhi dayon sa pag-post, mao nga ang overseas ra ang makasulod.
-            'company_interview_pending' => Job::where('posting_status', 'pending')
-                ->where(function ($q) {
-                    $q->where('schedule_type', 'company_interview')
-                      ->orWhereNull('schedule_type');
-                })
-                ->where($scopeCompany)
-                ->count(),
+            // buhi dayon sa pag-post, mao nga ang overseas ra ang makasulod,
+            // ug ang SRA ra ang naay tab para niini sukad 2026-10-13. Ang
+            // numero para sa laing desk kay numero nga walay katumbas nga tab,
+            // ug kanunay siyang sero.
+            'company_interview_pending' => $overseas
+                ? Job::where('posting_status', 'pending')
+                    ->where(function ($q) {
+                        $q->where('schedule_type', 'company_interview')
+                          ->orWhereNull('schedule_type');
+                    })
+                    ->where($scopeCompany)
+                    ->count()
+                : 0,
 
             // Ang In-house Job Vacancy nga tab walay numero. Nagbasa siya ug
             // posting_status = 'approved' — nadesisyunan na ang tanan didto,
