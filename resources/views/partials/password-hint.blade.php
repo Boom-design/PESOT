@@ -35,11 +35,19 @@
 
 <div id="{{ $uid }}" class="pw-hint" data-for="{{ $for }}"
      style="font-size:11px;line-height:1.7;margin-top:5px;color:{{ $textColor }};">
-    <div class="pw-hint-rule" data-rule="length"><i class="ph ph-circle"></i> At least 8 characters</div>
-    <div class="pw-hint-rule" data-rule="upper"><i class="ph ph-circle"></i> One uppercase letter</div>
-    <div class="pw-hint-rule" data-rule="lower"><i class="ph ph-circle"></i> One lowercase letter</div>
-    <div class="pw-hint-rule" data-rule="number"><i class="ph ph-circle"></i> One number</div>
-    <div class="pw-hint-rule" data-rule="symbol"><i class="ph ph-circle"></i> One special character</div>
+    <div class="pw-hint-list">
+        <div class="pw-hint-rule" data-rule="length"><i class="ph ph-circle"></i> At least 8 characters</div>
+        <div class="pw-hint-rule" data-rule="upper"><i class="ph ph-circle"></i> One uppercase letter</div>
+        <div class="pw-hint-rule" data-rule="lower"><i class="ph ph-circle"></i> One lowercase letter</div>
+        <div class="pw-hint-rule" data-rule="number"><i class="ph ph-circle"></i> One number</div>
+        <div class="pw-hint-rule" data-rule="symbol"><i class="ph ph-circle"></i> One special character</div>
+    </div>
+    {{-- Once every rule is met the list has nothing left to say, so it gives
+         way to the one line that does. A checklist of five ticks is five things
+         to read for an answer that is one word. --}}
+    <div class="pw-hint-done" style="display:none;font-weight:700;color:{{ $metColor }};">
+        <i class="ph-fill ph-shield-check me-1"></i>Strong password
+    </div>
 </div>
 
 <style>
@@ -90,13 +98,18 @@
     };
 
     const rules = hint.querySelectorAll('.pw-hint-rule');
+    const list  = hint.querySelector('.pw-hint-list');
+    const done  = hint.querySelector('.pw-hint-done');
 
     function paint() {
         const value = field.value;
+        let   allMet = true;
 
         rules.forEach(rule => {
             const passed = tests[rule.dataset.rule](value);
             const icon   = rule.querySelector('i');
+
+            if (!passed) allMet = false;
 
             // Grey and an empty circle until it is met, so an untouched field
             // reads as a list of requirements rather than a list of failures.
@@ -104,6 +117,13 @@
             icon.className   = passed ? 'ph-fill ph-check-circle' : 'ph ph-circle';
             rule.style.color = passed ? met : '';
         });
+
+        // An empty field is not a strong password; it is a field nobody has
+        // started. The list stays until there is something to judge.
+        const strong = allMet && value !== '';
+
+        list.style.display = strong ? 'none'  : '';
+        done.style.display = strong ? 'block' : 'none';
     }
 
     field.addEventListener('input', paint);

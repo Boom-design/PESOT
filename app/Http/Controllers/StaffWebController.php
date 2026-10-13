@@ -2423,7 +2423,7 @@ $nsrp = $registration->nsrp;
 
         return $this->backToRequirementReview($requirement, $field, $left === 0
             ? 'All documents reviewed. Send the folder back to the employer below.'
-            : 'Document rejected. ' . $left . ' document(s) still to review.');
+            : 'You rejected this document. ' . $left . ' document(s) still to review.');
     }
 
     /** Ibalik ang usa ka papel sa wala pa madawat — sayop nga pindot, o gibasa pag-usab. */
@@ -2685,7 +2685,7 @@ $nsrp = $registration->nsrp;
         ], $requirement->user_id);
 
         return redirect()->route('staff.requirements')
-            ->with('success', 'Requirements rejected.');
+            ->with('success', 'You rejected these requirements. The employer has been told what to resubmit.');
     }
 
     // ───────────────────────────────
@@ -4268,7 +4268,7 @@ $nsrp = $registration->nsrp;
         ], $schedule->employer_id);
 
         return redirect()->route('staff.inhouse')
-            ->with('success', 'In-house schedule rejected.');
+            ->with('success', 'You rejected this in-house schedule request. The employer has been told why.');
     }
 
     
@@ -5178,7 +5178,7 @@ $nsrp = $registration->nsrp;
             'reference_id'   => $job->job_qualifications_id,
         ], $job->company_id);
 
-        return back()->with('success', 'Job posting rejected.');
+        return back()->with('success', 'You rejected this job posting. The employer has been told why.');
     }
 
     // ───────────────────────────────

@@ -429,7 +429,19 @@
                                  as a caption. It fills a field in, so it looks
                                  like something that can be pressed. --}}
                             <button type="button" id="useFirstNameBtn" class="btn-use-first-name">
-                                <i class="ph-fill ph-user me-1"></i>Use their first name
+                                <i class="ph-fill ph-key me-1"></i>Reset Password
+                            </button>
+                            {{-- The box locks once it is filled. What it holds
+                                 is the staff member's own first name, worked out
+                                 by the same rule StarterPassword uses on the
+                                 server — typing over it would make the screen
+                                 say one thing and the account hold another. The
+                                 X clears it and hands the box back. --}}
+                            <button type="button" id="clearResetPwBtn" class="d-none"
+                                title="Clear it and type a password of your own"
+                                style="border:1px solid var(--n-200);border-radius:8px;background:#fff;
+                                       color:var(--n-500);font-size:11.5px;padding:5px 10px;cursor:pointer;">
+                                <i class="ph ph-x"></i>
                             </button>
                         </div>
                         {{-- Anything set here is a starter, never a password
@@ -954,8 +966,16 @@
             document.getElementById('updateUserName').textContent = name;
             document.getElementById('updateUserStatus').value = status;
             document.getElementById('updateUserRole').value = role;
-            document.getElementById('updateUserPassword').value = '';
-            document.getElementById('updateUserPassword').dataset.firstName = firstNameKey(name);
+            const updatePw = document.getElementById('updateUserPassword');
+            updatePw.value    = '';
+            updatePw.dataset.firstName = firstNameKey(name);
+            // The modal is one element reused for every row, so the locked
+            // state from the last staff member it was opened for has to go.
+            updatePw.readOnly = false;
+            updatePw.type     = 'password';
+            updatePw.style.background = '';
+            document.getElementById('updateUserPwIcon').className = 'ph ph-eye';
+            document.getElementById('clearResetPwBtn')?.classList.add('d-none');
             document.getElementById('updateUserForm').action = `/admin/users/${id}`;
             document.querySelector('#updateUserForm input[name="update_user_id"]').value = id;
         });
@@ -971,9 +991,23 @@
 
     document.getElementById('useFirstNameBtn')?.addEventListener('click', function () {
         const pw = document.getElementById('updateUserPassword');
-        pw.value = pw.dataset.firstName || 'peso';
-        pw.type  = 'text';
+        pw.value    = pw.dataset.firstName || 'peso';
+        pw.type     = 'text';
+        // Read-only, not disabled: a disabled input is not submitted at all,
+        // and the password would never reach the server.
+        pw.readOnly = true;
+        pw.style.background = 'var(--n-50)';
         document.getElementById('updateUserPwIcon').className = 'ph ph-eye-slash';
+        document.getElementById('clearResetPwBtn')?.classList.remove('d-none');
+    });
+
+    document.getElementById('clearResetPwBtn')?.addEventListener('click', function () {
+        const pw = document.getElementById('updateUserPassword');
+        pw.value    = '';
+        pw.readOnly = false;
+        pw.style.background = '';
+        pw.focus();
+        this.classList.add('d-none');
     });
 
     function toggleUpdatePw() {

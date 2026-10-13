@@ -59,6 +59,16 @@
             background:none; border:none; color:#fff; font-size:12px; font-weight:700;
             text-decoration:underline; cursor:pointer;
         }
+        /* Show/hide, so a password typed once can be read back before it is
+           saved. The staff member is setting a password they have to remember,
+           on a page they cannot leave until they do. */
+        .input-wrap { position:relative; }
+        .input-wrap .peso-input { padding-right:42px; }
+        .toggle-pw {
+            position:absolute; right:12px; top:11px;
+            background:none; border:none; color:rgba(255,255,255,0.7);
+            cursor:pointer; padding:0; font-size:17px; line-height:1;
+        }
     </style>
 </head>
 <body>
@@ -87,13 +97,26 @@
         <form method="POST" action="{{ route('password.force.update') }}">
             @csrf
             <label class="peso-label">New Password</label>
-            <input type="password" name="password" class="peso-input"
-                   placeholder="At least 8 characters" required autofocus>
+            <div class="input-wrap">
+                <input type="password" name="password" id="fcpw1" class="peso-input"
+                       placeholder="At least 8 characters" required autofocus>
+                <button type="button" class="toggle-pw" onclick="togglePw('fcpw1','fcicon1')">
+                    <i class="ph ph-eye" id="fcicon1"></i>
+                </button>
+            </div>
             @include('partials.password-hint', ['onDark' => true])
 
             <label class="peso-label">Confirm New Password</label>
-            <input type="password" name="password_confirmation" class="peso-input"
-                   placeholder="Type it again" required>
+            <div class="input-wrap">
+                <input type="password" name="password_confirmation" id="fcpw2" class="peso-input"
+                       placeholder="Type it again" required>
+                <button type="button" class="toggle-pw" onclick="togglePw('fcpw2','fcicon2')">
+                    <i class="ph ph-eye" id="fcicon2"></i>
+                </button>
+            </div>
+            <div id="fcMismatch" style="display:none;color:#fca5a5;font-size:11px;margin-top:-8px;margin-bottom:12px;">
+                <i class="ph-fill ph-warning-circle me-1"></i>Passwords do not match.
+            </div>
 
             <button type="submit" class="btn-login">
                 <i class="ph-fill ph-check-circle me-2"></i>Save New Password
@@ -107,5 +130,35 @@
             </form>
         </div>
     </div>
+<script>
+    function togglePw(id, iconId) {
+        const input = document.getElementById(id);
+        const icon  = document.getElementById(iconId);
+        input.type  = input.type === 'password' ? 'text' : 'password';
+        icon.className = input.type === 'password' ? 'ph ph-eye' : 'ph ph-eye-slash';
+    }
+
+    // The two must match before the form is sent. HTML has no rule for it, so a
+    // mismatch would travel to the server and come back with both boxes empty —
+    // on the one page the account cannot leave until a password is set.
+    (function () {
+        const pw1  = document.getElementById('fcpw1');
+        const pw2  = document.getElementById('fcpw2');
+        const warn = document.getElementById('fcMismatch');
+        if (!pw1 || !pw2) return;
+
+        function check() {
+            const bad = pw2.value !== '' && pw1.value !== pw2.value;
+            pw2.setCustomValidity(bad ? 'Passwords do not match.' : '');
+            pw2.style.borderColor = bad ? '#fca5a5' : '';
+            warn.style.display = bad ? 'block' : 'none';
+        }
+
+        pw1.addEventListener('input', check);
+        pw2.addEventListener('input', check);
+        pw1.form?.addEventListener('submit', check);
+        check();
+    })();
+</script>
 </body>
 </html>
