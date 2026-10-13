@@ -53,7 +53,12 @@ class AdminController extends Controller
         // ── Ang card mismo nagsulti kung unsa ang sulod niini. ──
         $jobseekerTotal    = JobseekerRegistration::whereHas('nsrp')->count();
         $companyTotal      = \App\Models\EmployerNsrpRegistration::count();
-        $totalUsers        = $jobseekerTotal + $companyTotal;
+        // Ang staff tawo pud nga naggamit sa sistema, ug ang Manage Users —
+        // nga mao ang giablihan niini nga card — naglista kanila uban sa
+        // jobseeker ug sa kompanya. Apil ang na-deactivate: naa pa sila didto,
+        // sa Inactive nga tab.
+        $staffTotal        = User::where('role', 'staff')->count();
+        $totalUsers        = $jobseekerTotal + $companyTotal + $staffTotal;
         $activeUsers       = User::whereIn('role', ['jobseeker', 'company'])->where('status', 'approved')->count();
         $deactivatedUsers  = User::whereIn('role', ['jobseeker', 'company'])->where('status', 'deactivated')->count();
         // ── Ang giihap kay ang nakahuman sa NSRP, dili ang naka-create ug
@@ -111,6 +116,7 @@ class AdminController extends Controller
             'deactivatedUsers',
             'jobseekerCount',
             'jobseekerNoNsrp',
+            'staffTotal',
             'companyCount',
             'registrationCount',
             'monthlyJobFairCount',
