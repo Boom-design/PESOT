@@ -81,6 +81,50 @@
     }
     .peso-cal-panel .flatpickr-calendar.inline .flatpickr-day { height: 40px; line-height: 40px; }
     .peso-cal-panel .flatpickr-calendar.inline .flatpickr-weekday { font-size: 11px; }
+
+    /* WHICH DAY IS TODAY, AND WHICH DAY YOU TAPPED.
+
+       The list beside the calendar names the day it is showing, but the grid
+       itself said nothing: the office opens the page, reads a list, and has to
+       count rows to find where today sits. Flatpickr marks both days already —
+       .today and .selected — and nothing in this system had ever styled them,
+       so both looked like every other cell.
+
+       Today gets a ring, the day you tapped gets filled. They are different
+       marks on purpose: the calendar opens on today with both on the same
+       cell, and tapping another day has to visibly move one of them.
+
+       !important throughout: flatpickr ships its own rules for these classes
+       and loads after this block. */
+    .peso-cal-panel .flatpickr-day.today {
+        border: 1.5px solid var(--g-600) !important;
+        font-weight: 700;
+    }
+
+    /* No colour here on purpose. A Sunday or a holiday is drawn in red by
+       .fp-day-rest, and today being today does not stop it being a rest day —
+       overriding the colour would take the warning off the one cell the office
+       looks at first. The ring says "today" without saying anything else. */
+
+    .peso-cal-panel .flatpickr-day.selected,
+    .peso-cal-panel .flatpickr-day.selected:hover {
+        background: var(--g-600) !important;
+        border-color: var(--g-600) !important;
+        color: #fff !important;
+        font-weight: 700;
+    }
+
+    /* Today, while it is the day being read. The ring would vanish into the
+       fill, so it becomes a pale inner edge instead. */
+    .peso-cal-panel .flatpickr-day.today.selected {
+        box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.55) !important;
+    }
+
+    /* The dots sit on a filled cell on the selected day, so they need an edge
+       that reads against the green rather than against white. */
+    .peso-cal-panel .flatpickr-day.selected .peso-day-dots i {
+        border-color: #fff !important;
+    }
     .peso-cal-panel .flatpickr-calendar.inline .flatpickr-current-month { font-size: 14px; padding: 5px 0; }
     .peso-cal-panel .peso-day-dots { bottom: 4px; }
     @media (min-width: 768px) {
