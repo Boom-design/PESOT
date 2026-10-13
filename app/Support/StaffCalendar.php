@@ -313,7 +313,23 @@ class StaffCalendar
         return $out;
     }
 
-    /** Every ISO day from start to end inclusive. */
+    /**
+     * Every ISO day from start to end inclusive, skipping the days the office
+     * is shut.
+     *
+     * A multi-day in-house request is a reservation: the employer holds the
+     * whole window and picks a day inside it. The window is allowed to straddle
+     * a Sunday or a holiday — refusing it would make the employer split one
+     * request into two for no reason — but nothing can happen on those days, so
+     * drawing them as occupied is drawing something that cannot take place.
+     *
+     * PESO admin, 2026-10-13: an in-house range of Oct 16–19 put an activity on
+     * Sunday the 18th, on a calendar whose whole job is to say which days are
+     * free. The office is shut; the day is free.
+     *
+     * Every range the calendar draws comes through here, so this answers for
+     * all of them at once.
+     */
     private static function span($start, $end): array
     {
         if (!$start) return [];
@@ -323,10 +339,18 @@ class StaffCalendar
         $days   = [];
 
         while ($cursor->lte($last)) {
-            $days[] = $cursor->toDateString();
+            $iso = $cursor->toDateString();
+
+            if (!Holidays::closedReason($iso)) {
+                $days[] = $iso;
+            }
+
             $cursor->addDay();
         }
 
-        return $days;
+        // A single day that is itself closed still draws: the row exists, the
+        // desk booked it before the rule, and hiding it would leave a schedule
+        // nobody can see on any calendar.
+        return $days ?: [$start->toDateString()];
     }
 }
