@@ -248,11 +248,19 @@ class InhouseEmployerReport
     }
 
     /** Usa ka laray kada jobseeker, andam na para sa spreadsheet. */
-    public static function rows(bool $overseas, ?string $search = null): Collection
+    /**
+     * @param int|null $focusId  one employer only, when the page is focused on
+     *                           one — the download then matches what is on
+     *                           screen rather than quietly giving the lot.
+     */
+    public static function rows(bool $overseas, ?string $search = null, ?int $focusId = null): Collection
     {
         $rows = collect();
 
-        foreach (self::completedPostings($overseas, $search) as $job) {
+        $postings = self::completedPostings($overseas, $search)
+            ->when($focusId, fn($c) => $c->where('company_id', $focusId));
+
+        foreach ($postings as $job) {
             $attendees = self::attendees($job);
 
             if ($attendees->isEmpty()) {
@@ -286,7 +294,10 @@ class InhouseEmployerReport
             }
         }
 
-        foreach (self::completedScheduleOnly($overseas, $search) as $schedule) {
+        $rooms = self::completedScheduleOnly($overseas, $search)
+            ->when($focusId, fn($c) => $c->where('employer_id', $focusId));
+
+        foreach ($rooms as $schedule) {
             $date = $schedule->confirmed_date ?: $schedule->preferred_date;
             $rows->push([
                 $schedule->employer->company_name ?? '',

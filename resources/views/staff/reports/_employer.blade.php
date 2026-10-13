@@ -39,9 +39,15 @@
         </a>
         @endif
 
-        {{-- The desk's own download. The export route is LRA only, like the
-             other exports on this page. --}}
-        @if($staffRole === 'lra' && $reportRoute === 'staff.reports' && $rows && $rows->total() > 0)
+        {{-- The download, for whoever is reading the report.
+
+             It was LRA only, from when the SRA had no in-house interviews to
+             report on. They have had their own Employer Report tab on this
+             same page for a while, and the admin reads both — so all three get
+             the button, and the file follows whatever is on screen: the desk's
+             own market, the admin's ?role=, the search, and the one employer
+             when the page is focused on one. --}}
+        @if($rows && $rows->total() > 0)
         <a href="{{ route('staff.reports.inhouse.export', request()->query()) }}"
            class="btn btn-sm fw-semibold"
            style="background:#fff;color:var(--g-700);border:1px solid var(--n-200);border-radius:8px;font-size:12px;padding:6px 14px;">

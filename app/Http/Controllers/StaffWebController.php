@@ -5245,28 +5245,47 @@ $nsrp = $registration->nsrp;
     // ── makita nila ang report sa maong employer ug ang status sa matag
     // ── jobseeker.
     // ──
-    // ── LRA ra sa karon. Ugma pa ang interview sa SRA, ug ang paghatag niini
-    // ── kanila karon mao ang pagtag-an sa ilang proseso. ──
+    // ── Ang LRA, ang SRA ug ang admin.
+    // ──
+    // ── "LRA ra sa karon" kaniadto, kay "ugma pa ang interview sa SRA". Ang
+    // ── ugma niabot na: ang SRA naay kaugalingong Employer Report nga tab sa
+    // ── parehas niini nga panid, ug ang admin nagbasa sa duha. Ang desk mao
+    // ── ang nagpili kung lokal ba o overseas — ang kaugalingon niyang
+    // ── merkado — ug ang admin nagpili pinaagi sa ?role=. ──
     public function exportInhouseEmployerReport()
     {
-        $staff = $this->authStaff();
-        if (!$staff) return redirect()->route('login');
-        if ($staff->staff_role !== 'lra') {
-            return redirect()->route('staff.dashboard')
-                ->with('error', 'Only LRA staff can download the employer report.');
+        $user = Auth::user();
+        if (!$user) return redirect()->route('login');
+
+        if ($user->role === 'admin') {
+            $overseas = request('role') === 'sra';
+        } else {
+            $staff = $this->authStaff();
+            if (!$staff) return redirect()->route('login');
+
+            if (!in_array($staff->staff_role, ['lra', 'sra'], true)) {
+                return redirect()->route('staff.dashboard')
+                    ->with('error', 'Only LRA and SRA staff can download the employer report.');
+            }
+
+            $overseas = $staff->staff_role === 'sra';
         }
 
-        $search = request('search');
-        $rows   = \App\Support\InhouseEmployerReport::rows(false, $search);
+        $search  = request('search');
+        $focusId = (int) request('employer') ?: null;
+        $rows    = \App\Support\InhouseEmployerReport::rows($overseas, $search, $focusId);
+        $market  = $overseas ? 'Overseas' : 'Local';
 
         return \App\Support\ExcelExport::stream(
-            'peso-employer-report-' . now()->format('Ymd') . '.xlsx',
+            'peso-employer-report-' . strtolower($market) . '-' . now()->format('Ymd') . '.xlsx',
             \App\Support\InhouseEmployerReport::COLUMNS,
             $rows,
             array_filter([
                 ['PESO Cagayan de Oro - Employer Report (In-house Interviews)'],
+                ['Market', $market . ' employers'],
                 ['Coverage', 'Interviews held at least '
                     . \App\Support\InhouseEmployerReport::delayDays() . ' days ago'],
+                $focusId ? ['Employer', \App\Models\EmployerNsrpRegistration::find($focusId)?->company_name] : null,
                 $search ? ['Search', $search] : null,
                 ['Generated', now()->format('Y-m-d H:i')],
             ])
