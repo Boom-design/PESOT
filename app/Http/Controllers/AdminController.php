@@ -841,10 +841,17 @@ if ($type === 'local') {
     {
         $staffRole = request('role', 'lra');
 
-        if ($staffRole === 'job_fair') {
-            // The Job Fair desk's own report data, built by the same code, so this
-            // copy never lacks a variable the page reads.
-            return view('staff.reports.index', \App\Support\JobFairReportPage::data('job_fair', false)
+        // The SRA's page carries a selector between its own Overseas reports
+        // and the job fair ones. The desk's copy reads it; this one did not, so
+        // choosing Job Fair Reports here fell through to the code below and
+        // came back on Overseas — the selector moved and the page did not.
+        $reportView = $staffRole === 'sra' ? request('report_view', 'staff') : 'staff';
+
+        if ($staffRole === 'job_fair' || ($staffRole === 'sra' && $reportView === 'jobfair')) {
+            // The desk's own report data, built by the same code, so this copy
+            // never lacks a variable the page reads.
+            return view('staff.reports.index',
+                \App\Support\JobFairReportPage::data($staffRole, $staffRole === 'sra', $reportView)
                 + ['layout' => 'admin.layouts.app', 'reportRouteName' => 'admin.reports.staff']);
         }
 
@@ -950,8 +957,16 @@ if ($type === 'local') {
 
         $totalPlaced = (clone $placedQuery)->count();
 
+        // Same filter as the desk's page. It was added there and not here, so
+        // the dropdown on the admin's copy rewrote the URL and changed nothing.
+        $referredStatus = request('referred_status', 'all');
+        if (!in_array($referredStatus, ['waiting', 'rejected'], true)) {
+            $referredStatus = 'all';
+        }
+
         $referredQuery = \App\Models\Application::with(['jobseeker', 'job.company'])
             ->whereIn('status', ['waiting', 'rejected'])
+            ->when($referredStatus !== 'all', fn($q) => $q->where('status', $referredStatus))
             ->whereHas('jobseeker.nsrp', fn($r) => $r->whereIn('type', $jobseekerType))
             ->when($search, fn($q) => $q->whereHas('jobseeker', fn($u) =>
                 $u->where('name', 'like', "%{$search}%")
@@ -1037,9 +1052,9 @@ if ($type === 'local') {
         }
 
         return view('staff.reports.index', compact(
-            'staffRole', 'tab', 'registeredView',
+            'staffRole', 'tab', 'registeredView', 'reportView',
             'registeredParticipants', 'registeredAll', 'placedApplications', 'referredApplications',
-            'totalRegistered', 'totalRegisteredAll', 'totalPlaced', 'totalReferred', 'solicitationStats',
+            'totalRegistered', 'totalRegisteredAll', 'totalPlaced', 'totalReferred', 'referredStatus', 'solicitationStats',
             'topEmployersByInhouseInterviews', 'topEmployersFilter', 'topEmployersMonth', 'topEmployersYear',
             'inhouseReport', 'companyInterviews',
             'employerHires', 'employerFocusId',
