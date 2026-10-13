@@ -231,7 +231,10 @@
                                 </td>
                                 <td style="text-align:center;"><span class="fw-bold" style="font-size:15px;color:var(--g-700);">{{ $app->match_percentage }}%</span></td>
                                 <td style="text-align:center;"><span class="badge-{{ $app->status }}">{{ \App\Support\ApplicationStatus::label($app->status) }}</span></td>
-                                <td style="text-align:center;">
+                                {{-- nowrap so the column takes the width the
+                                     three decision buttons need, instead of
+                                     squeezing them onto two lines. --}}
+                                <td style="text-align:center;white-space:nowrap;">
                                     @include('company.jobs.partials.applicant-actions', ['app' => $app])
                                 </td>
                             </tr>
@@ -287,7 +290,10 @@
                                 </td>
                                 <td style="text-align:center;"><span class="fw-bold" style="font-size:15px;color:var(--warn);">{{ $app->match_percentage }}%</span></td>
                                 <td style="text-align:center;"><span class="badge-{{ $app->status }}">{{ \App\Support\ApplicationStatus::label($app->status) }}</span></td>
-                                <td style="text-align:center;">
+                                {{-- nowrap so the column takes the width the
+                                     three decision buttons need, instead of
+                                     squeezing them onto two lines. --}}
+                                <td style="text-align:center;white-space:nowrap;">
                                     @include('company.jobs.partials.applicant-actions', ['app' => $app])
                                 </td>
                             </tr>
@@ -343,7 +349,10 @@
                                 </td>
                                 <td style="text-align:center;"><span class="fw-bold" style="font-size:15px;color:var(--danger);">{{ $app->match_percentage }}%</span></td>
                                 <td style="text-align:center;"><span class="badge-{{ $app->status }}">{{ \App\Support\ApplicationStatus::label($app->status) }}</span></td>
-                                <td style="text-align:center;">
+                                {{-- nowrap so the column takes the width the
+                                     three decision buttons need, instead of
+                                     squeezing them onto two lines. --}}
+                                <td style="text-align:center;white-space:nowrap;">
                                     @include('company.jobs.partials.applicant-actions', ['app' => $app])
                                 </td>
                             </tr>
