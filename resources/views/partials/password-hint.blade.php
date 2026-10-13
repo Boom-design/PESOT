@@ -93,7 +93,9 @@
         length: v => [...v].length >= 8,
         upper:  v => /\p{Lu}/u.test(v),
         lower:  v => /\p{Ll}/u.test(v),
-        number: v => /\pN/u.test(v),
+        // \p{N}, not \pN. The one-letter form is PCRE's; JavaScript throws
+        // "Invalid property name" on it and takes the whole checklist with it.
+        number: v => /\p{N}/u.test(v),
         symbol: v => /\p{Z}|\p{S}|\p{P}/u.test(v),
     };
 
