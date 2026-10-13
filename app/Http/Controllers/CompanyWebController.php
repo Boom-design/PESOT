@@ -272,6 +272,20 @@ class CompanyWebController extends Controller
         return \App\Support\InhouseBooking::capacityError($start, $end);
     }
 
+    // ── Naa na ba siyay in-house niini nga adlaw?
+    // ──
+    // ── Lahi ni sa limit: ang limit nag-ihap ug KOMPANYA ug giusa ang duha ka
+    // ── rekord sa usa ka employer, mao nga ang parehas nga establisemento
+    // ── makabook ug kaduha sa usa ka adlaw ug ang ihap usa ra gihapon. Ang
+    // ── in-house kay adlaw, dili oras — ang ikaduhang oras sa adlaw nga iya na
+    // ── kay parehas nga booking nga gisulat kaduha. ──
+    private function alreadyBookedError($company, ?string $start, ?string $end): ?string
+    {
+        return \App\Support\InhouseBooking::duplicateError(
+            $company->activeCompany()->employer_nsrp_registrations_id ?? null, $start, $end
+        );
+    }
+
     // ── HELPER — force redirect sa Requirements kung wala pa naka-submit ──
     private function requireRequirements($company)
     {
@@ -545,6 +559,12 @@ class CompanyWebController extends Controller
         // ── usa ka adlaw nga libre, padayon — ang staff na ang mopili didto. ──
         if ($request->schedule_type === 'inhouse') {
             if ($why = $this->officeBlockedWindowError($request->preferred_date, $request->preferred_date_end)) {
+                return back()->withInput()->with('error', $why);
+            }
+        }
+
+        if ($request->schedule_type === 'inhouse') {
+            if ($why = $this->alreadyBookedError($company, $request->preferred_date, $request->preferred_date_end)) {
                 return back()->withInput()->with('error', $why);
             }
         }
@@ -1380,6 +1400,12 @@ class CompanyWebController extends Controller
             }
         }
 
+        if ($wantsInhouse) {
+            if ($why = $this->alreadyBookedError($company, $request->inhouse_date, $request->inhouse_date_end)) {
+                return back()->withInput()->with('error', $why);
+            }
+        }
+
         if ($wantsInhouse && $request->venue_type === 'peso_office') {
             if ($why = $this->pesoOfficeCapacityError($request->inhouse_date, $request->inhouse_date_end)) {
                 return back()->withInput()->with('error', $why);
@@ -1758,6 +1784,10 @@ class CompanyWebController extends Controller
         ]);
 
         if ($why = $this->officeBlockedWindowError($request->preferred_date, $request->preferred_date_end)) {
+            return back()->withInput()->with('error', $why);
+        }
+
+        if ($why = $this->alreadyBookedError($company, $request->preferred_date, $request->preferred_date_end)) {
             return back()->withInput()->with('error', $why);
         }
 

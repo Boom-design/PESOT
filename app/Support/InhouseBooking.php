@@ -141,6 +141,60 @@ class InhouseBooking
         return null;
     }
 
+    /**
+     * Why this employer cannot take this window, because they already hold a
+     * day inside it.
+     *
+     * PESO, 2026-10-13: the room limit counts COMPANIES, and it counts them
+     * once each — an employer with two records is still one company turning up,
+     * which is right for the limit and silent about this. So the same
+     * establishment could book March 12 at 1pm and again at 9am and occupy a
+     * day of the office twice while the count still read one.
+     *
+     * An in-house interview is a day, not an hour: the employer holds the room
+     * for it and sees whoever they called in. A second time on a day they
+     * already hold is not a second booking, it is the same booking written
+     * twice — and it takes the day from an employer who has none.
+     *
+     * @param int|null   the request being edited, so changing
+     *                                    its time does not collide with itself
+     */
+    public static function duplicateError(?int $employerId, ?string $start, ?string $end, ?int $ignoreScheduleId = null): ?string
+    {
+        if (!$employerId || !$start) return null;
+
+        $cursor = Carbon::parse($start);
+        $last   = Carbon::parse($end ?: $start);
+
+        while ($cursor->lte($last)) {
+            $date   = $cursor->toDateString();
+            $covers = self::coversDay($date);
+
+            $taken = InhouseSchedule::where('employer_id', $employerId)
+                    ->whereIn('status', ['pending', 'accepted'])
+                    ->when($ignoreScheduleId, fn($q) => $q->where('inhouse_schedules_id', '!=', $ignoreScheduleId))
+                    ->where($covers)
+                    ->exists()
+                || Job::where('company_id', $employerId)
+                    ->where('schedule_type', 'inhouse')
+                    ->whereIn('posting_status', ['pending', 'approved'])
+                    ->where($covers)
+                    ->exists();
+
+            if ($taken) {
+                return 'You already have an in-house interview booked on '
+                     . Carbon::parse($date)->format('M d, Y')
+                     . '. An in-house interview holds the room for the whole day, so you do not '
+                     . 'need a second time on it — add the other positions to that request, '
+                     . 'or pick another day.';
+            }
+
+            $cursor->addDay();
+        }
+
+        return null;
+    }
+
     // ── Ang puno nga adlaw sa PESO Office sulod sa sunod nga unom ka bulan,
     // ── para i-disable sa calendar picker.
     // ──
