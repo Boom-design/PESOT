@@ -110,13 +110,36 @@ class InhouseEmployerReport
             ->values();
     }
 
+    /**
+     * The statuses that are an employer's answer.
+     *
+     * 'waiting' is one: On Process means the employer took the jobseeker
+     * forward and is waiting on their papers. 'pending', 'reviewed' and
+     * 'qualified' are not — they mean nobody has answered yet.
+     */
+    public const DECIDED = ['hired', 'rejected', 'waiting'];
+
+    /**
+     * The attendees the employer actually answered for.
+     *
+     * PESO, 2026-10-13: a report is a record of what happened, and a row
+     * reading "No decision recorded" is a record of nothing. The office hands
+     * these to DOLE; a line with no outcome on it is a line somebody has to ask
+     * about. The count above the table still says how many are outstanding, so
+     * nothing is hidden — it is simply not listed as a result.
+     */
+    public static function decided(Collection $attendees): Collection
+    {
+        return $attendees->whereIn('status', self::DECIDED)->values();
+    }
+
     /** Pila ang niapil, ug pila ang na-hire — ang duha ka numero nga gipangita. */
     public static function totals(Collection $attendees): array
     {
         return [
             'interviewed' => $attendees->count(),
             'hired'       => $attendees->where('status', 'hired')->count(),
-            'undecided'   => $attendees->whereIn('status', ['pending', 'reviewed', 'qualified', 'waiting'])->count(),
+            'undecided'   => $attendees->whereNotIn('status', self::DECIDED)->count(),
         ];
     }
 

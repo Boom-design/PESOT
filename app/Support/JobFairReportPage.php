@@ -26,8 +26,30 @@ class JobFairReportPage
         $tab      = request('tab', 'attendance');
         if ($isSraJobFairView && $tab === 'placement') $tab = 'attendance';
         $eventId  = request('event_id');
-        $allEvents = \App\Models\JobFairEvent::orderByDesc('event_date')->get();
-        $event     = $eventId ? \App\Models\JobFairEvent::find($eventId) : null;
+        // ── Ang nangagi ra.
+        // ──
+        // ── PESO, 2026-10-13: ang dropdown naglista sa TANANG fair, apil ang
+        // ── wala pa nahitabo. Ang report sa fair nga sa Nobyembre pa mahitabo
+        // ── kay panid nga walay sulod — walay nitunga, walay na-hire, walay
+        // ── maipasa sa DOLE — ug ang pagtanyag niini nagpangutana sa desk kung
+        // ── nawala ba ang data o wala pa gyud nahitabo ang fair.
+        // ──
+        // ── Ang adlaw mismo sa fair wala giapil: ang pag-ihap sa nitunga
+        // ── nahuman pagkahuman sa adlaw, dili sa tunga-tunga niini. ──
+        $allEvents = \App\Models\JobFairEvent::whereDate('event_date', '<', today())
+            ->orderByDesc('event_date')
+            ->get();
+
+        // Ang gipili nga fair kinahanglan gikan sa parehas nga listahan. Kung
+        // dili, ang usa ka daan nga link o ang kamot nga nag-usab sa URL
+        // makaabli gihapon sa report sa fair nga wala pa nahitabo.
+        $event = $eventId
+            ? $allEvents->firstWhere('job_fair_events_id', (int) $eventId)
+            : null;
+
+        if ($eventId && !$event) {
+            $eventId = null;
+        }
 
         // ── Ang matag listahan sa ubos naa na sa JobFairReport.
         // ──

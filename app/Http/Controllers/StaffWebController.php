@@ -5619,8 +5619,22 @@ $nsrp = $registration->nsrp;
         $totalPlaced = (clone $placedQuery)->count();
 
         // ── TAB 3: JOB APPLICANTS REFERRED — status = waiting OR rejected ──
+        //
+        // ── Usa ka sala sa status.
+        // ──
+        // ── PESO SRA, 2026-10-13: duha ka tubag ang gilista dinhi — On Process
+        // ── ug Not selected — ug ang desk nga nangita sa tanan nga wala napili
+        // ── magbasa sa tibuok lista ug mo-sala pinaagi sa mata. Ang sala sa
+        // ── URL lang mosulod: ang gi-type nga laing bili mahulog ngadto sa
+        // ── 'all', dili ngadto sa walay sulod nga lista. ──
+        $referredStatus = request('referred_status', 'all');
+        if (!in_array($referredStatus, ['waiting', 'rejected'], true)) {
+            $referredStatus = 'all';
+        }
+
         $referredQuery = \App\Models\Application::with(['jobseeker', 'job.company'])
             ->whereIn('status', ['waiting', 'rejected'])
+            ->when($referredStatus !== 'all', fn($q) => $q->where('status', $referredStatus))
             ->whereHas('jobseeker.nsrp', fn($r) => $r->whereIn('type', $jobseekerType))
             ->when($search, fn($q) => $q->whereHas('jobseeker', fn($j) =>
                 // Ang jobseeker_registrations walay `name` ug walay `email`.
@@ -5766,7 +5780,7 @@ $nsrp = $registration->nsrp;
         return view('staff.reports.index', compact(
             'staffRole', 'tab', 'registeredView', 'reportView', 'range', 'placedChart',
             'registeredParticipants', 'registeredAll', 'placedApplications', 'referredApplications',
-            'totalRegistered', 'totalRegisteredAll', 'totalPlaced', 'totalReferred',
+            'totalRegistered', 'totalRegisteredAll', 'totalPlaced', 'totalReferred', 'referredStatus',
             'vacancyMonth', 'solicitedJobs', 'totalVacanciesSolicited',
             'topEmployersFilter', 'topEmployersMonth', 'topEmployersYear', 'topEmployersByCompanyInterviews',
             'employerHires', 'employerFocusId',

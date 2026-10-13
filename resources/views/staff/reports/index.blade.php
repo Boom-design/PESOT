@@ -1749,6 +1749,26 @@ if ($staffRole !== 'sra') {
 
 @elseif(request('tab') === 'referred')
 
+        {{-- Two answers are listed here — On Process and Not selected — and a
+             desk looking for everyone who was turned down had to read the whole
+             list and sort it by eye. --}}
+        <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+            <span style="font-size:12px;color:var(--n-500);">Status</span>
+            <select id="referredStatusFilter" class="form-select form-select-sm"
+                    style="max-width:260px;border-color:var(--n-200);font-size:12.5px;border-radius:8px;">
+                @foreach([
+                    'all'      => 'All referred applicants',
+                    'waiting'  => \App\Support\ApplicationStatus::label('waiting') . ' — complying with requirements',
+                    'rejected' => \App\Support\ApplicationStatus::label('rejected'),
+                ] as $value => $label)
+                    <option value="{{ $value }}" {{ ($referredStatus ?? 'all') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                @endforeach
+            </select>
+            <span style="font-size:11.5px;color:var(--n-500);">
+                Showing {{ ($referredApplications ?? collect())->total() }} of {{ $totalReferred ?? 0 }}
+            </span>
+        </div>
+
         <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
@@ -2011,6 +2031,20 @@ if ($staffRole !== 'sra') {
 @push('scripts')
 <script>
     let searchTimer;
+
+    // The status filter on Job Applicants Referred. Back to page 1: the row
+    // being looked for is rarely on whatever page the unfiltered list was left
+    // on, and an empty page 4 reads as an empty filter.
+    document.getElementById('referredStatusFilter')?.addEventListener('change', function () {
+        const url = new URL(window.location.href);
+        if (this.value === 'all') {
+            url.searchParams.delete('referred_status');
+        } else {
+            url.searchParams.set('referred_status', this.value);
+        }
+        url.searchParams.set('page', 1);
+        window.location.href = url.toString();
+    });
 
     function changeTopEmployersDate(value) {
         const url = new URL(window.location.href);

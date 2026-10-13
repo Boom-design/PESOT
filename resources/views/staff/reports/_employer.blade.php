@@ -193,8 +193,13 @@
 
                 @forelse($company->interviewPostings as $job)
                 @php
-                    $attendees = \App\Support\InhouseEmployerReport::attendees($job);
-                    $totals    = \App\Support\InhouseEmployerReport::totals($attendees);
+                    $allAttendees = \App\Support\InhouseEmployerReport::attendees($job);
+                    $totals       = \App\Support\InhouseEmployerReport::totals($allAttendees);
+                    // A report lists results, so it lists the ones the employer
+                    // answered for. The count above still says how many are
+                    // outstanding, so nothing is hidden — it is simply not
+                    // listed as a result.
+                    $attendees    = \App\Support\InhouseEmployerReport::decided($allAttendees);
                 @endphp
                 <div class="rounded-3 mb-3" style="border:1px solid var(--n-50);">
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 px-3 py-2" style="background:var(--n-50);font-size:12px;">
@@ -211,7 +216,14 @@
                         </div>
                     </div>
                     @if($attendees->isEmpty())
-                    <div class="px-3 py-2" style="font-size:12px;color:var(--n-500);">No jobseeker took part in this interview.</div>
+                    <div class="px-3 py-2" style="font-size:12px;color:var(--n-500);">
+                        @if($allAttendees->isEmpty())
+                            No jobseeker took part in this interview.
+                        @else
+                            The employer has not recorded a result for any of the
+                            {{ $totals['interviewed'] }} who took part.
+                        @endif
+                    </div>
                     @else
                     <div class="table-responsive">
                         <table class="table table-sm mb-0" style="font-size:12px;">
