@@ -17,8 +17,19 @@ use App\Models\InhouseSchedule;
  */
 class InhouseScheduleReport
 {
-    public static function query(bool $overseas, ?string $search = null)
+    /** The two answers this report holds, for the filter and for the query. */
+    public const STATUSES = ['accepted' => 'Accepted', 'rejected' => 'Declined'];
+
+    /** Whatever the URL asked for, kept to something this report can answer. */
+    public static function status(?string $wanted): string
     {
+        return array_key_exists((string) $wanted, self::STATUSES) ? (string) $wanted : 'all';
+    }
+
+    public static function query(bool $overseas, ?string $search = null, ?string $status = null)
+    {
+        $status = self::status($status);
+
         return InhouseSchedule::with('employer')
             // ── Ang nadesisyunan ra, ug ang nahitabo na ra.
             // ──
@@ -28,7 +39,8 @@ class InhouseScheduleReport
             // ── trabaho, ug ang iyang lugar mao ang Pending In-house Schedule
             // ── nga tab diin naa ang buton. Ang petsa sa umaabot wala pud:
             // ── wala pa man siya nahitabo aron ireport.
-            ->whereIn('status', ['accepted', 'rejected'])
+            ->whereIn('status', array_keys(self::STATUSES))
+            ->when($status !== 'all', fn($q) => $q->where('status', $status))
             ->whereRaw('COALESCE(confirmed_date, preferred_date) < CURDATE()')
             ->whereHas('employer', fn($q) => $q->where('is_overseas', $overseas))
             ->when($search, fn($q) => $q->whereHas('employer',
@@ -40,8 +52,8 @@ class InhouseScheduleReport
     }
 
     /** Five rows a page, the same as the Company Interview report. */
-    public static function paginate(bool $overseas, ?string $search = null)
+    public static function paginate(bool $overseas, ?string $search = null, ?string $status = null)
     {
-        return self::query($overseas, $search)->paginate(5, ['*'], 'page')->withQueryString();
+        return self::query($overseas, $search, $status)->paginate(5, ['*'], 'page')->withQueryString();
     }
 }

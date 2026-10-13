@@ -1838,6 +1838,25 @@ if ($staffRole !== 'sra') {
 
     @php $ihRows = $inhouseReport ?? null; @endphp
 
+    {{-- Two answers are recorded here — a day given, or refused — and a desk
+         asked which employers were turned down last month read the whole list
+         and sorted it by eye. --}}
+    <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+        <span style="font-size:12px;color:var(--n-500);">Status</span>
+        <select id="scheduleStatusFilter" class="form-select form-select-sm"
+                style="max-width:220px;border-color:var(--n-200);font-size:12.5px;border-radius:8px;">
+            <option value="all" {{ ($scheduleStatus ?? 'all') === 'all' ? 'selected' : '' }}>All requests</option>
+            @foreach(\App\Support\InhouseScheduleReport::STATUSES as $value => $label)
+                <option value="{{ $value }}" {{ ($scheduleStatus ?? 'all') === $value ? 'selected' : '' }}>{{ $label }}</option>
+            @endforeach
+        </select>
+        @if($ihRows)
+        <span style="font-size:11.5px;color:var(--n-500);">
+            Showing {{ $ihRows->total() }} {{ Str::plural('request', $ihRows->total()) }}
+        </span>
+        @endif
+    </div>
+
     {{-- Drawn empty as well as full: the columns say what an in-house
          schedule record holds, and that is worth showing before the first
          request arrives. --}}
@@ -2031,6 +2050,19 @@ if ($staffRole !== 'sra') {
 @push('scripts')
 <script>
     let searchTimer;
+
+    // The status filter on In-house Schedules. Back to page 1 for the reason
+    // the one below it gives.
+    document.getElementById('scheduleStatusFilter')?.addEventListener('change', function () {
+        const url = new URL(window.location.href);
+        if (this.value === 'all') {
+            url.searchParams.delete('schedule_status');
+        } else {
+            url.searchParams.set('schedule_status', this.value);
+        }
+        url.searchParams.set('page', 1);
+        window.location.href = url.toString();
+    });
 
     // The status filter on Job Applicants Referred. Back to page 1: the row
     // being looked for is rarely on whatever page the unfiltered list was left

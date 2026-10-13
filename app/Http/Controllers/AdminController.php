@@ -984,8 +984,12 @@ if ($type === 'local') {
         // was declined, and (SRA only) the interviews employers ran themselves.
         // Both desks answer for in-house; company interviews overseas are the
         // SRA's, the local ones belong to the Job Vacancy desk's own report.
+        // Ang duha ka tubag nga gihuptan niini nga report. Ang desk nangita
+        // sa gibalibaran sa milabay nga bulan ug nagbasa sa tibuok lista.
+        $scheduleStatus = \App\Support\InhouseScheduleReport::status(request('schedule_status'));
+
         $inhouseReport = $tab === 'schedules'
-            ? \App\Support\InhouseScheduleReport::paginate($isOverseas, $search)
+            ? \App\Support\InhouseScheduleReport::paginate($isOverseas, $search, $scheduleStatus)
             : null;
 
         $companyInterviews = ($tab === 'company_interview' && $isOverseas)
@@ -1056,7 +1060,7 @@ if ($type === 'local') {
             'registeredParticipants', 'registeredAll', 'placedApplications', 'referredApplications',
             'totalRegistered', 'totalRegisteredAll', 'totalPlaced', 'totalReferred', 'referredStatus', 'solicitationStats',
             'topEmployersByInhouseInterviews', 'topEmployersFilter', 'topEmployersMonth', 'topEmployersYear',
-            'inhouseReport', 'companyInterviews',
+            'inhouseReport', 'companyInterviews', 'scheduleStatus',
             'employerHires', 'employerFocusId',
             'vacancyMonth', 'solicitedJobs', 'totalVacanciesSolicited', 'archivedJobs'
         ) + ['layout' => 'admin.layouts.app', 'reportRouteName' => 'admin.reports.staff']);
