@@ -5064,6 +5064,11 @@ $nsrp = $registration->nsrp;
             'posting_status' => 'approved',
             'status'         => $goesLive ? 'open' : 'closed',
             'remarks'        => null,
+            // Kinsa, dili lang ang desk. Duha ka tawo mahimong maghupot sa usa
+            // ka pwesto, ug "approved" lamang wala nagsulti kinsa kanila ang
+            // mitubag niini.
+            'reviewed_by'    => \App\Models\Staff::where('user_id', $staff->users_id)->value('staff_id'),
+            'reviewed_at'    => now(),
         ] + ($confirmedDate ? ['confirmed_date' => $confirmedDate->toDateString()] : []));
 
         \App\Models\Announcement::sendToEmployers([
@@ -5161,6 +5166,8 @@ $nsrp = $registration->nsrp;
             'posting_status' => 'rejected',
             'status'         => 'closed',
             'remarks'        => $request->remarks,
+            'reviewed_by'    => \App\Models\Staff::where('user_id', $staff->users_id)->value('staff_id'),
+            'reviewed_at'    => now(),
         ]);
 
         \App\Models\Announcement::sendToEmployers([

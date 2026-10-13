@@ -28,6 +28,10 @@ class Job extends Model
     // Kini ra ang buksan pag-balik pag-enable sa account.
     'dormant_closed_at',
     'posting_status',
+    // Who answered it, and when. Every other decision in the office already
+    // said who made it; a posting only said that it had been made.
+    'reviewed_by',
+    'reviewed_at',
     'posting_type',
     'remarks',
     'salary',
@@ -79,6 +83,7 @@ class Job extends Model
         'preferred_date_end' => 'date',
         'confirmed_date'    => 'date',
         'dormant_closed_at' => 'datetime',
+        'reviewed_at'       => 'datetime',
         'match_points'      => 'array',
     ];
 
@@ -174,6 +179,12 @@ class Job extends Model
     public function company()
     {
         return $this->belongsTo(EmployerNsrpRegistration::class, 'company_id');
+    }
+
+    /** The staff member who approved or rejected this posting. */
+    public function reviewer()
+    {
+        return $this->belongsTo(Staff::class, 'reviewed_by');
     }
 
     /**

@@ -410,6 +410,28 @@
         </div>
     </div>
     @endif
+
+    {{-- Who answered this folder.
+
+         reviewed_by has been written on every approval since the start and
+         shown nowhere. A desk can be two people — two SRAs, two LRAs — so
+         "Approved" named the desk and not the person, and neither of them could
+         tell whether the other had already dealt with it. --}}
+    @if($requirement->status !== 'pending')
+    <div class="col-12">
+        <div class="d-inline-flex align-items-center gap-2 mt-3"
+             style="border:1px solid var(--n-200);border-radius:8px;background:var(--n-50);
+                    padding:6px 12px;font-size:12px;color:var(--n-700);">
+            <i class="ph-fill ph-user-circle-check" style="color:var(--g-600);"></i>
+            <span>
+                {{ $requirement->status === 'approved' ? 'Approved' : ucfirst($requirement->status) }} by
+                <strong style="color:var(--g-700);">
+                    {{ optional($requirement->reviewer)->full_name ?: 'PESO staff (not recorded)' }}
+                </strong>
+            </span>
+        </div>
+    </div>
+    @endif
 </div>
 
 @push('scripts')

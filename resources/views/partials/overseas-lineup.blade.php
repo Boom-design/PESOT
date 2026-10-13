@@ -210,6 +210,17 @@
                                     · answered {{ $participant->responded_at->format('M d, Y') }}
                                     @endif
                                 </div>
+                                {{-- Who made the call. sra_decided_by has been
+                                     written on every selection and shown
+                                     nowhere, and the SRA desk can be two
+                                     people — so "In the fair" said the desk had
+                                     decided without saying which of them. --}}
+                                @if($participant->sra_decided_at)
+                                <div style="font-size:10.5px;color:var(--n-500);">
+                                    Decided {{ $participant->sra_decided_at->format('M d, Y') }}
+                                    by {{ optional($participant->sraDecidedBy)->full_name ?: 'PESO staff (not recorded)' }}
+                                </div>
+                                @endif
                                 @if($participant->permission_note)
                                 <div style="font-size:10.5px;color:var(--n-500);">
                                     <i class="ph ph-note me-1"></i>{{ $participant->permission_note }}

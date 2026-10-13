@@ -242,6 +242,23 @@
                                                 {{ \App\Models\Job::SCHEDULE_TYPE_LABELS[$job->schedule_type] ?? 'None' }}
                                             </div>
                                         </div>
+                                        {{-- Who answered it. A desk can be two
+                                             people, and "Approved" names the desk. --}}
+                                        @if($job->posting_status !== 'pending')
+                                        <div class="col-md-6">
+                                            <div style="color:var(--n-500);font-size:11px;">
+                                                {{ $job->posting_status === 'approved' ? 'Approved by' : 'Rejected by' }}
+                                            </div>
+                                            <div style="color:var(--g-700);font-weight:600;">
+                                                {{ optional($job->reviewer)->full_name ?: 'PESO staff (not recorded)' }}
+                                                @if($job->reviewed_at)
+                                                    <span style="color:var(--n-500);font-weight:400;font-size:11.5px;">
+                                                        · {{ $job->reviewed_at->format('M d, Y') }}
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                        @endif
                                         <div class="col-md-6">
                                             <div style="color:var(--n-500);font-size:11px;">
                                                 {{ $job->confirmed_date ? 'Interview Date' : 'Preferred Date' }}
