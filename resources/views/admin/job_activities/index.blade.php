@@ -77,7 +77,7 @@
                             <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;">Preferred Date</th>
                             <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;">Preferred Time</th>
                             <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;">Number of Applicants</th>
-                            <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;">Job Offer</th>
+                            <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;">Hired</th>
                             <th style="background:var(--n-200);color:var(--g-700);font-size:12px;padding:12px 16px;">Classification</th>
                             {{-- "Status" alone did not say whose. It is the
                                  office's answer to the requested schedule. --}}
@@ -104,11 +104,24 @@
                             <td style="font-size:13px;padding:12px 16px;color:var(--n-700);">
                                 {{ $schedule->time_label ?: 'Not set' }}
                             </td>
+                            {{-- A bare 0 in these two columns read as a fault
+                                 rather than as an answer, and next to "Schedule
+                                 confirmed" it looked like a confirmed interview
+                                 with nothing behind it. Both say what the zero
+                                 means instead. --}}
                             <td style="font-size:13px;padding:12px 16px;color:var(--n-700);">
-                                {{ $schedule->applicant_count }}
+                                @if($schedule->applicant_count > 0)
+                                    {{ $schedule->applicant_count }}
+                                @else
+                                    <span style="color:var(--n-500);font-size:12px;">No jobseeker yet</span>
+                                @endif
                             </td>
                             <td style="font-size:13px;padding:12px 16px;color:var(--n-700);">
-                                {{ $schedule->offer_count }}
+                                @if($schedule->offer_count > 0)
+                                    {{ $schedule->offer_count }}
+                                @else
+                                    <span style="color:var(--n-500);font-size:12px;">None yet</span>
+                                @endif
                             </td>
                             <td style="font-size:13px;padding:12px 16px;">
                                 {{-- The desk that owns this request. It used to be read
