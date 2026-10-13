@@ -975,10 +975,13 @@ if ($type === 'local') {
 
         $totalReferred = (clone $referredQuery)->count();
 
-        $registeredParticipants = ($tab === 'registered' && $registeredView === 'inhouse') ? $registeredQuery->latest()->paginate(10)->withQueryString() : null;
-        $registeredAll          = ($tab === 'registered' && $registeredView === 'all') ? $registeredAllQuery->latest()->paginate(10)->withQueryString() : null;
-        $placedApplications     = $tab === 'placed'     ? $placedQuery->latest()->paginate(10)->withQueryString()     : null;
-        $referredApplications   = $tab === 'referred'   ? $referredQuery->latest()->paginate(10)->withQueryString()   : null;
+        // Lima ka laray, parehas sa ubang tab sa panid. Napulo ang gihimo
+        // niini nga lista nga mas taas kaysa sa bisan unsa nga naa sa tapad
+        // niya, ug ang pagination gitulod ngadto sa ubos sa screen.
+        $registeredParticipants = ($tab === 'registered' && $registeredView === 'inhouse') ? $registeredQuery->latest()->paginate(5)->withQueryString() : null;
+        $registeredAll          = ($tab === 'registered' && $registeredView === 'all') ? $registeredAllQuery->latest()->paginate(5)->withQueryString() : null;
+        $placedApplications     = $tab === 'placed'     ? $placedQuery->latest()->paginate(5)->withQueryString()     : null;
+        $referredApplications   = $tab === 'referred'   ? $referredQuery->latest()->paginate(5)->withQueryString()   : null;
 
         // The two lists the desks were missing: who was given a room and who
         // was declined, and (SRA only) the interviews employers ran themselves.
@@ -1031,7 +1034,7 @@ if ($type === 'local') {
                 ));
 
             $totalVacanciesSolicited = (clone $vacancyQuery)->count();
-            $solicitedJobs = $tab === 'vacancies' ? $vacancyQuery->latest()->paginate(10)->withQueryString() : collect();
+            $solicitedJobs = $tab === 'vacancies' ? $vacancyQuery->latest()->paginate(5)->withQueryString() : collect();
         }
 
         // The same query the SRA's own screen runs; the LRA has none there.

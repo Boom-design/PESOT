@@ -43,63 +43,62 @@ if ($staffRole !== 'sra') {
 @if(($layout ?? '') === 'admin.layouts.app')
 <div class="row g-3 mb-4">
     <div class="col-12">
-        <div class="card border-0 shadow-sm rounded-3 p-3 mb-3">
-            <div class="fw-semibold mb-2" style="color:var(--g-700);font-size:14px;">
-                <i class="ph-fill ph-briefcase me-2"></i>Job Solicitation Statistics
-            </div>
-            <div class="row g-3">
-                <div class="col-12 col-md-4">
-                    <div class="p-3 rounded-3" style="background:var(--n-50);border:1px solid var(--n-200);">
-                        <div class="fw-bold" style="font-size:24px;color:var(--g-700);">{{ $solicitationStats['lra'] ?? 0 }}</div>
-                        <div class="small" style="color:var(--g-600);">LRA Job Solicitation</div>
-                    </div>
-                </div>
-                <div class="col-12 col-md-4">
-                    <div class="p-3 rounded-3" style="background:var(--n-50);border:1px solid var(--n-200);">
-                        <div class="fw-bold" style="font-size:24px;color:var(--g-700);">{{ $solicitationStats['sra'] ?? 0 }}</div>
-                        <div class="small" style="color:var(--g-600);">SRA Job Solicitation</div>
-                    </div>
-                </div>
-                <div class="col-12 col-md-4">
-                    <div class="p-3 rounded-3" style="background:var(--n-50);border:1px solid var(--n-200);">
-                        <div class="fw-bold" style="font-size:24px;color:var(--g-700);">{{ $solicitationStats['overall'] ?? 0 }}</div>
-                        <div class="small" style="color:var(--g-600);">Overall Job Solicitation</div>
-                    </div>
-                </div>
+        {{-- Three numbers on one line.
+
+             This was a titled card holding three padded boxes, each with a
+             24px figure, and it pushed the four report buttons — the thing the
+             admin came to press — most of a screen down. The numbers are
+             context, not the task, so they read as a strip above the buttons
+             rather than as a panel of their own. --}}
+        <div class="card border-0 shadow-sm rounded-3 px-3 py-2 mb-3">
+            <div class="d-flex align-items-center flex-wrap" style="gap:8px 22px;">
+                <span class="fw-semibold" style="color:var(--g-700);font-size:12.5px;white-space:nowrap;">
+                    <i class="ph-fill ph-briefcase me-1" style="color:var(--g-600);"></i>Job Solicitation
+                </span>
+                @foreach([
+                    'lra'     => 'LRA',
+                    'sra'     => 'SRA',
+                    'overall' => 'Overall',
+                ] as $key => $label)
+                    <span style="font-size:12.5px;color:var(--n-500);white-space:nowrap;">
+                        {{ $label }}
+                        <strong style="font-size:15px;color:var(--g-700);margin-left:4px;">{{ $solicitationStats[$key] ?? 0 }}</strong>
+                    </span>
+                @endforeach
             </div>
         </div>
     </div>
     <div class="col-6 col-md-3">
         <a href="{{ route('admin.reports.staff', ['role' => 'lra']) }}" class="text-decoration-none">
-            <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100"
+            <div class="card border-0 shadow-sm rounded-3 px-3 py-2 text-center h-100"
                 style="{{ $staffRole === 'lra' ? 'background:var(--g-600);' : 'background:var(--n-50);' }}">
-                <i class="ph-fill ph-user-list mb-2" style="font-size:26px;color:{{ $staffRole === 'lra' ? '#fff' : 'var(--g-600)' }};"></i>
+                <i class="ph-fill ph-user-list mb-1" style="font-size:22px;color:{{ $staffRole === 'lra' ? '#fff' : 'var(--g-600)' }};"></i>
                 <div class="fw-semibold" style="font-size:13px;color:{{ $staffRole === 'lra' ? '#fff' : 'var(--g-700)' }};">LRA Reports</div>
             </div>
         </a>
     </div>
     <div class="col-6 col-md-3">
         <a href="{{ route('admin.reports.staff', ['role' => 'sra']) }}" class="text-decoration-none">
-            <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100"
+            <div class="card border-0 shadow-sm rounded-3 px-3 py-2 text-center h-100"
                 style="{{ $staffRole === 'sra' ? 'background:var(--g-600);' : 'background:var(--n-50);' }}">
-                <i class="ph ph-globe mb-2" style="font-size:26px;color:{{ $staffRole === 'sra' ? '#fff' : 'var(--g-600)' }};"></i>
+                <i class="ph ph-globe mb-1" style="font-size:22px;color:{{ $staffRole === 'sra' ? '#fff' : 'var(--g-600)' }};"></i>
                 <div class="fw-semibold" style="font-size:13px;color:{{ $staffRole === 'sra' ? '#fff' : 'var(--g-700)' }};">SRA Reports</div>
             </div>
         </a>
     </div>
     <div class="col-6 col-md-3">
         <a href="{{ route('admin.reports.staff', ['role' => 'job_fair']) }}" class="text-decoration-none">
-            <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100"
+            <div class="card border-0 shadow-sm rounded-3 px-3 py-2 text-center h-100"
                 style="{{ $staffRole === 'job_fair' ? 'background:var(--g-600);' : 'background:var(--n-50);' }}">
-                <i class="ph-fill ph-calendar-dots mb-2" style="font-size:26px;color:{{ $staffRole === 'job_fair' ? '#fff' : 'var(--g-600)' }};"></i>
+                <i class="ph-fill ph-calendar-dots mb-1" style="font-size:22px;color:{{ $staffRole === 'job_fair' ? '#fff' : 'var(--g-600)' }};"></i>
                 <div class="fw-semibold" style="font-size:13px;color:{{ $staffRole === 'job_fair' ? '#fff' : 'var(--g-700)' }};">Job Fair Reports</div>
             </div>
         </a>
     </div>
     <div class="col-6 col-md-3">
         <a href="{{ route('admin.reports.staffJobVacancy') }}" class="text-decoration-none">
-            <div class="card border-0 shadow-sm rounded-3 p-3 text-center h-100" style="background:var(--n-50);">
-                <i class="ph-fill ph-briefcase mb-2" style="font-size:26px;color:var(--g-600);"></i>
+            <div class="card border-0 shadow-sm rounded-3 px-3 py-2 text-center h-100" style="background:var(--n-50);">
+                <i class="ph-fill ph-briefcase mb-1" style="font-size:22px;color:var(--g-600);"></i>
                 <div class="fw-semibold" style="font-size:13px;color:var(--g-700);">Job Vacancy Reports</div>
             </div>
         </a>
@@ -1350,15 +1349,13 @@ if ($staffRole !== 'sra') {
              Job Vacancy staff ug sa SRA, dili niya. Ang sa SRA naa sa laray sa
              ibabaw. --}}
     </div>
-    <div class="input-group" style="max-width:260px;width:100%;">
-        <span class="input-group-text" style="border-color:var(--n-200);background:var(--n-50);">
-            <i class="ph ph-magnifying-glass" style="color:var(--g-600);"></i>
-        </span>
-        <input type="text" id="searchInput" class="form-control"
-            placeholder="Search name or email..."
-            style="border-color:var(--n-200);font-size:13px;"
-            value="{{ request('search') }}">
-    </div>
+    {{-- The search box used to sit on the tab row, a line above the filter it
+         narrows. It is part of the same question — which of these rows do I
+         want — so it shares the line with the filter, at the far end. The
+         markup is a partial because three tabs draw this line. --}}
+    @if(request('tab', 'registered') !== 'registered')
+        @include('partials.reports-search')
+    @endif
 </div>
 
 {{-- ── DATE RANGE + EXPORT — para sa tulo ka listahan nga isumite sa
@@ -1393,8 +1390,10 @@ if ($staffRole !== 'sra') {
 {{-- ── TAB 1: JOB APPLICANT REGISTERED ── --}}
 @if(request('tab', 'registered') === 'registered')
 
-    {{-- FILTER DROPDOWN: All Local Jobseekers vs In-house Participants --}}
-    <div class="mb-3">
+    {{-- FILTER DROPDOWN: All Local Jobseekers vs In-house Participants.
+         The search box shares this line: both narrow the same list, and on two
+         lines they read as two separate controls. --}}
+    <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
         <select id="registeredViewFilter" class="form-select form-select-sm"
             style="max-width:280px;width:100%;border-color:var(--n-200);font-size:13px;"
             onchange="changeRegisteredView(this.value)">
@@ -1405,6 +1404,7 @@ if ($staffRole !== 'sra') {
                 Joined In-house ({{ $totalRegistered ?? 0 }})
             </option>
         </select>
+        <div class="ms-auto">@include('partials.reports-search')</div>
     </div>
 
     @if(($registeredView ?? 'all') === 'all')
