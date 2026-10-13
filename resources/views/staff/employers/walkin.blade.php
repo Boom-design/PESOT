@@ -511,7 +511,7 @@
                                    placeholder="Select a date" value="{{ old('company_interview_date') }}">
                             <div style="font-size:11px;color:var(--n-500);margin-top:3px;">
                                 The day applicants come in. PESO is closed on holidays, so those dates
-                                cannot be picked; weekends can still be requested.
+                                and Sundays cannot be picked; Saturdays can still be requested.
                             </div>
                             @error('company_interview_date')
                                 <div style="font-size:11px;color:var(--danger);margin-top:2px;">{{ $message }}</div>
@@ -543,7 +543,7 @@
                                 no other company can take it. The PESO Office takes
                                 {{ $inhouseDailyLimit }} {{ $inhouseDailyLimit === 1 ? 'company' : 'companies' }}
                                 a day; a full day is crossed out on the calendar. Holidays cannot be
-                                picked; weekends can. You verified the papers at the PESO Office, so the dates you
+                                picked, and neither can Sundays; Saturdays can. You verified the papers at the PESO Office, so the dates you
                                 pick here are <strong>confirmed on save</strong> - the desk is told, it does
                                 not have to accept them.
                             </div>
@@ -832,7 +832,7 @@ syncWalkinChannels();
 // ── a day the PESO Office cannot take is disabled and crossed out, a holiday
 // ── is disabled in a different colour, and picking a date asks the server how
 // ── full it really is. The server checks all of it again on submit. ──
-const WALKIN_HOLIDAYS         = @json(\App\Support\Holidays::aroundNow());
+const WALKIN_HOLIDAYS         = @json(\App\Support\Holidays::closedDays());
 const WALKIN_EARLIEST         = @json($earliestBookable);
 const WALKIN_DAILY_COMPANIES  = @json($inhouseDailyLimit);
 let   walkinBookedDates       = [];

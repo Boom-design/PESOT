@@ -1359,14 +1359,16 @@ class CompanyWebController extends Controller
         $inhouseWindowIsOneDay = !$request->filled('inhouse_date_end')
             || $request->input('inhouse_date_end') === $request->input('inhouse_date');
 
-        $holidays = \App\Support\Holidays::aroundNow();
+        // closedReason() rather than the holiday list: it answers for Sunday as
+        // well, which nothing refused before — the picker let one be chosen and
+        // this check waved it through.
         foreach ([
             'company_interview_date'  => $request->input('company_interview_date'),
             'inhouse_date' => $inhouseWindowIsOneDay ? $request->input('inhouse_date') : null,
         ] as $field => $picked) {
-            if ($picked && isset($holidays[$picked])) {
+            if ($picked && ($why = \App\Support\Holidays::closedReason($picked))) {
                 return back()->withInput()->withErrors([
-                    $field => 'PESO is closed on ' . $holidays[$picked]
+                    $field => 'PESO is closed on ' . $why
                               . ' (' . \Carbon\Carbon::parse($picked)->format('M d, Y') . '). Please pick another date.',
                 ]);
             }

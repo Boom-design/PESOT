@@ -104,6 +104,11 @@
                     <tr style="background:var(--g-600);">
                         <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">#</th>
                         <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Full Name</th>
+                        {{-- Who typed this form in. A walk-in was encoded at the
+                             office from the paper form and has no account of its
+                             own, so nothing on this page distinguished it from a
+                             jobseeker who registered online. --}}
+                        <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Source</th>
                         <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Email</th>
                         <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Contact Number</th>
                         <th style="color:var(--g-700);font-size:12px;border:none;padding:12px 16px;">Civil Status</th>
@@ -122,6 +127,17 @@
                             <span class="fw-semibold" style="color:var(--g-700);">
                                 {{ trim(($reg->surname ?? '') . ', ' . ($reg->first_name ?? '') . ' ' . ($reg->middle_name ?? '')) ?: ($reg->user->name ?? 'None') }}
                             </span>
+                        </td>
+                        <td style="padding:12px 16px;vertical-align:middle;">
+                            @if($reg->is_walk_in)
+                                <span style="display:inline-block;background:var(--n-50);color:var(--n-700);
+                                             border:1px solid var(--n-200);border-radius:6px;
+                                             padding:1px 7px;font-size:10px;font-weight:700;">WALK-IN</span>
+                            @else
+                                <span style="display:inline-block;background:var(--g-50);color:var(--g-700);
+                                             border:1px solid var(--g-200, var(--n-200));border-radius:6px;
+                                             padding:1px 7px;font-size:10px;font-weight:700;">ONLINE</span>
+                            @endif
                         </td>
                         <td style="color:var(--n-700);padding:12px 16px;vertical-align:middle;">
                             {{ $reg->reg_email ?? $reg->user->email ?? 'None' }}
@@ -149,7 +165,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="8" class="text-center py-5">
+                        <td colspan="9" class="text-center py-5">
                             <i class="ph ph-tray" style="font-size:40px;color:var(--n-300);"></i>
                             <div class="mt-2 fw-semibold" style="color:var(--g-700);font-size:14px;">
                                 No registration forms yet

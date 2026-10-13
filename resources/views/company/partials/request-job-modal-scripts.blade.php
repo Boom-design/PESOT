@@ -96,7 +96,7 @@
     // ── (PESO interview 2026-08-13). Ang weekend mapili gihapon — mang-hangyo
     // ── man ang ubang employer ug ang LRA/SRA maoy mo-desisyon. Ang server
     // ── nag-susi pud niini; ang disable dinhi para sa dali nga tubag ra. ──
-    const PESO_HOLIDAYS = @json(\App\Support\Holidays::aroundNow());
+    const PESO_HOLIDAYS = @json(\App\Support\Holidays::closedDays());
 
     // ── Dili ma-book karong adlawa: naay preparasyon ang PESO sa dili pa
     // ── moabot ang employer. Ang server nagpugong pud niini — ang picker

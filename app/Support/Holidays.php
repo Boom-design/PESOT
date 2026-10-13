@@ -76,6 +76,66 @@ class Holidays
         return self::forYears([$year - 1, $year, $year + 1, $year + 2]);
     }
 
+    /**
+     * Why the office is shut on this day, or null when it is open.
+     *
+     * PESO, 2026-10-13: Sunday is closed and Saturday is not. The holidays were
+     * already refused, by the pickers and again on save; Sunday was not refused
+     * anywhere, so an employer could ask for one and a desk could confirm it.
+     *
+     * One method, because the two rules were in different places: the holiday
+     * list was read straight out of aroundNow() by four screens and two
+     * controllers, and nothing anywhere knew about Sunday. A seventh caller
+     * that remembers one rule and forgets the other is how they drift.
+     */
+    public static function closedReason(?string $date): ?string
+    {
+        if (!$date) {
+            return null;
+        }
+
+        try {
+            $day = \Carbon\Carbon::parse($date);
+        } catch (\Throwable $e) {
+            return null; // Not a date. The date rule will refuse it.
+        }
+
+        $holidays = self::aroundNow();
+        $key      = $day->toDateString();
+
+        if (isset($holidays[$key])) {
+            return $holidays[$key];
+        }
+
+        return $day->isSunday() ? 'Sunday' : null;
+    }
+
+    /**
+     * The closed days inside the window the calendars draw, as
+     * ['Y-m-d' => 'reason'] — the holidays plus every Sunday.
+     *
+     * The pickers disable whatever is in here, so they do not each have to work
+     * out the week for themselves.
+     */
+    public static function closedDays(): array
+    {
+        $closed = self::aroundNow();
+
+        $cursor = \Carbon\Carbon::create((int) now()->year - 1, 1, 1)->startOfWeek(\Carbon\CarbonInterface::SUNDAY);
+        $end    = \Carbon\Carbon::create((int) now()->year + 2, 12, 31);
+
+        for (; $cursor->lte($end); $cursor->addWeek()) {
+            $key = $cursor->toDateString();
+            if (!isset($closed[$key])) {
+                $closed[$key] = 'Sunday';
+            }
+        }
+
+        ksort($closed);
+
+        return $closed;
+    }
+
     private static function shift(string $date, int $days): string
     {
         return date('Y-m-d', strtotime($date . ' ' . $days . ' days'));

@@ -194,7 +194,7 @@
                             placeholder="Select a date" style="border-color:var(--n-200);font-size:13px;border-radius:8px;max-width:320px;">
                         <small style="font-size:11px;color:var(--n-500);">
                             The day applicants come in. PESO is closed on holidays, so those
-                            dates cannot be picked; weekends can still be requested.
+                            dates and Sundays cannot be picked; Saturdays can still be requested.
                         </small>
                     </div>
 
@@ -215,7 +215,7 @@
                                 Pick one day, or click twice to book a range. Every day you pick is held
                                 for you — no other company can take it, and you choose which one to
                                 interview on. Interview time is between 8:00 AM – 5:00 PM.
-                                The PESO Office takes {{ config('peso.schedule.inhouse_daily_companies') }} companies a day. Holidays cannot be picked; weekends can.
+                                The PESO Office takes {{ config('peso.schedule.inhouse_daily_companies') }} companies a day. Holidays and Sundays cannot be picked; Saturdays can.
                             </small>
                             <div id="dateAvailabilityNote" style="font-size:11px;margin-top:4px;"></div>
                         </div>
