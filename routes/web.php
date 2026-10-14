@@ -99,6 +99,8 @@
         Route::get('/admin/registrations',                [AdminController::class, 'registrations'])->name('admin.registrations');
         Route::get('/admin/registrations/{id}',           [AdminController::class, 'viewRegistration'])->name('admin.registration.view');
         Route::get('/admin/reports',                      [AdminController::class, 'reports'])->name('admin.reports');
+        // Kinsa sa tulo ka admin ang nagbuhat, ug kanus-a.
+        Route::get('/admin/activity-logs',                [AdminController::class, 'activityLogs'])->name('admin.activity');
         Route::get('/admin/reports/staff',                [AdminController::class, 'staffReports'])->name('admin.reports.staff');
         Route::get('/admin/reports/staff/job-vacancy',    [AdminController::class, 'staffJobVacancyReports'])->name('admin.reports.staffJobVacancy');
         Route::get('/admin/job-activities',               [AdminController::class, 'jobActivities'])->name('admin.job.activities');

@@ -177,6 +177,13 @@ class AdminController extends Controller
 
         $this->notifyStaffOfficeEvent($event, 'added');
 
+        \App\Support\AdminAudit::record(
+            'calendar_added',
+            'Put "' . $event->title . '" on the office calendar for '
+                . $event->date_range_label . '.',
+            'calendar', $event->office_calendar_events_id
+        );
+
         return back()->with('success', $this->officeEventFlash($event, 'added'));
     }
 
@@ -186,6 +193,13 @@ class AdminController extends Controller
         $event->update($this->validateOfficeEvent($request));
 
         $this->notifyStaffOfficeEvent($event, 'updated');
+
+        \App\Support\AdminAudit::record(
+            'calendar_updated',
+            'Changed "' . $event->title . '" on the office calendar — now '
+                . $event->date_range_label . '.',
+            'calendar', $event->office_calendar_events_id
+        );
 
         return back()->with('success', $this->officeEventFlash($event, 'updated'));
     }
@@ -197,6 +211,14 @@ class AdminController extends Controller
         $when  = $event->date_range_label;
 
         $this->notifyStaffOfficeEvent($event, 'cancelled');
+
+        // Before the delete: afterwards there is no id left to record.
+        \App\Support\AdminAudit::record(
+            'calendar_deleted',
+            'Took "' . $title . '" off the office calendar. ' . $when . ' is open for booking again.',
+            'calendar', $event->office_calendar_events_id
+        );
+
         $event->delete();
 
         return back()->with('success', '"' . $title . '" on ' . $when . ' removed. The date is open for booking again.');
@@ -481,6 +503,14 @@ class AdminController extends Controller
         // ── admin nga naa sa Jobseekers mohimo ug staff account ug mobalik sa
         // ── Jobseekers — ug ang account nga iyang bag-ong gibuhat wala gyud sa
         // ── iyang atubangan. Ang highlight magtudlo kaniya sa laray mismo. ──
+        \App\Support\AdminAudit::record(
+            'staff_created',
+            'Created a staff account for ' . $request->name . ' on the '
+                . (['sra' => 'SRA', 'lra' => 'LRA', 'job_fair' => 'Job Fair', 'job_vacancy' => 'Job Vacancy'][$request->staff_role] ?? $request->staff_role)
+                . ' desk.',
+            'staff', $newStaff->users_id
+        );
+
         return redirect()
             ->route('admin.users.manage', ['tab' => 'staff', 'highlight' => $newStaff->users_id])
             ->with('recovery_temp_password', $starterPassword)
@@ -554,6 +584,9 @@ class AdminController extends Controller
         // ── makadawat sa bell. Ang tanan nga nagpadala ug notipikasyon nag-
         // ── pluck sa TANAN nga naghupot sa rol, mao nga walay mahulog. ──
 
+        $wasStatus = $user->status;
+        $wasRole   = $staffRecord?->staff_role;
+
         $data = ['status' => $request->status];
 
         if ($request->filled('password')) {
@@ -565,6 +598,39 @@ class AdminController extends Controller
 
         if ($staffRecord) {
             $staffRecord->update(['staff_role' => $request->update_staff_role]);
+        }
+
+        // ── Three separate things, logged separately.
+        // ──
+        // ── One line saying "updated the account" tells the other two
+        // ── administrators that something happened and not what, which is the
+        // ── question they opened the page to answer. --
+        $roleNames = ['sra' => 'SRA', 'lra' => 'LRA', 'job_fair' => 'Job Fair', 'job_vacancy' => 'Job Vacancy'];
+
+        if ($wasStatus !== $request->status) {
+            \App\Support\AdminAudit::record(
+                'staff_status_changed',
+                'Set ' . $user->name . ' to '
+                    . ($request->status === 'deactivated' ? 'Inactive' : 'Active') . '.',
+                'staff', $user->users_id
+            );
+        }
+
+        if ($staffRecord && $wasRole !== $request->update_staff_role) {
+            \App\Support\AdminAudit::record(
+                'staff_role_changed',
+                'Moved ' . $user->name . ' from the ' . ($roleNames[$wasRole] ?? $wasRole)
+                    . ' desk to ' . ($roleNames[$request->update_staff_role] ?? $request->update_staff_role) . '.',
+                'staff', $user->users_id
+            );
+        }
+
+        if ($request->filled('password')) {
+            \App\Support\AdminAudit::record(
+                'staff_password_reset',
+                'Reset the password for ' . $user->name . '. They must set their own at the next login.',
+                'staff', $user->users_id
+            );
         }
 
         return back()->with('success', $user->name . ' account updated successfully.');
@@ -603,7 +669,21 @@ class AdminController extends Controller
             $data['profile_photo'] = $request->file('profile_photo')->store('profile_photos', 'public');
         }
 
+        $changed = collect($data)
+            ->filter(fn($value, $field) => (string) $admin->getOriginal($field) !== (string) $value)
+            ->keys()
+            ->map(fn($field) => ['name' => 'name', 'email' => 'email', 'phone' => 'contact number',
+                                 'profile_photo' => 'photo'][$field] ?? $field);
+
         $admin->update($data);
+
+        if ($changed->isNotEmpty()) {
+            \App\Support\AdminAudit::record(
+                'profile_updated',
+                'Updated their own ' . $changed->join(', ', ' and ') . '.',
+                'admin', $admin->users_id
+            );
+        }
 
         return back()->with('success', 'Profile updated successfully.');
     }
@@ -625,7 +705,58 @@ class AdminController extends Controller
             'password' => Hash::make($request->new_password),
         ]);
 
+        // The password itself is never written here, nor is any hint of it.
+        // The other two need to know the account was re-secured, not by what.
+        \App\Support\AdminAudit::record(
+            'password_changed',
+            'Changed their own password.',
+            'admin', $admin->users_id
+        );
+
         return back()->with('success', 'Password changed successfully.');
+    }
+
+    // ───────────────────────────────
+    // ACTIVITY LOGS — kinsa sa tulo ka admin ang nagbuhat, ug kanus-a
+    // ───────────────────────────────
+    //
+    // Tulo ka administrator ang naa sa opisina ug usa ra ka login ang ilang
+    // gi-ambitan, mao nga ang tanan nga nahitabo buhat sa "PESO Admin". Tulo na
+    // ka account karon, ug kini ang panid nga ilang gi-ambitan puli niini.
+    public function activityLogs()
+    {
+        $actorId = (int) request('actor') ?: null;
+        $action  = request('action');
+
+        $actions = [
+            'staff_created'        => 'Staff account created',
+            'staff_status_changed' => 'Staff switched on or off',
+            'staff_role_changed'   => 'Staff moved to another desk',
+            'staff_password_reset' => 'Staff password reset',
+            'calendar_added'       => 'Office calendar — added',
+            'calendar_updated'     => 'Office calendar — changed',
+            'calendar_deleted'     => 'Office calendar — removed',
+            'employer_recovered'   => 'Employer account recovered',
+            'profile_updated'      => 'Own profile updated',
+            'password_changed'     => 'Own password changed',
+        ];
+
+        if (!array_key_exists((string) $action, $actions)) {
+            $action = null;
+        }
+
+        $logs = \App\Models\AdminActivityLog::query()
+            ->when($actorId, fn($q) => $q->where('actor_user_id', $actorId))
+            ->when($action, fn($q) => $q->where('action', $action))
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
+
+        // Ang admin nga wala pa nagbuhat ug bisan unsa naa gihapon sa
+        // dropdown: ang "wala siyay gibuhat" usa ka tubag nga gipangita.
+        $admins = User::where('role', 'admin')->orderBy('name')->get(['users_id', 'name']);
+
+        return view('admin.activity.index', compact('logs', 'admins', 'actions', 'actorId', 'action'));
     }
 
     // ───────────────────────────────

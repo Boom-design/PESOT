@@ -101,6 +101,14 @@
                     <i class="{{ $isRep ? 'ph-fill' : 'ph' }} ph-chart-bar"></i> Reports
                 </a>
             </li>
+            <li>
+                {{-- Three administrators share this office. Each of them can
+                     see here what the other two did and when. --}}
+                @php $isLog = request()->routeIs('admin.activity*'); @endphp
+                <a href="{{ route('admin.activity') }}" class="nav-link {{ $isLog ? 'active' : '' }}">
+                    <i class="{{ $isLog ? 'ph-fill' : 'ph' }} ph-clock-counter-clockwise"></i> Activity Logs
+                </a>
+            </li>
         </ul>
     </nav>
 
