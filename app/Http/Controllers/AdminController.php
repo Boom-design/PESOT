@@ -785,7 +785,8 @@ class AdminController extends Controller
             ->when($actorId, fn($q) => $q->where('actor_user_id', $actorId))
             ->when($action, fn($q) => $q->where('action', $action))
             ->latest()
-            ->paginate(10)
+            // Lima, parehas sa ubang lista sa admin.
+            ->paginate(5)
             ->withQueryString();
 
         // Ang admin nga wala pa nagbuhat ug bisan unsa naa gihapon sa
