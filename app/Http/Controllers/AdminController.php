@@ -656,31 +656,67 @@ class AdminController extends Controller
             'profile_photo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
-        $data = [
+        // ── UNSA ANG IYAHA, UG UNSA ANG SA OPISINA.
+        // ──
+        // ── PESO, 2026-10-14: ang contact number ug ang litrato iya sa PESO,
+        // ── dili sa tawo nga naka-login — usa ra ang opisina, ug usa ra ang
+        // ── numero nga iyang gipatawag. Ang pag-usab sa usa ka admin niini
+        // ── mo-usab sa tulo.
+        // ──
+        // ── Ang NGALAN kaugalingon: ang Activity Logs gisulat niini, ug ang
+        // ── tibuok tuyo sa tulo ka account mao nga mailhan kinsa ang nagbuhat.
+        // ──
+        // ── Ang EMAIL kaugalingon pud, ug wala ni mapilian: siya ang login.
+        // ── Kung parehas siya sa tulo, usa ra ka account ang ilang maabot, nga
+        // ── mao ra gihapon ang problema nga gisulbad niini.
+        // ──
+        // ── Gisulat sa TANANG admin nga laray imbes sa kaugalingong lamesa:
+        // ── ang topbar, ang sidebar ug ang profile page nagbasa na sa
+        // ── Auth::user()->profile_photo, ug ang pag-ilis niana nga agianan
+        // ── magdala ug risgo nga mas dako kaysa sa gisulbad niini. ──
+        $own = [
             'name'  => $request->name,
             'email' => $request->email,
-            'phone' => $request->phone,
         ];
 
+        $office = ['phone' => $request->phone];
+
         if ($request->hasFile('profile_photo')) {
+            // Ang daan nga litrato gi-ambit sa tulo, mao nga kausa ra siya
+            // gilimpyohan — dili kausa kada admin.
             if ($admin->profile_photo) {
                 \Illuminate\Support\Facades\Storage::disk('public')->delete($admin->profile_photo);
             }
-            $data['profile_photo'] = $request->file('profile_photo')->store('profile_photos', 'public');
+            $office['profile_photo'] = $request->file('profile_photo')->store('profile_photos', 'public');
         }
 
-        $changed = collect($data)
+        // Ang label nagdala sa tag-iya, aron ang usa ka linya makasulti kung
+        // kang kinsa ang nausab — ug ang laing duha masayod dayon kung sila
+        // ba apil o dili.
+        $labels = [
+            'name'          => 'their own name',
+            'email'         => 'their own email',
+            'phone'         => "the office's contact number",
+            'profile_photo' => "the office's photo",
+        ];
+
+        $changed = collect($own + $office)
             ->filter(fn($value, $field) => (string) $admin->getOriginal($field) !== (string) $value)
             ->keys()
-            ->map(fn($field) => ['name' => 'name', 'email' => 'email', 'phone' => 'contact number',
-                                 'profile_photo' => 'photo'][$field] ?? $field);
+            ->map(fn($field) => $labels[$field] ?? $field);
 
-        $admin->update($data);
+        $admin->update($own + $office);
+
+        // Ang ubang administrator — ang litrato ug ang numero ra. Ang ilang
+        // ngalan ug email dili gyud matandog.
+        User::where('role', 'admin')
+            ->where('users_id', '!=', $admin->users_id)
+            ->update($office);
 
         if ($changed->isNotEmpty()) {
             \App\Support\AdminAudit::record(
                 'profile_updated',
-                'Updated their own ' . $changed->join(', ', ' and ') . '.',
+                'Updated ' . $changed->join(', ', ' and ') . '.',
                 'admin', $admin->users_id
             );
         }

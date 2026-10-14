@@ -49,6 +49,9 @@
                     {{-- Sits outside the form on purpose; `form=` posts it with the rest. --}}
                     <input type="file" name="profile_photo" id="profilePhotoInput"
                            form="adminProfileForm" accept=".jpg,.jpeg,.png" style="display:none;">
+                    <div style="font-size:11px;color:var(--warn);margin-top:6px;">
+                        Shared by all administrators
+                    </div>
                     @error('profile_photo')
                         <div class="peso-error">{{ $message }}</div>
                     @enderror
@@ -68,7 +71,12 @@
                 @csrf
                 <div class="row g-3">
                     <div class="col-12">
-                        <label class="peso-label">Full Name *</label>
+                        {{-- Yours. The Activity Logs page is written in
+                             this name, which is the whole point of the three
+                             accounts: the other two can see who did what. --}}
+                        <label class="peso-label">Full Name *
+                            <span style="font-weight:400;color:var(--n-500);font-size:11px;">— yours only</span>
+                        </label>
                         <input type="text" name="name" value="{{ old('name', $admin->name) }}"
                                class="peso-input @error('name') is-invalid @enderror">
                         @error('name')
@@ -77,7 +85,12 @@
                     </div>
 
                     <div class="col-md-6">
-                        <label class="peso-label">Email Address *</label>
+                        {{-- Yours, and it has to be: it is the login.
+                             Three administrators sharing one address would be
+                             three administrators sharing one account again. --}}
+                        <label class="peso-label">Email Address *
+                            <span style="font-weight:400;color:var(--n-500);font-size:11px;">— yours only, this is your login</span>
+                        </label>
                         <input type="email" name="email" value="{{ old('email', $admin->email) }}"
                                class="peso-input @error('email') is-invalid @enderror">
                         @error('email')
@@ -86,7 +99,12 @@
                     </div>
 
                     <div class="col-md-6">
-                        <label class="peso-label">Phone Number</label>
+                        {{-- The office's, not yours: one office, one
+                             number people ring. Changing it changes it for
+                             all three administrators. --}}
+                        <label class="peso-label">Phone Number
+                            <span style="font-weight:400;color:var(--warn);font-size:11px;">— shared by all administrators</span>
+                        </label>
                         <input type="text" name="phone" value="{{ old('phone', $admin->phone) }}"
                                class="peso-input @error('phone') is-invalid @enderror"
                                inputmode="numeric" maxlength="11" pattern="09[0-9]{9}"
