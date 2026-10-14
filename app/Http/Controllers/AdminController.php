@@ -1035,54 +1035,44 @@ if ($type === 'local') {
         $topEmployersMonth = request('top_employers_month');
         $topEmployersYear = request('top_employers_year');
 
-        $topEmployersQuery = \App\Models\InhouseSchedule::with('employer')
-            ->where('status', 'accepted')
-            ->whereHas('employer', fn($q) => $q->where('is_overseas', $isOverseas));
+        // ── Giihap ang NA-HIRE, dili ang gidaghanon sa interview.
+        // ──
+        // ── PESO LRA, 2026-10-14: ang kompanya nga nag-interview ug napulo ug
+        // ── walay gikuha nilabaw kaniadto sa kompanya nga nag-interview ug
+        // ── duha ug gikuha silang duha. Ang gipangita sa opisina kay kinsa ang
+        // ── naghatag ug trabaho.
+        // ──
+        // ── Giilisan pud ang ngalan sa variable. Ang panid nagbasa ug
+        // ── $topEmployersByCompanyInterviews ug kini nga kopya nagtukod ug
+        // ── $topEmployersByInhouseInterviews, mao nga ang Top Employers sa
+        // ── admin blangko sukad pa sa sinugdanan — ang @forelse nahulog sa
+        // ── iyang @empty kada higayon. Parehas na sila nga ngalan karon.
+        $hireQuery = \App\Models\Application::with('job.company')
+            ->where('status', 'hired')
+            ->whereHas('job', fn($q) => $q
+                ->whereHas('company', fn($c) => $c->where('is_overseas', $isOverseas)));
+
+        // Ang daan nga hire walay hired_at, mao nga ang updated_at ang puli.
+        $hiredOn = 'COALESCE(job_matching.hired_at, job_matching.updated_at)';
 
         if ($topEmployersFilter === 'yearly') {
-            if ($topEmployersYear) {
-                $topEmployersQuery->where(function ($q) use ($topEmployersYear) {
-                    $q->where(function ($inner) use ($topEmployersYear) {
-                        $inner->whereNotNull('confirmed_date')->whereYear('confirmed_date', $topEmployersYear);
-                    })->orWhere(function ($inner) use ($topEmployersYear) {
-                        $inner->whereNull('confirmed_date')->whereYear('preferred_date', $topEmployersYear);
-                    });
-                });
-            } else {
-                $topEmployersQuery->where(function ($q) {
-                    $q->where(function ($inner) {
-                        $inner->whereNotNull('confirmed_date')->whereYear('confirmed_date', now()->year);
-                    })->orWhere(function ($inner) {
-                        $inner->whereNull('confirmed_date')->whereYear('preferred_date', now()->year);
-                    });
-                });
-            }
+            $selectedYear = $topEmployersYear ?: now()->year;
+            $hireQuery->whereRaw("YEAR({$hiredOn}) = ?", [$selectedYear]);
         } else {
             $selectedMonth = $topEmployersMonth ?: now()->format('Y-m');
             [$year, $month] = array_pad(explode('-', $selectedMonth), 2, now()->month);
-            $topEmployersQuery->where(function ($q) use ($year, $month) {
-                $q->where(function ($inner) use ($year, $month) {
-                    $inner->whereNotNull('confirmed_date')
-                        ->whereYear('confirmed_date', $year)
-                        ->whereMonth('confirmed_date', $month);
-                })->orWhere(function ($inner) use ($year, $month) {
-                    $inner->whereNull('confirmed_date')
-                        ->whereYear('preferred_date', $year)
-                        ->whereMonth('preferred_date', $month);
-                });
-            });
+            $hireQuery->whereRaw("YEAR({$hiredOn}) = ?", [$year])
+                      ->whereRaw("MONTH({$hiredOn}) = ?", [$month]);
         }
 
-        $topEmployersByInhouseInterviews = $topEmployersQuery
-            ->get()
-            ->groupBy('employer_id')
-            ->map(function ($schedules) {
-                return [
-                    'employer' => $schedules->first()->employer,
-                    'interview_count' => $schedules->count(),
-                ];
-            })
-            ->sortByDesc('interview_count')
+        $topEmployersByCompanyInterviews = $hireQuery->get()
+            ->filter(fn($application) => $application->job?->company)
+            ->groupBy(fn($application) => $application->job->company_id)
+            ->map(fn($group) => [
+                'employer'   => $group->first()->job->company,
+                'hire_count' => $group->count(),
+            ])
+            ->sortByDesc('hire_count')
             ->take(5)
             ->values();
 
@@ -1236,7 +1226,7 @@ if ($type === 'local') {
             'staffRole', 'tab', 'registeredView', 'reportView',
             'registeredParticipants', 'registeredAll', 'placedApplications', 'referredApplications',
             'totalRegistered', 'totalRegisteredAll', 'totalPlaced', 'totalReferred', 'referredStatus', 'solicitationStats',
-            'topEmployersByInhouseInterviews', 'topEmployersFilter', 'topEmployersMonth', 'topEmployersYear',
+            'topEmployersByCompanyInterviews', 'topEmployersFilter', 'topEmployersMonth', 'topEmployersYear',
             'inhouseReport', 'companyInterviews', 'scheduleStatus',
             'employerHires', 'employerFocusId',
             'vacancyMonth', 'solicitedJobs', 'totalVacanciesSolicited', 'archivedJobs'

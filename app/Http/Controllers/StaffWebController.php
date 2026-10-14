@@ -5722,27 +5722,45 @@ $nsrp = $registration->nsrp;
         }
 
         if ($tab === 'top_employers') {
-            $inhouseQuery = \App\Models\Job::with('company')
-                ->where('schedule_type', 'inhouse')
-                ->where('posting_status', 'approved')
-                ->whereHas('company', fn($q) => $q->where('is_overseas', $staffRole === 'sra'));
+            // ── Giihap ang NA-HIRE, dili ang gidaghanon sa interview.
+            // ──
+            // ── PESO LRA, 2026-10-14: ang listahan gi-ranggo kaniadto sumala
+            // ── sa pila ka in-house nga interview ang gipahigayon sa usa ka
+            // ── kompanya. Ang kompanya nga nag-interview ug napulo ug walay
+            // ── gikuha nilabaw sa kompanya nga nag-interview ug duha ug
+            // ── gikuha silang duha — ug ang gipangita sa opisina kay kinsa
+            // ── ang naghatag ug trabaho, dili kinsa ang naghimo ug lamesa.
+            // ──
+            // ── Ang petsa sa pag-hire ang gisala, dili ang petsa sa posting:
+            // ── ang pangutana kay "kinsa ang naghatag ug trabaho karong
+            // ── bulana", ug ang posting mahimong na-post sa milabay nga tuig.
+            $hireQuery = \App\Models\Application::with('job.company')
+                ->where('status', 'hired')
+                ->whereHas('job', fn($q) => $q
+                    ->whereHas('company', fn($c) => $c->where('is_overseas', $staffRole === 'sra')));
+
+            // Ang daan nga hire walay hired_at — wala pa gisulat ang kolum
+            // niadto — mao nga ang updated_at ang gigamit kung wala siya.
+            $hiredOn = 'COALESCE(job_matching.hired_at, job_matching.updated_at)';
 
             if ($topEmployersFilter === 'yearly') {
                 $selectedYear = $topEmployersYear ?: now()->year;
-                $inhouseQuery->whereYear('updated_at', $selectedYear);
+                $hireQuery->whereRaw("YEAR({$hiredOn}) = ?", [$selectedYear]);
             } else {
                 $selectedMonth = $topEmployersMonth ?: now()->format('Y-m');
                 [$selYear, $selMon] = array_pad(explode('-', $selectedMonth), 2, now()->month);
-                $inhouseQuery->whereYear('updated_at', $selYear)->whereMonth('updated_at', $selMon);
+                $hireQuery->whereRaw("YEAR({$hiredOn}) = ?", [$selYear])
+                          ->whereRaw("MONTH({$hiredOn}) = ?", [$selMon]);
             }
 
-            $topEmployersByCompanyInterviews = $inhouseQuery->get()
-                ->groupBy('company_id')
+            $topEmployersByCompanyInterviews = $hireQuery->get()
+                ->filter(fn($application) => $application->job?->company)
+                ->groupBy(fn($application) => $application->job->company_id)
                 ->map(fn($group) => [
-                    'employer'        => $group->first()->company,
-                    'interview_count' => $group->count(),
+                    'employer'   => $group->first()->job->company,
+                    'hire_count' => $group->count(),
                 ])
-                ->sortByDesc('interview_count')
+                ->sortByDesc('hire_count')
                 ->take(5)
                 ->values();
         }

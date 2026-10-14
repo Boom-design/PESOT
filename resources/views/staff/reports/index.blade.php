@@ -1662,7 +1662,7 @@ if ($staffRole !== 'sra') {
                         <tr>
                             <th style="background:var(--n-50);color:var(--g-700);border:none;padding:8px 10px;">#</th>
                             <th style="background:var(--n-50);color:var(--g-700);border:none;padding:8px 10px;">Employer</th>
-                            <th style="background:var(--n-50);color:var(--g-700);border:none;padding:8px 10px;text-align:center;">In-House Interviews</th>
+                            <th style="background:var(--n-50);color:var(--g-700);border:none;padding:8px 10px;text-align:center;">Jobseekers Hired</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1670,13 +1670,13 @@ if ($staffRole !== 'sra') {
                             <tr style="font-size:13px;">
                                 <td style="padding:8px 10px;color:var(--n-500);">{{ $index + 1 }}</td>
                                 <td style="padding:8px 10px;color:var(--g-700);font-weight:600;">{{ $entry['employer']->company_name ?? 'Unknown Employer' }}</td>
-                                <td style="padding:8px 10px;text-align:center;color:var(--n-700);">{{ $entry['interview_count'] }}</td>
+                                <td style="padding:8px 10px;text-align:center;color:var(--g-700);font-weight:700;">{{ $entry['hire_count'] }}</td>
                             </tr>
                         @empty
                             <tr>
                                 <td colspan="3" class="text-center"
                                     style="padding:20px 10px;color:var(--n-500);font-size:12.5px;">
-                                    No in-house interview in this period.
+                                    Nobody was hired in this period.
                                 </td>
                             </tr>
                         @endforelse
