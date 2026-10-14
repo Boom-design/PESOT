@@ -5839,21 +5839,142 @@ $nsrp = $registration->nsrp;
     // kinahanglan adunay signatory... isumite sa Mayor's Office ug DOL."
     public function exportReports(Request $request)
     {
-        $staff = $this->authStaff();
-        if (!$staff) return redirect()->route('login');
-        if (!in_array($staff->staff_role, ['lra', 'sra'], true)) {
-            return redirect()->route('staff.reports');
+        // ── Ang desk, o ang admin nga nagbasa sa desk.
+        // ──
+        // ── Ang admin gibalibaran kaniadto sa staff_role nga pagsusi, mao nga
+        // ── ang iyang kopya sa panid walay bisan usa ka download — ang tulo ka
+        // ── tab nga naay buton sa desk walay buton didto. Siya ang nagbantay
+        // ── sa trabaho sa desk; ang report nga iya ra sa desk maghimo nianang
+        // ── pagbantay nga bakak. ──
+        $user = Auth::user();
+        if (!$user) return redirect()->route('login');
+
+        if ($user->role === 'admin') {
+            $staffRole = request('role') === 'sra' ? 'sra' : 'lra';
+            $preparedBy = $user->name;
+        } else {
+            $staff = $this->authStaff();
+            if (!$staff) return redirect()->route('login');
+            if (!in_array($staff->staff_role, ['lra', 'sra'], true)) {
+                return redirect()->route('staff.reports');
+            }
+            $staffRole  = $staff->staff_role;
+            $preparedBy = $staff->name;
         }
 
-        $staffRole     = $staff->staff_role;
         $range         = \App\Support\DateRange::fromRequest($request);
         $jobseekerType = $staffRole === 'lra' ? ['local', 'both'] : ['overseas', 'both'];
-        // Ang Archived Job Postings walay export: rekord kadto sa posting mismo,
-        // dili ihap sa tawo sulod sa usa ka panahon.
-        $tab           = in_array($request->input('tab'), ['registered', 'placed', 'referred'], true)
-                         ? $request->input('tab') : 'placed';
+        $isOverseas    = $staffRole === 'sra';
 
-        if ($tab === 'registered') {
+        // ── Ang matag tab, dili ang tulo lamang.
+        // ──
+        // ── PESO, 2026-10-14: tulo ra ka tab ang naay download ug ang uban
+        // ── lima wala, mao nga ang desk nga nagtukod ug papel nagkopya sa lima
+        // ── pinaagi sa kamot gikan sa screen. Ang Archived kaniadto gilaktawan
+        // ── tinuyo — "rekord kadto sa posting, dili ihap sa tawo" — apan ang
+        // ── pagkopya niini sa kamot dili pud siya naghimo nga ihap sa tawo. ──
+        $exportable = ['registered', 'placed', 'referred', 'schedules',
+                       'company_interview', 'vacancies', 'archived', 'top_employers'];
+
+        $tab = in_array($request->input('tab'), $exportable, true)
+               ? $request->input('tab') : 'placed';
+
+        if ($tab === 'schedules') {
+            $records = \App\Support\InhouseScheduleReport::query(
+                $isOverseas, $request->input('search'), $request->input('schedule_status')
+            )->get();
+
+            $title   = 'In-house Schedules';
+            $columns = ['Employer', 'Requested', 'Confirmed', 'Time', 'Venue', 'Applicants', 'Answer', 'Reason'];
+            $rows = $records->map(fn($s) => [
+                $s->employer->company_name ?? '',
+                $s->schedule_window_label ?? '',
+                optional($s->confirmed_date)->format('Y-m-d') ?? '',
+                $s->confirmed_time ? \Carbon\Carbon::parse($s->confirmed_time)->format('h:i A') : '',
+                $s->venue_type === 'custom' ? ($s->venue_address ?? '') : 'PESO Office',
+                $s->num_applicants ?? '',
+                $s->status === 'accepted' ? 'Accepted' : 'Declined',
+                $s->rejection_reason ?? '',
+            ]);
+        } elseif ($tab === 'company_interview') {
+            $records = \App\Support\CompanyInterviewReport::query(
+                null, null, $request->input('search'), $isOverseas
+            )->get();
+
+            $title   = 'Company Interviews';
+            $columns = ['Employer', 'Position', 'Interview Date', 'Venue', 'Slots', 'Answer'];
+            $rows = $records->map(fn($j) => [
+                $j->company->company_name ?? '',
+                $j->title,
+                optional($j->confirmed_date ?: $j->preferred_date)->format('Y-m-d') ?? '',
+                $j->venue_type === 'other' ? ($j->venue_address ?? '') : 'PESO Office',
+                $j->slots,
+                $j->posting_status === 'approved' ? 'Approved' : 'Declined',
+            ]);
+        } elseif ($tab === 'vacancies') {
+            $records = $this->overseasSolicitedVacancies()->with('company')->get();
+
+            $title   = 'Job Vacancies Solicited';
+            $columns = ['Employer', 'Position', 'Slots', 'Salary', 'Deadline', 'Posted'];
+            $rows = $records->map(fn($j) => [
+                $j->company->company_name ?? '',
+                $j->title,
+                $j->slots,
+                $j->salary ?? '',
+                optional($j->deadline)->format('Y-m-d') ?? '',
+                $j->created_at->format('Y-m-d'),
+            ]);
+        } elseif ($tab === 'archived') {
+            $records = \App\Models\Job::with('company')
+                ->inactive()
+                ->whereHas('company', fn($q) => $q->where('is_overseas', $isOverseas))
+                ->latest()
+                ->get();
+
+            $title   = 'Archived Job Postings';
+            $columns = ['Employer', 'Position', 'Kind', 'Slots', 'Deadline', 'Closed'];
+            $rows = $records->map(fn($j) => [
+                $j->company->company_name ?? '',
+                $j->title,
+                \App\Models\Job::SCHEDULE_TYPE_LABELS[$j->schedule_type] ?? ($j->schedule_type ?? ''),
+                $j->slots,
+                optional($j->deadline)->format('Y-m-d') ?? '',
+                $j->updated_at->format('Y-m-d'),
+            ]);
+        } elseif ($tab === 'top_employers') {
+            // Parehas nga lagda sa panid: giihap ang na-hire, sa petsa sa
+            // pag-hire, ug ang lima sa taas.
+            $hiredOn = 'COALESCE(job_matching.hired_at, job_matching.updated_at)';
+
+            $records = \App\Models\Application::with('job.company')
+                ->where('status', 'hired')
+                ->whereHas('job', fn($q) => $q
+                    ->whereHas('company', fn($c) => $c->where('is_overseas', $isOverseas)))
+                ->when($request->filled('top_employers_year'),
+                    fn($q) => $q->whereRaw("YEAR({$hiredOn}) = ?", [$request->input('top_employers_year')]))
+                ->when($request->filled('top_employers_month'), function ($q) use ($request, $hiredOn) {
+                    [$y, $m] = array_pad(explode('-', $request->input('top_employers_month')), 2, now()->month);
+                    $q->whereRaw("YEAR({$hiredOn}) = ?", [$y])->whereRaw("MONTH({$hiredOn}) = ?", [$m]);
+                })
+                ->get()
+                ->filter(fn($a) => $a->job?->company)
+                ->groupBy(fn($a) => $a->job->company_id)
+                ->map(fn($group) => [
+                    'employer'   => $group->first()->job->company,
+                    'hire_count' => $group->count(),
+                ])
+                ->sortByDesc('hire_count')
+                ->take(5)
+                ->values();
+
+            $title   = 'Top Employers';
+            $columns = ['Rank', 'Employer', 'Jobseekers Hired'];
+            $rows = $records->map(fn($entry, $i) => [
+                $i + 1,
+                $entry['employer']->company_name ?? '',
+                $entry['hire_count'],
+            ]);
+        } elseif ($tab === 'registered') {
             $records = JobseekerRegistration::with(['user', 'nsrp'])
                 ->whereHas('nsrp', fn($q) => $q->whereIn('type', $jobseekerType))
                 ->tap(fn($q) => $range->apply($q, 'jobseeker_registrations.created_at'))
@@ -5900,7 +6021,7 @@ $nsrp = $registration->nsrp;
                 'columns'    => $columns,
                 'rows'       => $rows,
                 'totals'     => ['Total records' => $records->count()],
-                'preparedBy' => $staff->name,
+                'preparedBy' => $preparedBy,
             ]);
         }
 

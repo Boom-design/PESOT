@@ -109,7 +109,13 @@ if ($staffRole !== 'sra') {
 @php
     // Ang Archived Job Postings wala giapil: rekord kadto sa posting mismo,
     // dili ihap sa tawo sulod sa usa ka panahon.
-    $exportableTab = in_array(request('tab', 'registered'), ['registered', 'placed', 'referred'], true);
+    // Every tab the exporter can answer for. Three of the eight had a
+    // download and five did not, so a desk building a paper copy read the
+    // other five off the screen and typed them out again.
+    $exportableTab = in_array(request('tab', 'registered'), [
+        'registered', 'placed', 'referred', 'schedules',
+        'company_interview', 'vacancies', 'archived', 'top_employers',
+    ], true);
 
     // Ang Registered naay kaugalingong linya sa filter ug didto na ang search.
     // Ang Placed ug Referred walay ingon, mao nga ang linya sa petsa ang
@@ -1378,6 +1384,12 @@ if ($staffRole !== 'sra') {
     @unless($searchSitsWithDates ?? false)
         @include('partials.reports-search')
     @endunless
+
+    @if($exportableTab)
+        <div class="{{ ($searchSitsWithDates ?? false) ? 'ms-auto' : '' }}">
+            @include('partials.report-download')
+        </div>
+    @endif
 </div>
 
 {{-- ── DATE RANGE + EXPORT — para sa tulo ka listahan nga isumite sa
@@ -1399,13 +1411,8 @@ if ($staffRole !== 'sra') {
             'registered_view' => request('registered_view'),
             'search'          => request('search'),
         ]),
-        'exports' => [
-            [
-                'url'   => route('staff.reports.export', array_merge($range->queryParams(), ['tab' => $exportTab])),
-                'label' => 'Download Excel',
-                'icon'  => 'ph-download-simple',
-            ],
-        ],
+        // No export here. It sits on the tab row with every other tab's,
+        // so the button is in one place whichever tab is open.
     ])
 @endif
 
