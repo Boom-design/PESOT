@@ -1,4 +1,6 @@
-@extends('staff.layouts.app')
+{{-- Usa ka blade, duha ka chrome. Ang admin nagbasa niini gikan sa kopya niya
+     sa panid sa report, parehas sa staff/reports/index.blade.php. --}}
+@extends($layout ?? 'staff.layouts.app')
 
 @section('content')
 

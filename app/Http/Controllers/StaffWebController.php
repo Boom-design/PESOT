@@ -20,11 +20,47 @@ class StaffWebController extends Controller
     private function authStaff()
     {
         $user = Auth::user();
+
+        // ── Ang admin dili i-logout.
+        // ──
+        // ── PESO, 2026-10-21: gi-klik sa admin ang View sa Archived Job
+        // ── Postings sa report sa SRA ug nawala ang iyang session. Ang admin
+        // ── nagbasa sa parehas nga blade sa desk ubos sa kaugalingon niyang
+        // ── ruta, mao nga ang link nga iyang gi-klik gitukod para sa desk —
+        // ── usa ka sayop nga link, dili usa ka tawo nga nangilabot. Ang
+        // ── pagpapahawa niya nagpapas sa iyang session ug sa panid nga iyang
+        // ── gibasa; ang pagbalibad kaniya nagbalik ra kaniya sa iyang panid.
+        // ──
+        // ── Ang laing tawo nga wala diri gi-logout gihapon. ──
+        if ($user && $user->role === 'admin') {
+            return null;
+        }
+
         if (!$user || $user->role !== 'staff') {
             Auth::logout();
             return null;
         }
         return $user;
+    }
+
+    /**
+     * Ang desk, o ang admin nga nagbasa sa trabaho sa desk.
+     *
+     * Ang panid sa report sa desk gi-render pud sa admin ubos sa kaugalingon
+     * niyang ruta, mao nga ang link sulod niini maabot sa duha. Kini ang
+     * nagsulti nga pwede siya sulodon sa duha, ug nagbalik ug null kung wala
+     * ni-login — walay logout, kay ang usa ka sayop nga link dili angay
+     * mopapas sa session.
+     */
+    private function authStaffOrAdmin()
+    {
+        $user = Auth::user();
+
+        if ($user && $user->role === 'admin') {
+            return $user;
+        }
+
+        return $this->authStaff();
     }
 
     // ───────────────────────────────
@@ -5231,8 +5267,11 @@ $nsrp = $registration->nsrp;
     // ───────────────────────────────
     public function reportJobDetails($jobId)
     {
-        $staff = $this->authStaff();
-        if (!$staff) return redirect()->route('login');
+        // Ang admin pud, dili ang desk ra: ang buton nga View naa sa Archived
+        // Job Postings, ug ang admin nagbasa niini nga tab sa kopya niya sa
+        // parehas nga panid.
+        $user = $this->authStaffOrAdmin();
+        if (!$user) return redirect()->route('login');
 
         // Rekord sa posting ra — walay applicant data. Ang na-hire naa sa
         // Placed/Referred nga tabs sa Reports.
@@ -5240,7 +5279,10 @@ $nsrp = $registration->nsrp;
             ->withCount(['applications as hired_count' => fn($q) => $q->where('status', 'hired')])
             ->findOrFail($jobId);
 
-        return view('staff.reports.job', compact('job'));
+        // Parehas nga lagda sa panid sa report: ang blade usa, ug ang chrome
+        // sa nagtan-aw ang nagsulti kung asa siya.
+        return view('staff.reports.job', compact('job')
+            + ($user->role === 'admin' ? ['layout' => 'admin.layouts.app'] : []));
     }
 
     // ───────────────────────────────
