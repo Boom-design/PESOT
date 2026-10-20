@@ -37,6 +37,28 @@ class JobFairReport
         'vacancy_list'      => 'List of Local Job Vacancies',
     ];
 
+    /**
+     * Ang ngalan sa tab, nga mahimong lahi sa duha ka desk.
+     *
+     * PESO SRA, 2026-10-21: "dili daw na mao ang reports sa job fair sa SRA,
+     * dili daw local job vacancies". Ang gihatag niya nga papel mao ra gyud
+     * nga lamesa — ngalan, address, pila ka bakante, ug usa ka TOTAL — apan
+     * lahi ug ulohan: ang sheet ginganlan ug "Local Entities" ug ang titulo
+     * sa sulod kay "LIST OF AGENCIES FOR JOB FAIR". Ang gilista sa SRA kay
+     * ahensya, dili bakante sa lokal nga kompanya, mao nga ang pulong nga
+     * "Local Job Vacancies" nagsulti kaniya nga dili iya kini nga tab.
+     *
+     * Ang lamesa wala giusab, kay husto na siya. Ang ngalan ra.
+     */
+    public static function tabTitle(string $tab, bool $overseasOnly): string
+    {
+        if ($tab === 'vacancy_list' && $overseasOnly) {
+            return 'List of Agencies for Job Fair';
+        }
+
+        return self::TABS[$tab] ?? $tab;
+    }
+
     // Ang tab nga dili nagsalig sa pagpili ug event.
     //
     // PESO Job Fair staff, 2026-09-02: ang Top 10 Employers, ang My Imported
@@ -650,7 +672,7 @@ class JobFairReport
         $eventId    = $event?->job_fair_events_id;
         $eventJobs  = self::eventJobIds($eventId);
         $decidedIds = $eventId ? self::decidedJobseekerIds((int) $eventId) : [];
-        $title      = self::TABS[$tab] ?? $tab;
+        $title      = self::tabTitle($tab, $overseasOnly);
         $fullName   = fn($person) => trim(($person->first_name ?? '') . ' ' . ($person->surname ?? '')) ?: '';
 
         return match ($tab) {

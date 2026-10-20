@@ -31,7 +31,11 @@ $tabs = [
                              'html'  => $staffRole === 'sra' ? 'Overseas<br>Companies' : 'Local<br>Companies'],
     'further_interview'  => ['icon' => 'ph-fill ph-user-list', 'label' => 'Further Interview', 'html' => 'Further<br>Interview'],
     'hots'               => ['icon' => 'ph-fill ph-lightning', 'label' => 'Hired on the Spot', 'html' => 'Hired on<br>the Spot'],
-    'vacancy_list'       => ['icon' => 'ph-fill ph-list-numbers', 'label' => 'Local Job Vacancies', 'html' => 'Local Job<br>Vacancies'],
+    // Ang SRA naglista ug ahensya, dili ug bakante sa lokal nga kompanya. Ang
+    // iyang papel ginganlan ug "Local Entities", mao nga mao pud ang tab.
+    'vacancy_list'       => ['icon' => 'ph-fill ph-list-numbers',
+                             'label' => $staffRole === 'sra' ? 'Local Entities' : 'Local Job Vacancies',
+                             'html'  => $staffRole === 'sra' ? 'Local<br>Entities' : 'Local Job<br>Vacancies'],
     'summary'            => ['icon' => 'ph-fill ph-clipboard-text', 'label' => 'Post Job Fair Summary', 'html' => 'Post Job Fair<br>Summary'],
     'industry'           => ['icon' => 'ph-fill ph-tree-structure', 'label' => 'Companies w/ Vacancies', 'html' => 'Companies w/<br>Vacancies'],
 ];
@@ -643,6 +647,23 @@ if ($staffRole !== 'sra') {
          hikapan nga listahan. Ang kopya sa DOLE naa sa Participating
          Companies nga tab. --}}
     @elseif($tab === 'vacancy_list')
+
+        {{-- Ang ulohan sa papel. Ang SRA naglista ug ahensya ug ang LRA ug
+             lokal nga kompanya, mao nga lahi ang titulo sa duha — parehas sa
+             gi-print nga porma nga gihatag sa opisina. Ang petsa ug ang venue
+             naa pud, kay mao kana ang nagsulti kung asa nga fair kini nga
+             listahan. --}}
+        <div class="mb-2">
+            <div class="fw-bold text-uppercase" style="color:var(--g-700);font-size:13px;letter-spacing:0.4px;">
+                {{ \App\Support\JobFairReport::tabTitle('vacancy_list', $staffRole === 'sra') }}
+            </div>
+            @if($event)
+                <div style="font-size:11.5px;color:var(--n-500);">
+                    {{ $event->event_date?->format('F d, Y') }}
+                    @if($event->venue) &middot; Venue: {{ $event->venue }} @endif
+                </div>
+            @endif
+        </div>
 
         <div class="card border-0 shadow-sm rounded-3 overflow-hidden">
             <div class="table-responsive">
