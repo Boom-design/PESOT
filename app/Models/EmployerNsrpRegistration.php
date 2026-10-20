@@ -37,10 +37,16 @@ class EmployerNsrpRegistration extends Model
      * matches an employer against a fair's target industries on the same
      * level.
      *
-     * The last entry is ours, not the PSA's. A manpower agency is Division 78
-     * of Section O, but the office reads the overseas agencies as a group of
-     * their own — the DOLE report prints them under their own heading — so
-     * the entry stays, below the classification rather than inside it.
+     * Nothing is added to it. "Overseas Manpower Services" used to sit at the
+     * bottom as an entry of ours, and it is gone: the PSA already classifies
+     * the work, as sub-class 78102, Overseas employment recruitment and
+     * placement activities, under Division 78 of Section O. An entry we wrote
+     * ourselves beside twenty-two the PSA wrote is the one line in the list
+     * the office could not point at a source for.
+     *
+     * An overseas agency is still told apart from a local employer, by
+     * is_overseas on this record. That is the column the whole system already
+     * reads, and the one the DOLE report's overseas heading reads now.
      */
     public const INDUSTRY_GROUPS = [
         'Agriculture, Forestry and Fishing',
@@ -65,7 +71,6 @@ class EmployerNsrpRegistration extends Model
         'Other Service Activities',
         'Activities of Households as Employers; Undifferentiated Goods- and Services-Producing Activities of Households for own use',
         'Activities of Extraterritorial Organizations and Bodies',
-        'Overseas Manpower Services',
     ];
 
     /**
@@ -93,6 +98,9 @@ class EmployerNsrpRegistration extends Model
         'Health and Social Work'                                         => 'Human Health and Social Work Activities',
         'Other Community, Social and Personal Activities'                => 'Other Service Activities',
         'Extra-territorial Organization and Bodies'                      => 'Activities of Extraterritorial Organizations and Bodies',
+        // Never a PSIC group — ours, for the overseas agencies. The PSA puts
+        // the work at sub-class 78102, under Division 78 of Section O.
+        'Overseas Manpower Services'                                     => 'Administrative and Support Service Activities',
     ];
 
     protected $fillable = [

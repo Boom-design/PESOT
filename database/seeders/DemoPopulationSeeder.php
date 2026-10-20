@@ -76,7 +76,26 @@ class DemoPopulationSeeder extends Seeder
     }
 
     private const WHOLESALE = 'Wholesale and Retail Trade';
-    private const OVERSEAS  = 'Overseas Manpower Services';
+
+    // A recruitment agency is Division 78 of Section O. It used to have an
+    // industry group of its own, "Overseas Manpower Services", which was
+    // never a PSIC group; what tells an agency apart now is is_overseas.
+    private const OVERSEAS  = 'Administrative and Support Service Activities';
+
+    /**
+     * The names an overseas agency gets.
+     *
+     * Kept apart from NAME_SUFFIX because an agency and a contact centre now
+     * share one industry group, and a key cannot hold both lists. A local
+     * employer in Section O is a contact centre, an overseas one is an
+     * agency, so is_overseas picks the list.
+     */
+    private const OVERSEAS_SUFFIX = [
+        'International Manpower Services Inc.',
+        'Overseas Placement Agency Inc.',
+        'Global Recruitment Corp.',
+        'Worldwide Manpower Inc.',
+    ];
 
     // title => [course, certification, education required, skills, salary min, salary max, licence]
     private const LOCAL_TRACKS = [
@@ -171,7 +190,6 @@ class DemoPopulationSeeder extends Seeder
         'Transportation and Storage'                    => ['Logistics Corp.', 'Freight Services Inc.', 'Courier Express Inc.', 'Transport Services Inc.'],
         'Financial and Insurance Activities'            => ['Lending Corp.', 'Credit Cooperative', 'Microfinance Inc.', 'Pawnshop and Remittance'],
         'Other Service Activities'                      => ['Security Agency Inc.', 'Janitorial Services Corp.', 'Manpower Services Inc.', 'Facility Management Inc.'],
-        self::OVERSEAS                                  => ['International Manpower Services Inc.', 'Overseas Placement Agency Inc.', 'Global Recruitment Corp.', 'Worldwide Manpower Inc.'],
     ];
 
     private const FIRST_MALE = [
@@ -345,7 +363,7 @@ class DemoPopulationSeeder extends Seeder
         $created  = $state === 'approved'
             ? $this->between(Carbon::create(2025, 11, 3), Carbon::create(2026, 6, 30))
             : $this->between($this->today->copy()->subDays(18), $this->today->copy()->subDay());
-        $company  = $this->uniqueCompanyName($industry);
+        $company  = $this->uniqueCompanyName($industry, $overseas);
         $male     = $this->chance(55);
         $first    = $this->pick($male ? self::FIRST_MALE : self::FIRST_FEMALE);
         $last     = $this->pick(self::SURNAMES);
@@ -2218,10 +2236,12 @@ class DemoPopulationSeeder extends Seeder
         return array_merge([$primary], array_slice($others, 0, $extra));
     }
 
-    private function uniqueCompanyName(string $industry): string
+    private function uniqueCompanyName(string $industry, bool $overseas = false): string
     {
+        $suffixes = $overseas ? self::OVERSEAS_SUFFIX : self::NAME_SUFFIX[$industry];
+
         do {
-            $name = $this->pick(self::NAME_PREFIX) . ' ' . $this->pick(self::NAME_SUFFIX[$industry]);
+            $name = $this->pick(self::NAME_PREFIX) . ' ' . $this->pick($suffixes);
         } while (isset($this->usedNames[$name])
             || DB::table('employer_nsrp_registrations')->where('company_name', $name)->exists());
 

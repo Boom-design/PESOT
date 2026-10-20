@@ -425,8 +425,18 @@ class JobFairReport
         $jobs  = self::reportJobs($event, $overseasOnly);
         $total = (int) $jobs->sum('slots');
 
-        $byGroup = $jobs->groupBy(fn($job) => $job->industry_group ?: 'Unclassified')
+        // Ang ahensya sa gawas naay kaugalingon nga ulohan sa papel, mao nga
+        // ang bakante niya gikuha sa tulo ka sektor — kon dili, maihap siya
+        // sa industry group niya UG sa overseas nga ulohan, ug ang TOTAL
+        // molapas sa 100%. Ang is_overseas ang nagbahin, dili ang industriya:
+        // "Overseas Manpower Services" dili na usa ka tubag nga mapili.
+        $isAgency = fn($job) => (bool) ($job->company->is_overseas ?? false);
+
+        $byGroup = $jobs->reject($isAgency)
+            ->groupBy(fn($job) => $job->industry_group ?: 'Unclassified')
             ->map(fn($rows) => (int) $rows->sum('slots'));
+
+        $share = fn(int $quantity) => $total > 0 ? round($quantity / $total * 100, 2) : 0.0;
 
         $rows = [];
         foreach (\App\Models\EmployerNsrpRegistration::INDUSTRY_GROUPS as $group) {
@@ -434,9 +444,16 @@ class JobFairReport
             $rows[$group] = [
                 'group'    => $group,
                 'quantity' => $quantity,
-                'share'    => $total > 0 ? round($quantity / $total * 100, 2) : 0.0,
+                'share'    => $share($quantity),
             ];
         }
+
+        $agencySlots = (int) $jobs->filter($isAgency)->sum('slots');
+        $rows[self::OVERSEAS_ROW] = [
+            'group'    => self::OVERSEAS_ROW,
+            'quantity' => $agencySlots,
+            'share'    => $share($agencySlots),
+        ];
 
         // Ang wala na-classify nga employer dili itago: kung wala siya
         // gilista, ang % share dili moabot sa 100 ug walay makasulti ngano.
@@ -523,8 +540,17 @@ class JobFairReport
      * Ang gibahin mao ang tulo ka sektor sa PSA: ang Agriculture mao ang
      * Section A; ang Industry mao ang Mining, Manufacturing, Electricity ug
      * Gas, Water Supply ug Construction; ang tanan nga nahibilin Services.
-     * Ang ikaupat nga ulohan atoa ra — ang mga ahensya sa gawas naay kaugalingon
-     * nga linya sa papel sa DOLE.
+     *
+     * Ang ikaupat nga ulohan lahi ug basihan. Kaniadto usa ka industry group
+     * siya nga atoa ra gisulat — "Overseas Manpower Services" — nga wala sa
+     * PSIC. Gitangtang na siya: ang laray ilalom niini nag-ihap na karon sa
+     * is_overseas sa kompanya, dili sa gitubag niya nga industriya. Ang
+     * ngalan sa laray gikan sa PSA mismo, sub-class 78102.
+     *
+     * Ang tulo ka sektor nag-ihap sa LOKAL ra nga kompanya, mao nga ang usa
+     * ka bakante usa ra gyud ka higayon maihap ug ang TOTAL moabot gyud ug
+     * 100%. Kung wala kini, ang bakante sa usa ka ahensya maihap sa Section O
+     * ug sa overseas nga ulohan, duha ka higayon.
      *
      * Ang listahan dinhi kinahanglan mo-tabon sa tibuok INDUSTRY_GROUPS. Ang
      * seksyon nga wala dinhi mawala sa papel nga hilom, mao nga kung modugang
@@ -557,8 +583,17 @@ class JobFairReport
             'Activities of Households as Employers; Undifferentiated Goods- and Services-Producing Activities of Households for own use',
             'Activities of Extraterritorial Organizations and Bodies',
         ],
-        'OVERSEAS MANPOWER SERVICES' => ['Overseas Manpower Services'],
+        'OVERSEAS MANPOWER SERVICES' => [self::OVERSEAS_ROW],
     ];
+
+    /**
+     * Ang bugtong laray ilalom sa overseas nga ulohan.
+     *
+     * Dili siya industry group, mao nga wala siya sa INDUSTRY_GROUPS — usa
+     * siya ka pangalan nga gikuha sa PSIC Revision 5, sub-class 78102, ug ang
+     * giihap niya mao ang kompanya nga is_overseas.
+     */
+    public const OVERSEAS_ROW = 'Overseas employment recruitment and placement activities';
 
     /**
      * Ang posting nga gibasa sa tulo ka lamesa sa ibabaw.
