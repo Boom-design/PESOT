@@ -110,23 +110,41 @@
                         </div>
                     </div>
 
+                    {{-- An overseas agency has one answer here and it is not a
+                         choice: PSIC puts the work at sub-class 78102, under
+                         Section O. The registration form picks it for them, so
+                         the profile must not let them pick their way out of it
+                         — SRA finds them by industry when a fair asks for one. --}}
+                    @php
+                        $agencyGroup = 'Administrative and Support Service Activities';
+                        $isAgency    = (bool) ($nsrp->is_overseas ?? false);
+                        $chosen      = $isAgency
+                            ? $agencyGroup
+                            : old('industry_group', $nsrp->industry_group ?? '');
+                    @endphp
                     <div class="col-12">
                         <label class="peso-label">Major Industry Group *</label>
                         <select name="industry_group" class="peso-input" required>
-                            <option value="" disabled
-                                {{ old('industry_group', $nsrp->industry_group ?? '') ? '' : 'selected' }}>
+                            <option value="" disabled {{ $chosen ? '' : 'selected' }}>
                                 Select industry group
                             </option>
                             @foreach(\App\Models\EmployerNsrpRegistration::INDUSTRY_GROUPS as $group)
                             <option value="{{ $group }}"
-                                {{ old('industry_group', $nsrp->industry_group ?? '') === $group ? 'selected' : '' }}>
+                                {{ $chosen === $group ? 'selected' : '' }}
+                                {{ $isAgency && $group !== $agencyGroup ? 'disabled' : '' }}>
                                 {{ $group }}
                             </option>
                             @endforeach
                         </select>
                         <div class="peso-help">
-                            PESO invites employers to a job fair by industry, so a job fair
-                            looking for your line of work can find you.
+                            @if($isAgency)
+                                An overseas recruitment agency is PSIC sub-class 78102, under
+                                Section O. PESO invites employers to a job fair by industry,
+                                so a job fair looking for agencies can find you.
+                            @else
+                                PESO invites employers to a job fair by industry, so a job fair
+                                looking for your line of work can find you.
+                            @endif
                         </div>
                         @error('industry_group')
                             <div class="peso-error">{{ $message }}</div>

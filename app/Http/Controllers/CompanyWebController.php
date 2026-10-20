@@ -1249,12 +1249,22 @@ class CompanyWebController extends Controller
 
         $company->update($data);
 
-        $company->activeCompany()->update([
+        $activeCompany = $company->activeCompany();
+
+        // An overseas agency has one industry group and it is not a choice:
+        // PSIC puts the work at sub-class 78102, under Section O. The form
+        // closes the other options, and this closes the request — the rule
+        // above only asks that the answer be somewhere in the list.
+        $industryGroup = \App\Models\EmployerNsrpRegistration::industryGroupFor(
+            $request->industry_group, (bool) $activeCompany->is_overseas
+        );
+
+        $activeCompany->update([
             'company_name'   => $request->company_name,
             'contact_person' => $request->contact_person,
             'position_title' => $request->position_title,
             'mobile_number'  => $request->mobile_number,
-            'industry_group' => $request->industry_group,
+            'industry_group' => $industryGroup,
             // Unchecked boxes are absent from the request, so this reads as
             // "off" rather than "unchanged" — which is what the form means.
             'sms_opt_in'     => $request->boolean('sms_opt_in'),

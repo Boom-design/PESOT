@@ -74,6 +74,25 @@ class EmployerNsrpRegistration extends Model
     ];
 
     /**
+     * Where an overseas recruitment agency belongs, and it is not a choice.
+     *
+     * PSIC puts the work at sub-class 78102, Overseas employment recruitment
+     * and placement activities, under Division 78 of Section O. The agency
+     * used to pick "Overseas Manpower Services" from the list without
+     * thinking; that entry is gone, and no agency arriving at the form would
+     * guess Section O from the twenty-two section names. So the forms pick it
+     * for them, and industryGroupFor() holds every save to it — a closed
+     * option in a page is a courtesy, not a rule.
+     */
+    public const AGENCY_INDUSTRY_GROUP = 'Administrative and Support Service Activities';
+
+    /** The industry group to store for an establishment of this kind. */
+    public static function industryGroupFor(?string $answer, bool $isOverseas): ?string
+    {
+        return $isOverseas ? self::AGENCY_INDUSTRY_GROUP : $answer;
+    }
+
+    /**
      * What each retired industry group became under PSIC Revision 5.
      *
      * The migration that rewrote the stored answers reads this, and it stays

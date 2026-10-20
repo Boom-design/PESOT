@@ -92,7 +92,9 @@ class EmployerRegistration
             'tin_type'              => $request->tin_type,
             'total_workforce'       => $request->total_workforce,
             'line_of_business'      => $request->line_of_business,
-            'industry_group'        => $request->industry_group,
+            'industry_group'        => EmployerNsrpRegistration::industryGroupFor(
+                $request->industry_group, $isOverseas
+            ),
             'est_barangay'          => $request->est_barangay,
             'est_city_municipality' => $request->est_city_municipality,
             'est_province'          => $request->est_province,

@@ -477,12 +477,13 @@
                     </div>
                     <div class="col-md-7">
                         <label class="peso-label">Major Industry Group *</label>
-                        <select name="industry_group" class="peso-input" required>
+                        <select name="industry_group" id="industryGroup" class="peso-input" required>
                             <option value="" disabled {{ old('industry_group') ? '' : 'selected' }}>Select industry group</option>
                             @foreach(\App\Models\EmployerNsrpRegistration::INDUSTRY_GROUPS as $group)
                             <option value="{{ $group }}" {{ old('industry_group') === $group ? 'selected' : '' }}>{{ $group }}</option>
                             @endforeach
                         </select>
+                        @include('partials.agency-industry', ['selectId' => 'industryGroup'])
                     </div>
 
                     <div class="col-md-4 addr-field">
