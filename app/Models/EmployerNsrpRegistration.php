@@ -17,23 +17,82 @@ class EmployerNsrpRegistration extends Model
      * it is looking for, and the two are matched to decide who gets invited.
      * The list used to be typed out inside each Blade that needed it; it lives
      * here now so those three copies cannot drift apart.
+     *
+     * ── PSIC REVISION 5, SECTION LEVEL ──
+     *
+     * The PESO manager, 2026-10-20: the office classifies an establishment by
+     * the Philippine Standard Industrial Classification, and an answer that
+     * does not come from it is an answer the office cannot defend. The list
+     * here used to be the older PSIC wording carried over from the NSRP paper
+     * form, which no longer matches what the PSA publishes: it merged
+     * Transportation with Telecommunications, called Section I "Hotel and
+     * Restaurants", and had no entry at all for Electricity and Gas, Water
+     * Supply, Publishing, Telecommunications and IT, Professional and
+     * Technical Activities, Administrative and Support, Arts and Sports, or
+     * Households as Employers.
+     *
+     * These are the 22 sections of PSIC Revision 5, worded exactly as the PSA
+     * detailed structure of 30 July 2026 words them. Section level, not
+     * division: the NSRP form asks for the industry group, and the job fair
+     * matches an employer against a fair's target industries on the same
+     * level.
+     *
+     * The last entry is ours, not the PSA's. A manpower agency is Division 78
+     * of Section O, but the office reads the overseas agencies as a group of
+     * their own — the DOLE report prints them under their own heading — so
+     * the entry stays, below the classification rather than inside it.
      */
     public const INDUSTRY_GROUPS = [
-        'Agriculture, Hunting and Forestry, Fishing',
+        'Agriculture, Forestry and Fishing',
         'Mining and Quarrying',
         'Manufacturing',
+        'Electricity, Gas, Steam and Air Conditioning Supply',
+        'Water Supply; Sewerage, Waste Management and Remediation',
         'Construction',
-        'Wholesale, Retail Trade, Repair of Motor Vehicles, Motorcycles, & Personal and Household Goods',
-        'Hotel and Restaurants',
-        'Transport, Storage and Communications',
-        'Financial Intermediation',
-        'Real Estate, Renting and Business Activities',
-        'Public Administration and Defense, Compulsory Social Security',
+        'Wholesale and Retail Trade',
+        'Transportation and Storage',
+        'Accommodation and Food Service Activities',
+        'Publishing, Broadcasting, and Content Production and Distribution Activities',
+        'Telecommunications, Computer Programming, Consultancy, Computing Infrastructure, and Other Information Service Activities',
+        'Financial and Insurance Activities',
+        'Real Estate Activities',
+        'Professional, Scientific, and Technical Activities',
+        'Administrative and Support Service Activities',
+        'Public Administration and Defense; Compulsory Social Security',
         'Education',
-        'Health and Social Work',
-        'Other Community, Social and Personal Activities',
-        'Extra-territorial Organization and Bodies',
+        'Human Health and Social Work Activities',
+        'Arts, Sports and Recreation',
+        'Other Service Activities',
+        'Activities of Households as Employers; Undifferentiated Goods- and Services-Producing Activities of Households for own use',
+        'Activities of Extraterritorial Organizations and Bodies',
         'Overseas Manpower Services',
+    ];
+
+    /**
+     * What each retired industry group became under PSIC Revision 5.
+     *
+     * The migration that rewrote the stored answers reads this, and it stays
+     * afterwards: an employer's old answer may still arrive from a bookmarked
+     * filter or an imported report, and the one place that says what it means
+     * now is here.
+     */
+    public const RETIRED_INDUSTRY_GROUPS = [
+        'Agriculture, Hunting and Forestry, Fishing'                     => 'Agriculture, Forestry and Fishing',
+        'Wholesale, Retail Trade, Repair of Motor Vehicles, Motorcycles, & Personal and Household Goods'
+                                                                         => 'Wholesale and Retail Trade',
+        'Hotel and Restaurants'                                          => 'Accommodation and Food Service Activities',
+        // Telecommunications left Section H for Section K under Revision 5.
+        // An establishment that answered this was asked for its transport
+        // activity, so Transportation and Storage is where it belongs; a
+        // telecoms company re-picks its own section.
+        'Transport, Storage and Communications'                          => 'Transportation and Storage',
+        'Financial Intermediation'                                       => 'Financial and Insurance Activities',
+        // Renting and business activities split off into Sections N and O.
+        'Real Estate, Renting and Business Activities'                   => 'Real Estate Activities',
+        'Public Administration and Defense, Compulsory Social Security'  => 'Public Administration and Defense; Compulsory Social Security',
+        'Health and Social Work'                                         => 'Human Health and Social Work Activities',
+        'Other Community, Social and Personal Activities'                => 'Other Service Activities',
+        'Extra-territorial Organization and Bodies'                      => 'Activities of Extraterritorial Organizations and Bodies',
     ];
 
     protected $fillable = [

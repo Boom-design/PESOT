@@ -75,7 +75,7 @@ class DemoPopulationSeeder extends Seeder
         return $this->staffIds[$role][0] ?? null;
     }
 
-    private const WHOLESALE = 'Wholesale, Retail Trade, Repair of Motor Vehicles, Motorcycles, & Personal and Household Goods';
+    private const WHOLESALE = 'Wholesale and Retail Trade';
     private const OVERSEAS  = 'Overseas Manpower Services';
 
     // title => [course, certification, education required, skills, salary min, salary max, licence]
@@ -92,13 +92,13 @@ class DemoPopulationSeeder extends Seeder
             'Electrician'   => [null, 'Electrical Installation and Maintenance NC II', 'Senior High', ['Electrician'], 14000, 18000, null],
             'Site Engineer' => ['BS Civil Engineering', null, 'Tertiary / College', ['Computer Literate'], 25000, 35000, null],
         ],
-        'Hotel and Restaurants' => [
+        'Accommodation and Food Service Activities' => [
             'Front Desk Officer'          => ['BS Tourism Management', null, 'Tertiary / College', ['Computer Literate'], 14000, 17000, null],
             'Cook'                        => [null, 'Cookery NC II', 'Senior High', ['Domestic Chores'], 13000, 16000, null],
             'Food and Beverage Attendant' => [null, 'Food and Beverage Services NC II', 'Senior High', ['Domestic Chores'], 12500, 14500, null],
             'Housekeeping Attendant'      => [null, 'Housekeeping NC II', 'Senior High', ['Domestic Chores'], 12500, 14000, null],
         ],
-        'Real Estate, Renting and Business Activities' => [
+        'Real Estate Activities' => [
             'Customer Service Representative' => ['BS Information Technology', 'Computer Systems Servicing NC II', 'Tertiary / College', ['Computer Literate'], 16000, 20000, null],
             'Technical Support Associate'     => ['BS Information Technology', 'Computer Systems Servicing NC II', 'Tertiary / College', ['Computer Literate'], 18000, 22000, null],
             'Data Encoder'                    => [null, 'Computer Systems Servicing NC II', 'Senior High', ['Computer Literate'], 13000, 15500, null],
@@ -108,7 +108,7 @@ class DemoPopulationSeeder extends Seeder
             'Cashier'         => [null, 'Bookkeeping NC III', 'Senior High', ['Computer Literate'], 12500, 14500, null],
             'Inventory Clerk' => ['BS Business Administration', 'Bookkeeping NC III', 'Tertiary / College', ['Computer Literate'], 13500, 16000, null],
         ],
-        'Health and Social Work' => [
+        'Human Health and Social Work Activities' => [
             'Staff Nurse'        => ['BS Nursing', null, 'Tertiary / College', ['Computer Literate'], 22000, 30000, 'Registered Nurse (PRC)'],
             'Caregiver'          => [null, 'Caregiving NC II', 'Senior High', ['Domestic Chores'], 12000, 15000, null],
             'Pharmacy Assistant' => ['BS Pharmacy', null, 'Tertiary / College', ['Computer Literate'], 14000, 17000, null],
@@ -117,15 +117,15 @@ class DemoPopulationSeeder extends Seeder
             'Elementary Teacher' => ['BS Education', null, 'Tertiary / College', ['Computer Literate'], 20000, 26000, 'Licensed Professional Teacher (PRC)'],
             'Teacher Aide'       => ['BS Education', null, 'Tertiary / College', ['Computer Literate'], 13000, 16000, null],
         ],
-        'Transport, Storage and Communications' => [
+        'Transportation and Storage' => [
             'Delivery Rider'        => [null, null, 'Senior High', ['Driver'], 12000, 15000, null],
             'Logistics Coordinator' => ['BS Business Administration', null, 'Tertiary / College', ['Computer Literate', 'Driver'], 17000, 21000, null],
         ],
-        'Financial Intermediation' => [
+        'Financial and Insurance Activities' => [
             'Bookkeeper'   => ['BS Accountancy', 'Bookkeeping NC III', 'Tertiary / College', ['Computer Literate'], 16000, 20000, null],
             'Loan Officer' => ['BS Business Administration', null, 'Tertiary / College', ['Computer Literate', 'Driver'], 16000, 21000, null],
         ],
-        'Other Community, Social and Personal Activities' => [
+        'Other Service Activities' => [
             'Security Guard' => [null, 'Security Services NC II', 'Senior High', ['Driver'], 13000, 16000, null],
             'Janitor'        => [null, null, 'High School', ['Domestic Chores'], 11500, 13000, null],
         ],
@@ -157,17 +157,17 @@ class DemoPopulationSeeder extends Seeder
     ];
 
     private const NAME_SUFFIX = [
-        'Manufacturing'                                   => ['Foods Corp.', 'Beverages Inc.', 'Packaging Corp.', 'Industrial Products Inc.'],
-        'Construction'                                    => ['Builders Inc.', 'Construction Corp.', 'Engineering and Development Corp.', 'Contractors Co.'],
-        'Hotel and Restaurants'                           => ['Hotel and Suites', 'Resort and Restaurant', 'Grill and Cafe Inc.', 'Inn and Convention Center'],
-        'Real Estate, Renting and Business Activities'    => ['Business Solutions Inc.', 'Outsourcing Services Inc.', 'Digital Services Corp.', 'Contact Center Inc.'],
-        self::WHOLESALE                                   => ['Trading Corp.', 'Supermart Inc.', 'Merchandising Co.', 'Hardware and Supply'],
-        'Health and Social Work'                          => ['Medical Clinic Inc.', 'Diagnostic Center', 'Pharmacy Corp.', 'Home Care Services Inc.'],
-        'Education'                                       => ['Learning Academy', 'School of Arts and Trades', 'Montessori School Inc.', 'Review Center'],
-        'Transport, Storage and Communications'           => ['Logistics Corp.', 'Freight Services Inc.', 'Courier Express Inc.', 'Transport Services Inc.'],
-        'Financial Intermediation'                        => ['Lending Corp.', 'Credit Cooperative', 'Microfinance Inc.', 'Pawnshop and Remittance'],
-        'Other Community, Social and Personal Activities' => ['Security Agency Inc.', 'Janitorial Services Corp.', 'Manpower Services Inc.', 'Facility Management Inc.'],
-        self::OVERSEAS                                    => ['International Manpower Services Inc.', 'Overseas Placement Agency Inc.', 'Global Recruitment Corp.', 'Worldwide Manpower Inc.'],
+        'Manufacturing'                             => ['Foods Corp.', 'Beverages Inc.', 'Packaging Corp.', 'Industrial Products Inc.'],
+        'Construction'                              => ['Builders Inc.', 'Construction Corp.', 'Engineering and Development Corp.', 'Contractors Co.'],
+        'Accommodation and Food Service Activities' => ['Hotel and Suites', 'Resort and Restaurant', 'Grill and Cafe Inc.', 'Inn and Convention Center'],
+        'Real Estate Activities'                    => ['Business Solutions Inc.', 'Outsourcing Services Inc.', 'Digital Services Corp.', 'Contact Center Inc.'],
+        self::WHOLESALE                             => ['Trading Corp.', 'Supermart Inc.', 'Merchandising Co.', 'Hardware and Supply'],
+        'Human Health and Social Work Activities'   => ['Medical Clinic Inc.', 'Diagnostic Center', 'Pharmacy Corp.', 'Home Care Services Inc.'],
+        'Education'                                 => ['Learning Academy', 'School of Arts and Trades', 'Montessori School Inc.', 'Review Center'],
+        'Transportation and Storage'                => ['Logistics Corp.', 'Freight Services Inc.', 'Courier Express Inc.', 'Transport Services Inc.'],
+        'Financial and Insurance Activities'        => ['Lending Corp.', 'Credit Cooperative', 'Microfinance Inc.', 'Pawnshop and Remittance'],
+        'Other Service Activities'                  => ['Security Agency Inc.', 'Janitorial Services Corp.', 'Manpower Services Inc.', 'Facility Management Inc.'],
+        self::OVERSEAS                              => ['International Manpower Services Inc.', 'Overseas Placement Agency Inc.', 'Global Recruitment Corp.', 'Worldwide Manpower Inc.'],
     ];
 
     private const FIRST_MALE = [
@@ -1171,7 +1171,7 @@ class DemoPopulationSeeder extends Seeder
             ['Education', false, 'pending'],
             ['Manufacturing', false, 'pending'],
             ['Construction', false, 'none'],
-            ['Hotel and Restaurants', false, 'rejected'],
+            ['Accommodation and Food Service Activities', false, 'rejected'],
             [self::OVERSEAS, true, 'pending'],
             [self::OVERSEAS, true, 'rejected'],
         ] as [$industry, $overseas, $state]) {

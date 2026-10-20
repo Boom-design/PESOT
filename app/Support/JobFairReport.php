@@ -520,23 +520,42 @@ class JobFairReport
     /**
      * Ang upat ka ulohan sa papel, ug kung unsang grupo ang naa sa matag usa.
      *
-     * Ang atoa nga INDUSTRY_GROUPS mao gyud ang listahan sa DOLE — usa ra ang
-     * kalainan: gihiusa nato ang Agriculture ug ang Fishing sa usa ka linya.
+     * Ang gibahin mao ang tulo ka sektor sa PSA: ang Agriculture mao ang
+     * Section A; ang Industry mao ang Mining, Manufacturing, Electricity ug
+     * Gas, Water Supply ug Construction; ang tanan nga nahibilin Services.
+     * Ang ikaupat nga ulohan atoa ra — ang mga ahensya sa gawas naay kaugalingon
+     * nga linya sa papel sa DOLE.
+     *
+     * Ang listahan dinhi kinahanglan mo-tabon sa tibuok INDUSTRY_GROUPS. Ang
+     * seksyon nga wala dinhi mawala sa papel nga hilom, mao nga kung modugang
+     * ang PSA ug seksyon, dinhi siya isulod.
      */
     public const INDUSTRY_SECTIONS = [
-        'AGRICULTURE' => ['Agriculture, Hunting and Forestry, Fishing'],
-        'INDUSTRY'    => ['Mining and Quarrying', 'Manufacturing', 'Construction'],
+        'AGRICULTURE' => ['Agriculture, Forestry and Fishing'],
+        'INDUSTRY'    => [
+            'Mining and Quarrying',
+            'Manufacturing',
+            'Electricity, Gas, Steam and Air Conditioning Supply',
+            'Water Supply; Sewerage, Waste Management and Remediation',
+            'Construction',
+        ],
         'SERVICES'    => [
-            'Wholesale, Retail Trade, Repair of Motor Vehicles, Motorcycles, & Personal and Household Goods',
-            'Hotel and Restaurants',
-            'Transport, Storage and Communications',
-            'Financial Intermediation',
-            'Real Estate, Renting and Business Activities',
-            'Public Administration and Defense, Compulsory Social Security',
+            'Wholesale and Retail Trade',
+            'Transportation and Storage',
+            'Accommodation and Food Service Activities',
+            'Publishing, Broadcasting, and Content Production and Distribution Activities',
+            'Telecommunications, Computer Programming, Consultancy, Computing Infrastructure, and Other Information Service Activities',
+            'Financial and Insurance Activities',
+            'Real Estate Activities',
+            'Professional, Scientific, and Technical Activities',
+            'Administrative and Support Service Activities',
+            'Public Administration and Defense; Compulsory Social Security',
             'Education',
-            'Health and Social Work',
-            'Other Community, Social and Personal Activities',
-            'Extra-territorial Organization and Bodies',
+            'Human Health and Social Work Activities',
+            'Arts, Sports and Recreation',
+            'Other Service Activities',
+            'Activities of Households as Employers; Undifferentiated Goods- and Services-Producing Activities of Households for own use',
+            'Activities of Extraterritorial Organizations and Bodies',
         ],
         'OVERSEAS MANPOWER SERVICES' => ['Overseas Manpower Services'],
     ];
