@@ -6102,20 +6102,44 @@ $nsrp = $registration->nsrp;
     // mean one of the two scopes is always being ignored.
     public function exportJobFairReport(Request $request)
     {
-        $staff = $this->authStaff();
-        if (!$staff) return redirect()->route('login');
+        // ── Ang desk, o ang admin nga nagbasa sa panid sa desk.
+        // ──
+        // ── PESO, 2026-10-21: ang admin nagbasa sa job fair reports sa SRA
+        // ── apan walay buton nga download didto — ang buton gitago sa kopya
+        // ── niya, kay kini nga paagi mo-logout unta kaniya. Siya ang
+        // ── nagbantay sa trabaho sa desk, ug ang report nga iya ra sa desk
+        // ── naghimo nianang pagbantay nga bakak. ──
+        $user = Auth::user();
+        if (!$user) return redirect()->route('login');
+
+        $isAdmin = $user->role === 'admin';
+
+        if ($isAdmin) {
+            // Ang admin nagpili sa desk pinaagi sa query string, parehas sa
+            // iyang panid: ?role=sra&report_view=jobfair.
+            $staffRole = request('role') === 'sra' ? 'sra' : 'job_fair';
+        } else {
+            $staff = $this->authStaff();
+            if (!$staff) return redirect()->route('login');
+            $staffRole = $staff->staff_role;
+        }
 
         // Parehas ra sa nakakita sa page: ang Job Fair staff, ug ang SRA kung
         // anaa siya sa job fair nga panglantaw.
-        $isSraJobFairView = $staff->staff_role === 'sra' && request('report_view') === 'jobfair';
-        if ($staff->staff_role !== 'job_fair' && !$isSraJobFairView) {
-            return redirect()->route('staff.reports');
+        $isSraJobFairView = $staffRole === 'sra' && request('report_view') === 'jobfair';
+
+        $home = $isAdmin
+            ? ['admin.reports.staff', ['role' => $staffRole]]
+            : ['staff.reports', []];
+
+        if ($staffRole !== 'job_fair' && !$isSraJobFairView) {
+            return redirect()->route($home[0], $home[1]);
         }
 
         // ── redirect(), dili back(): ang back() sa usa ka link nga walay
         // ── referer mobalik sa mismong URL sa export, ug malikos siya. ──
         $refuse = fn(string $why) => redirect()
-            ->route('staff.reports', array_filter([
+            ->route($home[0], array_filter($home[1] + [
                 'tab'         => $request->input('tab'),
                 'event_id'    => $request->input('event_id'),
                 'report_view' => $request->input('report_view'),

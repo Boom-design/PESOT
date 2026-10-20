@@ -282,8 +282,10 @@ if ($staffRole !== 'sra') {
     $downloadableTab = array_key_exists($tab, \App\Support\JobFairReport::TABS);
     $downloadNeedsEvent = !in_array($tab, \App\Support\JobFairReport::TABS_WITHOUT_EVENT, true);
 @endphp
-@if($downloadableTab && (!$downloadNeedsEvent || $eventId)
-    && ($reportRouteName ?? 'staff.reports') === 'staff.reports')
+{{-- Ang admin naa pud niini. Gitago siya kaniadto sa kopya sa admin kay ang
+     exportJobFairReport mo-logout unta kaniya; mo-dawat na siya karon, ug ang
+     tawo nga nagbantay sa trabaho sa desk makakuha na sa parehas nga papel. --}}
+@if($downloadableTab && (!$downloadNeedsEvent || $eventId))
 <div class="d-flex justify-content-end mb-3">
     <a href="{{ route('staff.reports.jobfair.export', array_merge(request()->query(), ['tab' => $tab, 'event_id' => $eventId])) }}"
        class="btn btn-sm fw-semibold"
