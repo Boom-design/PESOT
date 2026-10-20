@@ -98,7 +98,11 @@ class DemoPopulationSeeder extends Seeder
             'Food and Beverage Attendant' => [null, 'Food and Beverage Services NC II', 'Senior High', ['Domestic Chores'], 12500, 14500, null],
             'Housekeeping Attendant'      => [null, 'Housekeeping NC II', 'Senior High', ['Domestic Chores'], 12500, 14000, null],
         ],
-        'Real Estate Activities' => [
+        // The BPOs. Under the older PSIC they sat in "Real Estate, Renting and
+        // Business Activities", which Revision 5 split: real estate kept
+        // Section M and the business activities moved out. A contact centre is
+        // Division 82 of Section O.
+        'Administrative and Support Service Activities' => [
             'Customer Service Representative' => ['BS Information Technology', 'Computer Systems Servicing NC II', 'Tertiary / College', ['Computer Literate'], 16000, 20000, null],
             'Technical Support Associate'     => ['BS Information Technology', 'Computer Systems Servicing NC II', 'Tertiary / College', ['Computer Literate'], 18000, 22000, null],
             'Data Encoder'                    => [null, 'Computer Systems Servicing NC II', 'Senior High', ['Computer Literate'], 13000, 15500, null],
@@ -157,17 +161,17 @@ class DemoPopulationSeeder extends Seeder
     ];
 
     private const NAME_SUFFIX = [
-        'Manufacturing'                             => ['Foods Corp.', 'Beverages Inc.', 'Packaging Corp.', 'Industrial Products Inc.'],
-        'Construction'                              => ['Builders Inc.', 'Construction Corp.', 'Engineering and Development Corp.', 'Contractors Co.'],
-        'Accommodation and Food Service Activities' => ['Hotel and Suites', 'Resort and Restaurant', 'Grill and Cafe Inc.', 'Inn and Convention Center'],
-        'Real Estate Activities'                    => ['Business Solutions Inc.', 'Outsourcing Services Inc.', 'Digital Services Corp.', 'Contact Center Inc.'],
-        self::WHOLESALE                             => ['Trading Corp.', 'Supermart Inc.', 'Merchandising Co.', 'Hardware and Supply'],
-        'Human Health and Social Work Activities'   => ['Medical Clinic Inc.', 'Diagnostic Center', 'Pharmacy Corp.', 'Home Care Services Inc.'],
-        'Education'                                 => ['Learning Academy', 'School of Arts and Trades', 'Montessori School Inc.', 'Review Center'],
-        'Transportation and Storage'                => ['Logistics Corp.', 'Freight Services Inc.', 'Courier Express Inc.', 'Transport Services Inc.'],
-        'Financial and Insurance Activities'        => ['Lending Corp.', 'Credit Cooperative', 'Microfinance Inc.', 'Pawnshop and Remittance'],
-        'Other Service Activities'                  => ['Security Agency Inc.', 'Janitorial Services Corp.', 'Manpower Services Inc.', 'Facility Management Inc.'],
-        self::OVERSEAS                              => ['International Manpower Services Inc.', 'Overseas Placement Agency Inc.', 'Global Recruitment Corp.', 'Worldwide Manpower Inc.'],
+        'Manufacturing'                                 => ['Foods Corp.', 'Beverages Inc.', 'Packaging Corp.', 'Industrial Products Inc.'],
+        'Construction'                                  => ['Builders Inc.', 'Construction Corp.', 'Engineering and Development Corp.', 'Contractors Co.'],
+        'Accommodation and Food Service Activities'     => ['Hotel and Suites', 'Resort and Restaurant', 'Grill and Cafe Inc.', 'Inn and Convention Center'],
+        'Administrative and Support Service Activities' => ['Business Solutions Inc.', 'Outsourcing Services Inc.', 'Digital Services Corp.', 'Contact Center Inc.'],
+        self::WHOLESALE                                 => ['Trading Corp.', 'Supermart Inc.', 'Merchandising Co.', 'Hardware and Supply'],
+        'Human Health and Social Work Activities'       => ['Medical Clinic Inc.', 'Diagnostic Center', 'Pharmacy Corp.', 'Home Care Services Inc.'],
+        'Education'                                     => ['Learning Academy', 'School of Arts and Trades', 'Montessori School Inc.', 'Review Center'],
+        'Transportation and Storage'                    => ['Logistics Corp.', 'Freight Services Inc.', 'Courier Express Inc.', 'Transport Services Inc.'],
+        'Financial and Insurance Activities'            => ['Lending Corp.', 'Credit Cooperative', 'Microfinance Inc.', 'Pawnshop and Remittance'],
+        'Other Service Activities'                      => ['Security Agency Inc.', 'Janitorial Services Corp.', 'Manpower Services Inc.', 'Facility Management Inc.'],
+        self::OVERSEAS                                  => ['International Manpower Services Inc.', 'Overseas Placement Agency Inc.', 'Global Recruitment Corp.', 'Worldwide Manpower Inc.'],
     ];
 
     private const FIRST_MALE = [
