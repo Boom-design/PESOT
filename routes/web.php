@@ -358,6 +358,13 @@
         Route::get('/jobseeker/schedules',                    [JobseekerWebController::class, 'schedules'])->name('jobseeker.schedules');
         Route::post('/jobseeker/inhouse/{id}/join',            [JobseekerWebController::class, 'joinInhouse'])->name('jobseeker.inhouse.join');
         Route::post('/jobseeker/jobfair/{id}/join',             [JobseekerWebController::class, 'joinJobFair'])->name('jobseeker.jobfair.join');
+
+        // Pag-atras human mi-apil. Tulo ka lugar ang gipangutana sa parehas nga
+        // butang sa PESO Events, mao nga tulo sila ka route — apan permanente
+        // silang tulo, ug walay bisan usa nga mo-notify sa employer.
+        Route::post('/jobseeker/applications/{id}/inhouse-cancel', [ApplicationController::class, 'cancelInhouseParticipation'])->name('jobseeker.applications.inhouseCancel');
+        Route::post('/jobseeker/applications/{id}/company-interview-cancel', [ApplicationController::class, 'cancelCompanyInterviewParticipation'])->name('jobseeker.applications.companyInterviewCancel');
+        Route::post('/jobseeker/jobfair/{id}/cancel',           [JobseekerWebController::class, 'cancelJobFair'])->name('jobseeker.jobfair.cancel');
         Route::get('/jobseeker/history',                       [JobseekerWebController::class, 'history'])->name('jobseeker.history');
         Route::get('/jobseeker/notifications',                  [JobseekerWebController::class, 'notifications'])->name('jobseeker.notifications.index');
     });

@@ -196,6 +196,19 @@ class ApplicationController extends Controller
     // ── makabalik gihapon ang tawo samtang buhi pa ang posting. ──
     private function guardParticipationChange(Application $application, string $response)
     {
+        // ── Ang pag-CANCEL lahi sa pag-decline, ug permanente siya.
+        // ──
+        // ── Ang decline kay ang unang tubag sa pangutana: wala pa siya
+        // ── mi-apil. Ang cancel kay pag-atras human siya mi-apil ug human
+        // ── siya naa na sa listahan sa employer ug sa iyang PESO Events —
+        // ── ang employer nagplano na sa venue uban siya. Mao nga walay
+        // ── pagbalik gikan niini, ug ang panid nagsulti niana sa wala pa
+        // ── ang buton. ──
+        if ($application->participationFor($application->job?->schedule_type) === Application::CANCELLED) {
+            return back()->with('error',
+                'You withdrew from this interview, so you cannot join it again.');
+        }
+
         if ($response !== 'accepted') {
             return null;
         }
@@ -287,6 +300,74 @@ class ApplicationController extends Controller
         return back()->with('success', $rejoined
             ? 'You are back in for this job posting!'
             : 'You have confirmed your interest in this job posting!');
+    }
+
+    // ───────────────────────────────
+    // CANCEL — PAG-ATRAS HUMAN MI-APIL
+    // ───────────────────────────────
+    //
+    // PESO, 2026-10-20: "basin naay emergency or something". Kaniadto, ang
+    // tawo nga mi-apil na ug dili na makaadto walay mabuhat gawas sa dili
+    // pagpakita, ug ang employer naghulat gihapon kaniya.
+    //
+    // Usa ka action para sa duha ka klase sa interview, kay usa ra ang
+    // pangutana: ang kolum lang ang lahi. Permanente siya — ang employer
+    // nagplano na sa venue uban kini nga tawo, ug ang pagsige ug sulod-gawas
+    // naghimo sa iyang ihap nga walay pulos. Ang panid nagsulti niana sa
+    // wala pa ang buton.
+    //
+    // Walay notice sa employer. PESO, 2026-10-20: ang ihap ra sa iyang
+    // listahan ang mosulti — mao nay gipili nila.
+
+    public function cancelInhouseParticipation($id)
+    {
+        return $this->cancelParticipation($id, 'inhouse', 'inhouse_participation',
+            'in-house interview');
+    }
+
+    public function cancelCompanyInterviewParticipation($id)
+    {
+        return $this->cancelParticipation($id, 'company_interview', 'company_interview_participation',
+            'company interview');
+    }
+
+    private function cancelParticipation($id, string $scheduleType, string $column, string $label)
+    {
+        $jobseeker = $this->authJobseeker();
+        if (!$jobseeker) return redirect()->route('login');
+
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
+
+        $application = Application::with('job.company')
+            ->where('job_matching_id', $id)
+            ->where('jobseeker_id', $registration->jobseeker_registrations_id ?? 0)
+            ->whereHas('job', fn($q) => $q->where('schedule_type', $scheduleType))
+            ->firstOrFail();
+
+        if ($application->$column === Application::CANCELLED) {
+            return back()->with('info', 'You have already withdrawn from this ' . $label . '.');
+        }
+
+        // Ang wala pa mi-apil walay maatras. Ang iyang tubag kay decline, ug
+        // naa na siyay buton para niana sa panid sa bakante.
+        if ($application->$column !== 'accepted') {
+            return back()->with('error', 'You have not joined this ' . $label . '.');
+        }
+
+        // Ang interview nga milabay na dili na maatras — wala nay mahitabo
+        // nga dili na siya adtoan, ug ang rekord niadtong adlawa mao nay
+        // gibasa sa opisina.
+        $day = $application->job?->interview_date;
+        if ($day && $day->isPast()) {
+            return back()->with('error', 'This ' . $label . ' has already taken place.');
+        }
+
+        $application->update([$column => Application::CANCELLED]);
+
+        return back()->with('success',
+            'You have withdrawn from the ' . $label . ' for "'
+            . ($application->job->title ?? 'this posting')
+            . '". You cannot join it again, and your application stays on record.');
     }
 
     // ── PUBLIC wrapper — percentage ra (gigamit sa mga listing/table nga wala kinahanglan og breakdown) ──

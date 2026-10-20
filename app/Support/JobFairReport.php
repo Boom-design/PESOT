@@ -108,6 +108,7 @@ class JobFairReport
         ?string $search = null
     ): Builder {
         return JobFairRegistration::with(['jobseeker.nsrp', 'jobseeker.user'])
+            ->notCancelled()
             ->where('job_fair_id', $eventId)
             ->when($state !== 'joined', function ($q) use ($eventId) {
                 $decided = self::decidedJobseekerIds($eventId);
@@ -145,7 +146,7 @@ class JobFairReport
 
     public static function attendanceTotals(int $eventId): array
     {
-        $base = JobFairRegistration::where('job_fair_id', $eventId);
+        $base = JobFairRegistration::notCancelled()->where('job_fair_id', $eventId);
 
         $decided  = self::decidedJobseekerIds($eventId);
         $attended = (clone $base)->where(function ($q) use ($decided) {
@@ -293,7 +294,7 @@ class JobFairReport
      */
     public static function registrantTotals(int $eventId): array
     {
-        $base = JobFairRegistration::where('job_fair_id', $eventId);
+        $base = JobFairRegistration::notCancelled()->where('job_fair_id', $eventId);
 
         return [
             'local' => (clone $base)->whereHas('jobseeker.nsrp',

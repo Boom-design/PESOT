@@ -835,12 +835,22 @@ foreach ($workExperiences as $exp) {
             ->latest()
             ->get();
 
+        // Deliberately not notCancelled(). Someone who pulled out cannot
+        // rejoin, so the Join button must not come back for them — the row is
+        // still theirs. The cancelled list below is what the page reads to
+        // say so instead of calling them joined.
         $joinedJobFairIds = \App\Models\JobFairRegistration::where('user_id', $registration->jobseeker_registrations_id ?? 0)
             ->pluck('job_fair_id')
             ->toArray();
 
+        $cancelledJobFairIds = \App\Models\JobFairRegistration::whereNotNull('cancelled_at')
+            ->where('user_id', $registration->jobseeker_registrations_id ?? 0)
+            ->pluck('job_fair_id')
+            ->toArray();
+
         return view('jobseeker.schedules.index', compact(
-            'inhouseApplications', 'companyInterviewApplications', 'jobFairSchedules', 'type', 'joinedJobFairIds'
+            'inhouseApplications', 'companyInterviewApplications', 'jobFairSchedules', 'type',
+            'joinedJobFairIds', 'cancelledJobFairIds'
         ));
     }
 
@@ -903,6 +913,52 @@ foreach ($workExperiences as $exp) {
         ]);
 
         return back()->with('success', 'You have successfully joined the job fair! Your slip number is ' . $slipNumber . '.');
+    }
+
+    /**
+     * Pull out of a job fair.
+     *
+     * PESO, 2026-10-20: something comes up and the person cannot go. Until now
+     * the only honest thing they could do was not turn up, and the desk
+     * counted them as expected all the same.
+     *
+     * The row is kept and stamped, not deleted. The slip number is handed out
+     * as a count of the rows, so a hole in the table would give the next
+     * person a slip somebody else is already carrying — and the desk may want
+     * to know, after the fair, that this person had registered.
+     *
+     * It cannot be undone. Rejoining would issue a second slip to one person
+     * for one fair, and the desk hands the slips out in order; the page says
+     * so before the person presses the button.
+     */
+    public function cancelJobFair($id)
+    {
+        $jobseeker = $this->authJobseeker();
+        if (!$jobseeker) return redirect()->route('login');
+
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
+
+        $joined = \App\Models\JobFairRegistration::where('job_fair_id', $id)
+            ->where('user_id', $registration->jobseeker_registrations_id ?? 0)
+            ->firstOrFail();
+
+        if ($joined->cancelled_at) {
+            return back()->with('info', 'You have already withdrawn from this job fair.');
+        }
+
+        // A fair that has already happened cannot be withdrawn from — there
+        // is nothing left to not attend, and the attendance sheet for that
+        // day is what the office reports on.
+        $event = \App\Models\JobFairEvent::find($id);
+        if ($event && ($event->status === 'completed' || $event->event_date?->isPast())) {
+            return back()->with('error', 'This job fair has already taken place.');
+        }
+
+        $joined->forceFill(['cancelled_at' => now()])->save();
+
+        return back()->with('success',
+            'You have withdrawn from ' . ($event->title ?? 'this job fair')
+            . '. Slip number ' . $joined->slip_number . ' is no longer yours, and you cannot rejoin this fair.');
     }
 
     // ───────────────────────────────

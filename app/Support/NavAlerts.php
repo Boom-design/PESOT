@@ -81,7 +81,8 @@ class NavAlerts
         // Same test as JobseekerWebController::schedules() uses to decide which
         // fairs the page shows, and the same threshold as the SMS gate — a
         // number for a fair that is not on the page could never be cleared.
-        $joinedFairIds = \App\Models\JobFairRegistration::where('user_id', $registrationId)
+        $joinedFairIds = \App\Models\JobFairRegistration::notCancelled()
+            ->where('user_id', $registrationId)
             ->pluck('job_fair_id');
 
         // Fairs announced since the jobseeker last opened the Job Fair tab.

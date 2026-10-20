@@ -227,7 +227,8 @@ class JobFairAudience
 
     private static function eventJobseekers(JobFairEvent $event): Collection
     {
-        $regIds = JobFairRegistration::where('job_fair_id', $event->job_fair_events_id)
+        $regIds = JobFairRegistration::notCancelled()
+            ->where('job_fair_id', $event->job_fair_events_id)
             ->pluck('user_id');
 
         if ($regIds->isEmpty()) {

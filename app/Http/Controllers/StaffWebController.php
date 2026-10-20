@@ -468,6 +468,7 @@ $nsrp = $registration->nsrp;
 
         // ── JOB FAIR — registered for the event. ──
         $jobfair = \App\Models\JobFairRegistration::with(['jobFair', 'jobseeker.nsrp'])
+            ->notCancelled()
             ->whereHas('jobseeker', $byClassification)
             ->when($search, fn($q) => $q->whereHas('jobseeker', $byName))
             ->latest()

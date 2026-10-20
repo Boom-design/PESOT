@@ -122,11 +122,24 @@
                             {{-- A row only reaches this tab after the jobseeker has
                                  accepted the invitation to take part, so it is always
                                  joined. Same word as the job fair tab, so one thing is
-                                 not called two names. --}}
+                                 not called two names.
+
+                                 The way out sits beside it. The interview that has
+                                 already happened keeps the word and loses the button:
+                                 there is nothing left to not attend. --}}
                             <td style="padding:12px 16px;text-align:center;">
-                                <span class="fw-semibold" style="color:var(--g-700);font-size:11px;">
+                                <span class="fw-semibold d-block mb-1" style="color:var(--g-700);font-size:11px;">
                                     <i class="ph-fill ph-check-circle me-1"></i>Joined
                                 </span>
+                                @unless($app->job->interview_date?->isPast())
+                                    @include('jobseeker.partials.schedule-cancel', [
+                                        'action' => route('jobseeker.applications.inhouseCancel', $app->job_matching_id),
+                                        'key'    => 'inhouse' . $app->job_matching_id,
+                                        'what'   => 'the in-house interview for "' . ($app->job->title ?? 'this posting') . '"',
+                                        'when'   => $app->job->schedule_window_label,
+                                        'note'   => 'You cannot join this interview again. Your application stays on record.',
+                                    ])
+                                @endunless
                             </td>
                         </tr>
                         @empty
@@ -195,9 +208,18 @@
                                 </div>
                             </td>
                             <td style="padding:12px 16px;text-align:center;">
-                                <span class="fw-semibold" style="color:var(--g-700);font-size:11px;">
+                                <span class="fw-semibold d-block mb-1" style="color:var(--g-700);font-size:11px;">
                                     <i class="ph-fill ph-check-circle me-1"></i>Joined
                                 </span>
+                                @unless($app->job->interview_date?->isPast())
+                                    @include('jobseeker.partials.schedule-cancel', [
+                                        'action' => route('jobseeker.applications.companyInterviewCancel', $app->job_matching_id),
+                                        'key'    => 'company' . $app->job_matching_id,
+                                        'what'   => 'the company interview for "' . ($app->job->title ?? 'this posting') . '"',
+                                        'when'   => $app->job->interview_date?->format('M d, Y'),
+                                        'note'   => 'You cannot join this interview again. Your application stays on record.',
+                                    ])
+                                @endunless
                             </td>
                         </tr>
                         @empty
@@ -257,10 +279,28 @@
                                 </span>
                             </td>
                             <td style="padding:12px 16px;text-align:center;">
-                                @if(in_array($event->job_fair_events_id, $joinedJobFairIds))
-                                    <span class="fw-semibold" style="color:var(--g-700);font-size:11px;">
+                                {{-- Withdrawing is checked before joining. The person who
+                                     pulled out is still in joinedJobFairIds — the row is
+                                     kept so the slip numbers stay in order, and so the Join
+                                     button does not come back for a fair they cannot
+                                     rejoin. --}}
+                                @if(in_array($event->job_fair_events_id, $cancelledJobFairIds))
+                                    <span class="fw-semibold" style="color:var(--n-500);font-size:11px;">
+                                        <i class="ph ph-x-circle me-1"></i>Withdrawn
+                                    </span>
+                                @elseif(in_array($event->job_fair_events_id, $joinedJobFairIds))
+                                    <span class="fw-semibold d-block mb-1" style="color:var(--g-700);font-size:11px;">
                                         <i class="ph-fill ph-check-circle me-1"></i>Joined
                                     </span>
+                                    @if($event->status !== 'completed' && !$event->event_date->isPast())
+                                        @include('jobseeker.partials.schedule-cancel', [
+                                            'action' => route('jobseeker.jobfair.cancel', $event->job_fair_events_id),
+                                            'key'    => 'fair' . $event->job_fair_events_id,
+                                            'what'   => '"' . $event->title . '"',
+                                            'when'   => $event->event_date->format('M d, Y'),
+                                            'note'   => 'Your slip number is given up and you cannot rejoin this job fair.',
+                                        ])
+                                    @endif
                                 @else
                                     <form action="{{ route('jobseeker.jobfair.join', $event->job_fair_events_id) }}" method="POST">
                                         @csrf

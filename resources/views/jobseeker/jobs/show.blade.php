@@ -287,6 +287,26 @@
                         $stillOpen = in_array($job->lifecycle_status, ['active', 'waiting'], true);
                     @endphp
 
+                    {{-- ── NI-ATRAS HUMAN MI-APIL — WALAY PAGBALIK ──
+                         Lahi kini sa decline. Ang employer nagplano na sa venue
+                         uban siya, mao nga walay buton dinhi — apan ang rason
+                         gisulti, kay ang panid nga hilom nagpakita nga nawala ra
+                         ang buton. --}}
+                    @if($participation === \App\Models\Application::CANCELLED)
+                        <div class="p-3 rounded-3 mb-3"
+                             style="background:var(--n-50); border:1px solid var(--n-200);">
+                            <div style="font-size:12.5px; color:var(--n-700); line-height:1.6;">
+                                You withdrew from
+                                {{ $isInhouseJob ? 'the in-house interview' : 'the company interview' }}
+                                for this posting.
+                            </div>
+                            <div style="font-size:11.5px; color:var(--n-500); margin-top:6px;">
+                                This cannot be undone, so you cannot join it again.
+                                Your application stays on record.
+                            </div>
+                        </div>
+                    @endif
+
                     @if($participation === 'declined' && $rejoinRoute)
                         <div class="p-3 rounded-3 mb-3"
                              style="background:var(--warn-bg); border:1px solid var(--warn);">

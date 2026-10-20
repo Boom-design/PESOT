@@ -31,6 +31,30 @@ class Application extends Model
         'start_date' => 'date',
     ];
 
+    /**
+     * The jobseeker withdrew after they had already joined.
+     *
+     * Not the same answer as 'declined'. Declining is the first answer to the
+     * invitation — the person never joined. Cancelling comes after joining,
+     * once they are on the employer's list and on their own PESO Events page,
+     * and the employer has planned the venue around them. It cannot be taken
+     * back, and the page says so before the button is pressed.
+     *
+     * Every count in the system tests for 'accepted', so a cancelled row
+     * leaves those counts on its own.
+     */
+    public const CANCELLED = 'cancelled';
+
+    /** The participation answer for this posting, whichever column holds it. */
+    public function participationFor(?string $scheduleType): ?string
+    {
+        return match ($scheduleType) {
+            'inhouse'           => $this->inhouse_participation,
+            'company_interview' => $this->company_interview_participation,
+            default             => null,
+        };
+    }
+
     // Relationship: Application belongs to a Job
     public function job()
     {

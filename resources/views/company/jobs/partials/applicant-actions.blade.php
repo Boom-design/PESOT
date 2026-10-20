@@ -1,9 +1,14 @@
 @php
     $isCompanyInterview = ($job->schedule_type ?? null) === 'company_interview';
-    $isDeclined = ($isInhouse && $app->inhouse_participation === 'declined')
-        || ($isCompanyInterview && $app->company_interview_participation === 'declined');
-    $isPending  = ($isInhouse && $app->inhouse_participation === 'pending')
-        || ($isCompanyInterview && $app->company_interview_participation === 'pending');
+    $participation = $isInhouse
+        ? $app->inhouse_participation
+        : ($isCompanyInterview ? $app->company_interview_participation : null);
+    $isDeclined = $participation === 'declined';
+    // Withdrew after joining. A separate word from Declined, because the two
+    // mean different things to an employer planning a venue: one never came
+    // in, the other was counted and then left.
+    $isCancelled = $participation === \App\Models\Application::CANCELLED;
+    $isPending   = $participation === 'pending';
     $isExpired  = $job->is_expired ?? false;
     $isLocked   = ($isInhouse || $isCompanyInterview) && (!$actionsUnlocked || $isExpired);
 @endphp
@@ -13,6 +18,8 @@
      current choice is the one filled in solid; the other two stay clickable. --}}
 @if($isDeclined)
     <span style="font-size:11px;color:var(--danger);"><i class="ph ph-x-circle me-1"></i>Declined {{ $isCompanyInterview ? 'job offer' : 'interview' }}</span>
+@elseif($isCancelled)
+    <span style="font-size:11px;color:var(--danger);"><i class="ph ph-sign-out me-1"></i>Withdrew from {{ $isCompanyInterview ? 'company interview' : 'interview' }}</span>
 @elseif($isPending)
     <span style="font-size:11px;color:var(--warn);"><i class="ph ph-hourglass-medium me-1"></i>Awaiting participation response</span>
 @elseif($isExpired)
