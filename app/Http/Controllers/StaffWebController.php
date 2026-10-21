@@ -2413,6 +2413,9 @@ $nsrp = $registration->nsrp;
                 . ($outcome['wasRestricted'] ? ' and the account reactivated' : '') . '.'
                 . ($outcome['invited'] > 0
                     ? ' They were also invited to ' . $outcome['invited'] . ' upcoming job fair event(s).'
+                    : '')
+                . ($outcome['released'] > 0
+                    ? ' ' . $outcome['released'] . ' job posting(s) they submitted while waiting are now visible to jobseekers.'
                     : ''));
         }
 
@@ -2526,6 +2529,14 @@ $nsrp = $registration->nsrp;
             'remarks'     => null,
         ]);
 
+        // ── Ang posting nga naghulat sa papel, buhian na karon.
+        // ──
+        // ── Ang lokal nga company interview moabli unta dayon sa pagsumite,
+        // ── apan gipugngan siya samtang wala pay nakabasa sa folder. Kini
+        // ── ang gutlo nga gihulat niya: walay desk nga mangita kaniya, ug
+        // ── ang employer wala gisultihan nga mag-post pag-usab. ──
+        $released = \App\Support\JobPostingNotice::releaseHeldPostings($requirement->user_id);
+
         // ── Reactivation. Ang employer nga na-restrict tungod sa expired nga
         // ── Business Permit mobalik og 'approved' dinhi mismo — walay lain nga
         // ── buton nga pangitaon sa staff. Ang 'deactivated' wala gihilabti:
@@ -2557,7 +2568,7 @@ $nsrp = $registration->nsrp;
             $invited = \App\Support\JobFairInvites::inviteToOpenEvents($requirement->employer);
         }
 
-        return ['wasRestricted' => $wasRestricted, 'invited' => $invited];
+        return ['wasRestricted' => $wasRestricted, 'invited' => $invited, 'released' => $released];
     }
 
     /**
@@ -2649,6 +2660,9 @@ $nsrp = $registration->nsrp;
                     : 'Requirements approved successfully.')
                 . ($outcome['invited'] > 0
                     ? ' They were also invited to ' . $outcome['invited'] . ' upcoming job fair event(s).'
+                    : '')
+                . ($outcome['released'] > 0
+                    ? ' ' . $outcome['released'] . ' job posting(s) they submitted while waiting are now visible to jobseekers.'
                     : ''));
     }
 
@@ -2677,7 +2691,12 @@ $nsrp = $registration->nsrp;
         $request->validate([
             'remarks'           => 'required|string|max:500',
             'rejected_fields'   => 'required|array|min:1',
-            'rejected_fields.*' => 'in:business_permit,sec_dti,company_profile,no_pending_case_certificate,vacancy_posting',
+            // Ang papel sa duha ka merkado. Ang listahan kaniadto lokal nga
+            // lima ra, mao nga ang pagbalibad sa Agency Profile sa usa ka
+            // ahensya gisalikway nga walay masabtan nga rason.
+            'rejected_fields.*' => \Illuminate\Validation\Rule::in(
+                \App\Models\EmployerRequirement::REVIEWED_DOCUMENTS
+            ),
         ], [
             'rejected_fields.required' => 'Please check at least one document that is incorrect or missing.',
         ]);
@@ -3428,7 +3447,10 @@ $nsrp = $registration->nsrp;
                         // kalendaryo sa PESO Office, ug siya gihapon ang mo-accept
                         // niini bisan ang staff pa ang nag-encode. Ang overseas
                         // nga company interview parehas — ang SRA ang mobasa.
-                    ], \App\Support\JobPostingNotice::initialState($type, (bool) $isOverseas)));
+                    ], \App\Support\JobPostingNotice::initialState($type, (bool) $isOverseas,
+                        // Ang desk nakakita na sa papel samtang nag-encode —
+                        // gitipigan sila nga approved sa parehas nga gutlo.
+                        true)));
 
                     $groupId = $groupId ?? $job->job_qualifications_id;
                     $job->update(['posting_group_id' => $groupId]);

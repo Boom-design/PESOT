@@ -600,7 +600,10 @@ class CompanyWebController extends Controller
                 // JobPostingNotice::initialState().
                 ...\App\Support\JobPostingNotice::initialState(
                     $request->schedule_type,
-                    (bool) $employerNsrp->is_overseas
+                    (bool) $employerNsrp->is_overseas,
+                    \App\Support\JobPostingNotice::requirementsApproved(
+                        $employerNsrp->employer_nsrp_registrations_id
+                    )
                 ),
                 'posting_type'        => 'direct',
                 'schedule_type'       => $request->schedule_type,
@@ -639,9 +642,14 @@ class CompanyWebController extends Controller
         // ── gipahibalo ra sila nga buhi na. Ang in-house lahi: naghulat siya
         // ── sa ilang desisyon, mao nga ang mensahe usa ka hangyo, dili
         // ── kasayoran. ──
+        $requirementsApproved = \App\Support\JobPostingNotice::requirementsApproved(
+            $employerNsrp->employer_nsrp_registrations_id
+        );
+
         $goesLive = \App\Support\JobPostingNotice::goesLive(
             $request->schedule_type,
-            (bool) $employerNsrp->is_overseas
+            (bool) $employerNsrp->is_overseas,
+            $requirementsApproved
         );
 
         if ($request->schedule_type === 'inhouse') {
@@ -672,7 +680,9 @@ class CompanyWebController extends Controller
             $message   = $employerNsrp->company_name . ' posted their initial job vacancy'
                          . ($employerNsrp->is_overseas
                             ? ' for a company interview. It stays hidden from jobseekers until you approve it.'
-                            : '. It is live now.');
+                            : ($requirementsApproved
+                               ? '. It is live now.'
+                               : '. It stays hidden from jobseekers until their requirements are approved.'));
         }
 
         \App\Models\Announcement::sendToStaff([
@@ -698,7 +708,8 @@ class CompanyWebController extends Controller
             : 'Job posting confirmed. '
               . \App\Support\JobPostingNotice::pendingNote(
                     $request->schedule_type,
-                    (bool) $employerNsrp->is_overseas
+                    (bool) $employerNsrp->is_overseas,
+                    $requirementsApproved
                 ));
     }
 
@@ -1467,7 +1478,10 @@ class CompanyWebController extends Controller
                     'deadline'            => ($pos['deadline'] ?? null) ?: ($scheduleEnd ?: $scheduleDate),
                     'salary'              => $pos['salary'] ?? 'Negotiable',
                     
-                    ...\App\Support\JobPostingNotice::initialState($type, $isOverseas),
+                    ...\App\Support\JobPostingNotice::initialState($type, $isOverseas,
+                        \App\Support\JobPostingNotice::requirementsApproved(
+                            $company->activeCompany()->employer_nsrp_registrations_id
+                        )),
                     'posting_type'        => 'direct',
                     'schedule_type'       => $type,
                     'preferred_date'      => $scheduleDate,

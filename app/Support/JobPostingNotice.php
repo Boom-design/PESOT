@@ -179,16 +179,42 @@ class JobPostingNotice
      * JOB FAIR. Approved on arrival but closed until the fair is near, so
      * jobseekers are not shown vacancies they can only act on weeks away.
      */
-    public static function initialState(string $scheduleType, bool $isOverseas = false): array
-    {
+    public static function initialState(
+        string $scheduleType,
+        bool $isOverseas = false,
+        bool $requirementsApproved = true
+    ): array {
         if ($scheduleType === 'inhouse') {
             return ['posting_status' => 'pending', 'status' => 'closed'];
         }
 
         if ($scheduleType !== 'job_fair') {
-            return $isOverseas
-                ? ['posting_status' => 'pending', 'status' => 'closed']
-                : ['posting_status' => 'approved', 'status' => 'open'];
+            if ($isOverseas) {
+                return ['posting_status' => 'pending', 'status' => 'closed'];
+            }
+
+            // ── NOTHING GOES PUBLIC ON AN UNCHECKED FOLDER ──
+            //
+            // PESO, 2026-10-22. A local company interview goes live on submit
+            // because no desk reviews that kind — and that rule, read on its
+            // own, let an employer whose papers nobody had opened yet put a
+            // vacancy in front of jobseekers. Register in the morning, post
+            // before lunch, and the office is vouching for a company it has
+            // not looked at.
+            //
+            // It is held, not refused. The employer may still write the
+            // posting while the folder is under review — they are told so on
+            // the dashboard, and the form invites them to — and it opens by
+            // itself the moment the desk approves the requirements. See
+            // releaseHeldPostings().
+            //
+            // posting_status stays 'approved' on purpose. 'pending' means "a
+            // desk has to answer this", and no desk reviews a local company
+            // interview; a posting parked in a queue nobody reads would never
+            // come out of it.
+            return $requirementsApproved
+                ? ['posting_status' => 'approved', 'status' => 'open']
+                : ['posting_status' => 'approved', 'status' => 'closed'];
         }
 
 
@@ -196,11 +222,60 @@ class JobPostingNotice
     }
 
     /**
+     * The postings held back only because the folder was not approved yet.
+     *
+     * Deliberately narrow. A posting is closed for several reasons — its
+     * slots filled, its deadline passed, the office closed it, a sweep made
+     * it dormant — and none of those may be undone here. This is the one
+     * shape that holding creates: a local company interview, already
+     * approved, never looked at by a desk, still inside its deadline and
+     * still short of its slots.
+     */
+    public static function heldPostings(int $employerId)
+    {
+        return Job::withGroupHiredCount()
+            ->where('company_id', $employerId)
+            ->where('schedule_type', 'company_interview')
+            ->where('posting_status', 'approved')
+            ->where('status', 'closed')
+            ->whereNull('reviewed_at')
+            ->whereNull('dormant_closed_at')
+            ->withinDeadline();
+    }
+
+    /** Open them, now that the folder has been approved. */
+    public static function releaseHeldPostings(int $employerId): int
+    {
+        // The filled ones are left shut. A posting whose slots ran out while
+        // the folder sat on the desk has nothing left to offer.
+        $jobs = self::heldPostings($employerId)->get()
+            ->filter(fn($job) => (int) $job->group_hired_count < (int) $job->slots);
+
+        foreach ($jobs as $job) {
+            $job->update(['status' => 'open']);
+            self::announce($job);
+        }
+
+        return $jobs->count();
+    }
+
+    /**
      * Why a posting of this kind is not visible yet, in words the employer can
      * act on. Null when it goes live immediately.
      */
-    public static function pendingNote(string $scheduleType, bool $isOverseas = false): ?string
-    {
+    public static function pendingNote(
+        string $scheduleType,
+        bool $isOverseas = false,
+        bool $requirementsApproved = true
+    ): ?string {
+        // The folder comes first. Whatever else is holding the posting, this
+        // is the one the employer can do something about today.
+        if (!$requirementsApproved && !in_array($scheduleType, ['inhouse', 'job_fair'], true) && !$isOverseas) {
+            return 'It is waiting for PESO to approve your requirements. '
+                 . 'Jobseekers will see it as soon as the office accepts your documents — '
+                 . 'you do not need to post it again.';
+        }
+
         return match ($scheduleType) {
             'inhouse'  => 'It is waiting for PESO to approve the in-house schedule. '
                           . 'Jobseekers will see it once the office accepts the date.',
@@ -217,8 +292,20 @@ class JobPostingNotice
     }
 
     /** Whether a posting created with initialState() is visible right away. */
-    public static function goesLive(string $scheduleType, bool $isOverseas = false): bool
+    public static function goesLive(
+        string $scheduleType,
+        bool $isOverseas = false,
+        bool $requirementsApproved = true
+    ): bool {
+        return self::initialState($scheduleType, $isOverseas, $requirementsApproved)['status'] === 'open';
+    }
+
+    /** Has this establishment's folder been approved by the desk? */
+    public static function requirementsApproved(?int $employerId): bool
     {
-        return self::initialState($scheduleType, $isOverseas)['status'] === 'open';
+        return $employerId !== null
+            && \App\Models\EmployerRequirement::where('user_id', $employerId)
+                ->where('status', 'approved')
+                ->exists();
     }
 }

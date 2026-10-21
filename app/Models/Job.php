@@ -516,6 +516,20 @@ class Job extends Model
         if ($this->is_expired) {
             return 'expired';
         }
+        // Gipugngan samtang wala pa nabasa ang folder.
+        //
+        // Ang lokal nga company interview moabli unta dayon sa pagsumite, apan
+        // walay mogawas sa publiko samtang wala pa gi-approve ang requirements.
+        // Dili ni "closed": wala siya gisirado, naghulat siya, ug ma-edit pa
+        // siya samtang naghulat. Ang reviewed_at mao ang nagbulag niya sa
+        // posting nga gisirado sa desk.
+        if ($this->status !== 'open'
+            && $this->schedule_type === 'company_interview'
+            && $this->posting_status === 'approved'
+            && $this->reviewed_at === null) {
+            return 'held';
+        }
+
         // Ang Job Fair nga posting na-approve na apan magpabilin nga closed
         // hangtod maka-buhat ang staff ug event. Dili ni "closed" — naghulat.
         if ($this->status !== 'open') {
@@ -553,6 +567,7 @@ class Job extends Model
         'rejected' => 'Rejected',
         'active'   => 'Active',
         'waiting'  => 'Waiting for Job Fair',
+        'held'     => 'Waiting for Requirements',
         'filled'   => 'Filled',
         'expired'  => 'Expired',
         'closed'   => 'Closed',
@@ -561,7 +576,7 @@ class Job extends Model
     // ── Ang employer makausab samtang wala pa kini nahuman: nag-hulat sa
     // ── approval, gi-balibad (aron matul-id ug ma-resubmit), buhi pa, o
     // ── nag-hulat pa ug job fair event. ──
-    public const EDITABLE_LIFECYCLE = ['pending', 'rejected', 'active', 'waiting'];
+    public const EDITABLE_LIFECYCLE = ['pending', 'rejected', 'active', 'waiting', 'held'];
 
     /**
      * How far ahead an employer may set a posting's deadline.
@@ -687,6 +702,12 @@ class Job extends Model
             // Editable gihapon kini — ang teksto nagsulti ra kung kanus-a siya
             // makita sa jobseeker, dili nga gibabagan siya.
             'waiting'  => \App\Support\JobFairPostingWindow::liveNote(),
+            // Naghulat sa papel, dili sa petsa.
+            'held'     => \App\Support\JobPostingNotice::pendingNote(
+                              $this->schedule_type,
+                              (bool) optional($this->company)->is_overseas,
+                              false
+                          ),
             'pending'  => \App\Support\JobPostingNotice::pendingNote(
                               $this->schedule_type,
                               (bool) optional($this->company)->is_overseas
