@@ -341,10 +341,13 @@
                             when they open your requirements.
                         </div>
 
+                        {{-- Kinahanglan, apan kausa ra: ang naa nay logo sa file
+                             dili na pugson sa pag-upload pag-usab kada resubmit. --}}
                         <input type="file" name="company_logo"
                                class="form-control @error('company_logo') is-invalid @enderror"
                                accept="image/jpeg,image/png,.jpg,.jpeg,.png"
-                               style="font-size:12px; border-radius:8px; border-color:var(--n-200);">
+                               style="font-size:12px; border-radius:8px; border-color:var(--n-200);"
+                               @unless($requirement && $requirement->company_logo) required @endunless>
                         @error('company_logo')
                             <div class="invalid-feedback" style="font-size:11px;">{{ $message }}</div>
                         @enderror

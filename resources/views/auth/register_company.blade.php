@@ -684,14 +684,16 @@
                     </div>
                     @endforeach
 
-                    {{-- Logo — dili siya requirement nga i-review, ug walay expiry. --}}
+                    {{-- Logo — dili siya papel nga hukman sa desk, ug walay
+                         expiry, apan kinahanglan gihapon siya. PESO, 2026-10-21:
+                         "required jud sya dili sya optional". --}}
                     <div class="col-md-6 reg-doc" data-market="both">
-                        <label class="peso-label"><span class="reg-doc-no"></span>Company Logo <span style="font-weight:400;color:rgba(255,255,255,0.65);">(optional, no expiry)</span></label>
+                        <label class="peso-label"><span class="reg-doc-no"></span>Company Logo * <span style="font-weight:400;color:rgba(255,255,255,0.65);">(no expiry)</span></label>
                         <input type="file" name="company_logo" class="peso-input"
                                accept="image/jpeg,image/png,.jpg,.jpeg,.png"
-                               style="padding:6px 12px;">
+                               style="padding:6px 12px;" required>
                         <div style="font-size:10.5px;color:rgba(255,255,255,0.7);margin-top:4px;">
-                            <i class="ph ph-info me-1"></i>Leave this empty if you have no logo — it is not required.
+                            <i class="ph ph-info me-1"></i>A square JPG or PNG works best — PESO staff see it beside your company name.
                         </div>
                         @error('company_logo')
                             <div style="font-size:11px;color:var(--danger);margin-top:2px;">{{ $message }}</div>

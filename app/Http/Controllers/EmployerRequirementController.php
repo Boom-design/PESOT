@@ -83,13 +83,24 @@ class EmployerRequirementController extends Controller
         }
 
         // The logo is a picture, never a PDF, and it has no expiry.
-        $rules['company_logo'] = 'nullable|image|mimes:jpg,jpeg,png|max:2048';
+        // ── Ang logo kinahanglan, apan kausa ra.
+        // ──
+        // ── PESO, 2026-10-21: "required jud sya dili sya optional".
+        // ── Ang naa nay logo sa file dili na pangayoan pag-usab: ang
+        // ── employer nga nagpuli ug usa ka gibalibaran nga papel dili
+        // ── angay pugson sa pag-upload pag-usab sa hulagway nga gihatag
+        // ── na niya. ──
+        $rules['company_logo'] = ($existing && $existing->company_logo ? 'nullable' : 'required')
+            . '|image|mimes:jpg,jpeg,png|max:2048';
 
         $request->validate($rules, [
             'required' => 'This document is required.',
             'mimes'    => 'Only JPG, PNG, or PDF files are allowed.',
             'max'      => 'File size must not exceed 5MB.',
             'business_permit_expires_at.required_with' => 'Enter the expiry date printed on this business permit.',
+            // Kon dili, "This document is required." ang mabasa, ug ang
+            // logo dili man dokumento.
+            'company_logo.required' => 'Upload your company logo.',
             'company_logo.image' => 'The logo must be a JPG or PNG image.',
             'company_logo.max'   => 'The logo must be 2MB or smaller.',
         ]);

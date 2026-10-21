@@ -385,7 +385,16 @@ class UnifiedAuthController extends Controller
 
         $rules = [
             'nsrp_establishment_form' => $file,
-            'company_logo'            => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+
+            // ── Ang logo kinahanglan, dili opsyonal.
+            // ──
+            // ── PESO, 2026-10-21: "required jud sya dili sya optional".
+            // ── Kaniadto giingnan ang employer nga pasagdan kung wala siyay
+            // ── logo, ug ang listahan sa desk nagpakita ug mga kahon nga
+            // ── walay hulagway — ang usa ka kompanya dili mailhan gikan sa
+            // ── sunod. Ang lima o unom ka papel mahimong mosunod pa, apan
+            // ── ang logo naa na sa tawo nga nagtan-aw sa porma. ──
+            'company_logo'            => 'required|image|mimes:jpg,jpeg,png|max:2048',
         ];
 
         // ── Ang papel sa duha ka merkado, usa ka lagda.

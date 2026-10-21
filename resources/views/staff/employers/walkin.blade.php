@@ -435,11 +435,13 @@
 
                     @include('partials.walkin-documents')
 
-                    {{-- Logo — dili siya requirement, walay expiry, ug dili siya
-                         required: ang employer nga naa sa counter tingali walay dala. --}}
-                    <div class="col-md-6">
-                        <label class="peso-label">6. Company Logo <span style="font-weight:400;color:var(--n-500);">(optional, no expiry)</span></label>
-                        <input type="file" name="company_logo" class="form-control peso-input" accept=".jpg,.jpeg,.png">
+                    {{-- Logo — dili siya papel nga hukman sa desk ug walay
+                         expiry, apan kinahanglan gihapon siya. PESO, 2026-10-21:
+                         "required jud sya dili sya optional". --}}
+                    <div class="col-md-6 walkin-doc" data-market="both">
+                        <label class="peso-label"><span class="walkin-doc-no"></span>Company Logo * <span style="font-weight:400;color:var(--n-500);">(no expiry)</span></label>
+                        <input type="file" name="company_logo" class="form-control peso-input"
+                               accept="image/jpeg,image/png,.jpg,.jpeg,.png" required>
                         @error('company_logo')
                             <div style="font-size:11px;color:var(--danger);margin-top:2px;">{{ $message }}</div>
                         @enderror

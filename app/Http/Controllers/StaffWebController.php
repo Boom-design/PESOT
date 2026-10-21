@@ -3181,7 +3181,9 @@ $nsrp = $registration->nsrp;
             // ── III. Requirements — required here, unlike the online wizard,
             // ── because they are saved approved on the strength of the staff
             // ── member having seen them. ──
-            'company_logo'                => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+            // Kinahanglan, parehas sa papel: ang desk nagtan-aw man sa
+            // kompanya samtang nag-encode.
+            'company_logo'                => 'required|image|mimes:jpg,jpeg,png|max:2048',
             // ── IV. The vacancy they came to give ──
             'title'       => 'required|string|max:255',
             'description' => 'required|string',
