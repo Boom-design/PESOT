@@ -2501,10 +2501,27 @@ $nsrp = $registration->nsrp;
         string $field,
         string $message
     ): \Illuminate\Http\RedirectResponse {
+        // ── Ang SUNOD nga papel, dili ang bag-o pa lang nahukman.
+        // ──
+        // ── PESO, 2026-10-22: ang gipaablihan pag-usab kay ang papel mismo
+        // ── nga gi-approve, mao nga human sa Approve ang parehas nga hulagway
+        // ── ang nag-atubang sa desk. Mibalhin ra siya sa pagpindot sa
+        // ── sunod — ug ang panid mura ug usa ka lakang nga nahuli sa tanang
+        // ── panahon. Ang desk nagbasa man sa folder gikan sa taas paubos;
+        // ── ang sunod nga wala pa nabasa mao ang gusto niyang makita.
+        // ──
+        // ── Ang wala gi-upload gilaktawan: walay mabuksan para niya. Kung
+        // ── wala nay nahibilin, walay papel nga ablihan — ang folder ra, uban
+        // ── ang iyang summary ug ang Approve nga buton. ──
+        $fresh = $requirement->fresh();
+
+        $next = collect($fresh->documentsNotYetDecided())
+            ->first(fn($f) => (bool) $fresh->$f);
+
         return back()
             ->with('success', $message)
             ->with('open_req_review', $requirement->employer_requirements_id)
-            ->with('open_req_doc', $field);
+            ->with('open_req_doc', $next);
     }
 
     /**

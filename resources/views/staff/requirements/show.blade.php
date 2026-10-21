@@ -546,6 +546,32 @@ function openDocModal(url, label, ext) {
     document.getElementById('docModalBody').innerHTML = body;
     new bootstrap.Modal(document.getElementById('docModal')).show();
 }
+
+{{-- ── ANG SUNOD NGA PAPEL, DILI ANG BAG-O PA LANG NAHUKMAN ──
+
+     PESO, 2026-10-22: ang desk nagbasa sa folder gikan sa taas paubos, ug
+     kada Approve usa ka pagbalik sa panid. Kaniadto ang viewer nagsira ug
+     wala na mobalik, mao nga ang desk kinahanglan mangita ug mo-klik ug View
+     pag-usab para sa matag papel.
+
+     Ang controller nagsulti kung asa na siya; kini nagbukas niini. Kung wala
+     nay nahibilin, walay moabli — ang summary sa ubos ang mosulti nga human
+     na. --}}
+@if(session('open_req_doc'))
+@php
+    $nextField = session('open_req_doc');
+    $nextPath  = $requirement->{$nextField} ?? null;
+@endphp
+@if($nextPath)
+document.addEventListener('DOMContentLoaded', function () {
+    openDocModal(
+        @json(route('documents.requirement', [$requirement->employer_requirements_id, $nextField])),
+        @json(\App\Models\EmployerRequirement::documentLabel($nextField)),
+        @json(pathinfo($nextPath, PATHINFO_EXTENSION))
+    );
+});
+@endif
+@endif
 </script>
 @endpush
 
