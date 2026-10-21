@@ -118,10 +118,14 @@ class EmployerRegistration
     /** The six documents, optional at this point, with their expiry dates. */
     private static function attachRequirements(EmployerNsrpRegistration $company, Request $request): void
     {
-        $fields = [
-            'business_permit', 'sec_dti', 'company_profile',
-            'nsrp_establishment_form', 'no_pending_case_certificate', 'vacancy_posting',
-        ];
+        // Ang papel sa duha ka merkado. Ang porma nagpakita sa usa ka
+        // listahan lang, mao nga ang uban dili gyud moabot — apan ang pagsala
+        // dinhi magpasabot nga ang porma ug kini nga lista kinahanglan
+        // maghusay sa parehas nga pangutana, ug ang usa kanila malimtan.
+        $fields = array_merge(
+            array_keys(EmployerRequirement::DOCUMENT_LABELS),
+            ['nsrp_establishment_form']
+        );
 
         $uploaded = [];
 

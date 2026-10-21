@@ -5,16 +5,20 @@
 @include('partials.temp-password-banner')
 
 @php
-    // The five requirement documents, named once. Two modals and a decline
-    // form read this list, and they no longer open on the same tabs, so a
-    // copy defined inside one of them left the others without it.
-    $docs = [
-        'business_permit'             => 'CDO Business Permit',
-        'sec_dti'                     => 'SEC / DTI',
-        'company_profile'             => 'Company Profile',
-        'no_pending_case_certificate' => 'Certificate of No Pending Case',
-        'vacancy_posting'             => 'Vacancy Posting',
-    ];
+    // The requirement documents, named once. Two modals and a decline form
+    // read this list, and they no longer open on the same tabs, so a copy
+    // defined inside one of them left the others without it.
+    //
+    // This is the fallback. Each folder below replaces it with the papers of
+    // its own market — an overseas agency has no SEC/DTI and a local
+    // establishment has no DMW job order balance — so nothing here should be
+    // read for a folder that has one.
+    $docs = \App\Models\EmployerRequirement::LOCAL_DOCUMENTS;
+
+    // Ang papel sa folder nga gitan-aw, gamit ang is_overseas sa employer.
+    $docsFor = fn($req) => \App\Models\EmployerRequirement::documentsFor(
+        (bool) ($req->employer->is_overseas ?? false)
+    );
 @endphp
 
 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
@@ -532,6 +536,7 @@
 
                                     {{-- Submitted Documents --}}
                                     @if($req)
+                                    @php $docs = $docsFor($req); @endphp
                                     <h6 class="fw-bold mb-2" style="color:var(--g-700);font-size:13px;">
                                         <i class="ph-fill ph-file-text me-1" style="color:var(--g-600);"></i>
                                         Submitted Documents
@@ -632,6 +637,8 @@
                          opens read-only. --}}
                     @if($req)
                     @php
+                        $docs = $docsFor($req);
+
                         // Only the documents actually uploaded are offered, and the modal
                         // opens on the first of them.
                         $reqDocs   = collect($docs)->filter(fn($label, $field) => (bool) $req->{$field});

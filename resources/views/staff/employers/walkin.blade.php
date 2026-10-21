@@ -78,12 +78,13 @@
               'est_province', 'est_city_municipality', 'est_barangay'],
         2 => ['contact_title', 'contact_person', 'position_title',
               'telephone_no', 'mobile_number', 'fax_no', 'email', 'temp_password'],
-        3 => ['business_permit', 'sec_dti', 'company_profile',
-              'no_pending_case_certificate', 'vacancy_posting',
-              'company_logo',
-              'business_permit_expires_at', 'sec_dti_expires_at',
-              'company_profile_expires_at', 'no_pending_case_certificate_expires_at',
-              'vacancy_posting_expires_at'],
+        // Ang papel sa duha ka merkado ug ang ilang petsa. Kung ang usa
+        // niini wala dinhi, ang bounce sa maong field mo-abli sa step 1.
+        3 => array_merge(
+              array_keys(\App\Models\EmployerRequirement::DOCUMENT_LABELS),
+              array_map(fn($f) => $f . '_expires_at', \App\Models\EmployerRequirement::EXPIRY_FIELDS),
+              ['company_logo'],
+             ),
         4 => ['title', 'description', 'location', 'type', 'slots', 'salary', 'accepts_disability',
               'deadline', 'certification_agreed', 'schedule_types',
               'company_interview_date', 'inhouse_date', 'inhouse_date_end',
@@ -97,13 +98,30 @@
         }
     }
 
-    $walkinDocs = [
-        ['field' => 'business_permit',             'label' => 'CDO Business Permit', 'year' => true],
-        ['field' => 'sec_dti',                     'label' => 'SEC / DTI'],
-        ['field' => 'company_profile',             'label' => 'Company Profile'],
-        ['field' => 'no_pending_case_certificate', 'label' => 'Certificate of No Pending Case'],
-        ['field' => 'vacancy_posting',             'label' => 'Vacancy Posting'],
-    ];
+    // ── Ang papel sa duha ka merkado, sa usa ka porma.
+    // ──
+    // ── Ang SRA nga counter nagdawat ug ahensya ug ang Job Vacancy ug lokal
+    // ── nga establisemento, apan ang Job Fair nga desk nagdawat sa duha ug
+    // ── ang employer type gipili sa mismong porma. Mao nga ang duha ka
+    // ── listahan ania, ug ang gipili ang nagpakita sa usa.
+    // ──
+    // ── Ang business permit naa sa duha, mao nga dili gyud siya matago. ──
+    $localDocs    = \App\Models\EmployerRequirement::LOCAL_DOCUMENTS;
+    $overseasDocs = \App\Models\EmployerRequirement::OVERSEAS_DOCUMENTS;
+
+    $walkinDocs = [];
+    foreach (\App\Models\EmployerRequirement::DOCUMENT_LABELS as $field => $label) {
+        $inLocal    = array_key_exists($field, $localDocs);
+        $inOverseas = array_key_exists($field, $overseasDocs);
+
+        $walkinDocs[] = [
+            'field'   => $field,
+            'label'   => $label,
+            'market'  => $inLocal && $inOverseas ? 'both' : ($inLocal ? 'local' : 'overseas'),
+            'expires' => \App\Models\EmployerRequirement::fieldExpires($field),
+            'year'    => $field === 'business_permit',
+        ];
+    }
 @endphp
 
 <div class="card border-0 shadow-sm rounded-3">
@@ -390,23 +408,32 @@
                 </div>
 
                 <div class="row g-3">
-                    @foreach($walkinDocs as $i => $doc)
-                    <div class="col-md-6">
-                        <label class="peso-label">{{ $i + 1 }}. {{ $doc['label'] }} *</label>
+                    @foreach($walkinDocs as $doc)
+                    <div class="col-md-6 walkin-doc" data-market="{{ $doc['market'] }}">
+                        <label class="peso-label"><span class="walkin-doc-no"></span>{{ $doc['label'] }} *</label>
+                        {{-- The MIME types sit beside the extensions: a phone's
+                             picker matches on type, not on the file name. --}}
                         <input type="file" name="{{ $doc['field'] }}" class="form-control peso-input"
-                               accept=".jpg,.jpeg,.png,.pdf" required>
+                               accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf" required>
+                        @if($doc['expires'])
                         <label class="peso-label mt-1" style="font-weight:400;">Expiry date *</label>
+                        {{-- The permit runs with the calendar year, so the box
+                             opens on the 31st of December and is typed over
+                             when the paper says another day. --}}
                         <input type="date" name="{{ $doc['field'] }}_expires_at" class="form-control peso-input"
-                               value="{{ old($doc['field'].'_expires_at') }}"
+                               value="{{ old($doc['field'].'_expires_at', $doc['year'] ? now()->endOfYear()->toDateString() : '') }}"
                                @if(empty($doc['year'])) min="{{ now()->addDay()->format('Y-m-d') }}" @endif required>
                         @error($doc['field'].'_expires_at')
                             <div style="font-size:11px;color:var(--danger);margin-top:2px;">{{ $message }}</div>
                         @enderror
+                        @endif
                         @error($doc['field'])
                             <div style="font-size:11px;color:var(--danger);margin-top:2px;">{{ $message }}</div>
                         @enderror
                     </div>
                     @endforeach
+
+                    @include('partials.walkin-documents')
 
                     {{-- Logo — dili siya requirement, walay expiry, ug dili siya
                          required: ang employer nga naa sa counter tingali walay dala. --}}

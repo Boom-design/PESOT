@@ -3119,6 +3119,31 @@ $nsrp = $registration->nsrp;
         $wantsInhouse          = in_array('inhouse', $requestedTypes, true);
         $wantsJobFair          = in_array('job_fair', $requestedTypes, true);
 
+        // ── Ang papel sa merkado nga gi-encode.
+        // ──
+        // ── Ang lokal nga lima kaniadto ang gipangayo sa tanan, mao nga ang
+        // ── SRA nga counter dili gyud makahuman sa usa ka ahensya: wala
+        // ── siyay SEC/DTI o Vacancy Posting nga ihatag. Gikinahanglan silang
+        // ── tanan dinhi, dili sama sa online nga porma, kay nakita man sila
+        // ── sa staff sa iyang kaugalingon nga mata. ──
+        $documentRules = [];
+        foreach (\App\Models\EmployerRequirement::documentsFor($isOverseas) as $field => $label) {
+            $documentRules[$field] = 'required|file|mimes:jpg,jpeg,png,pdf|max:5120';
+
+            if (!\App\Models\EmployerRequirement::fieldExpires($field)) {
+                continue;
+            }
+
+            // Ang expiry sa business permit gikan sa papel. Walay after:today
+            // dinhi: ang employer nga naa pa sa palugit mahimong mag-dala ug
+            // permit nga nahuman na, ug ang palugit mao ang mohukom.
+            $documentRules["{$field}_expires_at"] = $field === 'business_permit'
+                ? 'required|date'
+                : 'required|date|after:today';
+        }
+
+        $request->validate($documentRules);
+
         $request->validate([
             // ── I. Establishment Details ──
             'company_name'          => 'required|string|max:255',
@@ -3156,20 +3181,7 @@ $nsrp = $registration->nsrp;
             // ── III. Requirements — required here, unlike the online wizard,
             // ── because they are saved approved on the strength of the staff
             // ── member having seen them. ──
-            'business_permit'             => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            'sec_dti'                     => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            'company_profile'             => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            'no_pending_case_certificate' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            'vacancy_posting'             => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            // Ang expiry sa business permit gikan sa papel. Walay after:today
-            // dinhi: ang employer nga naa pa sa palugit mahimong mag-dala ug
-            // permit nga nahuman na, ug ang palugit mao ang mohukom.
-            'business_permit_expires_at'             => 'required|date',
-            'company_logo'                           => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
-            'sec_dti_expires_at'                     => 'required|date|after:today',
-            'company_profile_expires_at'             => 'required|date|after:today',
-            'no_pending_case_certificate_expires_at' => 'required|date|after:today',
-            'vacancy_posting_expires_at'             => 'required|date|after:today',
+            'company_logo'                => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
             // ── IV. The vacancy they came to give ──
             'title'       => 'required|string|max:255',
             'description' => 'required|string',
@@ -3274,10 +3286,11 @@ $nsrp = $registration->nsrp;
         $tempPassword = $request->input('temp_password');
         $staffId      = \App\Models\Staff::where('user_id', $staff->users_id)->value('staff_id');
 
-        $documentFields = [
-            'business_permit', 'sec_dti', 'company_profile',
-            'no_pending_case_certificate', 'vacancy_posting',
-        ];
+        // Ang papel sa merkado nga gi-encode, dili ang lokal nga lima
+        // kanunay — ang SRA nga counter nagdawat ug ahensya.
+        $documentFields = array_keys(
+            \App\Models\EmployerRequirement::documentsFor($isOverseas)
+        );
 
         // Ang file gi-store sa gawas sa transaction: ang disk dili mo-rollback,
         // ug ang mga path kinahanglan andam na sa dili pa mosulod sa DB.
@@ -3285,7 +3298,9 @@ $nsrp = $registration->nsrp;
         foreach ($documentFields as $field) {
             $uploadedDocs[$field] = $request->file($field)->store('employer_requirements', 'local');
 
-            $uploadedDocs["{$field}_expires_at"] = $request->input("{$field}_expires_at");
+            if (\App\Models\EmployerRequirement::fieldExpires($field)) {
+                $uploadedDocs["{$field}_expires_at"] = $request->input("{$field}_expires_at");
+            }
 
             if ($field === 'business_permit') {
                 $uploadedDocs['business_permit_year'] =

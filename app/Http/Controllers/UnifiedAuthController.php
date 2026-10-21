@@ -381,26 +381,37 @@ class UnifiedAuthController extends Controller
      */
     public static function requirementFileRules(): array
     {
-        return [
-            'business_permit'             => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            'sec_dti'                     => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            'company_profile'             => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            'nsrp_establishment_form'     => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            'no_pending_case_certificate' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            'vacancy_posting'             => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            'company_logo'                => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+        $file = 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120';
+
+        $rules = [
+            'nsrp_establishment_form' => $file,
+            'company_logo'            => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
+        ];
+
+        // ── Ang papel sa duha ka merkado, usa ka lagda.
+        // ──
+        // ── Walay sala dinhi kung lokal ba o overseas ang employer: ang
+        // ── porma ra ang nagpakita sa husto nga listahan, ug ang wala
+        // ── gipadala kay nullable. Ang pag-sala dinhi magpasabot nga ang
+        // ── porma ug ang lagda kinahanglan maghusay sa parehas nga
+        // ── pangutana sa duha ka lugar, ug ang usa kanila malimtan. ──
+        foreach (\App\Models\EmployerRequirement::DOCUMENT_LABELS as $field => $label) {
+            $rules[$field] = $file;
+
+            if (!\App\Models\EmployerRequirement::fieldExpires($field)) {
+                continue;
+            }
 
             // ── Ang expiry sa business permit gikan sa papel, parehas sa uban.
             // ── Walay after:today dinhi: ang employer nga naa pa sa palugit
             // ── mahimong mag-encode sa permit nga nahuman na, ug ang palugit
             // ── mao ang mohukom kung hangtod kanus-a siya makagamit. ──
-            'business_permit_expires_at' => 'nullable|required_with:business_permit|date',
+            $rules["{$field}_expires_at"] = $field === 'business_permit'
+                ? "nullable|required_with:{$field}|date"
+                : "nullable|required_with:{$field}|date|after:today";
+        }
 
-            'sec_dti_expires_at'                     => 'nullable|required_with:sec_dti|date|after:today',
-            'company_profile_expires_at'             => 'nullable|required_with:company_profile|date|after:today',
-            'no_pending_case_certificate_expires_at' => 'nullable|required_with:no_pending_case_certificate|date|after:today',
-            'vacancy_posting_expires_at'             => 'nullable|required_with:vacancy_posting|date|after:today',
-        ];
+        return $rules;
     }
 
 // ───────────────────────────────

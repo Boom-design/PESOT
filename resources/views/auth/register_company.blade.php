@@ -601,24 +601,45 @@
                      style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);">
                     <i class="ph-fill ph-info" style="color:var(--g-200);font-size:15px;margin-top:1px;"></i>
                     <div style="font-size:11.5px;color:rgba(255,255,255,0.85);line-height:1.5;">
-                        All <strong style="color:#fff;">5 documents</strong> are required — PESO verifies them before any of your postings go public.
+                        <span id="docCountLine">All <strong style="color:#fff;">5 documents</strong> are required</span> —
+                        PESO verifies them before any of your postings go public.
                         You may attach them now, or submit them later from the <strong style="color:#fff;">Requirements</strong> page.
                     </div>
                 </div>
 
                 <div class="row g-2">
+                    {{-- ── ANG PAPEL SA DUHA KA MERKADO, SA USA KA PORMA ──
+                         An overseas recruitment agency is accredited on a
+                         different set of papers from a local establishment,
+                         and the employer type is chosen on this same page —
+                         so both lists are rendered and the choice shows one.
+                         The server takes whichever arrives: nothing here is
+                         required yet, and the Requirements page asks again.
+
+                         The business permit is in both lists, so it carries
+                         both markets and never hides. --}}
                     @php
-                    $regDocs = [
-                        ['field' => 'business_permit',             'label' => 'CDO Business Permit'],
-                        ['field' => 'sec_dti',                     'label' => 'SEC / DTI'],
-                        ['field' => 'company_profile',             'label' => 'Company Profile'],
-                        ['field' => 'no_pending_case_certificate', 'label' => 'Certificate of No Pending Case'],
-                        ['field' => 'vacancy_posting',             'label' => 'Vacancy Posting'],
-                    ];
+                        use App\Models\EmployerRequirement;
+
+                        $localDocs    = EmployerRequirement::LOCAL_DOCUMENTS;
+                        $overseasDocs = EmployerRequirement::OVERSEAS_DOCUMENTS;
+
+                        $regDocs = [];
+                        foreach (array_keys(EmployerRequirement::DOCUMENT_LABELS) as $field) {
+                            $inLocal    = array_key_exists($field, $localDocs);
+                            $inOverseas = array_key_exists($field, $overseasDocs);
+
+                            $regDocs[] = [
+                                'field'  => $field,
+                                'label'  => EmployerRequirement::documentLabel($field),
+                                'market' => $inLocal && $inOverseas ? 'both' : ($inLocal ? 'local' : 'overseas'),
+                                'expires' => EmployerRequirement::fieldExpires($field),
+                            ];
+                        }
                     @endphp
-                    @foreach($regDocs as $i => $doc)
-                    <div class="col-md-6">
-                        <label class="peso-label">{{ $i + 1 }}. {{ $doc['label'] }} <span style="font-weight:400;color:rgba(255,255,255,0.65);">(to be followed)</span></label>
+                    @foreach($regDocs as $doc)
+                    <div class="col-md-6 reg-doc" data-market="{{ $doc['market'] }}">
+                        <label class="peso-label"><span class="reg-doc-no"></span>{{ $doc['label'] }} <span style="font-weight:400;color:rgba(255,255,255,0.65);">(to be followed)</span></label>
                         {{-- The MIME types are listed beside the extensions on
                              purpose. A phone's picker matches on type, not on
                              the file name, so an extension-only accept list
@@ -627,6 +648,10 @@
                                accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf"
                                style="padding:6px 12px;">
 
+                        {{-- Not every paper has a date on it. An Agency Profile
+                             and a DMW job order balance carry none, and asking
+                             for one makes the employer invent it. --}}
+                        @if($doc['expires'])
                         {{-- A date input ignores `placeholder` — it has a format
                              of its own to show. Desktop Chrome draws
                              "mm/dd/yyyy" inside the empty box, which is where
@@ -638,19 +663,27 @@
                                style="font-weight:400;font-size:10.5px;color:rgba(255,255,255,0.7);">
                             Expiry date (mm/dd/yyyy)
                         </label>
+                        {{-- The business permit runs with the calendar year, so
+                             the box opens on the 31st of December of the year
+                             it is being filled in. It is a starting point, not
+                             a lock: a permit that ends on another day is typed
+                             over it. The year the permit covers is read back
+                             off this date, so the two can never disagree. --}}
                         <input type="date" name="{{ $doc['field'] }}_expires_at" class="peso-input"
-                               value="{{ old($doc['field'].'_expires_at') }}"
+                               value="{{ old($doc['field'].'_expires_at', $doc['field'] === 'business_permit'
+                                        ? now()->endOfYear()->toDateString() : '') }}"
                                aria-label="{{ $doc['label'] }} expiry date"
                                style="padding:6px 12px;">
                         @error($doc['field'].'_expires_at')
                             <div style="font-size:11px;color:var(--danger);margin-top:2px;">{{ $message }}</div>
                         @enderror
+                        @endif
                     </div>
                     @endforeach
 
                     {{-- Logo — dili siya requirement nga i-review, ug walay expiry. --}}
-                    <div class="col-md-6">
-                        <label class="peso-label">6. Company Logo <span style="font-weight:400;color:rgba(255,255,255,0.65);">(optional, no expiry)</span></label>
+                    <div class="col-md-6 reg-doc" data-market="both">
+                        <label class="peso-label"><span class="reg-doc-no"></span>Company Logo <span style="font-weight:400;color:rgba(255,255,255,0.65);">(optional, no expiry)</span></label>
                         <input type="file" name="company_logo" class="peso-input"
                                accept="image/jpeg,image/png,.jpg,.jpeg,.png"
                                style="padding:6px 12px;">
@@ -662,6 +695,8 @@
                         @enderror
                     </div>
                 </div>
+
+                @include('partials.registration-documents')
 
                 {{-- CERTIFICATION / AUTHORIZATION --}}
                 <div class="cert-box mt-3">

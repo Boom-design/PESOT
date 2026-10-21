@@ -11,7 +11,12 @@
 
      Expects: $requirement, $perDoc (may this desk decide, one paper at a time). --}}
 @php
-    $decisionDocs  = \App\Models\EmployerRequirement::DOCUMENT_LABELS;
+    // Ang papel sa merkado sa employer, dili ang tanan nga ngalan nga
+    // nahibal-an sa sistema: ang ahensya sa gawas walay SEC/DTI, ug ang
+    // lokal nga establisemento walay J.O Balance.
+    $decisionDocs  = \App\Models\EmployerRequirement::documentsFor(
+        (bool) ($requirement->employer->is_overseas ?? false)
+    );
     $decidedCount  = $requirement->decidedDocumentCount();
     $stillToReview = $requirement->documentsNotYetDecided();
     $hasRejected   = $requirement->hasRejectedDocuments();

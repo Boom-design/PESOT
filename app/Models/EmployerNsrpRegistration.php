@@ -223,7 +223,7 @@ class EmployerNsrpRegistration extends Model
                 ];
             }
 
-            foreach (array_keys(EmployerRequirement::DOCUMENT_LABELS) as $field) {
+            foreach (EmployerRequirement::EXPIRY_FIELDS as $field) {
                 if ($requirement->isFieldExpired($field)) {
                     return [
                         'label'  => 'Requirements expired',
@@ -245,7 +245,7 @@ class EmployerNsrpRegistration extends Model
             // ── The soonest one, when more than one is in the window: that is
             // ── the one the next phone call is about.
             $soonest = null;
-            foreach (array_keys(EmployerRequirement::DOCUMENT_LABELS) as $field) {
+            foreach (EmployerRequirement::EXPIRY_FIELDS as $field) {
                 if (!$requirement->isFieldExpiringSoon($field)) {
                     continue;
                 }

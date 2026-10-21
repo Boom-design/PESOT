@@ -14,7 +14,10 @@ class SendEmployerRequirementExpiryWarnings extends Command
     public function handle()
     {
         $totalSent = 0;
-        $fields = array_keys(EmployerRequirement::DOCUMENT_LABELS);
+        // Ang papel nga naay petsa ra. Ang Agency Profile ug ang uban
+        // walay expiry nga kolum, ug ang paglakaw sa tanan nga ngalan
+        // mangita ug kolum nga wala gyud.
+        $fields = EmployerRequirement::EXPIRY_FIELDS;
 
         // ── Per field, kay 5 ka parallel expiry column ang naa (dili row-per-doc) ──
         $duePerRequirement = []; // employer_requirements_id => ['field' => Carbon date, ...]

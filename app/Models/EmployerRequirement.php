@@ -30,6 +30,18 @@ class EmployerRequirement extends Model
         'vacancy_posting',
         'vacancy_posting_expires_at',
         'vacancy_posting_expiry_notified_at',
+
+        // Ang papel sa ahensya sa gawas. Tulo ra kanila ang naay petsa.
+        'agency_profile',
+        'cert_of_renewal_license',
+        'cert_of_renewal_license_expires_at',
+        'cert_of_renewal_license_expiry_notified_at',
+        'jo_balance_dmw',
+        'branch_org_chart',
+        'authority_to_operate',
+        'authority_to_operate_expires_at',
+        'authority_to_operate_expiry_notified_at',
+
         'status',
         'remarks',
         'rejected_fields',
@@ -52,10 +64,24 @@ class EmployerRequirement extends Model
         'company_profile_expiry_notified_at' => 'datetime',
         'no_pending_case_certificate_expiry_notified_at' => 'datetime',
         'vacancy_posting_expiry_notified_at' => 'datetime',
+        'cert_of_renewal_license_expires_at' => 'date',
+        'authority_to_operate_expires_at' => 'date',
+        'cert_of_renewal_license_expiry_notified_at' => 'datetime',
+        'authority_to_operate_expiry_notified_at' => 'datetime',
     ];
 
-    // ── Kada usa sa 5 ka requirement document field, tugma sa DB column ug sa form field names ──
-    public const DOCUMENT_LABELS = [
+    // ── ANG PAPEL SA MATAG MERKADO ──
+    //
+    // PESO SRA, 2026-10-21: lahi ang gipangayo sa ahensya sa gawas kaysa sa
+    // lokal nga establisemento, ug naay kaugalingon silang papel sa opisina.
+    // Kaniadto ang tanan gipangayoan sa lokal nga lima, mao nga ang ahensya
+    // nag-upload ug SEC/DTI ug Vacancy Posting nga wala gyud gibasa sa SRA,
+    // ug wala gyud gipangayoan sa renewal sa lisensya o sa J.O balance.
+    //
+    // Ang business permit mao ra ang usa nga gidala sa duha.
+
+    /** Ang lima ka papel sa lokal nga establisemento. */
+    public const LOCAL_DOCUMENTS = [
         'business_permit'             => 'CDO Business Permit',
         'sec_dti'                     => 'SEC / DTI',
         'company_profile'             => 'Company Profile',
@@ -64,13 +90,75 @@ class EmployerRequirement extends Model
     ];
 
     /**
+     * Ang unom ka papel sa ahensya sa gawas, sa han-ay sa papel sa opisina.
+     *
+     * Ang papel naglista ug walo. Wala dinhi ang PhilJobNet registration, nga
+     * gitangtang sa opisina, ug ang filled-up NSRP form, nga nakuha na sa
+     * sistema sa pag-register.
+     */
+    public const OVERSEAS_DOCUMENTS = [
+        'agency_profile'          => 'Agency Profile',
+        'business_permit'         => 'CDO Business Permit',
+        'cert_of_renewal_license' => 'Certificate of Renewal of License',
+        'jo_balance_dmw'          => 'J.O Balance Approved by DMW (latest)',
+        'branch_org_chart'        => 'Branch Organizational Chart / Office Staff ID',
+        'authority_to_operate'    => 'Authority to Operate a Branch Office',
+    ];
+
+    /**
+     * Ang ngalan sa tanan nga papel sa duha ka merkado.
+     *
+     * Para ni sa paghubad sa usa ka field ngadto sa ngalan niya — kanunay
+     * siya nga husto, bisan kinsa ang employer. Ang pangutana nga "unsa ang
+     * gipangayo niining employer" NATUBAG sa documentsFor(), dili dinhi.
+     */
+    public const DOCUMENT_LABELS = [
+        ...self::LOCAL_DOCUMENTS,
+        ...self::OVERSEAS_DOCUMENTS,
+    ];
+
+    /**
+     * Ang papel nga naay petsa nga mahuman.
+     *
+     * Dili tanan. Ang Agency Profile, ang J.O Balance ug ang Branch
+     * Organizational Chart walay petsa nga naka-print, mao nga ang pagpangayo
+     * ug expiry nagpugos sa employer sa pag-imbento.
+     */
+    public const EXPIRY_FIELDS = [
+        'business_permit',
+        'sec_dti',
+        'company_profile',
+        'no_pending_case_certificate',
+        'vacancy_posting',
+        'cert_of_renewal_license',
+        'authority_to_operate',
+    ];
+
+    /** Ang papel nga gipangayo sa usa ka merkado. */
+    public static function documentsFor(bool $isOverseas): array
+    {
+        return $isOverseas ? self::OVERSEAS_DOCUMENTS : self::LOCAL_DOCUMENTS;
+    }
+
+    /** Naay expiry ba kini nga papel? */
+    public static function fieldExpires(string $field): bool
+    {
+        return in_array($field, self::EXPIRY_FIELDS, true);
+    }
+
+    /**
      * The business permit label with the year it covers.
      *
      * The year used to be typed into the label as a literal, which meant every
      * January the page named the wrong permit until somebody edited the code.
      */
     /**
-     * The five papers the desk reads, in the order they are read.
+     * Every paper the desk may be asked to judge, both markets together.
+     *
+     * This is an allow-list, not a checklist: it answers "may the desk accept
+     * or reject this field at all", which is the question the accept and
+     * reject routes ask before they touch anything. Whether a particular
+     * employer owes a particular paper is reviewedDocuments(), below.
      *
      * nsrp_establishment_form and company_logo are not here on purpose: the
      * first comes from the registration and the desk never judged it, and the
@@ -82,7 +170,24 @@ class EmployerRequirement extends Model
         'company_profile',
         'no_pending_case_certificate',
         'vacancy_posting',
+        'agency_profile',
+        'cert_of_renewal_license',
+        'jo_balance_dmw',
+        'branch_org_chart',
+        'authority_to_operate',
     ];
+
+    /**
+     * The papers THIS employer owes, in the order the office reads them.
+     *
+     * Everything that counts a folder complete goes through here, so an
+     * agency is never held up for a Vacancy Posting and a local establishment
+     * is never asked for a DMW job order balance.
+     */
+    public function reviewedDocuments(): array
+    {
+        return array_keys(self::documentsFor((bool) $this->employer?->is_overseas));
+    }
 
     /** Nabasa na ba sa desk kini nga papel ug gidawat? */
     public function isFieldAccepted(string $field): bool
@@ -93,7 +198,7 @@ class EmployerRequirement extends Model
     /** Pila ka papel ang nadawat na. */
     public function acceptedDocumentCount(): int
     {
-        return count(array_intersect((array) $this->approved_fields, self::REVIEWED_DOCUMENTS));
+        return count(array_intersect((array) $this->approved_fields, $this->reviewedDocuments()));
     }
 
     /**
@@ -105,7 +210,7 @@ class EmployerRequirement extends Model
      */
     public function documentsNotYetAccepted(): array
     {
-        return array_values(array_diff(self::REVIEWED_DOCUMENTS, (array) $this->approved_fields));
+        return array_values(array_diff($this->reviewedDocuments(), (array) $this->approved_fields));
     }
 
     /** Kompleto na ba ang tanan, andam na ba i-approve? */
@@ -141,7 +246,7 @@ class EmployerRequirement extends Model
     public function documentsNotYetDecided(): array
     {
         return array_values(array_filter(
-            self::REVIEWED_DOCUMENTS,
+            $this->reviewedDocuments(),
             fn($f) => !$this->isFieldDecided($f)
         ));
     }
@@ -155,13 +260,13 @@ class EmployerRequirement extends Model
     /** Naay papel nga gibalibaran, mao nga ang folder mobalik sa employer. */
     public function hasRejectedDocuments(): bool
     {
-        return count(array_intersect((array) $this->rejected_fields, self::REVIEWED_DOCUMENTS)) > 0;
+        return count(array_intersect((array) $this->rejected_fields, $this->reviewedDocuments())) > 0;
     }
 
     /** Pila ka papel ang nahukman na, gidawat man o gibalibaran. */
     public function decidedDocumentCount(): int
     {
-        return count(self::REVIEWED_DOCUMENTS) - count($this->documentsNotYetDecided());
+        return count($this->reviewedDocuments()) - count($this->documentsNotYetDecided());
     }
 
     /** Ang tawhanong ngalan sa papel, para sa mensahe ug sa listahan. */
@@ -250,7 +355,7 @@ class EmployerRequirement extends Model
     public function scopeExpiringSoon($query, int $days = 7)
     {
         return $query->where(function ($q) use ($days) {
-            foreach (array_keys(self::DOCUMENT_LABELS) as $field) {
+            foreach (self::EXPIRY_FIELDS as $field) {
                 $q->orWhere(function ($f) use ($field, $days) {
                     $f->whereNotNull("{$field}_expires_at")
                       ->whereDate("{$field}_expires_at", '>=', today())

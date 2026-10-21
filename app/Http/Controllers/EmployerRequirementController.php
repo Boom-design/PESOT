@@ -25,9 +25,15 @@ class EmployerRequirementController extends Controller
         $company = $this->authCompany();
         if (!$company) return redirect()->route('login');
 
-        $requirement = EmployerRequirement::where('user_id', $company->activeCompany()->employer_nsrp_registrations_id)->first();
+        $activeCompany = $company->activeCompany();
 
-        return view('company.requirements.index', compact('company', 'requirement'));
+        $requirement = EmployerRequirement::where('user_id', $activeCompany->employer_nsrp_registrations_id)->first();
+
+        // Ang merkado ang nagpili sa listahan sa papel. Gipasa siya dinhi kay
+        // ang $company usa ka User — ang is_overseas naa sa establisemento.
+        $isOverseas = (bool) $activeCompany->is_overseas;
+
+        return view('company.requirements.index', compact('company', 'requirement', 'isOverseas'));
     }
 
     // ── SUBMIT / RESUBMIT REQUIREMENTS ──
@@ -38,13 +44,15 @@ class EmployerRequirementController extends Controller
 
         $existing = EmployerRequirement::where('user_id', $company->activeCompany()->employer_nsrp_registrations_id)->first();
 
-        $fields = [
-            'business_permit',
-            'sec_dti',
-            'company_profile',
-            'no_pending_case_certificate',
-            'vacancy_posting',
-        ];
+        // ── Ang papel sa iyang merkado ra.
+        // ──
+        // ── PESO SRA, 2026-10-21: ang ahensya sa gawas nag-upload kaniadto
+        // ── ug SEC/DTI ug Vacancy Posting nga wala gyud gibasa sa SRA, ug
+        // ── wala gyud gipangayoan sa renewal sa lisensya. Usa ra ka
+        // ── tinubdan karon, ug ang is_overseas ang nagpili. ──
+        $fields = array_keys(EmployerRequirement::documentsFor(
+            (bool) $company->activeCompany()->is_overseas
+        ));
 
         // ── Kung "rejected" o "expired" na sa una, ug naay specific rejected_fields, ──
         // ── i-require lang nga i-resubmit kadtong mga gi-flag; ang uban optional ──
@@ -64,6 +72,12 @@ class EmployerRequirementController extends Controller
             // holding a permit that has already run out, and the grace — not
             // the upload form — decides how long that permit still works. See
             // EmployerRequirement::businessPermitGraceEndsAt().
+            // Dili tanan nga papel naay petsa nga mahuman — ang Agency
+            // Profile ug ang J.O Balance wala.
+            if (!EmployerRequirement::fieldExpires($field)) {
+                continue;
+            }
+
             $rules["{$field}_expires_at"] = 'nullable|required_with:' . $field . '|date'
                 . ($field === 'business_permit' ? '' : '|after:today');
         }
@@ -110,7 +124,9 @@ class EmployerRequirementController extends Controller
                 $path = $request->file($field)->store('employer_requirements', 'local');
                 $data[$field] = $path;
 
-                $data["{$field}_expires_at"] = $request->input("{$field}_expires_at");
+                if (EmployerRequirement::fieldExpires($field)) {
+                    $data["{$field}_expires_at"] = $request->input("{$field}_expires_at");
+                }
 
                 if ($field === 'business_permit') {
                     // The year is derived from the date, so the label and the
@@ -122,7 +138,10 @@ class EmployerRequirementController extends Controller
                     $data['business_permit_grace_notified_at'] = null;
                 }
 
-                $data["{$field}_expiry_notified_at"] = null; // reset the 1-week-before warning gate for the new cycle
+                if (EmployerRequirement::fieldExpires($field)) {
+                    // reset the 1-week-before warning gate for the new cycle
+                    $data["{$field}_expiry_notified_at"] = null;
+                }
             }
             // Kung walay bag-ong file gi-upload, ang naa nang value magpabilin (dili ma-overwrite sa null)
         }

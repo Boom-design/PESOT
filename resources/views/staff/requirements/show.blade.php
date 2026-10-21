@@ -108,14 +108,15 @@
                 </div>
 
                 @php
-                    $docs = [
-                        'business_permit'          => $requirement->businessPermitLabel(),
-                        'sec_dti'                  => 'SEC / DTI',
-                        'company_profile'          => 'Company Profile',
-                        'no_pending_case_certificate' => 'Certificate of No Pending Case',
-                        'vacancy_posting'          => 'Vacancy Posting',
-                    ];
+                    // ── Ang papel sa merkado sa employer, dili ang lokal nga
+                    // ── lima kanunay. Ang business permit nagdala sa tuig
+                    // ── niya sa ngalan, mao nga siya gipuli human sa listahan. ──
+                    $marketDocs = \App\Models\EmployerRequirement::documentsFor(
+                        (bool) ($requirement->employer->is_overseas ?? false)
+                    );
+                    $marketDocs['business_permit'] = $requirement->businessPermitLabel();
                 @endphp
+                @php $docs = $marketDocs; @endphp
                 @foreach($docs as $field => $label)
                 <div style="border-bottom:1px solid var(--n-50);">
                 <div class="d-flex justify-content-between align-items-center py-2">
@@ -279,11 +280,12 @@
                      ang folder nga naay sayop mobalik sa employer, dili moadto
                      sa Registered Employer. --}}
                 @php
-                    $docLabels     = \App\Models\EmployerRequirement::DOCUMENT_LABELS;
+                    // Ang ngalan sa papel nga gipangayo niining employer.
+                    $docLabels     = $marketDocs;
                     $decidedCount  = $requirement->decidedDocumentCount();
                     $stillToReview = $requirement->documentsNotYetDecided();
                     $rejectedNow   = array_values(array_intersect(
-                        \App\Models\EmployerRequirement::REVIEWED_DOCUMENTS,
+                        $requirement->reviewedDocuments(),
                         (array) $requirement->rejected_fields
                     ));
                     $hasRejected    = $requirement->hasRejectedDocuments();
@@ -332,15 +334,7 @@
                 </h6>
                 <form action="{{ route('staff.requirements.reject', $requirement->employer_requirements_id) }}" method="POST" id="rejectDocsForm">
                     @csrf
-                    @php
-                        $rejectDocs = [
-                            'business_permit'             => $requirement->businessPermitLabel(),
-                            'sec_dti'                     => 'SEC / DTI',
-                            'company_profile'             => 'Company Profile',
-                            'no_pending_case_certificate' => 'Certificate of No Pending Case',
-                            'vacancy_posting'             => 'Vacancy Posting',
-                        ];
-                    @endphp
+                    @php $rejectDocs = $marketDocs; @endphp
                     {{-- Ang gi-check dinhi mao ang gibalibaran na sa taas. Ang
                          desk makadugang o makakuha pa dinhi sa katapusang gutlo
                          — kining porma gihapon ang usa ka mensahe nga makaabot

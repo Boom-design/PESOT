@@ -116,13 +116,37 @@
             @csrf
 
             @php
-            $docs = [
-                ['field' => 'business_permit',             'label' => 'CDO Business Permit', 'icon' => 'ph ph-buildings',          'hint' => 'Upload a clear photo or scan of your business permit, and enter the expiry date printed on it.'],
-                ['field' => 'sec_dti',                     'label' => 'SEC / DTI',                                   'icon' => 'ph ph-bank',              'hint' => 'SEC for Corporation, DTI for Single Proprietorship.'],
-                ['field' => 'company_profile',             'label' => 'Company Profile',                             'icon' => 'ph ph-identification-card',       'hint' => 'Upload your company profile document.'],
-                ['field' => 'no_pending_case_certificate', 'label' => 'Certificate of No Pending Case',             'icon' => 'ph ph-seal-check',       'hint' => 'From DOLE-CDO Field Office. Pwede to-follow.'],
-                ['field' => 'vacancy_posting',             'label' => 'Vacancy Posting',                            'icon' => 'ph ph-file-text',         'hint' => '2 sets, letter size in portrait format with readable fonts.'],
+            // ── Ang papel sa iyang merkado ra.
+            // ──
+            // ── PESO SRA, 2026-10-21: ang ahensya sa gawas gipangayoan
+            // ── kaniadto ug SEC/DTI ug Vacancy Posting nga wala gyud niya,
+            // ── ug wala gyud gipangayoan sa renewal sa iyang lisensya. Usa
+            // ── ra ka tinubdan karon — ang model — ug ang icon ug ang hint
+            // ── nagsunod sa field. ──
+            $docHints = [
+                'business_permit'             => ['ph ph-buildings',             'Upload a clear photo or scan of your business permit, and enter the expiry date printed on it.'],
+                'sec_dti'                     => ['ph ph-bank',                  'SEC for Corporation, DTI for Single Proprietorship.'],
+                'company_profile'             => ['ph ph-identification-card',   'Upload your company profile document.'],
+                'no_pending_case_certificate' => ['ph ph-seal-check',            'From DOLE-CDO Field Office. Pwede to-follow.'],
+                'vacancy_posting'             => ['ph ph-file-text',             '2 sets, letter size in portrait format with readable fonts.'],
+                'agency_profile'              => ['ph ph-identification-card',   'Your agency profile document.'],
+                'cert_of_renewal_license'     => ['ph ph-certificate',           'The certificate of renewal of your DMW licence, and the date it runs to.'],
+                'jo_balance_dmw'              => ['ph ph-list-checks',           'Your latest job order balance as approved by the DMW.'],
+                'branch_org_chart'            => ['ph ph-tree-structure',        'The branch organisational chart, or a photocopy of the office staff IDs.'],
+                'authority_to_operate'        => ['ph ph-stamp',                 'The authority to operate a branch office, and the date it runs to.'],
             ];
+
+            $docs = [];
+            foreach (\App\Models\EmployerRequirement::documentsFor($isOverseas ?? false) as $field => $label) {
+                [$icon, $hint] = $docHints[$field] ?? ['ph ph-file-text', ''];
+                $docs[] = [
+                    'field'   => $field,
+                    'label'   => $label,
+                    'icon'    => $icon,
+                    'hint'    => $hint,
+                    'expires' => \App\Models\EmployerRequirement::fieldExpires($field),
+                ];
+            }
             @endphp
 
             @php
@@ -224,6 +248,7 @@
                                  date input ignores `placeholder`: desktop Chrome
                                  draws "mm/dd/yyyy" in the empty box, a phone
                                  draws nothing. --}}
+                            @if($doc['expires'])
                             <label class="mt-2 mb-1" style="font-size:10.5px;color:var(--n-500);display:block;">Expiry Date (mm/dd/yyyy)</label>
                             <input type="date"
                                    name="{{ $doc['field'] }}_expires_at"
@@ -243,6 +268,7 @@
                                     <strong style="color:var(--g-700);">{{ config('peso.employer.business_permit_grace_months', 3) }} more months</strong>
                                     while you renew.
                                 </div>
+                            @endif
                             @endif
                         @endif
                     </div>

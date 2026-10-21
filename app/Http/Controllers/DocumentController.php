@@ -28,17 +28,21 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class DocumentController extends Controller
 {
-    /** The six document columns on employer_requirements, as an allow-list. */
+    /**
+     * The document columns on employer_requirements, as an allow-list.
+     *
+     * Both markets together: the papers of a local establishment and those of
+     * an overseas agency live on the same row, and the desk reading an
+     * agency's folder asks for them by the same route.
+     */
     private const REQUIREMENT_FIELDS = [
-        // Not a requirement document, but it is stored on the same row and read
-        // back the same way, so it goes through the same allow-list.
+        // Neither is a requirement document, but both are stored on the same
+        // row and read back the same way, so they go through the same
+        // allow-list.
         'company_logo',
-        'business_permit',
-        'sec_dti',
-        'company_profile',
         'nsrp_establishment_form',
-        'no_pending_case_certificate',
-        'vacancy_posting',
+
+        ...\App\Models\EmployerRequirement::REVIEWED_DOCUMENTS,
     ];
 
     /**
