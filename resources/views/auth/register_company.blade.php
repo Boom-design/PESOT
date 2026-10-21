@@ -292,12 +292,15 @@
                       'est_province', 'est_city_municipality', 'est_barangay'],
                 2 => ['contact_title', 'contact_person', 'position_title',
                       'telephone_no', 'mobile_number', 'fax_no', 'email'],
-                3 => ['business_permit', 'sec_dti', 'company_profile',
-                      'no_pending_case_certificate', 'vacancy_posting',
-                      'company_logo',
-                      'business_permit_expires_at', 'sec_dti_expires_at', 'company_profile_expires_at',
-                      'no_pending_case_certificate_expires_at', 'vacancy_posting_expires_at',
-                      'certification_agreed', 'certification_date', 'password'],
+                // Ang papel sa duha ka merkado ug ang ilang petsa. Kung ang
+                // usa niini wala dinhi, ang bounce sa maong field mo-abli sa
+                // step 1, ug ang tawo mangita sa sayop sa sayop nga panid.
+                3 => array_merge(
+                      array_keys(\App\Models\EmployerRequirement::DOCUMENT_LABELS),
+                      array_map(fn($f) => $f . '_expires_at',
+                                \App\Models\EmployerRequirement::EXPIRY_FIELDS),
+                      ['company_logo', 'certification_agreed', 'certification_date', 'password'],
+                     ),
             ];
 
             $errorStep = 1;
