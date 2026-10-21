@@ -58,12 +58,19 @@ class DocumentController extends Controller
         // before it is ever used as a column name.
         abort_unless(in_array($field, self::REQUIREMENT_FIELDS, true), 404);
 
-        $requirement = EmployerRequirement::findOrFail($id);
+        $requirement = EmployerRequirement::with('employer')->findOrFail($id);
         $user        = Auth::user();
 
         abort_unless($this->maySeeRequirement($user, $requirement), 403);
 
-        return $this->stream($requirement->{$field});
+        $path = $requirement->{$field};
+
+        // ?download=1 asks for the file itself rather than a look at it. Same
+        // permission either way — the question is what the browser does with
+        // it, not who may have it.
+        return request()->boolean('download') && $path
+            ? $this->stream($path, $this->downloadName($requirement, $field, $path))
+            : $this->stream($path);
     }
 
     /**
@@ -122,14 +129,37 @@ class DocumentController extends Controller
      * A path that is empty, or that climbs out of the disk root, is a 404 — the
      * caller does not learn which of the two it was.
      */
-    private function stream(?string $path): StreamedResponse
+    private function stream(?string $path, ?string $downloadAs = null): StreamedResponse
     {
         abort_if(!$path || str_contains($path, '..'), 404);
         abort_unless(Storage::disk('local')->exists($path), 404);
 
+        // ── Tan-awon, o i-download.
+        // ──
+        // ── Ang file gipangalan ug hash sa pag-upload, mao nga ang usa ka
+        // ── download nga nagdala sa pangalan sa disk mohatag sa desk ug
+        // ── "JfJOAHoz….png" sa ilang folder. Ang ngalan sa kompanya ug ang
+        // ── papel mao ang gipangita nila pag-usab unya. ──
+        $disposition = $downloadAs !== null
+            ? 'attachment; filename="' . $downloadAs . '"'
+            : 'inline; filename="' . basename($path) . '"';
+
         return Storage::disk('local')->response($path, null, [
-            'Content-Disposition' => 'inline; filename="' . basename($path) . '"',
+            'Content-Disposition'    => $disposition,
             'X-Content-Type-Options' => 'nosniff',
         ]);
+    }
+
+    /** A filename a person can find again: company, paper, extension. */
+    private function downloadName(EmployerRequirement $requirement, string $field, string $path): string
+    {
+        $company = $requirement->employer->company_name ?? 'Employer';
+        $label   = $field === 'company_logo'
+            ? 'Company Logo'
+            : EmployerRequirement::documentLabel($field);
+
+        $name = preg_replace('/[^A-Za-z0-9 \-_.]/', '', $company . ' - ' . $label);
+
+        return trim($name) . '.' . strtolower(pathinfo($path, PATHINFO_EXTENSION));
     }
 }

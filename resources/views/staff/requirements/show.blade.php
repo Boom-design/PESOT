@@ -105,6 +105,21 @@
                             {{ $requirement->company_logo ? 'Uploaded by the employer — no expiry.' : 'Not uploaded.' }}
                         </div>
                     </div>
+
+                    {{-- PESO SRA, 2026-10-22: the desk puts the logo on the
+                         printed lists it hands around, so looking at it on the
+                         page was not enough. The file comes down named after
+                         the company and the paper — what is on the disk is a
+                         hash, and a folder of hashes is a folder nobody can
+                         search. Both desks read this page, so both get it. --}}
+                    @if($requirement->company_logo)
+                        <a href="{{ route('documents.requirement', [$requirement->employer_requirements_id, 'company_logo']) }}?download=1"
+                           class="btn btn-sm fw-semibold ms-auto"
+                           style="background:#fff;color:var(--g-700);border:1px solid var(--n-200);
+                                  border-radius:8px;font-size:11.5px;padding:5px 12px;white-space:nowrap;">
+                            <i class="ph ph-download-simple me-1"></i>Download
+                        </a>
+                    @endif
                 </div>
 
                 @php
