@@ -2568,7 +2568,86 @@ $nsrp = $registration->nsrp;
             $invited = \App\Support\JobFairInvites::inviteToOpenEvents($requirement->employer);
         }
 
+        $this->emailRequirementsApproved($requirement, $staff, $released, $invited);
+
         return ['wasRestricted' => $wasRestricted, 'invited' => $invited, 'released' => $released];
+    }
+
+    /**
+     * The answer, in the employer's inbox.
+     *
+     * PESO, 2026-10-22: an employer who has sent their folder in has nothing
+     * to do but wait, and the bell notice only reaches somebody who signs in
+     * — which the person waiting to hear has no reason to do. Same shape as
+     * the reactivation email: never throws, and a failure is logged rather
+     * than handed to the desk, because the decision itself has already been
+     * saved and must not be undone by a mail server having a bad morning.
+     */
+    private function emailRequirementsApproved(
+        \App\Models\EmployerRequirement $requirement,
+        $staff,
+        int $released,
+        int $invited
+    ): void {
+        $employer     = $requirement->employer;
+        $employerUser = $employer?->employer;
+
+        if (!$employerUser || !$employerUser->email) return;
+
+        try {
+            \Illuminate\Support\Facades\Mail::to($employerUser->email)->send(
+                new \App\Mail\EmployerRequirementsApproved(
+                    companyName:      $employer->company_name ?? $employerUser->name,
+                    contactName:      $employer->contact_person ?? $employerUser->name,
+                    staffName:        trim($staff->name),
+                    releasedPostings: $released,
+                    jobFairInvites:   $invited,
+                )
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Requirements approved email failed to send', [
+                'employer_id' => $employer?->employer_nsrp_registrations_id,
+                'error'       => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /** The same, for a folder sent back, naming each paper and its reason. */
+    private function emailRequirementsRejected(
+        \App\Models\EmployerRequirement $requirement,
+        $staff,
+        string $remarks,
+        array $rejectedFields,
+        array $notes
+    ): void {
+        $employer     = $requirement->employer;
+        $employerUser = $employer?->employer;
+
+        if (!$employerUser || !$employerUser->email) return;
+
+        $documents = collect($rejectedFields)
+            ->map(fn($field) => [
+                'label' => \App\Models\EmployerRequirement::documentLabel($field),
+                'note'  => $notes[$field] ?? null,
+            ])
+            ->all();
+
+        try {
+            \Illuminate\Support\Facades\Mail::to($employerUser->email)->send(
+                new \App\Mail\EmployerRequirementsRejected(
+                    companyName: $employer->company_name ?? $employerUser->name,
+                    contactName: $employer->contact_person ?? $employerUser->name,
+                    staffName:   trim($staff->name),
+                    remarks:     $remarks,
+                    documents:   $documents,
+                )
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Requirements rejected email failed to send', [
+                'employer_id' => $employer?->employer_nsrp_registrations_id,
+                'error'       => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
@@ -2740,8 +2819,13 @@ $nsrp = $registration->nsrp;
             'reference_id'   => $requirement->employer_requirements_id,
         ], $requirement->user_id);
 
+        $this->emailRequirementsRejected(
+            $requirement, $staff, $request->remarks, $request->rejected_fields, $notes
+        );
+
         return redirect()->route('staff.requirements')
-            ->with('success', 'You rejected these requirements. The employer has been told what to resubmit.');
+            ->with('success', 'You rejected these requirements. The employer has been told what to resubmit, '
+                . 'on the site and by email.');
     }
 
     // ───────────────────────────────
