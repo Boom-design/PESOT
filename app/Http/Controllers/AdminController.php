@@ -392,10 +392,14 @@ class AdminController extends Controller
         $rules = \App\Support\EmployerAccountRecovery::rules($employerUser->users_id);
         $rules['reset_password'] = 'nullable|boolean';
 
-        // Gikinahanglan sa duha ka agianan nga naghatag ug password: ang reset
-        // lang, ug ang handover nga gipili ang temp_password.
+        // ── Ang method ra ang nagsulti kung kinahanglan ba ug password.
+        // ──
+        // ── PESO, 2026-10-22: `required_with:reset_password` ania kaniadto
+        // ── dinhi, mao nga ang pagtsek sa "Reset their password too" nangayo
+        // ── ug password BISAN gipili ang "Email them a code" — ug ang gisulat
+        // ── nga password wala gyud gigamit, kay code man ang gipadala. Duha
+        // ── ka control nga nagsinupak sa usa ka pangutana; usa na ra karon. ──
         $rules['temp_password'] = 'required_if:method,temp_password'
-                                  . '|required_with:reset_password'
                                   . '|nullable|string|min:4|max:64';
 
         $validated = $request->validate(
@@ -417,6 +421,26 @@ class AdminController extends Controller
                     'Nothing was changed. Edit the contact details, or tick "Reset their password too".');
             }
 
+            $company = $employerUser->employerNsrp->company_name ?? $employerUser->name;
+
+            // Ang parehas nga pangutana sa handover: unsa nga paagi siya
+            // makasulod? Ang code moadto sa email nga naa na sa account —
+            // parehas nga tawo, buhi ang iyang inbox, ug walay tawo dinhi nga
+            // makahibalo sa iyang password.
+            if (($validated['method'] ?? null) !== \App\Support\EmployerAccountRecovery::METHOD_TEMP_PASSWORD) {
+                $sent = \App\Support\EmployerAccountRecovery::resetByCode(
+                    $employerUser, $validated['reason'], $admin
+                );
+
+                return $sent
+                    ? back()->with('success',
+                        'A 6-digit verification code was emailed to ' . $employerUser->email . ' for ' . $company
+                        . '. They enter it on the login page under Forgot Password and set their own password.')
+                    : back()->with('error',
+                        'The code for ' . $company . ' could not be emailed. '
+                        . 'Ask them to use "Forgot Password" on the login page, or choose the temporary password instead.');
+            }
+
             $tempPassword = \App\Support\EmployerAccountRecovery::resetPassword(
                 $employerUser, $validated['reason'], $admin, $validated['temp_password']
             );
@@ -425,7 +449,7 @@ class AdminController extends Controller
                 ->with('recovery_temp_password', $tempPassword)
                 ->with('recovery_contact', $employerUser->employerNsrp->contact_person ?? $employerUser->name)
                 ->with('success',
-                    'Password reset for ' . ($employerUser->employerNsrp->company_name ?? $employerUser->name)
+                    'Password reset for ' . $company
                     . '. Read the temporary password below to them now — it is shown only once, '
                     . 'and they must change it the moment they log in.');
         }

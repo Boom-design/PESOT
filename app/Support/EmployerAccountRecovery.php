@@ -198,6 +198,50 @@ class EmployerAccountRecovery
         return $tempPassword;
     }
 
+    /**
+     * Reset only the password, by emailing a code. The contact is left alone.
+     *
+     * PESO, 2026-10-22: the two choices used to overlap. "Email them a code"
+     * was offered beside a tick-box that asked the desk to type a password,
+     * and ticking both produced a form that demanded a password and then
+     * ignored it — a code went out, and the password the desk had typed and
+     * read down the phone was never set on anything.
+     *
+     * One choice now, and it is the method. This is the half that was
+     * missing: the same person is still in charge, they simply cannot get in,
+     * and their inbox works — so the code goes to the address already on the
+     * account and nobody here learns the password.
+     *
+     * The audit row is written with the contact unchanged on both sides, like
+     * resetPassword(): somebody with admin rights opened a way into an
+     * account that is not theirs, and that is worth keeping whatever the
+     * reason.
+     *
+     * Returns false when the mail server refused it. The code is stored
+     * either way, so the employer can still get in through Forgot Password.
+     */
+    public static function resetByCode(User $employerUser, string $reason, User $actor): bool
+    {
+        $nsrp    = $employerUser->employerNsrp;
+        $staffId = Staff::where('user_id', $actor->users_id)->value('staff_id');
+        $email   = $employerUser->email;
+        $name    = $nsrp?->contact_person ?? $employerUser->name;
+
+        EmployerAccountTransfer::create([
+            'employer_id'             => $nsrp?->employer_nsrp_registrations_id,
+            'performed_by'            => $staffId,
+            'performed_by_user_id'    => $actor->users_id,
+            'method'                  => self::METHOD_RESET_CODE,
+            'previous_contact_person' => $nsrp?->contact_person,
+            'previous_email'          => $email,
+            'new_contact_person'      => $nsrp?->contact_person,
+            'new_email'               => $email,
+            'reason'                  => $reason,
+        ]);
+
+        return self::sendCode($email, $name);
+    }
+
     // ── Ang code gitipigan una sa dili pa mo-padala, mao nga ang pagkapakyas
     // ── sa mail server dili mo-guba sa handover — ma-resend ra kini pinaagi sa
     // ── Forgot Password sa login page. ──

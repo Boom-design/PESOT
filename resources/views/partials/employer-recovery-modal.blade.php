@@ -160,6 +160,13 @@
                             <strong style="color:var(--g-700);">Reset their password too</strong><br>
                             Tick this when the same person simply cannot get in. Leave it alone
                             when you are only editing the details above.
+                            {{-- This says WHAT to do; the two choices below say HOW.
+                                 They used to overlap: ticking this asked for a typed
+                                 password even with "Email them a code" chosen, and
+                                 then threw that password away. --}}
+                            <span style="display:block;margin-top:3px;color:var(--n-500);">
+                                Pick how below — a code to their inbox, or a password you read out.
+                            </span>
                             <span class="js-recover-reset-hint" style="display:block;margin-top:3px;color:var(--n-500);">
                                 Press Reset above to use this.
                             </span>
@@ -311,9 +318,15 @@
         const needed = contactEdited() || (resetBox && resetBox.checked);
         methodBlock.style.display = needed ? 'block' : 'none';
 
+        // Ang method ra ang nagsulti kung naay password nga isulat.
+        //
+        // PESO, 2026-10-22: `resetBox.checked ||` ania kaniadto, mao nga ang
+        // pagtsek sa Reset nagpagawas sa kahon bisan gipili ang "Email them a
+        // code" — ug ang gisulat nga password wala gyud gigamit. Ang checkbox
+        // nagsulti kung UNSA ang buhaton (ilisan ang password), ang radio
+        // kung UNSAON; dili sila managsama nga pangutana.
         if (tempBlock) {
-            const wantsPassword = (resetBox && resetBox.checked) || (needed && methodPicked());
-            tempBlock.style.display = wantsPassword ? 'block' : 'none';
+            tempBlock.style.display = (needed && methodPicked()) ? 'block' : 'none';
         }
     };
 
