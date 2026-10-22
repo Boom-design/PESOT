@@ -305,6 +305,15 @@ function markAllReadOnOpen() {
         confirmButtonText: 'OK',
     });
 @endif
+@if(session('notice'))
+    Swal.fire({
+        title: 'Heads up',
+        text: @json(session('notice')),
+        icon: 'info',
+        confirmButtonColor: '#28812F',
+        confirmButtonText: 'OK',
+    });
+@endif
 
 @if($errors->any())
     Swal.fire({

@@ -427,10 +427,12 @@ setInterval(refreshStaffNotifications, 20000);
     });
 @endif
 
-@if(session('info'))
+{{-- `notice` is the key every dashboard answers to; this layout's `info`
+     already meant the same thing here, so the two share one dialog. --}}
+@if(session('info') || session('notice'))
     Swal.fire({
         title: 'Note',
-        text: @json(session('info')),
+        text: @json(session('info') ?: session('notice')),
         icon: 'info',
         confirmButtonColor: '#175CD3',
         confirmButtonText: 'OK',

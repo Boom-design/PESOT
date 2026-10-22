@@ -330,6 +330,19 @@
         });
     @endif
 
+    {{-- A plain notice. `info` on this layout is the "Matching Jobs Found!"
+         dialog with an Apply Now button, so anything else flashed as `info`
+         here would offer the person a job list they never asked about. --}}
+    @if(session('notice'))
+        Swal.fire({
+            title: 'Heads up',
+            text: @json(session('notice')),
+            icon: 'info',
+            confirmButtonColor: '#28812F',
+            confirmButtonText: 'OK',
+        });
+    @endif
+
     @if(session('info'))
         Swal.fire({
             title: 'Matching Jobs Found!',

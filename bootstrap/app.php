@@ -20,6 +20,36 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->redirectGuestsTo(fn () => route('login'));
 
+        // ── Ang naka-login na nga mipindot ug Register.
+        // ──
+        // ── PESO, 2026-10-23: "pag mo register sila ug e select ang jobseeker
+        // ── e balik sila sa login". Dili bug sa ilang laptop — buhi pa ang
+        // ── ilang session gikan sa nauna nga pagsulay, ug ang `guest` nga
+        // ── middleware nag-abog sa naka-login. Ang gipadad-an mao ang
+        // ── default sa Laravel: wala tay route nga ginganlan ug `dashboard`
+        // ── o `home`, mao nga `/` — nga mao gyuy landing page nga nagdala sa
+        // ── login form. Ang nakita nila, login page, ug walay nagsulti ngano.
+        // ──
+        // ── Ipadala sila sa ILANG kaugalingon nga panid, ug sultihi sila.
+        // ── Ang usa ka tawo nga dili makasabot ngano gi-abog siya mosulay
+        // ── pag-usab, ug pag-usab. ──
+        \Illuminate\Auth\Middleware\RedirectIfAuthenticated::redirectUsing(function () {
+            $user = \Illuminate\Support\Facades\Auth::user();
+
+            session()->flash('notice',
+                'You are already signed in'
+                . ($user?->name ? ' as ' . $user->name : '')
+                . '. Log out first if you want to register another account.');
+
+            return match ($user?->role) {
+                'admin'     => route('admin.dashboard'),
+                'company'   => route('company.dashboard'),
+                'staff'     => route('staff.dashboard'),
+                'jobseeker' => route('jobseeker.dashboard'),
+                default     => route('login'),
+            };
+        });
+
         // ── Ang employer nga gihatagan ug temporary password sa opisina dili
         // ── makaabot sa bisan unsang page hangtod mo-ilis siya. Naa sa web
         // ── group aron walay route nga malaktawan. ──
