@@ -42,6 +42,19 @@ Schedule::command('jobfair:update-event-statuses')->dailyAt('00:05');
 // ── nga basahon niini. ──
 Schedule::command('jobfair:open-postings')->dailyAt('00:10');
 
+// ── Ang qualified nga jobseeker masultihan sa bakante sa fair.
+// ──
+// ── PESO Job Fair staff, 2026-10-23: duha ni ka buton kaniadto sa matag
+// ── bakante, gipindot pinaagi sa kamot. Usa ka fair nagdala ug daghang
+// ── bakante, ug ang pagpindot dili man desisyon — ang lagda ang nagpili
+// ── kinsa ang ma-text. Ang nalimtan nga pindot dili makita: ang tawo nga
+// ── unta nakadungog wala nakadungog, ug walay nakahibalo hangtod human na
+// ── ang fair.
+// ──
+// ── Modagan human sa open-postings: ang bakante nga giablihan karong gabii
+// ── maapil dayon, imbis maghulat pag usa pa ka adlaw. ──
+Schedule::command('jobfair:notify-qualified')->dailyAt('00:30');
+
 // ── Employer Requirements — daily check para i-notify ang employer 1 week sa dili pa ma-expire ang usa ka document ──
 Schedule::command('employer-requirements:send-expiry-warnings')->dailyAt('07:00');
 

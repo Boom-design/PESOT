@@ -253,9 +253,7 @@
         // Ang text gikan dinhi ug dili gikan sa usa ka kinatibuk-ang blast page:
         // ang staff makakita kinsa ang padad-an sa dili pa siya mopadala.
         Route::get('/staff/jobfair/postings/{id}/applicants', [StaffWebController::class, 'jobFairApplicants'])->whereNumber('id')->name('staff.jobfair.postings.applicants');
-        Route::post('/staff/jobfair/postings/{id}/notify',    [StaffWebController::class, 'notifyJobFairApplicants'])->whereNumber('id')->name('staff.jobfair.postings.notify');
         // Ang wala pa ni-apply apan qualified. Lahi nga buton, lahi nga teksto.
-        Route::post('/staff/jobfair/postings/{id}/notify-prospects', [StaffWebController::class, 'notifyJobFairProspects'])->whereNumber('id')->name('staff.jobfair.postings.notifyProspects');
 
         // ── STAFF IN-HOUSE ──
         Route::get('/staff/inhouse/jobfair',                  [StaffWebController::class, 'jobFairViewOnly'])->name('staff.inhouse.jobfair');

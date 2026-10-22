@@ -1555,17 +1555,16 @@ $nsrp = $registration->nsrp;
             ->paginate(10)
             ->withQueryString();
 
-        $event = $this->jobFairEventOf($job);
+        $event = \App\Support\JobFairNotifier::eventOf($job);
 
-        // Kinsa gyud ang maabot sa text — human sa pagkuha sa na-text na, sa
-        // walay numero, ug sa mi-opt out. Wala ni nagsalig sa tab nga giablihan:
-        // usa ra ka buton ang naa, ug ang padad-an niini kanunay nga ang
-        // Highly Qualified ug ang Qualified.
-        $recipients = $this->jobFairTierRecipients($job, 'notifiable');
-
-        // Ang wala pa ni-apply apan mopasar sa sukdanan. Sila ang bugtong
-        // padad-an nga makakat-on ug bag-o gikan sa text.
-        $prospects = $this->jobFairProspectRecipients($job);
+        // ── Ang numero ra, wala nay buton.
+        // ──
+        // ── Ang pagpadala nahimo nang gabii-gabii (jobfair:notify-qualified),
+        // ── mao nga ang gipangutana sa panid kay "pila na ang nasultihan ug
+        // ── pila pa ang moabot karong gabii", dili na "kinsa ang akong
+        // ── padad-an". Usa ra ka tinubdan sa lagda — ang notifier — aron ang
+        // ── gipakita ug ang tinuod nga ipadala dili gyud magkalahi. ──
+        $pending = \App\Support\JobFairNotifier::pending($job);
 
         return view('staff.job_fair.applicants', [
             'job'               => $job,
@@ -1578,148 +1577,18 @@ $nsrp = $registration->nsrp;
             'gateMet'           => $event ? \App\Support\JobFairAudience::gateMet($event) : false,
             'confirmedCount'    => $event ? \App\Support\JobFairAudience::confirmedCount($event) : 0,
             'threshold'         => \App\Support\JobFairAudience::threshold(),
-            'smsText'           => $event ? $this->jobFairApplicantSmsText($job, $event) : null,
+            'smsText'           => $event ? \App\Support\JobFairNotifier::applicantSmsText($job, $event) : null,
             'smsLive'           => \App\Support\PhilSms::enabled(),
-            'reachable'         => $recipients['reachable'],
-            'alreadyNotified'   => $recipients['already'],
+            'reachable'         => $pending['applicants_waiting'],
+            'alreadyNotified'   => $pending['applicants_told'],
 
-            'prospectRows'      => $prospects['rows'],
-            'prospectReachable' => $prospects['reachable'],
-            'prospectAlready'   => $prospects['already'],
-            'prospectSmsText'   => $event ? $this->jobFairProspectSmsText($job, $event) : null,
+            'prospectReachable' => $pending['prospects_waiting'],
+            'prospectAlready'   => $pending['prospects_told'],
+            'prospectSmsText'   => $event ? \App\Support\JobFairNotifier::prospectSmsText($job, $event) : null,
             'matchThreshold'    => \App\Support\JobFairAudience::matchThreshold(),
         ]);
     }
 
-    /**
-     * Send the job fair notice to one tier of applicants.
-     */
-    public function notifyJobFairApplicants(Request $request, $id)
-    {
-        $staff = $this->authStaff();
-        if (!$staff || $staff->staff_role !== 'job_fair') return redirect()->route('login');
-
-        // Walay tier nga gikuha gikan sa request.
-        //
-        // Usa ka buton, usa ka padad-an: ang Highly Qualified ug ang Qualified.
-        // Ang Not Qualified dili gyud maabot sa text, ug dili na siya
-        // makasulod bisan pag hilabtan ang porma — walay input nga mahimong
-        // usbon aron makasulod siya.
-
-        $job = \App\Models\Job::with('company')
-            ->where('schedule_type', 'job_fair')
-            ->findOrFail($id);
-
-        $back = redirect()->route('staff.jobfair.postings.applicants', [
-            'id' => $job->job_qualifications_id,
-        ]);
-
-        $event = $this->jobFairEventOf($job);
-        if (!$event) {
-            return $back->with('error', 'This vacancy is not on a job fair yet. Post it to a fair first.');
-        }
-
-        // Parehas nga gate sa nawala nga send page: walay jobseeker nga
-        // masultihan hangtod igo na ang employer nga mi-confirm nga motambong.
-        if (!\App\Support\JobFairAudience::gateMet($event)) {
-            return $back->with('error', 'Only ' . \App\Support\JobFairAudience::confirmedCount($event)
-                . ' of ' . \App\Support\JobFairAudience::threshold()
-                . ' employers have confirmed for ' . $event->title
-                . '. Jobseekers cannot be notified yet.');
-        }
-
-        $throttleKey = 'jobfair-applicant-notify:' . $staff->staff_id;
-        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($throttleKey, 5)) {
-            $wait = \Illuminate\Support\Facades\RateLimiter::availableIn($throttleKey);
-            return $back->with('error', 'Too many notifications sent in a short time. Please wait ' . $wait . ' seconds.');
-        }
-        \Illuminate\Support\Facades\RateLimiter::hit($throttleKey, 600);
-
-        $resolved  = $this->jobFairTierRecipients($job, 'notifiable');
-        $rows      = $resolved['rows'];
-        $breakdown = $resolved['breakdown'];
-
-        if ($rows->isEmpty()) {
-            return $back->with('error', $resolved['already'] > 0
-                ? 'Every qualified applicant has already been notified about this vacancy.'
-                : 'No applicant reaches the qualified mark for this vacancy yet.');
-        }
-
-        $smsText   = $this->jobFairApplicantSmsText($job, $event);
-        $tierLabel = 'qualified';
-        $company   = $job->company->company_name ?? 'an employer';
-        $eventDate = $event->event_date?->format('M d, Y') ?? 'the event date';
-
-        // Usa ka announcement kada tawo, dili sendToJobseekers, kay ang
-        // sangputanan sa text gitipigan sa matag laray.
-        $created = [];
-        foreach ($rows as $row) {
-            $created[] = [
-                'number'       => $row['number'],
-                'announcement' => \App\Models\Announcement::create([
-                    'type'           => 'job_fair',
-                    'title'          => 'Job Fair Vacancy For You 💼',
-                    'message'        => 'You qualify for "' . $job->title . '" by ' . $company
-                                        . ', which is being brought to ' . $event->title
-                                        . ' on ' . $eventDate . '. Bring your resume and a valid ID.',
-                    // Ang jobseeker nga mo-klik moadto sa bakante mismo. Kini
-                    // pud ang timailhan nga na-text na siya para niini nga
-                    // bakante, mao nga ang sunod nga pindot dili na mag-doble.
-                    'reference_type' => 'job',
-                    'reference_id'   => $job->job_qualifications_id,
-                    'jobseeker_id'   => $row['id'],
-                    'sms_status'     => 'pending',
-                ]),
-            ];
-        }
-
-        $result      = \App\Support\PhilSms::send(array_column($breakdown['sendable'], 'number'), $smsText);
-        $now         = now();
-        $sentNumbers = array_flip($result['sent']);
-
-        foreach ($created as $entry) {
-            $number       = $entry['number'];
-            $announcement = $entry['announcement'];
-
-            if ($number !== null && isset($sentNumbers[$number])) {
-                $announcement->update([
-                    'sms_status'  => 'sent',
-                    'sms_sent_at' => $now,
-                    'sms_error'   => null,
-                ]);
-            } elseif ($number !== null && isset($result['failed'][$number])) {
-                $announcement->update([
-                    'sms_status' => 'failed',
-                    'sms_error'  => \Illuminate\Support\Str::limit($result['failed'][$number], 250),
-                ]);
-            } else {
-                // Walay numero, dili magamit nga numero, o mi-opt out — ang
-                // in-app nga notice naa gihapon, walay ma-text lang.
-                $announcement->update(['sms_status' => 'not_applicable']);
-            }
-        }
-
-        $sentCount   = count($result['sent']);
-        $failedCount = count($result['failed']);
-        $skipped     = $rows->count() - $sentCount - $failedCount;
-
-        $summary = $rows->count() . ' ' . $tierLabel . ' applicant(s) notified, '
-                 . $sentCount . ' text message(s) sent';
-        if (!\App\Support\PhilSms::enabled()) {
-            $summary .= ' (test mode — nothing was actually sent)';
-        }
-        if ($failedCount > 0) {
-            $summary .= ', ' . $failedCount . ' failed';
-        }
-        if ($skipped > 0) {
-            $summary .= ', ' . $skipped . ' with no usable number';
-        }
-        if ($resolved['already'] > 0) {
-            $summary .= ', ' . $resolved['already'] . ' already notified earlier';
-        }
-
-        return $back->with($failedCount > 0 ? 'warning' : 'success', $summary . '.');
-    }
 
     /**
      * One tier of applicants on one vacancy. The same boundaries the employer
@@ -1742,287 +1611,12 @@ $nsrp = $registration->nsrp;
         };
     }
 
-    /**
-     * The qualified non-applicants for one vacancy, minus anyone already texted.
-     *
-     * Same shape as jobFairTierRecipients() so one sender can serve both, but
-     * the dedupe key is its own announcement type: a person may be worth one
-     * text as a prospect and, once they apply, one more as an applicant on the
-     * day. Two messages, two purposes, neither repeated.
-     */
-    private function jobFairProspectRecipients(\App\Models\Job $job): array
-    {
-        $notified = \App\Models\Announcement::where('type', 'job_fair_prospect')
-            ->where('reference_type', 'job')
-            ->where('reference_id', $job->job_qualifications_id)
-            ->whereNotNull('jobseeker_id')
-            ->pluck('jobseeker_id')
-            ->flip();
 
-        $rows    = collect();
-        $already = 0;
 
-        foreach (\App\Support\JobFairAudience::qualifiedForJob($job) as $registration) {
-            if ($notified->has($registration->jobseeker_registrations_id)) {
-                $already++;
-                continue;
-            }
 
-            $rows->push(\App\Support\JobFairAudience::jobseekerRow($registration));
-        }
 
-        $breakdown = \App\Support\JobFairAudience::breakdown($rows);
 
-        return [
-            'rows'      => $rows,
-            'breakdown' => $breakdown,
-            'reachable' => count($breakdown['sendable']),
-            'already'   => $already,
-        ];
-    }
 
-    /**
-     * The text for someone who has not applied yet.
-     *
-     * It has to do one thing the applicant message does not: say what to do
-     * next. The applicant is already on the list; this person is not, and a
-     * text that only says "you qualify" leaves them with nowhere to go.
-     */
-    private function jobFairProspectSmsText(\App\Models\Job $job, \App\Models\JobFairEvent $event): string
-    {
-        $when  = $event->event_date?->format('M d, Y') ?? '';
-        $where = $this->jobFairSmsVenue($event);
-
-        $text = 'PESO CDO: You qualify for ' . $job->title
-              . ' (' . ($job->company->company_name ?? 'an employer') . ')'
-              . ' at ' . $event->title
-              . ($when ? ' on ' . $when : '')
-              . ($where ? ', ' . $where : '')
-              . '. Log in to the PESO website and apply, then bring your resume'
-              . ' and valid ID on the day. Do not reply.';
-
-        // Tulo ka message part ang kinatas-an, parehas sa applicant nga teksto.
-        return \Illuminate\Support\Str::limit($text, 459, '');
-    }
-
-    /**
-     * Text the people who qualify for this vacancy but have not applied.
-     */
-    public function notifyJobFairProspects(Request $request, $id)
-    {
-        $staff = $this->authStaff();
-        if (!$staff || $staff->staff_role !== 'job_fair') return redirect()->route('login');
-
-        $job = \App\Models\Job::with('company')
-            ->where('schedule_type', 'job_fair')
-            ->findOrFail($id);
-
-        $back = redirect()->route('staff.jobfair.postings.applicants', [
-            'id' => $job->job_qualifications_id,
-        ]);
-
-        $event = $this->jobFairEventOf($job);
-        if (!$event) {
-            return $back->with('error', 'This vacancy is not on a job fair yet. Post it to a fair first.');
-        }
-
-        if (!\App\Support\JobFairAudience::gateMet($event)) {
-            return $back->with('error', 'Only ' . \App\Support\JobFairAudience::confirmedCount($event)
-                . ' of ' . \App\Support\JobFairAudience::threshold()
-                . ' employers have confirmed for ' . $event->title
-                . '. Jobseekers cannot be notified yet.');
-        }
-
-        $throttleKey = 'jobfair-prospect-notify:' . $staff->staff_id;
-        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($throttleKey, 5)) {
-            $wait = \Illuminate\Support\Facades\RateLimiter::availableIn($throttleKey);
-            return $back->with('error', 'Too many notifications sent in a short time. Please wait ' . $wait . ' seconds.');
-        }
-        \Illuminate\Support\Facades\RateLimiter::hit($throttleKey, 600);
-
-        $resolved  = $this->jobFairProspectRecipients($job);
-        $rows      = $resolved['rows'];
-        $breakdown = $resolved['breakdown'];
-
-        if ($rows->isEmpty()) {
-            return $back->with('error', $resolved['already'] > 0
-                ? 'Everyone who qualifies for this vacancy has already been invited to apply.'
-                : 'Nobody reaches ' . \App\Support\JobFairAudience::matchThreshold()
-                  . '% for this vacancy who has not already applied.');
-        }
-
-        $smsText   = $this->jobFairProspectSmsText($job, $event);
-        $company   = $job->company->company_name ?? 'an employer';
-        $eventDate = $event->event_date?->format('M d, Y') ?? 'the event date';
-
-        $created = [];
-        foreach ($rows as $row) {
-            $created[] = [
-                'number'       => $row['number'],
-                'announcement' => \App\Models\Announcement::create([
-                    'type'           => 'job_fair_prospect',
-                    'title'          => 'You Qualify For This Job Fair Vacancy 💼',
-                    'message'        => 'You qualify for "' . $job->title . '" by ' . $company
-                                        . ', which is being brought to ' . $event->title
-                                        . ' on ' . $eventDate . '. Apply now, then bring your'
-                                        . ' resume and a valid ID on the day.',
-                    'reference_type' => 'job',
-                    'reference_id'   => $job->job_qualifications_id,
-                    'jobseeker_id'   => $row['id'],
-                    'sms_status'     => 'pending',
-                ]),
-            ];
-        }
-
-        $result      = \App\Support\PhilSms::send(array_column($breakdown['sendable'], 'number'), $smsText);
-        $now         = now();
-        $sentNumbers = array_flip($result['sent']);
-
-        foreach ($created as $entry) {
-            $number       = $entry['number'];
-            $announcement = $entry['announcement'];
-
-            if ($number !== null && isset($sentNumbers[$number])) {
-                $announcement->update([
-                    'sms_status'  => 'sent',
-                    'sms_sent_at' => $now,
-                    'sms_error'   => null,
-                ]);
-            } elseif ($number !== null && isset($result['failed'][$number])) {
-                $announcement->update([
-                    'sms_status' => 'failed',
-                    'sms_error'  => \Illuminate\Support\Str::limit($result['failed'][$number], 250),
-                ]);
-            } else {
-                $announcement->update(['sms_status' => 'not_applicable']);
-            }
-        }
-
-        $sentCount   = count($result['sent']);
-        $failedCount = count($result['failed']);
-        $skipped     = $rows->count() - $sentCount - $failedCount;
-
-        $summary = $rows->count() . ' qualified jobseeker(s) invited to apply, '
-                 . $sentCount . ' text message(s) sent';
-        if (!\App\Support\PhilSms::enabled()) {
-            $summary .= ' (test mode — nothing was actually sent)';
-        }
-        if ($failedCount > 0) {
-            $summary .= ', ' . $failedCount . ' failed';
-        }
-        if ($skipped > 0) {
-            $summary .= ', ' . $skipped . ' with no usable number';
-        }
-        if ($resolved['already'] > 0) {
-            $summary .= ', ' . $resolved['already'] . ' already invited earlier';
-        }
-
-        return $back->with($failedCount > 0 ? 'warning' : 'success', $summary . '.');
-    }
-
-    /**
-     * Which fair a vacancy was posted to. A vacancy is carried to one fair at a
-     * time, so the newest request is the answer.
-     */
-    private function jobFairEventOf(\App\Models\Job $job): ?\App\Models\JobFairEvent
-    {
-        $request = \App\Models\JobFairEmploymentRequest::where('job_id', $job->job_qualifications_id)
-            ->latest('job_fair_employment_requests_id')
-            ->first();
-
-        return $request
-            ? \App\Models\JobFairEvent::find($request->job_fair_id)
-            : null;
-    }
-
-    /**
-     * Everyone in one tier who has not been texted about this vacancy yet,
-     * split into who can receive a text and who cannot.
-     */
-    private function jobFairTierRecipients(\App\Models\Job $job, string $filter): array
-    {
-        $applications = $this->jobFairTierQuery($job->job_qualifications_id, $filter)
-            ->with('jobseeker')
-            ->get();
-
-        // Ang na-notify na para niini nga bakante wala na apila. Bayad ang matag
-        // text, ug ang pagpindot pag-usab dili angay mag-doble sa gasto.
-        $notified = \App\Models\Announcement::where('type', 'job_fair')
-            ->where('reference_type', 'job')
-            ->where('reference_id', $job->job_qualifications_id)
-            ->whereNotNull('jobseeker_id')
-            ->pluck('jobseeker_id')
-            ->flip();
-
-        $rows    = collect();
-        $already = 0;
-
-        foreach ($applications as $application) {
-            $registration = $application->jobseeker;
-            if (!$registration) continue;
-
-            if ($notified->has($registration->jobseeker_registrations_id)) {
-                $already++;
-                continue;
-            }
-
-            $rows->push(\App\Support\JobFairAudience::jobseekerRow($registration));
-        }
-
-        $breakdown = \App\Support\JobFairAudience::breakdown($rows);
-
-        return [
-            'rows'      => $rows,
-            'breakdown' => $breakdown,
-            'reachable' => count($breakdown['sendable']),
-            'already'   => $already,
-        ];
-    }
-
-    /**
-     * The text message itself. Staff does not type it — one wording for every
-     * send keeps the length, and therefore the cost, predictable, and it is
-     * shown on screen before the button is pressed.
-     */
-    private function jobFairApplicantSmsText(\App\Models\Job $job, \App\Models\JobFairEvent $event): string
-    {
-        $when = $event->event_date?->format('M d, Y') ?? '';
-        $time = $event->event_time
-            ? \Carbon\Carbon::parse($event->event_time)->format('g:i A')
-            : '';
-
-        $text = 'PESO CDO: You qualify for ' . $job->title
-              . ' (' . ($job->company->company_name ?? 'an employer') . ')'
-              . ' at ' . $event->title
-              . ($when ? ' on ' . $when : '')
-              . ($time ? ' ' . $time : '')
-              . (($where = $this->jobFairSmsVenue($event)) ? ', ' . $where : '')
-              . '. Bring your resume and valid ID. Do not reply.';
-
-        // Tulo ka message part ang kinatas-an, parehas sa nawala nga send page.
-        return \Illuminate\Support\Str::limit($text, 459, '');
-    }
-
-    /**
-     * Where the fair is, the way a text message should say it.
-     *
-     * PESO CDO client, 2026-09-13: the SMS named the venue ("Limketkai Center
-     * Atrium") but not where it is, and a jobseeker who does not already know
-     * the place has nothing to find it with. The address is added after the
-     * name. Either may be blank on an event, so each is only added when it is
-     * there, and an address that merely repeats the name is not said twice.
-     */
-    private function jobFairSmsVenue(\App\Models\JobFairEvent $event): string
-    {
-        $name    = trim((string) $event->venue);
-        $address = trim((string) $event->venue_address);
-
-        if ($address !== '' && stripos($name, $address) !== false) {
-            $address = '';
-        }
-
-        return implode(', ', array_filter([$name, $address], fn($part) => $part !== ''));
-    }
 
     // ───────────────────────────────
     // JOB FAIR — JOB POSTINGS (Closed = naghulat pa sa event; Open = na-post na)

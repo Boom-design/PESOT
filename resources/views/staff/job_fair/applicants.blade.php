@@ -62,178 +62,87 @@
     </div>
 </div>
 
-{{-- ── ANG BUTON ──
-     Ang staff makakita sa tulo ka butang sa dili pa siya mopindot: pila ang
-     tinuod nga maabot, unsa gyud ang mensahe, ug kung nabayran ba ni o test
-     mode. Ang na-text na para niini nga bakante wala na apila, mao nga ang
-     pagpindot pag-usab dili mag-doble sa gasto. --}}
+{{-- ── WALA NAY BUTON ──
+
+     PESO Job Fair staff, 2026-10-23: duha ni ka buton kaniadto, gipindot sa
+     matag bakante. Usa ka fair nagdala ug daghang bakante, ug ang pagpindot
+     dili man desisyon — ang lagda ang nagpili kinsa ang ma-text. Ang
+     nalimtan nga pindot dili makita: ang tawo nga unta nakadungog wala
+     nakadungog, ug walay nakahibalo hangtod human na ang fair.
+
+     Ang panid nagsulti na lang karon kung unsay nahitabo ug unsay sunod. --}}
 <div class="card border-0 shadow-sm rounded-3 mb-4">
     <div class="card-body p-4">
-        <div class="d-flex align-items-start gap-3 flex-wrap">
-            <div class="flex-grow-1" style="min-width:260px;">
-                <div class="fw-bold mb-1" style="color:var(--g-700);font-size:14px;">
-                    <i class="ph-fill ph-paper-plane-tilt me-1" style="color:var(--g-600);"></i>
-                    Notify the qualified applicants
-                </div>
-                <div style="font-size:12.5px;color:var(--n-500);">
-                    One message to the <strong>Highly Qualified</strong> and the
-                    <strong>Qualified</strong> together — {{ $notifyTotal }} applicant(s),
-                    of whom <strong>{{ $reachable }}</strong> can receive a text right now.
-                    @if($alreadyNotified > 0)
-                        {{ $alreadyNotified }} were already notified about this vacancy and are skipped.
-                    @endif
-                    <div class="mt-1" style="color:var(--n-400);">
-                        <i class="ph-fill ph-prohibit me-1"></i>
-                        Not Qualified applicants are never texted about this vacancy.
-                    </div>
-                </div>
+        <div class="fw-bold mb-2" style="color:var(--g-700);font-size:14px;">
+            <i class="ph-fill ph-paper-plane-tilt me-1" style="color:var(--g-600);"></i>
+            Qualified jobseekers are told automatically
+        </div>
 
-                @if($smsText)
-                    <div class="mt-3 p-3 rounded-3"
-                         style="background:var(--n-50);border:1px solid var(--n-200);
-                                font-size:12.5px;color:var(--n-700);">
-                        {{ $smsText }}
-                    </div>
-                    <div class="mt-1" style="font-size:11px;color:var(--n-500);">
-                        {{ mb_strlen($smsText) }} characters ·
-                        {{ \App\Support\PhilSms::segments($smsText) }} message part(s) per recipient ·
-                        recipients cannot reply to this number.
-                    </div>
-                @endif
+        @if(!$event)
+            <div class="p-3 rounded-3"
+                 style="background:var(--warn-bg);border:1px solid var(--warn);
+                        font-size:12.5px;color:var(--warn);">
+                This vacancy is not on a job fair yet, so nobody is being told about it.
+            </div>
+        @elseif(!$gateMet)
+            <div class="p-3 rounded-3"
+                 style="background:var(--warn-bg);border:1px solid var(--warn);
+                        font-size:12.5px;color:var(--warn);">
+                {{ $confirmedCount }} of {{ $threshold }} employers confirmed for
+                {{ $event->title }}. Nothing goes out until the rest confirm.
+            </div>
+        @elseif($job->status !== 'open')
+            <div class="p-3 rounded-3"
+                 style="background:var(--n-50);border:1px solid var(--n-200);
+                        font-size:12.5px;color:var(--n-500);">
+                This vacancy is still closed until the posting cutoff. Jobseekers are told
+                once it opens — there is nothing for them to apply to before that.
+            </div>
+        @else
+            <div style="font-size:12.5px;color:var(--n-500);">
+                Every night, anyone who reaches the mark for this vacancy and has not been
+                told about it yet is sent a text. Nobody is told twice, and
+                <strong>Not Qualified</strong> applicants are never texted.
+            </div>
+        @endif
 
+        <div class="row g-2 mt-2">
+            <div class="col-sm-6">
+                <div class="p-3 rounded-3 h-100" style="background:var(--n-50);border:1px solid var(--n-200);">
+                    <div style="font-size:11.5px;color:var(--n-500);">Applicants on this vacancy</div>
+                    <div class="fw-bold" style="color:var(--g-700);font-size:13px;">
+                        {{ $alreadyNotified }} told &middot; {{ $reachable }} still to go
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6">
+                <div class="p-3 rounded-3 h-100" style="background:var(--n-50);border:1px solid var(--n-200);">
+                    <div style="font-size:11.5px;color:var(--n-500);">
+                        Qualified who have not applied
+                    </div>
+                    <div class="fw-bold" style="color:var(--g-700);font-size:13px;">
+                        {{ $prospectAlready }} told &middot; {{ $prospectReachable }} still to go
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if($smsText)
+            <div class="mt-3" style="font-size:11.5px;color:var(--n-500);">The message they receive</div>
+            <div class="mt-1 p-3 rounded-3"
+                 style="background:var(--n-50);border:1px solid var(--n-200);
+                        font-size:12.5px;color:var(--n-700);">
+                {{ $smsText }}
+            </div>
+            <div class="mt-1" style="font-size:11px;color:var(--n-500);">
+                {{ mb_strlen($smsText) }} characters &middot;
+                {{ \App\Support\PhilSms::segments($smsText) }} message part(s) per recipient &middot;
+                recipients cannot reply to this number.
                 @unless($smsLive)
-                    <div class="mt-2 p-2 rounded-3"
-                         style="background:var(--warn-bg);border:1px solid var(--warn-br);
-                                font-size:12px;color:var(--warn);">
-                        <i class="ph-fill ph-flask me-1"></i>
-                        Test mode — the SMS gateway is switched off, so nothing is actually sent
-                        and nothing is charged. The in-app notification still goes out.
-                    </div>
+                    <span style="color:var(--warn);font-weight:600;">Test mode — nothing is actually sent.</span>
                 @endunless
             </div>
-
-            <div style="min-width:200px;">
-                @if(!$event)
-                    <div class="p-3 rounded-3"
-                         style="background:var(--warn-bg);border:1px solid var(--warn-br);
-                                font-size:12px;color:var(--warn);">
-                        This vacancy is not on a job fair yet. Post it to a fair first.
-                    </div>
-                @elseif(!$gateMet)
-                    <div class="p-3 rounded-3"
-                         style="background:var(--warn-bg);border:1px solid var(--warn-br);
-                                font-size:12px;color:var(--warn);">
-                        {{ $confirmedCount }} of {{ $threshold }} employers confirmed for
-                        {{ $event->title }} — jobseekers cannot be notified yet.
-                    </div>
-                @elseif($reachable === 0)
-                    <div class="p-3 rounded-3"
-                         style="background:var(--n-50);border:1px solid var(--n-200);
-                                font-size:12px;color:var(--n-500);">
-                        No qualified applicant left to notify.
-                    </div>
-                @else
-                    <form method="POST"
-                          action="{{ route('staff.jobfair.postings.notify', $job->job_qualifications_id) }}"
-                          id="notifyForm">
-                        @csrf
-                        <button type="button" id="notifyButton" class="btn w-100 fw-semibold"
-                            data-count="{{ $reachable }}"
-                            style="background:var(--g-600);color:#fff;border:none;border-radius:10px;
-                                   padding:11px;font-size:13px;">
-                            <i class="ph-fill ph-chat-circle-text me-1"></i>
-                            Send SMS Notification
-                        </button>
-                    </form>
-                @endif
-            </div>
-        </div>
-    </div>
-</div>
-
-{{-- ── ANG IKADUHANG BUTON: ANG WALA PA NI-APPLY ──
-
-     Ang buton sa ibabaw nagsulti sa tawo nga ni-apply na. Makita na niya ang
-     iyang kaugalingong match sa iyang applications page, mao nga ang text
-     nagsulti kaniya sa butang nga nahibaw-an na niya, ug ang bayad walay
-     napalit.
-
-     Kining usa nagsulti sa tawo nga mopasar sa sukdanan apan wala pa gyud
-     nakadungog. Siya ang bugtong padad-an nga makakat-on ug bag-o gikan sa
-     text — ug ang mensahe niya nagsulti kung unsay sunod nga buhaton, dili
-     lang nga qualified siya. --}}
-<div class="card border-0 shadow-sm rounded-3 mb-4">
-    <div class="card-body p-4">
-        <div class="d-flex align-items-start gap-3 flex-wrap">
-            <div class="flex-grow-1" style="min-width:260px;">
-                <div class="fw-bold mb-1" style="color:var(--g-700);font-size:14px;">
-                    <i class="ph-fill ph-user-plus me-1" style="color:var(--g-600);"></i>
-                    Invite the qualified who have not applied
-                </div>
-                <div style="font-size:12.5px;color:var(--n-500);">
-                    <strong>{{ $prospectRows->count() }}</strong> jobseeker(s) reach
-                    {{ $matchThreshold }}% for this vacancy and have not applied to it,
-                    of whom <strong>{{ $prospectReachable }}</strong> can receive a text right now.
-                    @if($prospectAlready > 0)
-                        {{ $prospectAlready }} were already invited for this vacancy and are skipped.
-                    @endif
-                    <div class="mt-1" style="color:var(--n-400);">
-                        <i class="ph-fill ph-info me-1"></i>
-                        Anyone whose NSRP classification does not cover this kind of work is
-                        never texted about it.
-                    </div>
-                </div>
-
-                @if($prospectSmsText)
-                    <div class="mt-3 p-3 rounded-3"
-                         style="background:var(--n-50);border:1px solid var(--n-200);
-                                font-size:12.5px;color:var(--n-700);">
-                        {{ $prospectSmsText }}
-                    </div>
-                    <div class="mt-1" style="font-size:11px;color:var(--n-500);">
-                        {{ mb_strlen($prospectSmsText) }} characters ·
-                        {{ \App\Support\PhilSms::segments($prospectSmsText) }} message part(s) per recipient ·
-                        recipients cannot reply to this number.
-                    </div>
-                @endif
-            </div>
-
-            <div style="min-width:200px;">
-                @if(!$event)
-                    <div class="p-3 rounded-3"
-                         style="background:var(--warn-bg);border:1px solid var(--warn-br);
-                                font-size:12px;color:var(--warn);">
-                        This vacancy is not on a job fair yet. Post it to a fair first.
-                    </div>
-                @elseif(!$gateMet)
-                    <div class="p-3 rounded-3"
-                         style="background:var(--warn-bg);border:1px solid var(--warn-br);
-                                font-size:12px;color:var(--warn);">
-                        {{ $confirmedCount }} of {{ $threshold }} employers confirmed for
-                        {{ $event->title }} — jobseekers cannot be notified yet.
-                    </div>
-                @elseif($prospectReachable === 0)
-                    <div class="p-3 rounded-3"
-                         style="background:var(--n-50);border:1px solid var(--n-200);
-                                font-size:12px;color:var(--n-500);">
-                        Nobody left to invite for this vacancy.
-                    </div>
-                @else
-                    <form method="POST"
-                          action="{{ route('staff.jobfair.postings.notifyProspects', $job->job_qualifications_id) }}"
-                          id="prospectForm">
-                        @csrf
-                        <button type="button" id="prospectButton" class="btn w-100 fw-semibold"
-                            data-count="{{ $prospectReachable }}"
-                            style="background:var(--g-600);color:#fff;border:none;border-radius:10px;
-                                   padding:11px;font-size:13px;">
-                            <i class="ph-fill ph-paper-plane-tilt me-1"></i>
-                            Invite Them to Apply
-                        </button>
-                    </form>
-                @endif
-            </div>
-        </div>
+        @endif
     </div>
 </div>
 
@@ -382,49 +291,6 @@
         }, 500);
     });
 
-    // Usa ka pangutana sa dili pa mogasto. Ang numero mao gyud ang ipadala,
-    // gikwenta sa server, dili gikan sa gipakita nga pahina.
-    document.getElementById('notifyButton')?.addEventListener('click', function () {
-        const count = this.dataset.count;
-
-        Swal.fire({
-            title: 'Send the text message?',
-            html: '<div style="font-size:14px;">This texts <strong>' + count + '</strong> applicant(s) — '
-                  + 'the highly qualified and the qualified together. Not Qualified applicants are not texted. '
-                  + 'Every message is paid for and cannot be taken back.</div>',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Send now',
-            cancelButtonText: 'Cancel',
-            confirmButtonColor: '#2e7d32',
-        }).then((result) => {
-            if (result.isConfirmed) {
-                this.disabled = true;
-                document.getElementById('notifyForm').submit();
-            }
-        });
-    });
-
-    document.getElementById('prospectButton')?.addEventListener('click', function () {
-        const count = this.dataset.count;
-
-        Swal.fire({
-            title: 'Invite them to apply?',
-            html: '<div style="font-size:14px;">This texts <strong>' + count + '</strong> jobseeker(s) '
-                  + 'who qualify for this vacancy but have not applied to it. '
-                  + 'Every message is paid for and cannot be taken back.</div>',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Send now',
-            cancelButtonText: 'Cancel',
-            confirmButtonColor: '#2e7d32',
-        }).then((result) => {
-            if (result.isConfirmed) {
-                this.disabled = true;
-                document.getElementById('prospectForm').submit();
-            }
-        });
-    });
 </script>
 @endpush
 

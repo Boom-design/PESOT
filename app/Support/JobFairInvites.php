@@ -291,7 +291,61 @@ class JobFairInvites
             'reference_id'   => $event->job_fair_events_id,
         ], $new->pluck('employer_nsrp_registrations_id'));
 
+        self::emailInvitations($event, $new, $deadline);
+
         return $new->count();
+    }
+
+    /**
+     * The same invitation, in their inbox.
+     *
+     * PESO, 2026-10-23: the bell notice only reaches an employer who happens
+     * to sign in, and this is the notice with a clock on it — after the
+     * deadline the office invites somebody else. The one invitation that
+     * matters most was the one easiest to miss.
+     *
+     * Nothing is accepted or declined from the email. It says a fair is on
+     * and by when they must answer; the answer is given on their own page,
+     * where the office can see it.
+     *
+     * One failure never stops the rest, and no failure undoes the invitation
+     * — the participant rows are already written and the bell notice already
+     * sent. Same reasoning as the requirements emails.
+     */
+    private static function emailInvitations(JobFairEvent $event, Collection $employers, $deadline): void
+    {
+        $when  = $event->event_date?->format('F d, Y') ?? '';
+        $time  = $event->event_time
+            ? \Carbon\Carbon::parse($event->event_time)->format('g:i A')
+            : '';
+        $venue = trim((string) $event->venue . ' ' . (string) $event->venue_address);
+
+        foreach ($employers as $employer) {
+            $user = $employer->employer;
+            if (!$user || !$user->email) {
+                continue;
+            }
+
+            try {
+                \Illuminate\Support\Facades\Mail::to($user->email)->send(
+                    new \App\Mail\JobFairInvitation(
+                        companyName: $employer->company_name ?? $user->name,
+                        contactName: $employer->contact_person ?? $user->name,
+                        eventTitle:  $event->title,
+                        eventDate:   $when,
+                        eventTime:   $time,
+                        venue:       $venue !== '' ? $venue : 'Venue to be announced',
+                        deadline:    $deadline->format('F d, Y'),
+                    )
+                );
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Job fair invitation email failed to send', [
+                    'employer_id' => $employer->employer_nsrp_registrations_id,
+                    'event_id'    => $event->job_fair_events_id,
+                    'error'       => $e->getMessage(),
+                ]);
+            }
+        }
     }
 
     // ── Usa ka employer, tanan nga event nga naay lugar para niya. Gigamit sa
