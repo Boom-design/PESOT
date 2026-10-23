@@ -1335,6 +1335,51 @@ textarea.peso-input {
        steps aside rather than pushing the bell off the bar. */
     .topbar .topbar-brand-title { font-size: 11px; }
     .topbar .topbar-brand-sub   { display: none; }
+
+    /* ── SOMETHING A THUMB CAN HIT ──
+       ───────────────────────────────
+       Measured on the live site at 390px: the pagination numbers were 14px
+       tall, the dashboard's month and year pickers 17–18px, and View,
+       View & Apply, Browse Jobs and the filter pills all 28–29px. A finger
+       pad is about 9mm — roughly 44 CSS pixels — which is why both Apple
+       and Google ask for 44 and 48. Everything below was a guess with the
+       thumb, and the smallest of them sat next to each other in a row.
+
+       Height only, and only on a phone. The desk works on a laptop with a
+       mouse and the rows there stay as they are; nothing is made wider, so
+       no layout moves sideways. */
+    .btn,
+    .page-link,
+    .form-select,
+    .form-control,
+    .peso-input,
+    .nav-link {
+        min-height: 44px;
+    }
+
+    /* A button sets its height with padding, so the minimum only lands if
+       the text is centred in whatever height it ends up with. */
+    .btn,
+    .page-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* The pager's numbers are the smallest thing on any page, and they sit
+       in a row where the wrong one is easy to hit. */
+    .pagination .page-link { min-width: 44px; }
+
+    /* A link inside a sentence is not a button and must not become one —
+       but a link on its own line is being offered as something to press,
+       so it gets room around it instead of a height. */
+    .peso-inline-action { display: inline-block; padding: 10px 2px; }
+
+    /* ── A SEARCH BOX WIDE ENOUGH TO READ ──
+       On /jobseeker/jobs the sort dropdown and the search box share a row,
+       and at 390px the placeholder was cut mid-word: "Search by job title
+       or locati". They take a line each on a phone. */
+    .peso-filter-row > * { flex: 1 1 100% !important; min-width: 0; }
 }
 
 

@@ -14,7 +14,9 @@
             Browse available job postings from verified employers.
         </p>
     </div>
-    <form method="GET" action="{{ route('jobseeker.jobs') }}" class="d-flex gap-2 align-items-center flex-wrap">
+    {{-- peso-filter-row: on a phone each control takes a line of its own.
+         Sharing one row at 390px cut the search placeholder mid-word. --}}
+    <form method="GET" action="{{ route('jobseeker.jobs') }}" class="d-flex gap-2 align-items-center flex-wrap peso-filter-row">
         <input type="hidden" name="job_type" value="{{ $jobType }}">
         <select name="sort" class="form-select peso-input" style="flex:1 1 150px;min-width:140px;max-width:180px;font-size:12px;"
                 onchange="this.form.submit()">
@@ -50,7 +52,9 @@
         <span class="d-inline-flex align-items-center" style="font-size:11.5px;color:var(--n-500);">
             <i class="ph ph-info me-1" style="color:var(--g-600);"></i>
             Showing {{ $classification }} vacancies only —
-            <a href="{{ route('jobseeker.nsrp') }}" class="ms-1" style="color:var(--g-600);font-weight:600;">
+            {{-- Offered as something to press, so on a phone it gets room
+                 around it rather than the 18px a line of text gives it. --}}
+            <a href="{{ route('jobseeker.nsrp') }}" class="ms-1 peso-inline-action" style="color:var(--g-600);font-weight:600;">
                 change your classification
             </a>
         </span>
