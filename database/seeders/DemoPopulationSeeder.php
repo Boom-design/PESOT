@@ -265,8 +265,19 @@ class DemoPopulationSeeder extends Seeder
 
     public function run(): void
     {
+        // ── Ang employer ug jobseeker ra ang gisusi.
+        // ──
+        // ── 2026-10-23: usa ka tinuod nga STAFF nga account naggamit ug
+        // ── @demo.peso.test nga email. Dili siya bahin sa demo nga
+        // ── populasyon — ang seeder wala gyud maghimo ug staff — apan ang
+        // ── pagsusi dinhi nangita sa tanan nga role, mao nga ang iyang
+        // ── presensya nagbabag sa pag-seed hangtod sa hangtod, bisan limpyo
+        // ── na ang database. ──
         if (Storage::disk('local')->exists(self::MANIFEST)
-            || DB::table('users')->where('email', 'like', '%@' . self::DOMAIN)->exists()) {
+            || DB::table('users')
+                ->whereIn('role', ['company', 'jobseeker'])
+                ->where('email', 'like', '%@' . self::DOMAIN)
+                ->exists()) {
             throw new \RuntimeException(
                 'Demo population already exists. Run: php artisan db:seed --class=DemoPopulationPurgeSeeder'
             );
