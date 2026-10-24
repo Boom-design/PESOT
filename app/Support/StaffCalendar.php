@@ -231,7 +231,19 @@ class StaffCalendar
 
     private static function jobFairItems(): Collection
     {
-        return JobFairEvent::whereIn('status', ['upcoming', 'ongoing'])
+        // ── The fairs that have already happened belong here too.
+        // ──
+        // ── PESO, 2026-10-24: the office opened the calendar, paged back
+        // ── through the year and found January to July empty — the fairs
+        // ── were all there, every one of them held, and every one of them
+        // ── filtered out for being `completed`.
+        // ──
+        // ── A calendar is a record as much as a plan. "What did we run in
+        // ── April" is the same question as "what are we running in
+        // ── December", asked in the other direction, and a year with holes
+        // ── in it reads as a year nobody worked. Nothing is misleading
+        // ── about a past fair on a past day: the date says it is over.
+        return JobFairEvent::whereIn('status', ['upcoming', 'ongoing', 'completed'])
             ->get()
             ->map(fn($e) => [
                 'date'   => optional($e->event_date)->format('Y-m-d'),
