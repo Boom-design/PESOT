@@ -75,6 +75,27 @@ class DemoPopulationSeeder extends Seeder
         return $this->staffIds[$role][0] ?? null;
     }
 
+    /**
+     * Which desk reviews a posting of this kind, if any does.
+     *
+     * The same rule the application follows: in-house goes to LRA for a local
+     * employer and SRA for an overseas one, an overseas company interview
+     * goes to SRA, a job fair posting is taken in by the Job Fair desk — and
+     * a local company interview is reviewed by nobody, because it goes live
+     * on submit. Null for that last one, deliberately.
+     */
+    private function reviewingDesk(string $scheduleType, bool $overseas): ?int
+    {
+        $role = match ($scheduleType) {
+            'inhouse'           => $overseas ? 'sra' : 'lra',
+            'job_fair'          => 'job_fair',
+            'company_interview' => $overseas ? 'sra' : null,
+            default             => null,
+        };
+
+        return $role ? $this->staffFor($role) : null;
+    }
+
     private const WHOLESALE = 'Wholesale and Retail Trade';
 
     // A recruitment agency is Division 78 of Section O. It used to have an
@@ -1035,7 +1056,18 @@ class DemoPopulationSeeder extends Seeder
             'experience_months'     => $this->chance(35) ? $this->pick([6, 12]) : null,
             'education_required'    => $education,
             'deadline'              => $deadline->toDateString(),
-            'status'                => $closed ? 'closed' : 'open',
+            // ── A posting waiting on a desk is not visible yet.
+            // ──
+            // ── 2026-10-24: the seeder wrote `open` for anything not
+            // ── deliberately closed, including the postings it had just
+            // ── marked `pending`. The admin's Job Activities tab then showed
+            // ── "Waiting for a date" beside a vacancy jobseekers could
+            // ── already apply to — the one state the application itself
+            // ── never produces. JobPostingNotice::initialState() starts an
+            // ── in-house, an overseas company interview and a job fair
+            // ── posting CLOSED for exactly this reason: a refusal has to be
+            // ── able to stop a posting before anyone applies to it. ──
+            'status'                => ($closed || $pending) ? 'closed' : 'open',
             'schedule_type'         => $schedule,
             'requested_job_fair_id' => $fair['id'] ?? null,
             'preferred_date'        => $fair ? null : $meetDate->toDateString(),
@@ -1044,6 +1076,20 @@ class DemoPopulationSeeder extends Seeder
             'venue_type'            => $venueType,
             'venue_address'         => $venueAddress,
             'posting_status'        => $pending ? 'pending' : 'approved',
+
+            // ── An approval has a name on it.
+            // ──
+            // ── Every staff decision in this system records who made it, and
+            // ── the desk screens print that name. A seeded posting arrived
+            // ── approved by nobody, so the column read blank wherever it was
+            // ── shown.
+            // ──
+            // ── Not every approval has a desk behind it: a LOCAL company
+            // ── interview goes live on submit, by design, with nobody
+            // ── reviewing it. A name there would be a fiction, so it keeps
+            // ── the null it has earned. ──
+            'reviewed_by'           => $pending ? null : $this->reviewingDesk($schedule, $emp['overseas']),
+            'reviewed_at'           => $pending ? null : $created->copy()->addHours(mt_rand(3, 48)),
             'salary'                => $salary,
             'created_at'            => $created,
             'updated_at'            => $created,
