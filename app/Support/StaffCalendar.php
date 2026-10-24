@@ -13,12 +13,13 @@ use Illuminate\Support\Collection;
  * One builder for all four roles, so LRA, SRA, Job Vacancy and Job Fair cannot
  * end up looking at different versions of the same office.
  *
- * | Role         | Sees                                                   |
- * |--------------|--------------------------------------------------------|
- * | LRA          | office days · job fair · in-house (local + overseas)     |
- * | SRA          | office days · job fair · in-house (local + overseas)     |
- * | Job Vacancy  | office days · job fair                                  |
- * | Job Fair     | office days · job fair                                  |
+ * Every desk sees the same office: office days, job fairs, and in-house
+ * bookings local and overseas alike. Only LRA and SRA book the PESO Office,
+ * but a desk that cannot see what the office is doing cannot answer for it
+ * either — and two desks reading different calendars is how two desks end up
+ * telling an employer different things.
+ *
+ * Seeing is not acting. The approval routes still split on is_overseas.
  *
  * Company Interview is deliberately absent from the calendar. PESO is involved in
  * the posting only — once it is live the screening happens at the employer's own
@@ -47,7 +48,18 @@ class StaffCalendar
      */
     public static function rolesWithInhouse(): array
     {
-        return ['lra', 'sra', 'admin'];
+        // ── PESO, 2026-10-24: every desk, not three.
+        // ──
+        // ── It was LRA, SRA and the admin, because those are the three who
+        // ── book the PESO Office and need to see each other's days before
+        // ── choosing one. True, and it left the Job Vacancy and Job Fair
+        // ── desks looking at a calendar with 35 marks on it beside the
+        // ── admin's 239 — the same office, two different pictures of what
+        // ── it was doing, and the office asked for one.
+        // ──
+        // ── Seeing is not acting. The approval routes still split on
+        // ── is_overseas and nothing here hands anybody a button. ──
+        return ['lra', 'sra', 'admin', 'job_vacancy', 'job_fair'];
     }
 
     /**
