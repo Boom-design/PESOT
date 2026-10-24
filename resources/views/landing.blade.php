@@ -525,6 +525,8 @@
                 text-align: center;
             }
             .footer-bottom p { color: rgba(255,255,255,0.8); font-size: 11.5px; margin: 0; }
+            /* The second line sits under the copyright, a shade quieter. */
+            .footer-bottom p + p { color: rgba(255,255,255,0.6); margin-top: 4px; }
 
             .job-modal-overlay {
                 display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
@@ -812,6 +814,7 @@
 
             <div class="footer-bottom">
                 <p>&copy; {{ date('Y') }} Southern de Oro Philippines College, Bachelor of Science in Information Technology Researchers — All rights reserved</p>
+                <p>Developed by Reach Selwyn Santizo</p>
             </div>
         </div>
 
