@@ -16,7 +16,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     {{-- Design tokens and shared components. Loaded after Bootstrap so it wins. --}}
-    <link rel="stylesheet" href="{{ asset('css/peso.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/peso.css') }}@if(!empty($pesoCssVersion))?v={{ $pesoCssVersion }}@endif">
 </head>
 <body>
 

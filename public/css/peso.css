@@ -1353,14 +1353,35 @@ textarea.peso-input {
     .form-select,
     .form-control,
     .peso-input,
-    .nav-link {
+    .nav-link,
+    /* The portal's own button family, which does not carry Bootstrap's
+       .btn — measured at 33px — and the two controls in the top bar. The
+       bell and the avatar are the first thing a thumb reaches for on a
+       phone and were 34px; the menu button was 32px, and opening the nav
+       is the one thing every other page depends on. */
+    .btn-peso,
+    .btn-peso-sm,
+    .btn-peso-danger,
+    .btn-peso-ghost,
+    .btn-peso-outline,
+    .icon-btn,
+    .topbar .hamburger {
         min-height: 44px;
     }
+
+    /* .icon-btn is a 34px square by rule; a minimum height alone would
+       leave it 34 wide and 44 tall, which reads as a mistake. */
+    .icon-btn { min-width: 44px; }
 
     /* A button sets its height with padding, so the minimum only lands if
        the text is centred in whatever height it ends up with. */
     .btn,
-    .page-link {
+    .page-link,
+    .btn-peso,
+    .btn-peso-sm,
+    .btn-peso-danger,
+    .btn-peso-ghost,
+    .btn-peso-outline {
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -1373,7 +1394,7 @@ textarea.peso-input {
     /* A link inside a sentence is not a button and must not become one —
        but a link on its own line is being offered as something to press,
        so it gets room around it instead of a height. */
-    .peso-inline-action { display: inline-block; padding: 10px 2px; }
+    .peso-inline-action { display: inline-block; padding: 13px 2px; }
 
     /* ── A SEARCH BOX WIDE ENOUGH TO READ ──
        On /jobseeker/jobs the sort dropdown and the search box share a row,

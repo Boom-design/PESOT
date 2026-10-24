@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ asset('css/peso.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/peso.css') }}@if(!empty($pesoCssVersion))?v={{ $pesoCssVersion }}@endif">
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; min-height: 100vh; font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; background: var(--g-800); display: flex; flex-direction: column; }
