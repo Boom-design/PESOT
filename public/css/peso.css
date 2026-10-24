@@ -1396,6 +1396,20 @@ textarea.peso-input {
        so it gets room around it instead of a height. */
     .peso-inline-action { display: inline-block; padding: 13px 2px; }
 
+    /* Bootstrap draws a checkbox 14px square. The NSRP form is pages of
+       them, and the privacy tick is the one thing standing between a
+       jobseeker and an account. A minimum height alone would make it 14
+       wide and 44 tall, so both are set, and the row around it is given
+       room — the label is tied to the box with `for`, so the whole line
+       becomes the target rather than the square alone. */
+    .form-check-input {
+        width: 20px;
+        height: 20px;
+        margin-top: 0.15em;
+    }
+    .form-check { padding-top: 6px; padding-bottom: 6px; }
+    .form-check-label { padding-left: 2px; }
+
     /* ── A SEARCH BOX WIDE ENOUGH TO READ ──
        On /jobseeker/jobs the sort dropdown and the search box share a row,
        and at 390px the placeholder was cut mid-word: "Search by job title
