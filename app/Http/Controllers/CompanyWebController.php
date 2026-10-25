@@ -1785,7 +1785,19 @@ class CompanyWebController extends Controller
                 ->with('error', 'Your requirements must be approved before requesting an in-house interview.');
         }
 
-        return view('company.inhouse.create');
+        // The employer's own open postings, offered as one-tap fills for the
+        // positions field. A schedule request does not belong to a posting —
+        // that is the point of it — but an employer that has postings is
+        // usually interviewing for one of them, and typing the title again is
+        // how two spellings of the same job get into the reports.
+        $openTitles = \App\Models\Job::where('company_id', $company->activeCompany()->employer_nsrp_registrations_id)
+            ->where('status', 'open')
+            ->orderBy('title')
+            ->pluck('title')
+            ->unique()
+            ->values();
+
+        return view('company.inhouse.create', compact('openTitles'));
     }
 
     public function storeInhouse(Request $request)
@@ -1799,13 +1811,31 @@ class CompanyWebController extends Controller
             'preferred_date_end' => 'nullable|date|after_or_equal:preferred_date',
             'preferred_time'  => 'required',
             'num_applicants'  => 'required|integer|min:1',
+            'job_positions'   => 'required|array|min:1',
+            'job_positions.*' => 'nullable|string|max:120',
             'venue_type'      => 'required|in:peso_office,company_office,custom',
             'venue_address'   => 'required_if:venue_type,custom|nullable|string|max:255',
             'notes'           => 'nullable|string|max:1000',
         ], [
             'preferred_date.after_or_equal'     => \App\Support\OfficeCalendar::leadTimeMessage(),
             'preferred_date_end.after_or_equal' => 'The last available date cannot be before the first.',
+            'job_positions.required'            => 'Name at least one position you will be interviewing for.',
         ]);
+
+        // The form keeps an empty row for typing into, and a row can be left
+        // blank, so the rule above cannot be `required` per item — the list is
+        // cleaned here and refused if nothing was actually typed.
+        $positions = collect($request->input('job_positions', []))
+            ->map(fn($p) => trim((string) $p))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($positions->isEmpty()) {
+            return back()->withInput()->withErrors([
+                'job_positions' => 'Name at least one position you will be interviewing for.',
+            ]);
+        }
 
         if ($why = $this->officeBlockedWindowError($request->preferred_date, $request->preferred_date_end)) {
             return back()->withInput()->with('error', $why);
@@ -1827,6 +1857,7 @@ class CompanyWebController extends Controller
             'preferred_date_end' => $request->preferred_date_end ?: $request->preferred_date,
             'preferred_time' => $request->preferred_time,
             'num_applicants' => $request->num_applicants,
+            'job_positions'  => $positions->all(),
             'venue_type'     => $request->venue_type,
             'venue_address'  => $request->venue_type === 'custom' ? $request->venue_address : null,
             'notes'          => $request->notes,

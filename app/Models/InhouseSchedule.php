@@ -17,6 +17,9 @@ class InhouseSchedule extends Model
         'preferred_date_end',
         'preferred_time',
         'num_applicants',
+        // What the employer is interviewing for. A schedule request carries no
+        // posting, so without this the desk has no way to know whom to call.
+        'job_positions',
         'venue_type',
         'venue_address',
         'notes',
