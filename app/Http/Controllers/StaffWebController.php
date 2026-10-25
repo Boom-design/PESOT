@@ -3975,6 +3975,12 @@ $nsrp = $registration->nsrp;
         ]);
 
         $schedule->refresh();
+
+        // The day is committed, so the positions go up as postings. Until this
+        // ran, an accepted request reached nobody: no posting, no listing, and
+        // the office had to ring the applicants by hand.
+        $posted = \App\Support\ScheduleRequestPostings::open($schedule, $staffRecord->staff_id ?? null);
+
         $windowLabel = $schedule->schedule_window_label;
         $isRange     = !$schedule->preferred_date_last->isSameDay($schedule->preferred_date);
 
@@ -3985,6 +3991,12 @@ $nsrp = $registration->nsrp;
                                 . $windowLabel . ' at ' . \Carbon\Carbon::parse($request->confirmed_time)->format('h:i A')
                                 . ' (' . ($schedule->venue_type === 'custom' ? $schedule->venue_address : 'PESO Office') . ').'
                                 . ($isRange ? ' Those dates are reserved for you — hold the interview on whichever of them suits you.' : '')
+                                . ($posted->isNotEmpty()
+                                    ? ' ' . $posted->count() . ' vacancy posting'
+                                      . ($posted->count() === 1 ? ' is' : 's are')
+                                      . ' now open for ' . $posted->pluck('title')->implode(', ')
+                                      . '. Open Job Vacancies to add the qualifications you want.'
+                                    : '')
                                 . (($schedule->employer->is_overseas ?? false) ? ' Please bring the hard copies of your requirements when you conduct this interview.' : ''),
             'reference_type' => 'inhouse_schedule',
             'reference_id'   => $schedule->inhouse_schedules_id,
@@ -4016,7 +4028,12 @@ $nsrp = $registration->nsrp;
         ], $userIds);
 
         return redirect()->route('staff.inhouse')
-            ->with('success', 'In-house schedule accepted and applicants notified!');
+            ->with('success', 'In-house schedule accepted and applicants notified!'
+                . ($posted->isNotEmpty()
+                    ? ' ' . $posted->count() . ' vacancy posting'
+                      . ($posted->count() === 1 ? '' : 's')
+                      . ' opened: ' . $posted->pluck('title')->implode(', ') . '.'
+                    : ''));
     }
 
     public function rejectInhouse(Request $request, $id)
@@ -4034,10 +4051,19 @@ $nsrp = $registration->nsrp;
             'rejection_reason' => $request->rejection_reason,
         ]);
 
+        // A request accepted earlier and rejected now leaves vacancies behind
+        // that exist only for an interview that is off. They close; the
+        // applications already made stay, because they are the office's record.
+        $closed = \App\Support\ScheduleRequestPostings::close($schedule);
+
         \App\Models\Announcement::sendToEmployers([
             'type'           => 'inhouse_rejected',
             'title'          => 'In-house Schedule Rejected ❌',
-            'message'        => 'Your in-house interview request was rejected. Reason: ' . $request->rejection_reason,
+            'message'        => 'Your in-house interview request was rejected. Reason: ' . $request->rejection_reason
+                                . ($closed > 0
+                                    ? ' The ' . $closed . ' vacancy posting' . ($closed === 1 ? '' : 's')
+                                      . ' opened for this interview ' . ($closed === 1 ? 'has' : 'have') . ' been closed.'
+                                    : ''),
             'reference_type' => 'inhouse_schedule',
             'reference_id'   => $schedule->inhouse_schedules_id,
         ], $schedule->employer_id);
