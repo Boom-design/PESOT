@@ -62,6 +62,13 @@
 <style>
     .peso-cal-panel .peso-cal-half + .peso-cal-half { border-top: 1px solid var(--n-100); padding-top: 14px; margin-top: 14px; }
 
+    /* The pager under a busy day's list. */
+    .peso-cal-panel .peso-day-page {
+        border: 1px solid var(--n-200); background: #fff; color: var(--g-700);
+        border-radius: 6px; font-size: 12px; padding: 3px 10px; line-height: 1.2;
+    }
+    .peso-cal-panel .peso-day-page:disabled { color: var(--n-300); background: var(--n-50); }
+
     /* The dashboard calendar stretches across its half instead of sitting at
        the compact 260px the inline calendar uses elsewhere. At 260px it left a
        wide empty strip down one side of a half that is twice that wide, so the
@@ -303,11 +310,28 @@ function pesoEscape(text) {
     return el.innerHTML;
 }
 
-function renderPesoActivityDate(dateStr) {
+// A busy day runs to seven or eight entries, and the list grew past the
+// calendar beside it — the office was scrolling to reach the last one. Three
+// at a time keeps the two halves the same height.
+const PESO_DAY_PAGE_SIZE = 3;
+let pesoDayPage = 0;
+
+function pesoTurnDayPage(step) {
+    pesoDayPage += step;
+    renderPesoActivityDate(pesoActivityShownDate, true);
+}
+
+let pesoActivityShownDate = null;
+
+function renderPesoActivityDate(dateStr, keepPage) {
     const container = document.getElementById('pesoActivityList');
     const title     = document.getElementById('pesoActivityTitle');
     const items     = pesoActivityData[dateStr] || [];
     const blocked   = pesoBlockedDays[dateStr];
+
+    // A new day starts at its first page; the arrows keep the one they set.
+    if (!keepPage) pesoDayPage = 0;
+    pesoActivityShownDate = dateStr;
 
     title.innerHTML = `<i class="ph-fill ph-calendar-dots me-1" style="color:var(--g-600);"></i>{{ $calNoun }} on ${pesoEscape(pesoLongDate(dateStr))}`;
 
@@ -334,7 +358,14 @@ function renderPesoActivityDate(dateStr) {
         return;
     }
 
-    items.forEach(item => {
+    const pages = Math.ceil(items.length / PESO_DAY_PAGE_SIZE);
+    if (pesoDayPage > pages - 1) pesoDayPage = pages - 1;
+    if (pesoDayPage < 0)         pesoDayPage = 0;
+
+    const from = pesoDayPage * PESO_DAY_PAGE_SIZE;
+    const page = items.slice(from, from + PESO_DAY_PAGE_SIZE);
+
+    page.forEach(item => {
         const meta  = PESO_TYPE_META[item.type] || {};
         const color = meta.color || 'var(--n-500)';
         const icon  = meta.icon  || 'ph-dot';
@@ -358,6 +389,29 @@ function renderPesoActivityDate(dateStr) {
             </div>
         </div>`;
     });
+
+    if (pages > 1) {
+        const last = Math.min(from + PESO_DAY_PAGE_SIZE, items.length);
+        html += `
+        <div class="d-flex align-items-center justify-content-between gap-2 pt-2 mt-1"
+             style="border-top:1px solid var(--n-100);">
+            <span style="font-size:11px;color:var(--n-500);">
+                ${from + 1}&ndash;${last} of ${items.length}
+            </span>
+            <div class="d-flex gap-1">
+                <button type="button" class="btn btn-sm peso-day-page"
+                    onclick="pesoTurnDayPage(-1)" ${pesoDayPage === 0 ? 'disabled' : ''}
+                    aria-label="Previous page">
+                    <i class="ph ph-caret-left"></i>
+                </button>
+                <button type="button" class="btn btn-sm peso-day-page"
+                    onclick="pesoTurnDayPage(1)" ${pesoDayPage >= pages - 1 ? 'disabled' : ''}
+                    aria-label="Next page">
+                    <i class="ph ph-caret-right"></i>
+                </button>
+            </div>
+        </div>`;
+    }
 
     container.innerHTML = html;
 }

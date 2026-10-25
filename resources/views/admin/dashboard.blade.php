@@ -165,7 +165,10 @@
             </div>
         @else
             @foreach($officeEvents as $event)
-            <div class="d-flex align-items-start justify-content-between gap-2 p-2 mb-2 rounded-3"
+            {{-- Three to a page; the pager below walks the rest. The edit
+                 modal that follows each row stays out of the paging, because
+                 a hidden modal cannot open. --}}
+            <div class="d-flex align-items-start justify-content-between gap-2 p-2 mb-2 rounded-3 peso-office-row"
                  style="background:var(--n-50);border-left:3px solid #7c3aed;">
                 <div style="min-width:0;">
                     <div style="font-size:13px;font-weight:600;color:var(--g-700);">{{ $event->title }}</div>
@@ -229,6 +232,23 @@
                 </div>
             </div>
             @endforeach
+
+            @if($officeEvents->count() > 3)
+                <div class="d-flex align-items-center justify-content-between gap-2 pt-2 mt-1"
+                     style="border-top:1px solid var(--n-100);">
+                    <span id="officeRowCount" style="font-size:11px;color:var(--n-500);"></span>
+                    <div class="d-flex gap-1">
+                        <button type="button" class="btn btn-sm peso-office-page" id="officeRowPrev"
+                                aria-label="Previous page">
+                            <i class="ph ph-caret-left"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm peso-office-page" id="officeRowNext"
+                                aria-label="Next page">
+                            <i class="ph ph-caret-right"></i>
+                        </button>
+                    </div>
+                </div>
+            @endif
         @endif
     </div>
 </div>
@@ -278,6 +298,40 @@ window.pesoOnPickDate = function (iso) {
     const start = document.querySelector('#officeEventModal input[name="start_date"]');
     if (start) start.value = iso;
 };
+
+// Upcoming office schedules, three to a page. Every row is already in the
+// page, so paging is a matter of which three are shown — no reload, and the
+// edit modals keep working because only the rows are hidden.
+(function () {
+    const rows = Array.from(document.querySelectorAll('.peso-office-row'));
+    const prev = document.getElementById('officeRowPrev');
+    const next = document.getElementById('officeRowNext');
+    const tally = document.getElementById('officeRowCount');
+
+    if (!rows.length || !prev || !next) return;
+
+    const SIZE = 3;
+    const pages = Math.ceil(rows.length / SIZE);
+    let page = 0;
+
+    function draw() {
+        const from = page * SIZE;
+        const to   = Math.min(from + SIZE, rows.length);
+
+        rows.forEach((row, i) => {
+            row.style.display = (i >= from && i < to) ? '' : 'none';
+        });
+
+        tally.textContent = (from + 1) + '–' + to + ' of ' + rows.length;
+        prev.disabled = page === 0;
+        next.disabled = page >= pages - 1;
+    }
+
+    prev.addEventListener('click', () => { if (page > 0) { page--; draw(); } });
+    next.addEventListener('click', () => { if (page < pages - 1) { page++; draw(); } });
+
+    draw();
+})();
 </script>
 @endpush
 

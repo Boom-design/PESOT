@@ -1502,3 +1502,17 @@ textarea.peso-input {
     max-width: 14.2857%;
 }
 .flatpickr-calendar.inline .flatpickr-current-month { font-size: 13px; padding: 4px 0; }
+
+/* ── The pager under the admin's Upcoming Office Schedules ──
+   The calendar's own day pager is styled inside the calendar partial, where
+   it is scoped to that panel. This one sits in the dashboard card. */
+.peso-office-page {
+    border: 1px solid var(--n-200);
+    background: #fff;
+    color: var(--g-700);
+    border-radius: 6px;
+    font-size: 12px;
+    padding: 3px 10px;
+    line-height: 1.2;
+}
+.peso-office-page:disabled { color: var(--n-300); background: var(--n-50); }
