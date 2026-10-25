@@ -205,8 +205,12 @@ class StaffCalendar
         // ── They share the PESO Office venue, so each has to see the other's
         // ── bookings before choosing a day. Seeing is not acting: the approval
         // ── routes still split on is_overseas. ──
+        // ── Company interviews come with them: same desks, same reason. They
+        // ── are held at the employer's own place, so they close nothing; the
+        // ── desk still has to see them to plan a week. ──
         if (in_array($role, self::rolesWithInhouse(), true)) {
             $items = $items->concat(self::inhouseItems());
+            $items = $items->concat(self::companyInterviewItems());
         }
 
         return $items
@@ -331,6 +335,49 @@ class StaffCalendar
 
             foreach (self::span($job->preferred_date, $job->preferred_date_last) as $iso) {
                 $push($iso, $company, $overseas, $state, null, $venue);
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * The interviews an employer runs at its own place.
+     *
+     * PESO, 2026-10-26: the office opened the calendar and saw in-house
+     * interviews and nothing else, month after month, although the desks had
+     * been approving company interviews all year. They were in the employers'
+     * calendars and in the postings list, and missing from the one screen the
+     * office plans the month on.
+     *
+     * These take no PESO room and no PESO staff, so they close no day — the
+     * blocking still comes from the office calendar alone. They are here to
+     * be seen: a desk looking at a week should know what its employers are
+     * running that week, not only what the office itself is hosting.
+     */
+    private static function companyInterviewItems(): Collection
+    {
+        $out = collect();
+
+        $jobs = Job::with('company')
+            ->where('schedule_type', 'company_interview')
+            ->whereIn('posting_status', ['pending', 'approved'])
+            ->whereNotNull('preferred_date')
+            ->get();
+
+        foreach ($jobs as $job) {
+            $company = $job->company->company_name ?? '—';
+
+            foreach (self::span($job->preferred_date, $job->preferred_date_last) as $iso) {
+                $out->push([
+                    'date'   => $iso,
+                    'type'   => 'company_interview',
+                    'label'  => 'Company Interview',
+                    'title'  => $company . ' — ' . $job->title,
+                    'detail' => $job->location,
+                    'time'   => null,
+                    'state'  => $job->posting_status === 'approved' ? 'confirmed' : 'pending',
+                ]);
             }
         }
 
