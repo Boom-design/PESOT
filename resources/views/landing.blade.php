@@ -814,7 +814,6 @@
 
             <div class="footer-bottom">
                 <p>&copy; {{ date('Y') }} Southern de Oro Philippines College, Bachelor of Science in Information Technology Researchers — All rights reserved</p>
-                <p>Developed by Reach Selwyn Santizo</p>
             </div>
         </div>
 
