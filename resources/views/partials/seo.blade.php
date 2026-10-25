@@ -12,8 +12,11 @@
     heading split over three lines.
 --}}
 @php
-    $seoTitle       = $seoTitle       ?? 'PESO Cagayan de Oro — Job Vacancies and Employment Services';
-    $seoDescription = $seoDescription ?? 'Find job vacancies in Cagayan de Oro City. Register with the Public Employment Service Office, apply for local and overseas work, and join PESO job fairs.';
+    // The office is searched for as "PESO CDO" far more often than by its full
+    // name, so the short name leads the title and the description. The title
+    // is what a results page prints as the blue link.
+    $seoTitle       = $seoTitle       ?? 'PESO CDO — Job Vacancies and Employment Services, Cagayan de Oro';
+    $seoDescription = $seoDescription ?? 'PESO CDO, the Public Employment Service Office of Cagayan de Oro City. Browse job vacancies, register as a jobseeker or employer, apply for local and overseas work, and join PESO job fairs.';
     $seoImage       = asset('images/hero/PESOSIMAGE.png');
 
     // /login serves the landing page, because the login form sits on it. Two
@@ -49,8 +52,11 @@
     '@context' => 'https://schema.org',
     '@type'    => 'GovernmentOffice',
     'name'     => 'Public Employment Service Office (PESO) — Cagayan de Oro City',
-    'alternateName' => 'PESO CDO',
+    'alternateName' => ['PESO CDO', 'PESO Cagayan de Oro'],
     'url'      => url('/'),
+    // The office's own Facebook page, the same one the footer links to. It
+    // ties this site to the name people already search for.
+    'sameAs'   => ['https://www.facebook.com/PESOCDO'],
     'image'    => $seoImage,
     'areaServed' => 'Cagayan de Oro City, Misamis Oriental, Philippines',
     'address'  => [

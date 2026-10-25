@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        @include('partials.head-brand', ['pageTitle' => 'PESO Cagayan de Oro — Job Vacancies and Employment Services'])
+        @include('partials.head-brand', ['pageTitle' => 'PESO CDO — Job Vacancies and Employment Services, Cagayan de Oro'])
         @include('partials.seo', ['seoCanonical' => url('/')])
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
         <link href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css" rel="stylesheet">
