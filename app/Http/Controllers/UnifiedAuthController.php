@@ -72,6 +72,11 @@ class UnifiedAuthController extends Controller
         LoginThrottle::clear($request);
         $request->session()->regenerate();
 
+        // An office account is signed in on one device at a time. Whatever
+        // this account still had open elsewhere ends here — after the
+        // regenerate, so the id kept is this device's own.
+        \App\Support\SingleDeviceSession::enforce($request, $user);
+
         return $this->redirectByRole($user->role);
     }
 

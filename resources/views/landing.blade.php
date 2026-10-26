@@ -703,6 +703,12 @@
                             {{ session('success') }}
                         </div>
                     @endif
+                    @if(session('notice'))
+                        <div class="error-msg">
+                            <i class="ph-fill ph-info"></i>
+                            {{ session('notice') }}
+                        </div>
+                    @endif
                     <form method="POST" action="{{ route('login.post') }}">
                         @csrf
                         <div class="mb-3">
@@ -839,7 +845,7 @@
         </div>
 
         <script>
-            @if(session('success') || $errors->any() || request()->routeIs('login'))
+            @if(session('success') || session('notice') || $errors->any() || request()->routeIs('login'))
                 // A failed login redirects back here, so the panel has to reopen
                 // itself — otherwise the message sits in the page unseen and the
                 // attempt looks like it simply did nothing.

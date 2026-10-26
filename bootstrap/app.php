@@ -59,6 +59,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // ── opisina makasulod gihapon, apan usa ra ka pahina ang iyang maabot:
         // ── didto niya isulti ang iyang rason. ──
         $middleware->appendToGroup('web', \App\Http\Middleware\EnsureEmployerActive::class);
+
+        // ── Usa ra ka device kada admin ug staff account. Kung ang iPhone
+        // ── mosulod sa samang account, ang laptop mapahawa — ug kini ang
+        // ── mosulti kaniya ngano. ──
+        $middleware->appendToGroup('web', \App\Http\Middleware\ExplainSessionTakeover::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
