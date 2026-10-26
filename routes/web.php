@@ -30,6 +30,20 @@
     Route::post('/login', [UnifiedAuthController::class, 'login'])->name('login.post');
     Route::post('/logout',[UnifiedAuthController::class, 'logout'])->name('logout');
 
+    // ── Gipangutana sa abli nga panid kada pila ka segundo: buhi pa ba ang
+    // ── iyang session? Walay session middleware dinhi sa tuyo — tan-awa ang
+    // ── SessionStateController para sa rason. ──
+    Route::get('/session/state', \App\Http\Controllers\SessionStateController::class)
+        ->name('session.state')
+        ->withoutMiddleware([
+            \Illuminate\Session\Middleware\StartSession::class,
+            \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+            \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+            \App\Http\Middleware\EnsurePasswordChanged::class,
+            \App\Http\Middleware\EnsureEmployerActive::class,
+            \App\Http\Middleware\ExplainSessionTakeover::class,
+        ]);
+
     // ── Ang employer nga gihatagan ug temporary password sa telepono. Ang
     // ── EnsurePasswordChanged nga middleware mo-redirect ngari hangtod mo-ilis
     // ── siya, mao nga kini nga duha ka route lang ang naa sa gawas sa pugos. ──

@@ -22,7 +22,7 @@ class ExplainSessionTakeover
             $session = $request->session();
 
             if (SingleDeviceSession::wasSignedOutElsewhere($session->getId())) {
-                $message = 'You were signed out because this account signed in on another device.';
+                $message = SingleDeviceSession::MESSAGE;
 
                 // On the login page the message has to be readable right now;
                 // anywhere else the guest redirect happens first, so it has to

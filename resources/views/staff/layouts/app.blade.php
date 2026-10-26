@@ -450,5 +450,7 @@ setInterval(refreshStaffNotifications, 20000);
 @endif
 </script>
 
+@include('partials.session-watch', ['accent' => '#175CD3'])
+
 </body>
 </html>

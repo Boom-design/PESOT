@@ -325,5 +325,7 @@ function markAllReadOnOpen() {
     });
 @endif
 </script>
+
+@include('partials.session-watch', ['accent' => '#28812F'])
 </body>
 </html>

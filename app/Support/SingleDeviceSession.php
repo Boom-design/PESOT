@@ -26,6 +26,18 @@ class SingleDeviceSession
     /** How long the explanation waits for the device that lost its session. */
     private const NOTICE_TTL_HOURS = 12;
 
+    /** What the device that lost its session is told, wherever it is told. */
+    public const MESSAGE = 'You were signed out because this account signed in on another device.';
+
+    /** This browser's session is still live. */
+    public const STATE_ACTIVE = 'active';
+
+    /** It was ended by a sign-in somewhere else, and nobody has said so yet. */
+    public const STATE_TAKEN_OVER = 'taken_over';
+
+    /** Nobody is signed in here, and nothing was taken away. */
+    public const STATE_GUEST = 'guest';
+
     public static function applies(?User $user): bool
     {
         return $user !== null && in_array($user->role, self::ROLES, true);
@@ -85,6 +97,38 @@ class SingleDeviceSession
     public static function wasSignedOutElsewhere(string $sessionId): bool
     {
         return Cache::pull(self::noticeKey($sessionId)) === true;
+    }
+
+    /**
+     * What has become of the session behind this id.
+     *
+     * Asked by the open page itself, every few seconds, so a device that has
+     * been signed out elsewhere finds out while it sits there — instead of
+     * looking live until the next click.
+     *
+     * The answer is read without consuming it: the login page the person
+     * lands on afterwards still has its own reason to show.
+     */
+    public static function state(?string $sessionId): string
+    {
+        if ($sessionId === null || $sessionId === '') {
+            return self::STATE_GUEST;
+        }
+
+        if (config('session.driver') === 'database') {
+            $live = DB::table(config('session.table', 'sessions'))
+                ->where('id', $sessionId)
+                ->whereNotNull('user_id')
+                ->exists();
+
+            if ($live) {
+                return self::STATE_ACTIVE;
+            }
+        }
+
+        return Cache::get(self::noticeKey($sessionId)) === true
+            ? self::STATE_TAKEN_OVER
+            : self::STATE_GUEST;
     }
 
     private static function noticeKey(string $sessionId): string
