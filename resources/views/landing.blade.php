@@ -451,7 +451,7 @@
             .fair-poster { width: 100%; height: 100%; object-fit: cover; display: block; }
             .fair-poster-blank {
                 display: flex; flex-direction: column; align-items: center; justify-content: center;
-                gap: 6px; min-height: 150px; background: var(--peso-dark); color: #fff;
+                gap: 6px; min-height: 150px; background: var(--g-700); color: #fff;
             }
             .fair-poster-blank i { font-size: 30px; }
             .fair-poster-blank span { font-size: 13px; font-weight: 800; letter-spacing: 1px; }
@@ -472,12 +472,36 @@
                 text-transform: uppercase; letter-spacing: 0.3px;
             }
             .fair-modal-head div { font-size: 12px; color: var(--n-500); line-height: 1.5; }
+            /* Usa ka pill, dili usa ka itom nga bar nga mitabok sa tibuok
+               gilapdon. Hayag nga berde: mabasa siya sa berde nga panel sa
+               landing page ug sa puti nga luyo sa modal, usa ra ka rule. */
             .fair-market-label {
-                display: inline-block; background: var(--peso-dark); color: #fff;
+                display: inline-block; background: var(--g-50); color: var(--g-700);
+                /* Ang panel usa ka flex column, mao nga ang inline-block
+                   gi-inat gihapon sa tibuok gilapdon. Kini ang nagpugong. */
+                align-self: flex-start; width: fit-content;
+                border: 1px solid var(--g-200);
                 font-size: 12px; font-weight: 800; letter-spacing: 0.6px;
-                padding: 6px 12px; border-radius: 7px; margin-bottom: 12px;
+                padding: 6px 12px; border-radius: 999px; margin-bottom: 12px;
             }
-            .fair-hiring-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+            /* Upat ka kahon sa usa ka laray, unya Next.
+               `align-items: start` ang nagpugong sa pag-inat: kung wala kini,
+               ang kompanya nga naay usa ka posisyon motaas sama sa kompanya
+               nga naay napulo, ug ang laray mapuno sa hawan. */
+            .fair-hiring-grid {
+                display: grid; gap: 12px; align-items: start;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+            }
+            @media (max-width: 1100px) {
+                .fair-hiring-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            }
+            @media (max-width: 620px) {
+                .fair-hiring-grid { grid-template-columns: 1fr; }
+            }
+            /* Sa sulod sa modal huot ra ang 760px — duha ang kasyahan. */
+            .fair-modal-box .fair-hiring-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
             /* Puti gyud. Ang panel sa palibot berde, ug ang kahon nga walay
                kaugalingon nga background mohimo sa mga bullet nga itom sa
                berde — mabasa ra siya kung duolan nimo ang screen. */
@@ -487,7 +511,7 @@
                 display: flex; flex-direction: column;
             }
             .fair-hiring-name {
-                background: var(--peso-dark); color: #fff; font-size: 12px; font-weight: 800;
+                background: var(--g-700); color: #fff; font-size: 12px; font-weight: 800;
                 padding: 9px 12px; line-height: 1.35; text-transform: uppercase;
             }
             .fair-hiring-list { margin: 0; padding: 10px 12px 12px 28px; }
@@ -521,7 +545,7 @@
             @media (max-width: 720px) {
                 .fair-card { grid-template-columns: 1fr; }
                 .fair-poster { max-height: 200px; }
-                .fair-hiring-grid { grid-template-columns: 1fr; }
+                .fair-modal-box .fair-hiring-grid { grid-template-columns: 1fr; }
             }
 
             .job-card {
