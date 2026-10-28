@@ -16,6 +16,7 @@ class JobFairEvent extends Model
         'event_time',
         'venue',
         'venue_address',
+        'poster_image',
         'cater',
         'target_industries',
         'pwd_only',

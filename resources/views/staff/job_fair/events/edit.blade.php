@@ -11,7 +11,7 @@
 
 <div class="card border-0 shadow-sm rounded-3" style="max-width:600px;">
     <div class="card-body p-4">
-        <form action="{{ route('staff.jobfair.events.update', $event->job_fair_events_id) }}" method="POST">
+        <form action="{{ route('staff.jobfair.events.update', $event->job_fair_events_id) }}" method="POST" enctype="multipart/form-data">
             @csrf
             @method('PUT')
 
@@ -120,6 +120,31 @@
                     placeholder="e.g. Masterson Ave, Upper Balulang, Cagayan de Oro City"
                     value="{{ old('venue_address', $event->venue_address) }}">
                 @error('venue_address')
+                    <div class="text-danger small mt-1">{{ $message }}</div>
+                @enderror
+            </div>
+
+            {{-- Ang poster. Ang pagbilin niini nga blangko magbilin sa poster
+                 nga naa na — usa ka file input walay mahatag nga daan nga
+                 bili, mao nga ang walay gipili nagpasabot "ayaw usba". --}}
+            <div class="mb-3">
+                <label class="form-label fw-semibold small" style="color:var(--g-700);">
+                    Job Fair Poster
+                </label>
+                @if($event->poster_image)
+                <div class="mb-2">
+                    <img src="{{ asset('storage/' . $event->poster_image) }}" alt="Job fair poster"
+                        style="max-width:220px;border-radius:10px;border:1px solid var(--n-200);">
+                </div>
+                @endif
+                <input type="file" name="poster_image" accept="image/jpeg,image/png"
+                    class="form-control"
+                    style="border:1px solid var(--n-200);border-radius:10px;font-size:13px;">
+                <div class="mt-1" style="font-size:11px;color:var(--n-500);">
+                    <i class="ph ph-info me-1"></i>JPG or PNG, 5MB or smaller.
+                    {{ $event->poster_image ? 'Leave empty to keep the poster above.' : '' }}
+                </div>
+                @error('poster_image')
                     <div class="text-danger small mt-1">{{ $message }}</div>
                 @enderror
             </div>

@@ -441,6 +441,89 @@
             .jobs-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
             @media (min-width: 576px) { .jobs-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; } }
             @media (min-width: 992px) { .jobs-grid { grid-template-columns: repeat(4, 1fr); gap: 16px; } }
+            /* ── ANG JOB FAIR NGA CARD UG ANG LISTAHAN SA NAGKUHA UG TAWO ── */
+            .fair-strip { display: grid; gap: 14px; margin-bottom: 18px; }
+            .fair-card {
+                background: #fff; border: 1px solid var(--n-200); border-radius: 14px;
+                box-shadow: 0 4px 14px rgba(0,0,0,0.05); overflow: hidden;
+                display: grid; grid-template-columns: 220px 1fr;
+            }
+            .fair-poster { width: 100%; height: 100%; object-fit: cover; display: block; }
+            .fair-poster-blank {
+                display: flex; flex-direction: column; align-items: center; justify-content: center;
+                gap: 6px; min-height: 150px; background: var(--peso-dark); color: #fff;
+            }
+            .fair-poster-blank i { font-size: 30px; }
+            .fair-poster-blank span { font-size: 13px; font-weight: 800; letter-spacing: 1px; }
+            .fair-body { padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+            .fair-title { margin: 0; font-size: 16px; font-weight: 800; color: var(--peso-dark); }
+            .fair-facts { display: flex; flex-direction: column; gap: 5px; }
+            .fair-facts span {
+                display: flex; align-items: flex-start; gap: 7px;
+                font-size: 12.5px; color: var(--n-700); line-height: 1.45;
+            }
+            .fair-facts i { color: var(--g-600); margin-top: 2px; flex: none; }
+            .fair-soon { margin: 2px 0 0; font-size: 12px; color: var(--n-500); font-style: italic; }
+
+            .fair-modal-box { max-width: 760px; }
+            .fair-modal-head { margin-bottom: 12px; padding-right: 30px; }
+            .fair-modal-head p {
+                margin: 0 0 4px; font-size: 18px; font-weight: 800; color: var(--peso-dark);
+                text-transform: uppercase; letter-spacing: 0.3px;
+            }
+            .fair-modal-head div { font-size: 12px; color: var(--n-500); line-height: 1.5; }
+            .fair-market-label {
+                display: inline-block; background: var(--peso-dark); color: #fff;
+                font-size: 12px; font-weight: 800; letter-spacing: 0.6px;
+                padding: 6px 12px; border-radius: 7px; margin-bottom: 12px;
+            }
+            .fair-hiring-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+            /* Puti gyud. Ang panel sa palibot berde, ug ang kahon nga walay
+               kaugalingon nga background mohimo sa mga bullet nga itom sa
+               berde — mabasa ra siya kung duolan nimo ang screen. */
+            .fair-hiring-box {
+                background: #fff;
+                border: 1px solid var(--n-200); border-radius: 12px; overflow: hidden;
+                display: flex; flex-direction: column;
+            }
+            .fair-hiring-name {
+                background: var(--peso-dark); color: #fff; font-size: 12px; font-weight: 800;
+                padding: 9px 12px; line-height: 1.35; text-transform: uppercase;
+            }
+            .fair-hiring-list { margin: 0; padding: 10px 12px 12px 28px; }
+            .fair-hiring-list li { font-size: 13px; color: var(--n-700); line-height: 1.55; }
+            /* Ang bullet nga mapindot magpabilin nga bullet: walay kahon,
+               walay button nga hitsura — ang detalye naa ra sa likod niya. */
+            .fair-job-btn {
+                border: none; background: none; padding: 2px 0; text-align: left;
+                font: inherit; color: var(--n-700); cursor: pointer;
+                min-height: 30px; text-decoration-line: underline;
+                text-decoration-style: dotted; text-underline-offset: 3px;
+                text-decoration-color: var(--n-200);
+            }
+            .fair-job-btn:hover, .fair-job-btn:focus-visible {
+                color: var(--g-700); text-decoration-color: var(--g-600);
+            }
+            .fair-pager {
+                display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 14px;
+            }
+            .fair-pager button {
+                display: inline-flex; align-items: center; gap: 5px;
+                border: 1px solid var(--n-200); background: #fff; color: var(--g-700);
+                border-radius: 9px; padding: 7px 14px; font-size: 12.5px; font-weight: 700;
+                min-height: 38px; cursor: pointer;
+            }
+            .fair-pager button:disabled { opacity: 0.4; cursor: default; }
+            .fair-pager span { font-size: 12px; color: rgba(255,255,255,0.8); }
+            /* Sa loob sa modal, puti ang luyo — mobalik ang ngitngit nga teksto. */
+            .fair-modal-box .fair-pager span { color: var(--n-500); }
+
+            @media (max-width: 720px) {
+                .fair-card { grid-template-columns: 1fr; }
+                .fair-poster { max-height: 200px; }
+                .fair-hiring-grid { grid-template-columns: 1fr; }
+            }
+
             .job-card {
                 background: #fff; border: 1px solid var(--n-200); border-radius: 14px; padding: 16px;
                 box-shadow: 0 4px 14px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 8px;
@@ -532,6 +615,9 @@
                 display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
                 z-index: 999; align-items: center; justify-content: center; padding: 20px;
             }
+            /* Ang job modal giablihan pinaagi sa inline style; ang fair modal
+               pinaagi niini nga klase. Duha ka paagi, usa ka overlay. */
+            .job-modal-overlay.show { display: flex; }
             .job-modal-box {
                 background: #fff; border-radius: 18px; padding: 24px 20px;
                 max-width: 480px; width: 100%; position: relative;
@@ -618,6 +704,60 @@
                 <a href="{{ route('landing', ['job_type' => 'job_fair']) }}#jobsSection" class="job-type-tab-btn {{ $jobType === 'job_fair' ? 'active' : '' }}">Job Fair</a>
             </div>
 
+                {{-- ── ANG JOB FAIR, ISIP USA KA ADLAW UG DILI UNOM KA CARD ──
+
+                     PESO CDO, 2026-10-28: ang opisina nag-imprenta ug poster
+                     kada fair — ang event sa usa ka panid, unya ang "LIST OF
+                     JOB HIRING", tag-usa ka kahon kada kompanya. Ang landing
+                     page nagpakita sa parehas nga bakante isip nagkatag nga
+                     card, mao nga mabasa sa bisita ang unom kanila nga wala
+                     gyud masayod nga usa ra diay ka adlaw sa usa ka hawanan.
+
+                     Ang poster gi-upload. Ang listahan wala — gitukod siya sa
+                     system gikan sa mga posting mismo, mao nga dili siya
+                     magsumpaki sa gitanyag sa employer, ug walay magdrawing
+                     pag-usab kung dunay modugang ug posisyon. --}}
+                @if(($jobType === 'all' || $jobType === 'job_fair') && $jobFairs->isNotEmpty())
+                    <div class="fair-strip">
+                        @foreach($jobFairs as $i => $fair)
+                        @php $ev = $fair['event']; @endphp
+                        <div class="fair-card">
+                            @if($ev->poster_image)
+                            <img src="{{ asset('storage/' . $ev->poster_image) }}"
+                                 alt="{{ $ev->title }} poster" class="fair-poster" loading="lazy">
+                            @else
+                            <div class="fair-poster fair-poster-blank">
+                                <i class="ph-fill ph-storefront"></i>
+                                <span>JOB FAIR</span>
+                            </div>
+                            @endif
+
+                            {{-- Ang petsa, oras ug address dili mogikan sa
+                                 hulagway. Ang hulagway dili mausab kung
+                                 mabalhin ang event, ug ang sayop nga nahisulat
+                                 didto magpabilin nga sayop. --}}
+                            <div class="fair-body">
+                                <p class="fair-title">{{ $ev->title }}</p>
+                                <div class="fair-facts">
+                                    <span><i class="ph-fill ph-calendar-blank"></i>{{ $ev->event_date->format('F d, Y l') }}</span>
+                                    @if($ev->event_time)
+                                    <span><i class="ph-fill ph-clock"></i>{{ \Carbon\Carbon::parse($ev->event_time)->format('g:i A') }} Onwards</span>
+                                    @endif
+                                    <span><i class="ph-fill ph-map-pin"></i>{{ $ev->venue }}@if($ev->venue_address), {{ $ev->venue_address }}@endif</span>
+                                </div>
+                                @if($fair['companies'] > 0)
+                                <button type="button" class="btn-view-more js-fair-details" data-fair="{{ $i }}">
+                                    View Details <i class="ph ph-arrow-right ms-1"></i>
+                                </button>
+                                @else
+                                <p class="fair-soon">The list of hiring opens closer to the event date.</p>
+                                @endif
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                @endif
+
                 @if($jobs->isEmpty())
                     <div class="empty-box">
                         <i class="ph ph-briefcase"></i>
@@ -625,43 +765,12 @@
                         <p>Check back later for new opportunities.</p>
                     </div>
                 @else
-                    <div class="jobs-grid">
-                        @foreach($jobs as $job)
-                        <div class="job-card">
-                            @if($job->poster_image)
-                            <img src="{{ asset('storage/' . $job->poster_image) }}"
-                                 alt="{{ $job->title }} hiring poster" class="job-card-poster" loading="lazy">
-                            @endif
-                            <div class="job-card-top">
-                                <div class="job-icon"><i class="ph ph-buildings"></i></div>
-                                <span class="job-card-type-badge">{{ ucfirst(str_replace('_', ' ', $job->type)) }}</span>
-                            </div>
-                            <p class="job-title">{{ $job->title }}</p>
-                            <p class="job-company">{{ $job->company->company_name ?? 'Company' }}</p>
-                            <div class="job-meta">
-                                <span class="job-badge"><i class="ph ph-map-pin me-1"></i>{{ $job->location }}</span>
-                                <span class="job-badge"><i class="ph ph-users-three me-1"></i>{{ $job->slots }} slot/s</span>
-                                @if($job->deadline)
-                                <span class="job-badge-deadline">
-                                    <i class="ph ph-calendar-blank me-1"></i>Until {{ \Carbon\Carbon::parse($job->deadline)->format('M d, Y') }}
-                                </span>
-                                @endif
-                            </div>
-                            <button type="button" class="btn-view-more js-view-more"
-                                data-title="{{ $job->title }}"
-                                data-company="{{ $job->company->company_name ?? 'Company' }}"
-                                data-location="{{ $job->location }}"
-                                data-type="{{ ucfirst(str_replace('_', ' ', $job->type)) }}"
-                                data-slots="{{ $job->slots }}"
-                                data-deadline="{{ $job->deadline ? \Carbon\Carbon::parse($job->deadline)->format('M d, Y') : '' }}"
-                                data-description="{{ strip_tags($job->description ?? '') }}"
-                                data-poster="{{ $job->poster_image ? asset('storage/' . $job->poster_image) : '' }}">
-                            View More
-                            </button>
-                        </div>
-                        @endforeach
-                    </div>
-
+                    {{-- Usa ka kahon kada KOMPANYA, ang mga posisyon isip
+                         bullet sa ilalom — parehas sa poster nga gipagawas sa
+                         opisina. Upat ka kompanya kada panid, unya Next. --}}
+                    <div id="boardMarket" class="fair-market-label">LIST OF JOB HIRING</div>
+                    <div id="boardGrid" class="fair-hiring-grid"></div>
+                    <div id="boardPager" class="fair-pager"></div>
                     @endif
             </div>
 
@@ -844,6 +953,27 @@
             </div>
         </div>
 
+        {{-- ── LIST OF JOB HIRING ──
+             Upat ka kompanya kada panid. Ang poster sa opisina naay upat ka
+             kahon sa usa ka panid, ug ang kompanya nga naay napulo ka bakante
+             mopuno sa iyang kaugalingon nga kolum — mao nga ang pag-ihap kay
+             kompanya, dili bakante. --}}
+        <div id="fairModalOverlay" class="job-modal-overlay">
+            <div class="job-modal-box fair-modal-box">
+                <button class="close-btn" onclick="closeFairModal()"><i class="ph ph-x"></i></button>
+                <div class="fair-modal-head">
+                    <p id="fairModalTitle"></p>
+                    <div id="fairModalWhen"></div>
+                </div>
+                <div id="fairModalMarket" class="fair-market-label"></div>
+                <div id="fairModalGrid" class="fair-hiring-grid"></div>
+                <div id="fairModalPager" class="fair-pager"></div>
+                <a href="{{ route('login') }}" class="btn-login" style="text-decoration:none;display:block;text-align:center;margin-top:16px;">
+                    <i class="ph-fill ph-paper-plane-tilt me-2"></i>Login to Apply
+                </a>
+            </div>
+        </div>
+
         <script>
             @if(session('success') || session('notice') || $errors->any() || request()->routeIs('login'))
                 // A failed login redirects back here, so the panel has to reopen
@@ -857,6 +987,214 @@
                     @endif
                 });
             @endif
+
+            // ── ANG BOARD SA LANDING PAGE ──
+            //
+            // Usa ka kahon kada kompanya, ang mga posisyon isip bullet sa
+            // ilalom. Ang bullet mahimong pindoton: ang lokasyon, slots,
+            // deadline ug deskripsyon naa gihapon, naa ra sa luyo sa usa ka
+            // pagpindot imbis nga nagkatag sa unom ka card.
+            const PESO_BOARD = @json($hiringBoard ?? []);
+            const BOARD_PER_PAGE = 4;
+
+            let boardPages = [];
+            let boardPage  = 0;
+
+            function buildBoardPages() {
+                const companies = Object.keys(PESO_BOARD);
+                boardPages = [];
+                for (let i = 0; i < companies.length; i += BOARD_PER_PAGE) {
+                    boardPages.push(companies.slice(i, i + BOARD_PER_PAGE));
+                }
+            }
+
+            function renderBoardPage() {
+                const grid = document.getElementById('boardGrid');
+                if (!grid) return;
+
+                grid.innerHTML = '';
+                for (const company of (boardPages[boardPage] || [])) {
+                    const box = document.createElement('div');
+                    box.className = 'fair-hiring-box';
+
+                    const head = document.createElement('div');
+                    head.className = 'fair-hiring-name';
+                    head.textContent = company;
+                    box.appendChild(head);
+
+                    const list = document.createElement('ul');
+                    list.className = 'fair-hiring-list';
+                    for (const job of PESO_BOARD[company]) {
+                        const li = document.createElement('li');
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'fair-job-btn';
+                        btn.textContent = job.title;
+                        btn.addEventListener('click', function () {
+                            showJobModal(job.title, job.company, job.location, job.type,
+                                job.slots, job.deadline, job.description, job.poster);
+                        });
+                        li.appendChild(btn);
+                        list.appendChild(li);
+                    }
+                    box.appendChild(list);
+                    grid.appendChild(box);
+                }
+
+                const pager = document.getElementById('boardPager');
+                if (!pager) return;
+                pager.innerHTML = '';
+                if (boardPages.length < 2) return;
+
+                const prev = document.createElement('button');
+                prev.type = 'button';
+                prev.innerHTML = '<i class="ph ph-caret-left"></i>';
+                prev.disabled = boardPage === 0;
+                prev.onclick = function () { boardPage--; renderBoardPage(); };
+
+                const count = document.createElement('span');
+                count.textContent = 'Page ' + (boardPage + 1) + ' of ' + boardPages.length;
+
+                const next = document.createElement('button');
+                next.type = 'button';
+                next.innerHTML = 'Next <i class="ph ph-caret-right"></i>';
+                next.disabled = boardPage >= boardPages.length - 1;
+                next.onclick = function () { boardPage++; renderBoardPage(); };
+
+                pager.appendChild(prev);
+                pager.appendChild(count);
+                pager.appendChild(next);
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                buildBoardPages();
+                renderBoardPage();
+            });
+
+            // ── ANG LISTAHAN SA NAGKUHA UG TAWO ──
+            //
+            // Ang markets kay { local: { "Company": ["Job", ...] }, overseas: {...} }.
+            // Giplastar sila nga usa ka taas nga laray — merkado, unya kompanya —
+            // ug giputol tag-upat ka kompanya, aron ang panid dili gyud motaas
+            // kay sa poster nga gi-imprenta sa opisina.
+            const PESO_FAIRS = @json($jobFairs ?? []);
+            const FAIR_PER_PAGE = 4;
+
+            let fairPages = [];
+            let fairPage  = 0;
+
+            function fairBlocks(markets) {
+                const blocks = [];
+                for (const market of ['local', 'overseas']) {
+                    const byCompany = markets[market];
+                    if (!byCompany) continue;
+                    for (const company of Object.keys(byCompany)) {
+                        blocks.push({ market: market, company: company, titles: byCompany[company] });
+                    }
+                }
+                return blocks;
+            }
+
+            function openFairModal(index) {
+                const fair = PESO_FAIRS[index];
+                if (!fair) return;
+
+                const ev = fair.event;
+                document.getElementById('fairModalTitle').textContent = ev.title;
+
+                const when = [];
+                if (ev.event_date) {
+                    when.push(new Date(ev.event_date).toLocaleDateString('en-US',
+                        { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
+                }
+                if (ev.venue) when.push(ev.venue_address ? ev.venue + ', ' + ev.venue_address : ev.venue);
+                document.getElementById('fairModalWhen').textContent = when.join('  ·  ');
+
+                const blocks = fairBlocks(fair.markets || {});
+                fairPages = [];
+                for (let i = 0; i < blocks.length; i += FAIR_PER_PAGE) {
+                    fairPages.push(blocks.slice(i, i + FAIR_PER_PAGE));
+                }
+                fairPage = 0;
+                renderFairPage();
+
+                document.getElementById('fairModalOverlay').classList.add('show');
+                document.body.style.overflow = 'hidden';
+            }
+
+            function renderFairPage() {
+                const page = fairPages[fairPage] || [];
+                const grid = document.getElementById('fairModalGrid');
+
+                // Ang label sa merkado mosulti kung unsa ang gitan-aw karon.
+                // Ang usa ka panid mahimong motabok gikan sa local ngadto sa
+                // overseas, mao nga gilista ang tanan nga naa sa panid.
+                const markets = [...new Set(page.map(b => b.market))]
+                    .map(m => m === 'overseas' ? 'OVERSEAS' : 'LOCAL');
+                document.getElementById('fairModalMarket').textContent =
+                    markets.join(' / ') + '  LIST OF JOB HIRING';
+
+                grid.innerHTML = '';
+                for (const block of page) {
+                    const box = document.createElement('div');
+                    box.className = 'fair-hiring-box';
+
+                    const head = document.createElement('div');
+                    head.className = 'fair-hiring-name';
+                    head.textContent = block.company;
+                    box.appendChild(head);
+
+                    const list = document.createElement('ul');
+                    list.className = 'fair-hiring-list';
+                    for (const title of block.titles) {
+                        const li = document.createElement('li');
+                        li.textContent = title;
+                        list.appendChild(li);
+                    }
+                    box.appendChild(list);
+                    grid.appendChild(box);
+                }
+
+                const pager = document.getElementById('fairModalPager');
+                pager.innerHTML = '';
+                if (fairPages.length < 2) return;
+
+                const prev = document.createElement('button');
+                prev.type = 'button';
+                prev.innerHTML = '<i class="ph ph-caret-left"></i>';
+                prev.disabled = fairPage === 0;
+                prev.onclick = function () { fairPage--; renderFairPage(); };
+
+                const count = document.createElement('span');
+                count.textContent = 'Page ' + (fairPage + 1) + ' of ' + fairPages.length;
+
+                const next = document.createElement('button');
+                next.type = 'button';
+                next.innerHTML = 'Next <i class="ph ph-caret-right"></i>';
+                next.disabled = fairPage >= fairPages.length - 1;
+                next.onclick = function () { fairPage++; renderFairPage(); };
+
+                pager.appendChild(prev);
+                pager.appendChild(count);
+                pager.appendChild(next);
+            }
+
+            function closeFairModal() {
+                document.getElementById('fairModalOverlay').classList.remove('show');
+                document.body.style.overflow = '';
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                document.querySelectorAll('.js-fair-details').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        openFairModal(parseInt(btn.dataset.fair, 10));
+                    });
+                });
+            });
+
+            document.getElementById('fairModalOverlay').addEventListener('click', function (e) {
+                if (e.target === this) closeFairModal();
+            });
 
             function scrollToSection(e, id) {
                 e.preventDefault();
@@ -939,6 +1277,8 @@
                 );
             });
 
+            // Ang modal sa bakante giablihan ug inline style, mao nga ang
+            // pagsira niya kinahanglan mokuha sa parehas nga paagi.
             function closeJobModal() {
                 document.getElementById('jobModalOverlay').style.display = 'none';
             }

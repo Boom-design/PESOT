@@ -21,7 +21,7 @@ class LandingController extends Controller
         // ── giablihan, mao nga walay impormasyon nga mawala sa pag-usa. ──
         $query = Job::with('company')->active()->tap($filters)->onePerGroup($filters);
 
-        $jobs = $query->latest()->take(4)->get();
+        $jobs = $query->latest()->get();
 
         // Ang ihap kinahanglan mo-uyon sa listahan: Job::active() usa ra ang
         // kahulogan sa "buhi pa" — abli, wala pa malabyi ang deadline, ug wala
@@ -33,7 +33,109 @@ class LandingController extends Controller
 
         $heroImages = $this->heroImages();
 
-        return view('landing', compact('jobs', 'openJobsCount', 'jobType', 'heroImages'));
+        $jobFairs = $this->jobFairsOnShow();
+
+        // ── ANG LANDING PAGE NAGBASA SAMA SA POSTER, DILI SAMA SA LISTAHAN ──
+        //
+        // PESO CDO, 2026-10-28: usa ka card kada bakante nagpalagpot sa
+        // bisita sa unom ka kahon nga managsama ug hitsura, ug ang poster nga
+        // gipagawas sa opisina sa Facebook wala gyud managsama niana. Didto,
+        // ang kompanya ang ulohan ug ang mga posisyon ang bullet sa ilalom —
+        // mabasa sa usa ka pagtan-aw kinsa ang nagkuha ug tawo ug para sa
+        // unsa.
+        //
+        // Ang mga detalye — lokasyon, slots, deadline, deskripsyon — naa
+        // gihapon sa luyo sa login, diin ang kada posting naa sa iyang
+        // kaugalingon nga panid. Kini nga panid dili na mosulay pag-ilis
+        // niadto.
+        $hiringBoard = $jobs
+            ->groupBy(fn (Job $job) => $job->company->company_name ?? 'Company')
+            ->map(fn ($ofCompany) => $ofCompany
+                ->unique('title')
+                ->map(fn (Job $job) => [
+                    'title'       => $job->title,
+                    'company'     => $job->company->company_name ?? 'Company',
+                    'location'    => $job->location,
+                    'type'        => ucfirst(str_replace('_', ' ', $job->type)),
+                    'slots'       => $job->slots,
+                    'deadline'    => $job->deadline ? $job->deadline->format('M d, Y') : '',
+                    'description' => strip_tags($job->description ?? ''),
+                    'poster'      => $job->poster_image ? asset('storage/' . $job->poster_image) : '',
+                ])
+                ->values()
+                ->all())
+            ->sortKeys();
+
+        return view('landing', compact(
+            'jobs', 'openJobsCount', 'jobType', 'heroImages', 'jobFairs', 'hiringBoard'
+        ));
+    }
+
+    /**
+     * The job fairs the public may see, each one with its list of hiring.
+     *
+     * PESO CDO, 2026-10-28: the office prints a poster for every fair — the
+     * event on one page, then "LIST OF JOB HIRING", a block per company with
+     * its openings under it. The landing page showed the same vacancies as
+     * loose cards, so a visitor could read six of them without ever learning
+     * they belonged to one day in one hall.
+     *
+     * The poster is uploaded. The list is not: it is built here from the
+     * postings themselves, so it cannot disagree with what the employers
+     * actually offered, and nobody has to redraw it when one of them adds a
+     * position.
+     *
+     * Only Job::active() postings are read, which is what already decides
+     * what the public may see. A fair whose cutoff has not arrived has no
+     * open postings yet and simply lists none.
+     */
+    private function jobFairsOnShow(): \Illuminate\Support\Collection
+    {
+        $events = \App\Models\JobFairEvent::whereIn('status', ['upcoming', 'ongoing'])
+            ->whereDate('event_date', '>=', today())
+            ->orderBy('event_date')
+            ->get();
+
+        if ($events->isEmpty()) {
+            return collect();
+        }
+
+        // Which posting belongs to which fair is recorded on the employment
+        // request, the same table JobFairAudience::eventJobs() reads. Asking
+        // the Job table directly would need a column that is not there.
+        $requests = \App\Models\JobFairEmploymentRequest::whereIn(
+            'job_fair_id', $events->pluck('job_fair_events_id')
+        )->get(['job_fair_id', 'job_id']);
+
+        $jobs = $requests->isEmpty()
+            ? collect()
+            : Job::with('company')
+                ->active()
+                ->whereIn('job_qualifications_id', $requests->pluck('job_id'))
+                ->get()
+                ->keyBy('job_qualifications_id');
+
+        return $events->map(function (\App\Models\JobFairEvent $event) use ($requests, $jobs) {
+            $ofThisFair = $requests
+                ->where('job_fair_id', $event->job_fair_events_id)
+                ->map(fn ($r) => $jobs->get($r->job_id))
+                ->filter();
+
+            // One block per company, its openings listed under it — and a
+            // title offered twice is still one line on a poster.
+            $markets = $ofThisFair
+                ->groupBy(fn (Job $job) => $job->company?->is_overseas ? 'overseas' : 'local')
+                ->map(fn ($rows) => $rows
+                    ->groupBy(fn (Job $job) => $job->company->company_name ?? 'Company')
+                    ->map(fn ($ofCompany) => $ofCompany->pluck('title')->unique()->values()->all())
+                    ->sortKeys());
+
+            return [
+                'event'     => $event,
+                'markets'   => $markets,
+                'companies' => $markets->sum(fn ($byCompany) => $byCompany->count()),
+            ];
+        })->filter(fn ($fair) => $fair['companies'] > 0 || $fair['event']->poster_image)->values();
     }
 
     /**

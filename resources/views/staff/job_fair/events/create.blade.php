@@ -24,7 +24,7 @@
 
     <div class="card border-0 shadow-sm rounded-3">
         <div class="card-body p-4">
-            <form action="{{ route('staff.jobfair.events.store') }}" method="POST">
+            <form action="{{ route('staff.jobfair.events.store') }}" method="POST" enctype="multipart/form-data">
                 @csrf
 
                 <div class="mb-3">
@@ -121,6 +121,27 @@
                         placeholder="e.g. Masterson Ave, Upper Balulang, Cagayan de Oro City"
                         value="{{ old('venue_address') }}">
                     @error('venue_address')
+                        <div class="text-danger small mt-1">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                {{-- Ang poster nga gihimo sa opisina.
+                     Ang petsa, oras ug address dili mogikan dinhi — gihimo
+                     kini sa landing page gikan sa event mismo, kay ang
+                     hulagway dili mausab kung mabalhin ang petsa. --}}
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small" style="color:var(--g-700);">
+                        Job Fair Poster
+                    </label>
+                    <input type="file" name="poster_image" accept="image/jpeg,image/png"
+                        class="form-control"
+                        style="border:1px solid var(--n-200);border-radius:10px;font-size:13px;">
+                    <div class="mt-1" style="font-size:11px;color:var(--n-500);">
+                        <i class="ph ph-info me-1"></i>JPG or PNG, 5MB or smaller. The date, time and
+                        address are printed by the system under the poster, so they stay correct if
+                        the event moves.
+                    </div>
+                    @error('poster_image')
                         <div class="text-danger small mt-1">{{ $message }}</div>
                     @enderror
                 </div>

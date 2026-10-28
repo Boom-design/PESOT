@@ -1157,6 +1157,7 @@ $nsrp = $registration->nsrp;
                                     . \App\Support\JobFairEventHours::LATEST,
             'venue'             => 'required|string|max:255',
             'venue_address'     => 'nullable|string|max:255',
+            'poster_image'      => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
             'cater'             => 'required|array|min:1',
             'cater.*'           => 'in:local,overseas',
             // ── Ang target kinahanglan na.
@@ -1206,6 +1207,9 @@ $nsrp = $registration->nsrp;
             'event_time'        => $request->event_time,
             'venue'             => $request->venue,
             'venue_address'     => $request->venue_address,
+            'poster_image'      => $request->hasFile('poster_image')
+                                    ? $request->file('poster_image')->store('jobfair_posters', 'public')
+                                    : null,
             'cater'             => array_values($cater),
             'target_industries' => $this->jobFairTargetIndustries($request),
             'pwd_only'          => $request->boolean('pwd_only'),
@@ -1342,6 +1346,7 @@ $nsrp = $registration->nsrp;
                             . \App\Support\JobFairEventHours::LATEST,
             'venue'      => 'required|string|max:255',
             'venue_address' => 'nullable|string|max:255',
+            'poster_image'  => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
             // Walay 'status' dinhi. Ang porma wala na siya gipadala — ang
             // UpdateJobFairEventStatuses nga command ang nagbutang niini gikan
             // sa petsa sa event.
@@ -1388,12 +1393,22 @@ $nsrp = $registration->nsrp;
         // ── nga sobra sa iyang kaugalingon nga limit. Ang numero target na ra
         // ── karon — walay bisan unsa nga gitandi kaniya — mao nga walay
         // ── mabuak kung usbon siya bisan asa. ──
+        // A file input carries no previous value, so an empty one means "leave
+        // the poster alone" — never "remove it".
+        if ($request->hasFile('poster_image')) {
+            if ($event->poster_image) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($event->poster_image);
+            }
+            $event->poster_image = $request->file('poster_image')->store('jobfair_posters', 'public');
+        }
+
         $event->update([
             'title'             => $request->title,
             'event_date'        => $request->event_date,
             'event_time'        => $request->event_time,
             'venue'             => $request->venue,
             'venue_address'     => $request->venue_address,
+            'poster_image'      => $event->poster_image,
             'cater'             => array_values($cater),
             'target_industries' => $this->jobFairTargetIndustries($request),
             'pwd_only'          => $request->boolean('pwd_only'),
