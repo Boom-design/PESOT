@@ -91,9 +91,21 @@ class LandingController extends Controller
      */
     private function jobFairsOnShow(): \Illuminate\Support\Collection
     {
+        // Ang pinakasunod ra, usa.
+        //
+        // PESO CDO, 2026-10-29: usa ka fair kada bulan sa tibuok tuig, mao
+        // nga ang paglista sa tanan nga umaabot maghatag ug duha o tulo ka
+        // poster nga nagtapad, ug dili maila sa bisita kung asa kanila ang
+        // sunod. Ang poster sa opisina usa ra gyud ka adlaw ang gipakita.
+        //
+        // Ang sala dili "kini nga bulan". Ang fair niini nga bulan mahimong
+        // nahuman na — sa Oktubre 29, ang Oktubre nga fair milabay na sa
+        // ika-14 — ug ang panid mahimong walay ikapakita samtang duna pa
+        // diay umaabot sa sunod bulan.
         $events = \App\Models\JobFairEvent::whereIn('status', ['upcoming', 'ongoing'])
             ->whereDate('event_date', '>=', today())
             ->orderBy('event_date')
+            ->limit(1)
             ->get();
 
         if ($events->isEmpty()) {
