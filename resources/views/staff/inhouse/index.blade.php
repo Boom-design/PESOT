@@ -77,8 +77,36 @@
                         <td style="padding:12px 16px;font-weight:600;color:var(--g-700);">
                             {{ $item->employer->company_name ?? $item->employer->name ?? 'None' }}
                         </td>
+                        {{-- Walay "Schedule Only" na.
+
+                             PESO, 2026-10-29: kaniadto ang usa ka hangyo sa
+                             petsa walay gidala nga posisyon, mao nga "Schedule
+                             Only" ang tanan nga maingon sa desk. Karon ang
+                             porma nangayo gyud sa mga posisyon, ug ang pag-
+                             dawat niini mag-abli kanila isip bakante. Ang
+                             gipangita sa desk mao ang mga posisyon — kana ang
+                             ipakita.
+
+                             Ang fallback para sa daan nga row nga gihimo sa
+                             wala pa ang porma mangayo. --}}
+                        @php
+                            $positions = $item->job_positions;
+                            if (is_string($positions)) {
+                                $positions = json_decode($positions, true);
+                            }
+                            $positions = array_values(array_filter(
+                                (array) $positions,
+                                fn ($p) => trim((string) $p) !== ''
+                            ));
+                        @endphp
                         <td style="padding:12px 16px;">
-                            <span style="color:var(--g-700);font-weight:600;font-size:12px;">Schedule Only</span>
+                            @if($positions)
+                                <span style="color:var(--g-700);font-weight:600;font-size:12px;">
+                                    {{ implode(', ', $positions) }}
+                                </span>
+                            @else
+                                <span style="color:var(--n-500);font-weight:600;font-size:12px;">Schedule Request</span>
+                            @endif
                         </td>
                         <td style="padding:12px 16px;color:var(--n-700);">
                             {{ $item->schedule_window_label }}
@@ -86,11 +114,12 @@
                         <td style="padding:12px 16px;color:var(--n-700);">
                             {{ \Carbon\Carbon::parse($item->preferred_time)->format('h:i A') }}
                         </td>
-                        <td style="padding:12px 16px;text-align:center;color:var(--n-500);">
-                            {{-- Schedule-only: walay job posting, mao nga walay
-                                 bakante nga maihap. Ang gipangayo ra niya kay
-                                 lugar ug petsa. --}}
-                            None
+                        {{-- Ang hangyo nagsulti pila ka tawo ang ilang
+                             atubangon, ug ang pagdawat niini magbahin niana
+                             ngadto sa mga posisyon isip bakante. Kana ang
+                             gidaghanon nga gitanyag — dili na "None". --}}
+                        <td style="padding:12px 16px;text-align:center;color:var(--g-700);font-weight:600;">
+                            {{ $item->num_applicants ?: 'None' }}
                         </td>
                         <td style="padding:12px 16px;color:var(--n-700);">
                             @if($item->venue_type === 'custom')
