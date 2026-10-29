@@ -376,6 +376,9 @@
         // silang tulo, ug walay bisan usa nga mo-notify sa employer.
         Route::post('/jobseeker/applications/{id}/inhouse-cancel', [ApplicationController::class, 'cancelInhouseParticipation'])->name('jobseeker.applications.inhouseCancel');
         Route::post('/jobseeker/applications/{id}/company-interview-cancel', [ApplicationController::class, 'cancelCompanyInterviewParticipation'])->name('jobseeker.applications.companyInterviewCancel');
+        // ── Mibalibad sa pag-apil sa fair, mao nga wala nay aplikasyon.
+        // ── Tan-awa ang declineJobFairJoin para sa rason. ──
+        Route::post('/jobseeker/applications/{id}/jobfair-decline', [ApplicationController::class, 'declineJobFairJoin'])->name('jobseeker.applications.jobfairDecline');
         Route::post('/jobseeker/jobfair/{id}/cancel',           [JobseekerWebController::class, 'cancelJobFair'])->name('jobseeker.jobfair.cancel');
         Route::get('/jobseeker/history',                       [JobseekerWebController::class, 'history'])->name('jobseeker.history');
         Route::get('/jobseeker/notifications',                  [JobseekerWebController::class, 'notifications'])->name('jobseeker.notifications.index');

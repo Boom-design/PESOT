@@ -142,7 +142,8 @@ class ApplicationController extends Controller
             if ($fairId && !$joined) {
                 return redirect()->route('jobseeker.jobs.show', $jobId)
                     ->with('success', 'Application submitted successfully!')
-                    ->with('show_jobfair_join_prompt', $fairId);
+                    ->with('show_jobfair_join_prompt', $fairId)
+                    ->with('jobfair_application_id', $application->job_matching_id);
             }
         }
 
@@ -358,6 +359,54 @@ class ApplicationController extends Controller
     {
         return $this->cancelParticipation($id, 'company_interview', 'company_interview_participation',
             'company interview');
+    }
+
+    /**
+     * They applied to a job fair vacancy and then said they would not go.
+     *
+     * PESO CDO, 2026-10-29: "lisod sad maka apply ka tas dle ka mo apil."
+     * A vacancy on a job fair is filled at the fair, in person. An
+     * application from somebody who will not be in the hall is a line on the
+     * employer's list that nobody can act on, and it is what made Hired on
+     * the Spot and Attendance disagree in the first place.
+     *
+     * So declining withdraws the application outright. It is deleted rather
+     * than marked, because the person must be able to come back, press Apply
+     * again, and answer differently — a withdrawn row would be caught by the
+     * "you have already applied" guard and lock them out of their own change
+     * of mind.
+     *
+     * Only an untouched application of their own goes: once the employer has
+     * decided anything on it, it is no longer theirs alone to erase.
+     */
+    public function declineJobFairJoin($id)
+    {
+        $jobseeker = Auth::user();
+        if (!$jobseeker || $jobseeker->role !== 'jobseeker') {
+            return redirect()->route('login');
+        }
+
+        $registration = JobseekerRegistration::where('user_id', $jobseeker->users_id)->first();
+        if (!$registration) {
+            return redirect()->route('jobseeker.jobs');
+        }
+
+        $application = Application::where('job_matching_id', $id)
+            ->where('jobseeker_id', $registration->jobseeker_registrations_id)
+            ->where('status', 'pending')
+            ->first();
+
+        if (!$application) {
+            return redirect()->route('jobseeker.jobs')
+                ->with('info', 'That application has already been acted on, so it stays as it is.');
+        }
+
+        $jobId = $application->job_id;
+        $application->delete();
+
+        return redirect()->route('jobseeker.jobs.show', $jobId)
+            ->with('info', 'Your application was withdrawn. A job fair vacancy is filled at the fair, '
+                . 'so you have to join the fair to apply for it. Press Apply again when you can go.');
     }
 
     private function cancelParticipation($id, string $scheduleType, string $column, string $label)

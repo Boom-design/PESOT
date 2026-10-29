@@ -473,22 +473,31 @@
       action="{{ route('jobseeker.jobfair.join', session('show_jobfair_join_prompt')) }}">
     @csrf
 </form>
+<form id="jobfairDeclineForm" method="POST"
+      action="{{ route('jobseeker.applications.jobfairDecline', session('jobfair_application_id')) }}">
+    @csrf
+</form>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         Swal.fire({
             title: 'Join this job fair?',
-            text: 'Joining reserves your slip number for the day. You can still pull out later from PESO Events.',
+            text: 'This vacancy is filled at the fair itself, so your application only stands if you '
+                + 'are going. Joining reserves your slip number — you can still pull out later from '
+                + 'PESO Events.',
             icon: 'question',
             showCancelButton: true,
             confirmButtonColor: '#28812F',
             cancelButtonColor: 'var(--danger)',
             confirmButtonText: 'Yes, count me in',
-            cancelButtonText: 'Not yet',
+            cancelButtonText: 'I cannot go',
+            // Walay ikyas. Ang duha ka tubag naay sangputanan, ug ang
+            // pagsira sa kahon magbilin ug aplikasyon nga walay nagbarog.
             allowOutsideClick: false,
+            allowEscapeKey: false,
         }).then((result) => {
-            if (result.isConfirmed) {
-                document.getElementById('jobfairJoinForm').submit();
-            }
+            document.getElementById(
+                result.isConfirmed ? 'jobfairJoinForm' : 'jobfairDeclineForm'
+            ).submit();
         });
     });
 </script>
