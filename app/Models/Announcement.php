@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\EmployerRequirement;
 use Illuminate\Database\Eloquent\Model;
 
 class Announcement extends Model
@@ -47,7 +48,7 @@ class Announcement extends Model
     public function staffLinkUrl(): string
     {
         return match ($this->reference_type) {
-            'employer_requirement'   => route('staff.requirements.view', $this->reference_id),
+            'employer_requirement'   => $this->employerRequirementUrl(),
             'employer_registration'  => route('staff.employers', ['tab' => 'pre']),
             'employer_inactivity'    => $this->employerInactivityUrl(),
             'jobseeker_registration' => route('staff.registrations.view', $this->reference_id),
@@ -62,6 +63,34 @@ class Announcement extends Model
             'job_fair_selection'     => route('staff.inhouse.jobfair', ['panel' => 'invite']),
             default                  => route('staff.notifications.index'),
         };
+    }
+
+    /**
+     * Where a notice about an employer's folder lands.
+     *
+     * PESO, 2026-10-29: it opened the standalone review page. The desk does
+     * not read a folder there — it reads it from the Employers list, in the
+     * window that opens on the employer's own row, where the rest of that
+     * employer's record is. The bell lands there now, on the right tab and
+     * the right page of it, with that window already open.
+     */
+    private function employerRequirementUrl(): string
+    {
+        $requirement = EmployerRequirement::find($this->reference_id);
+
+        if (!$requirement) {
+            return route('staff.employers', ['tab' => 'pre']);
+        }
+
+        // A folder still waiting sits on the Pre-registered tab; one already
+        // decided has moved to Approved. Landing on the wrong tab shows a
+        // list the employer is not in.
+        return route('staff.employers', [
+            'tab'       => $requirement->status === 'pending' ? 'pre' : 'approved',
+            // The requirement's user_id is the employer's NSRP registration
+            // id — the id the list and its modal are keyed by.
+            'highlight' => $requirement->user_id,
+        ]);
     }
 
     /**

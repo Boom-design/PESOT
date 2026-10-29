@@ -946,6 +946,22 @@
 
 @push('scripts')
 <script>
+    // ── Ang bell nagdala sa desk ngadto sa usa ka employer; abliha dayon ang
+    // ── iyang window.
+    // ──
+    // ── Ang ?highlight= nagdala na sa husto nga panid ug nagmarka sa laray.
+    // ── Apan ang gipangita sa desk kay ang mga papel, ug didto sila sa
+    // ── window — mao nga ang laray nga namarkahan nagpasabot gihapon ug usa
+    // ── pa ka pagpindot. ──
+    @if($highlight ?? null)
+    document.addEventListener('DOMContentLoaded', function () {
+        const box = document.getElementById('employerModal{{ (int) $highlight }}');
+        if (box && window.bootstrap) {
+            bootstrap.Modal.getOrCreateInstance(box).show();
+        }
+    });
+    @endif
+
     let searchTimer;
     // Ang sala nagpabilin sa URL, mao nga ang pager ug ang Download Excel
     // nga link magdala niini.
