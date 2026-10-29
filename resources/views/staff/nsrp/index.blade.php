@@ -1124,7 +1124,24 @@ function markUncertain(node, score) {
 function toggleEmploymentFields() {
     const val = document.getElementById('employmentType').value;
     document.getElementById('employedFields').style.display   = val === 'employed'   ? 'block' : 'none';
-    document.getElementById('unemployedFields').style.display = val === 'unemployed' ? 'block' : 'none';
+
+    const asking = val === 'unemployed';
+    document.getElementById('unemployedFields').style.display = asking ? 'block' : 'none';
+
+    // ── ANG NATAGO NGA KAHON NGA NAGBABAG SA SUBMIT ──
+    //
+    // Parehas sa porma sa jobseeker. Ang `type="number"` mahimong `:invalid`
+    // bisan walay `required`: kung naay gi-type nga dili numero, ang browser
+    // mobilin sa `value` nga blangko apan motimaan ug `badInput`. Matago ang
+    // kahon inig usab sa Employment Type, apan sulod gihapon siya sa porma,
+    // ug ang desk mabalda sa kahon nga dili niya makita.
+    const months = document.querySelector('input[name="months_looking"]');
+    if (months) {
+        if (!asking) {
+            months.value = '';
+        }
+        months.disabled = !asking;
+    }
 }
 
 function toggleSelfEmployed() {
@@ -1388,13 +1405,21 @@ document.addEventListener('DOMContentLoaded', async function() {
     await loadProvinces();
 });
 
+// Ang ngalan sa kolum dili mensahe. Ablihi ang step nga naghupot sa sayop
+// nga kahon, itudlo siya, ug ang browser na ang mosulti unsay sayop.
 function debugSubmit(e, btn) {
     e.preventDefault();
     const form = btn.form;
     syncPresentAddressIfSame();
-    const invalid = [...form.querySelectorAll(':invalid')];
-    if (invalid.length > 0) {
-        alert('Invalid fields: ' + invalid.map(f => f.name).join(', '));
+    const invalid = form.querySelector(':invalid');
+    if (invalid) {
+        const stepEl = invalid.closest('.nsrp-step');
+        if (stepEl) {
+            nsrpCurrentStep = parseInt(stepEl.dataset.step);
+            showNsrpStep(nsrpCurrentStep);
+        }
+        invalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => invalid.reportValidity(), 300);
     } else {
         form.submit();
     }
