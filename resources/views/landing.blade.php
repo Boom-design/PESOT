@@ -514,6 +514,18 @@
                 background: var(--g-700); color: #fff; font-size: 12px; font-weight: 800;
                 padding: 9px 12px; line-height: 1.35; text-transform: uppercase;
             }
+            /* Ang Login to Apply sa ubos sa kada kahon. `margin-top: auto`
+               ang nagduso kaniya sa ubos, aron magkatupong sila bisan lahi
+               ang gidaghanon sa posisyon kada kompanya. */
+            .fair-apply-btn {
+                display: flex; align-items: center; justify-content: center;
+                margin: auto 10px 10px; min-height: 36px;
+                background: var(--g-600); color: #fff; text-decoration: none;
+                border-radius: 9px; font-size: 12px; font-weight: 700;
+            }
+            .fair-apply-btn:hover, .fair-apply-btn:focus-visible {
+                background: var(--g-700); color: #fff;
+            }
             .fair-hiring-list { margin: 0; padding: 10px 12px 12px 28px; }
             .fair-hiring-list li { font-size: 13px; color: var(--n-700); line-height: 1.55; }
             /* Ang bullet nga mapindot magpabilin nga bullet: walay kahon,
@@ -789,21 +801,22 @@
                         <p>Check back later for new opportunities.</p>
                     </div>
                 @elseif($jobType === 'job_fair')
-                    {{-- ── ANG POSTER NGA PORMA, SA JOB FAIR RA ──
+                    {{-- ── WALAY LISTAHAN DINHI ──
 
-                         Usa ka kahon kada KOMPANYA, ang mga posisyon isip
-                         bullet sa ilalom — parehas sa poster nga gipagawas sa
-                         opisina. Upat ka kompanya kada panid, unya Next.
+                         Ang poster card sa taas naay View Details, ug ang
+                         listahan sa nagkuha ug tawo naa didto. Ang pagbutang
+                         sa parehas nga listahan dinhi kaduha ra siya
+                         gipakita, ug ang bisita dili masayod kung lahi ba
+                         ang duha.
 
-                         Ang Local ug Overseas nagpabilin sa ilang kaugalingon
-                         nga card. Ang job fair usa ka adlaw nga gipundok ang
-                         daghang kompanya, mao nga ang pagpundok makatabang
-                         didto; ang usa ka bakante nga gipost sa usa ka
-                         kompanya dili, ug ang card mao ang nagsulti sa
-                         lokasyon, slots ug deadline nga walay pagpindot. --}}
-                    <div id="boardMarket" class="fair-market-label">LIST OF JOB HIRING</div>
-                    <div id="boardGrid" class="fair-hiring-grid"></div>
-                    <div id="boardPager" class="fair-pager"></div>
+                         Kung walay umaabot nga fair, kini ang mosulti. --}}
+                    @if($jobFairs->isEmpty())
+                    <div class="empty-box">
+                        <i class="ph ph-storefront"></i>
+                        <h6>No upcoming job fair</h6>
+                        <p>Watch this page for the next one.</p>
+                    </div>
+                    @endif
                 @else
                     <div class="jobs-grid">
                         @foreach($jobs->take(4) as $job)
@@ -1037,10 +1050,10 @@
                 </div>
                 <div id="fairModalMarket" class="fair-market-label"></div>
                 <div id="fairModalGrid" class="fair-hiring-grid"></div>
+                {{-- Ang Login to Apply naa sa kada kahon, dili usa ra sa
+                     ubos: ang tawo nagbasa sa usa ka kompanya, ug didto
+                     mismo siya modesisyon. --}}
                 <div id="fairModalPager" class="fair-pager"></div>
-                <a href="{{ route('login') }}" class="btn-login" style="text-decoration:none;display:block;text-align:center;margin-top:16px;">
-                    <i class="ph-fill ph-paper-plane-tilt me-2"></i>Login to Apply
-                </a>
             </div>
         </div>
 
@@ -1149,6 +1162,7 @@
             // kay sa poster nga gi-imprenta sa opisina.
             const PESO_FAIRS = @json($jobFairs ?? []);
             const FAIR_PER_PAGE = 4;
+            const FAIR_LOGIN_URL = @json(route('login'));
 
             let fairPages = [];
             let fairPage  = 0;
@@ -1222,6 +1236,16 @@
                         list.appendChild(li);
                     }
                     box.appendChild(list);
+
+                    // Kada kahon naay kaugalingon nga Login to Apply: ang
+                    // tawo nagbasa ug usa ka kompanya, ug didto siya
+                    // modesisyon — dili sa ubos sa upat kanila.
+                    const apply = document.createElement('a');
+                    apply.href = FAIR_LOGIN_URL;
+                    apply.className = 'fair-apply-btn';
+                    apply.innerHTML = '<i class="ph-fill ph-paper-plane-tilt me-1"></i>Login to Apply';
+                    box.appendChild(apply);
+
                     grid.appendChild(box);
                 }
 
