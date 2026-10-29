@@ -117,6 +117,35 @@ class ApplicationController extends Controller
                 ->with('show_company_interview_prompt', $application->job_matching_id);
         }
 
+        // ── Job fair: pangutan-a kung moapil ba siya, ug hatagi ug slip number.
+        // ──
+        // ── Ang pag-apply sa bakante sa fair dili pag-apil sa fair. Duha sila
+        // ── ka lahi nga lamesa: ang Attendance report nagbasa sa
+        // ── JobFairRegistration, ang Hired on the Spot nagbasa sa aplikasyon.
+        // ── Mao nga ang tawo nga nag-apply, wala ni-join, ug na-hire motungha
+        // ── nga gi-hire sa fair nga wala gayod nitambong — ug ang duha ka
+        // ── report magsumpaki nga walay nagsulti ngano.
+        // ──
+        // ── Ang pangutana mogawas dinhi, sama sa in-house ug sa company
+        // ── interview. Ang pag-apil gipangutana, dili gituohan: naay tawo nga
+        // ── mo-apply ug dili makaadto, ug ang slip nga wala gamita usa ka
+        // ── luna nga nawala sa opisina. ──
+        if ($job->schedule_type === 'job_fair') {
+            $fairId = \App\Models\JobFairEmploymentRequest::where('job_id', $jobId)
+                ->value('job_fair_id');
+
+            $joined = $fairId && \App\Models\JobFairRegistration::where('job_fair_id', $fairId)
+                ->where('user_id', $registration->jobseeker_registrations_id)
+                ->whereNull('cancelled_at')
+                ->exists();
+
+            if ($fairId && !$joined) {
+                return redirect()->route('jobseeker.jobs.show', $jobId)
+                    ->with('success', 'Application submitted successfully!')
+                    ->with('show_jobfair_join_prompt', $fairId);
+            }
+        }
+
         return redirect()->route('jobseeker.jobs.show', $jobId)
             ->with('success', 'Application submitted successfully!');
     }

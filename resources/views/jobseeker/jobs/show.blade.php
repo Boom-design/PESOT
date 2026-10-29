@@ -457,4 +457,40 @@
     });
 </script>
 @endif
+
+{{-- ── JOB FAIR: MOAPIL BA SIYA, UG ANG SLIP NUMBER ──
+
+     Ang pag-apply sa bakante sa fair dili pag-apil sa fair mismo. Kung dili
+     kini pangutan-on dinhi, ang tawo nga na-hire motungha sa Hired on the
+     Spot ug mawala sa Attendance — kay lahi ang lamesa nga gibasa sa duha
+     ka report.
+
+     Ang pag-apil gipangutana, dili gituohan. Naay tawo nga mo-apply ug dili
+     makaadto, ug ang slip nga wala gamita usa ka luna nga nawala sa
+     opisina. --}}
+@if(session('show_jobfair_join_prompt'))
+<form id="jobfairJoinForm" method="POST"
+      action="{{ route('jobseeker.jobfair.join', session('show_jobfair_join_prompt')) }}">
+    @csrf
+</form>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        Swal.fire({
+            title: 'Join this job fair?',
+            text: 'Joining reserves your slip number for the day. You can still pull out later from PESO Events.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#28812F',
+            cancelButtonColor: 'var(--danger)',
+            confirmButtonText: 'Yes, count me in',
+            cancelButtonText: 'Not yet',
+            allowOutsideClick: false,
+        }).then((result) => {
+            if (result.isConfirmed) {
+                document.getElementById('jobfairJoinForm').submit();
+            }
+        });
+    });
+</script>
+@endif
 @endsection
