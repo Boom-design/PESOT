@@ -1435,7 +1435,31 @@
         const val = document.getElementById('employmentType').value;
         document.getElementById('employedFields').style.display     = val === 'employed'   ? 'block' : 'none';
         document.getElementById('unemployedFields').style.display   = val === 'unemployed' ? 'block' : 'none';
-        document.getElementById('monthsLookingField').style.display = val === 'unemployed' ? 'block' : 'none';
+
+        const asking = val === 'unemployed';
+        document.getElementById('monthsLookingField').style.display = asking ? 'block' : 'none';
+
+        // ── ANG NATAGO NGA KAHON NGA NAGBABAG SA SUBMIT ──
+        //
+        // PESO, 2026-10-29: "Invalid fields: months_looking" sa telepono, sa
+        // step 8, mahitungod sa kahon nga wala makita sa tawo.
+        //
+        // Usa ka `type="number"` nga kahon mahimong `:invalid` bisan walay
+        // `required`: kung naay gi-type nga dili numero, ang browser mobilin
+        // sa `value` nga blangko apan motimaan ug `badInput`. Ug kung
+        // mausab ang Employment Type, matago ang kahon — apan sulod gihapon
+        // siya sa porma, ug ang dautan nga bili nagpabilin didto.
+        //
+        // Ang `disabled` nagkuha kaniya sa pagsusi ug sa pagpadala. Ang
+        // pagpapas sa bili nagtangtang sa `badInput`, kay ang usa ka tawo
+        // nga dili makakita sa kahon dili makaayo niini.
+        const months = document.querySelector('input[name="months_looking"]');
+        if (months) {
+            if (!asking) {
+                months.value = '';
+            }
+            months.disabled = !asking;
+        }
     }
 
     function toggleSelfEmployed() {
@@ -1774,19 +1798,34 @@
         }
     });
 
+    // ── ANG SUBMIT SA STEP 8 ──
+    //
+    // Kini kaniadto nag-alert ug `Invalid fields: months_looking` — ang
+    // ngalan sa kolum, ngadto sa tawo nga nagpuno sa porma. Walay nagsulti
+    // asa siya nga step, ug kung natago ang kahon, wala gyud siya makita.
+    //
+    // Parehas na siya karon sa Update & Save: ablihi ang step nga naghupot
+    // niini, itudlo ang kahon, ug pasultiha ang browser sa iyang kaugalingon
+    // nga mensahe.
     function debugSubmit(e, btn) {
         e.preventDefault();
         const form = btn.form;
 
         syncPresentAddressIfSame();
 
-        const invalid = [...form.querySelectorAll(':invalid')];
-        if (invalid.length > 0) {
-            console.log('Invalid fields:', invalid.map(f => f.name + ' = "' + f.value + '"'));
-            alert('Invalid fields: ' + invalid.map(f => f.name).join(', '));
-        } else {
-            form.submit();
+        const invalid = form.querySelector(':invalid');
+        if (invalid) {
+            const stepEl = invalid.closest('.nsrp-step');
+            if (stepEl) {
+                nsrpCurrentStep = parseInt(stepEl.dataset.step);
+                showNsrpStep(nsrpCurrentStep);
+            }
+            invalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => invalid.reportValidity(), 300);
+            return;
         }
+
+        form.submit();
     }
 
     // ── LEAVING WITH THE FORM HALF-FILLED ──
