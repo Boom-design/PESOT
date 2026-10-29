@@ -485,11 +485,14 @@
                 padding: 6px 12px; border-radius: 999px; margin-bottom: 12px;
             }
             /* Upat ka kahon sa usa ka laray, unya Next.
-               `align-items: start` ang nagpugong sa pag-inat: kung wala kini,
-               ang kompanya nga naay usa ka posisyon motaas sama sa kompanya
-               nga naay napulo, ug ang laray mapuno sa hawan. */
+
+               Managsama silag gitas-on. Ang kahon nga nag-inusara ug gitas-on
+               mohimo sa laray nga baliko, ug ang Login to Apply mag-atbang sa
+               lain-laing lebel. Ang `margin-top: auto` sa button ang nagduso
+               kaniya sa ubos, mao nga ang hawan naa sa taliwala sa listahan
+               ug sa button — dili sa ilawom niini. */
             .fair-hiring-grid {
-                display: grid; gap: 12px; align-items: start;
+                display: grid; gap: 12px;
                 grid-template-columns: repeat(4, minmax(0, 1fr));
             }
             @media (max-width: 1100px) {
