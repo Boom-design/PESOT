@@ -404,7 +404,29 @@
             return false;
         }
 
-        function toggleSidebar() {
+        // ── ANG MODAL NGA NAHISULAT SA SULOD SA TABLE ──
+//
+// PESO, 2026-10-30: sa telepono, ang pagpindot ug View sa usa ka laray
+// nagdala ug ngitngit nga screen nga dili ma-click, o walay bisan unsa.
+//
+// Ang modal gisulat tapad sa <tr>, sa sulod sa <tbody>. Dili kana balido:
+// ang browser mobalhin kaniya pagawas sa table samtang nag-parse, ug diin
+// siya matapos nagdepende sa browser. Sa sulod pa gyud siya sa
+// .table-responsive, nga adunay kaugalingon nga scroll.
+//
+// Ibalhin sila ngadto sa <body>, diin ang usa ka modal angay magpuyo.
+// Walay kausaban sa desktop; sa telepono mao kini ang kalainan tali sa
+// dialog nga makita ug dialog nga wala.
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.modal').forEach(function (box) {
+        if (box.parentElement !== document.body) {
+            document.body.appendChild(box);
+        }
+    });
+});
+
+function toggleSidebar() {
+
             document.querySelector('.sidebar').classList.add('sidebar-open');
             document.getElementById('sidebarOverlay').classList.add('show');
         }

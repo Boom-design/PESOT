@@ -1306,6 +1306,13 @@ textarea.peso-input {
        sitting at the far right goes with it. Wide tables keep their own
        scrollbar inside .table-responsive, so nothing is lost here. */
     html, body { overflow-x: hidden; }
+    /* `clip` does the same sideways trimming without turning body into a
+       scroll container. `hidden` does, and a scroll container on body is
+       what stops a Bootstrap modal from holding still on a phone: the dark
+       backdrop covers the screen while the dialog renders where it sits in
+       the document, far from what the person is looking at. The `hidden`
+       above stays as the fallback for a browser without `clip`. */
+    html, body { overflow-x: clip; }
     .main-content, .content-inner { max-width: 100vw; }
 
     .sidebar {
