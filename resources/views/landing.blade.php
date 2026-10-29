@@ -741,7 +741,7 @@
                      system gikan sa mga posting mismo, mao nga dili siya
                      magsumpaki sa gitanyag sa employer, ug walay magdrawing
                      pag-usab kung dunay modugang ug posisyon. --}}
-                @if(($jobType === 'all' || $jobType === 'job_fair') && $jobFairs->isNotEmpty())
+                @if($jobType === 'job_fair' && $jobFairs->isNotEmpty())
                     <div class="fair-strip">
                         @foreach($jobFairs as $i => $fair)
                         @php $ev = $fair['event']; @endphp
@@ -788,14 +788,60 @@
                         <h6>No job vacancies found</h6>
                         <p>Check back later for new opportunities.</p>
                     </div>
-                @else
-                    {{-- Usa ka kahon kada KOMPANYA, ang mga posisyon isip
+                @elseif($jobType === 'job_fair')
+                    {{-- ── ANG POSTER NGA PORMA, SA JOB FAIR RA ──
+
+                         Usa ka kahon kada KOMPANYA, ang mga posisyon isip
                          bullet sa ilalom — parehas sa poster nga gipagawas sa
-                         opisina. Upat ka kompanya kada panid, unya Next. --}}
+                         opisina. Upat ka kompanya kada panid, unya Next.
+
+                         Ang Local ug Overseas nagpabilin sa ilang kaugalingon
+                         nga card. Ang job fair usa ka adlaw nga gipundok ang
+                         daghang kompanya, mao nga ang pagpundok makatabang
+                         didto; ang usa ka bakante nga gipost sa usa ka
+                         kompanya dili, ug ang card mao ang nagsulti sa
+                         lokasyon, slots ug deadline nga walay pagpindot. --}}
                     <div id="boardMarket" class="fair-market-label">LIST OF JOB HIRING</div>
                     <div id="boardGrid" class="fair-hiring-grid"></div>
                     <div id="boardPager" class="fair-pager"></div>
-                    @endif
+                @else
+                    <div class="jobs-grid">
+                        @foreach($jobs->take(4) as $job)
+                        <div class="job-card">
+                            @if($job->poster_image)
+                            <img src="{{ asset('storage/' . $job->poster_image) }}"
+                                 alt="{{ $job->title }} hiring poster" class="job-card-poster" loading="lazy">
+                            @endif
+                            <div class="job-card-top">
+                                <div class="job-icon"><i class="ph ph-buildings"></i></div>
+                                <span class="job-card-type-badge">{{ ucfirst(str_replace('_', ' ', $job->type)) }}</span>
+                            </div>
+                            <p class="job-title">{{ $job->title }}</p>
+                            <p class="job-company">{{ $job->company->company_name ?? 'Company' }}</p>
+                            <div class="job-meta">
+                                <span class="job-badge"><i class="ph ph-map-pin me-1"></i>{{ $job->location }}</span>
+                                <span class="job-badge"><i class="ph ph-users-three me-1"></i>{{ $job->slots }} slot/s</span>
+                                @if($job->deadline)
+                                <span class="job-badge-deadline">
+                                    <i class="ph ph-calendar-blank me-1"></i>Until {{ \Carbon\Carbon::parse($job->deadline)->format('M d, Y') }}
+                                </span>
+                                @endif
+                            </div>
+                            <button type="button" class="btn-view-more js-view-more"
+                                data-title="{{ $job->title }}"
+                                data-company="{{ $job->company->company_name ?? 'Company' }}"
+                                data-location="{{ $job->location }}"
+                                data-type="{{ ucfirst(str_replace('_', ' ', $job->type)) }}"
+                                data-slots="{{ $job->slots }}"
+                                data-deadline="{{ $job->deadline ? \Carbon\Carbon::parse($job->deadline)->format('M d, Y') : '' }}"
+                                data-description="{{ strip_tags($job->description ?? '') }}"
+                                data-poster="{{ $job->poster_image ? asset('storage/' . $job->poster_image) : '' }}">
+                            View More
+                            </button>
+                        </div>
+                        @endforeach
+                    </div>
+                @endif
             </div>
 
             </div>
