@@ -1864,14 +1864,45 @@
             new bootstrap.Modal(document.getElementById('nsrpLeaveModal')).show();
         }, true);
 
-        document.getElementById('nsrpLeaveSave').addEventListener('click', function () {
-            nsrpDirty = false;
-            form.requestSubmit ? form.requestSubmit() : form.submit();
-        });
+        // ── ANG DUHA KA BUTON NGA WALAY LISTENER ──
+        //
+        // PESO, 2026-10-30: ang "Save and continue" ug ang "Leave without
+        // saving" walay gibuhat; ang "Stay" ra ang milihok.
+        //
+        // Kini nga script nahisulat sa ibabaw sa modal mismo, mao nga sa
+        // panahon nga siya modagan, wala pa ma-parse ang mga buton.
+        // Ang getElementById mobalik ug null, ug ang .addEventListener niini
+        // mosalibay — mao nga ang duha ka registration namatay, ug ang
+        // beforeunload nga nahisulat sa ilawom wala pud nakaabot. Ang "Stay"
+        // milihok kay data-bs-dismiss siya: Bootstrap ra, walay atong JS.
+        //
+        // Hulata ang DOM.
+        document.addEventListener('DOMContentLoaded', function () {
+            document.getElementById('nsrpLeaveSave')?.addEventListener('click', function () {
+                // Ang usa ka kahon nga sayop sa laing step mopugong sa submit
+                // nga walay makita. Ablihi ang step nga naghupot niini, sama
+                // sa gibuhat sa Update & Save.
+                const invalid = form.querySelector(':invalid');
+                if (invalid) {
+                    const stepEl = invalid.closest('.nsrp-step');
+                    if (stepEl) {
+                        nsrpCurrentStep = parseInt(stepEl.dataset.step);
+                        showNsrpStep(nsrpCurrentStep);
+                    }
+                    bootstrap.Modal.getInstance(document.getElementById('nsrpLeaveModal'))?.hide();
+                    invalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    setTimeout(() => invalid.reportValidity(), 300);
+                    return;
+                }
 
-        document.getElementById('nsrpLeaveDiscard').addEventListener('click', function () {
-            nsrpDirty = false;
-            if (nsrpLeavingTo) window.location.href = nsrpLeavingTo;
+                nsrpDirty = false;
+                form.submit();
+            });
+
+            document.getElementById('nsrpLeaveDiscard')?.addEventListener('click', function () {
+                nsrpDirty = false;
+                if (nsrpLeavingTo) window.location.href = nsrpLeavingTo;
+            });
         });
 
         // The browser's own guard, for closing the tab or the back button —
