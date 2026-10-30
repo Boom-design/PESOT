@@ -61,9 +61,19 @@ class JobseekerWebController extends Controller
         $lastMonth = \Carbon\Carbon::createFromFormat('!Y-m', $request->last_month);
         $from      = \App\Support\PesoEmployment::startMonth($employment);
 
-        if ($lastMonth->gt(now()->startOfMonth()) || ($from && $lastMonth->lt($from))) {
+        // ── ANG BINTANA NGA DILI MAHIMONG BALIT-AD ──
+        //
+        // Ang trabaho mahimong magsugod sa umaabot — ang employer mo-hire
+        // karon ug mobutang ug start date sa sunod bulan. Kung "kining bulana"
+        // ra kanunay ang kinaulahian, ang bintana mosira sa wala pa siya
+        // naabli: ang pagsugod naa sa unahan niini, ug walay bulan nga
+        // madawat. Ang kinaulahian mao ang labing ulahi sa duha.
+        $latest = $from && $from->gt(now()->startOfMonth()) ? $from : now()->startOfMonth();
+
+        if ($lastMonth->gt($latest) || ($from && $lastMonth->lt($from))) {
             return back()->withInput()->with('error', 'Pick the month of your last day, from '
-                . ($from ? $from->format('F Y') : 'when you started') . ' up to this month.');
+                . ($from ? $from->format('F Y') : 'when you started')
+                . ' up to ' . $latest->format('F Y') . '.');
         }
 
         \App\Support\PesoEmployment::end($employment, $request->reason, $lastMonth, $request->unemployed_other);

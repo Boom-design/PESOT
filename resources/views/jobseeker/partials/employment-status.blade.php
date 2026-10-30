@@ -68,11 +68,26 @@
                                maxlength="255" value="{{ old('unemployed_other') }}">
                     </div>
 
+                    {{-- ── ANG BINTANA NGA DILI MAHIMONG BALIT-AD ──
+
+                         PESO, 2026-10-30: "Minimum date (November 2026) must
+                         come before Maximum date (October 2026)."
+
+                         Ang trabaho mahimong magsugod sa umaabot: ang employer
+                         mo-hire karon ug mobutang ug start date sa sunod bulan.
+                         Kung ang max mao ra kanunay ang karong bulan, ang
+                         bintana mosira sa wala pa siya naabli, ug walay bulan
+                         nga mapili.
+
+                         Ang kinaulahian mao ang labing ulahi sa duha. --}}
+                    @php
+                        $endMax = $since && $since->gt(now()) ? $since : now();
+                    @endphp
                     <label class="peso-label" for="endMonth">Month of your last day</label>
                     <input type="month" name="last_month" id="endMonth" class="form-control peso-input" required
-                           value="{{ old('last_month', now()->format('Y-m')) }}"
+                           value="{{ old('last_month', $endMax->format('Y-m')) }}"
                            @if($since) min="{{ $since->format('Y-m') }}" @endif
-                           max="{{ now()->format('Y-m') }}">
+                           max="{{ $endMax->format('Y-m') }}">
                 </div>
                 <div class="modal-footer border-0">
                     <button type="button" class="btn btn-sm" data-bs-dismiss="modal"
