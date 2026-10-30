@@ -4222,11 +4222,26 @@ $nsrp = $registration->nsrp;
                 [$y, $m] = explode('-', $monthFilter);
                 $q->whereYear('created_at', $y)->whereMonth('created_at', $m);
             })
-            ->when($search, fn($q) => $q->where('title', 'like', "%{$search}%")
-                ->orWhereHas('company', fn($u) =>
-                    $u->where('company_name', 'like', "%{$search}%")
-                )
-            );
+            // ── ANG PAGPANGITA KINAHANGLAN MAGPABILIN SA SULOD SA TAB ──
+            //
+            // PESO SRA, 2026-10-30: ang pagtaip ug "nvi" sa Company Interview
+            // nga tab nagdala sa TANAN nga posting niana nga kompanya —
+            // pending, job fair, in-house — ug ang pending mitungha nga naay
+            // Decide sa tab nga para ra sa nadesisyunan na.
+            //
+            // Ang `orWhereHas` wala nasulod sa kaugalingon nga grupo, mao nga
+            // ang OR miikyas sa tanan nga sala sa wala niya:
+            //
+            //   (role AND type AND status AND title LIKE ...) OR company LIKE ...
+            //
+            // Ang ikaduhang bahin walay nahibaloan bahin sa tab. Ang grupo
+            // nagbalik sa OR ngadto sa duha ka kolum nga iyaha gyud.
+            ->when($search, fn($q) => $q->where(function ($s) use ($search) {
+                $s->where('title', 'like', "%{$search}%")
+                  ->orWhereHas('company', fn($u) =>
+                      $u->where('company_name', 'like', "%{$search}%")
+                  );
+            }));
 
         $totalAll = (clone $query)->count();
 
@@ -5205,9 +5220,13 @@ $nsrp = $registration->nsrp;
             ->whereHas('company', fn($q) => $q->where('is_overseas', false))
             ->whereYear('updated_at', $year)
             ->whereMonth('updated_at', $mon)
-            ->when($search, fn($q) => $q->where('title', 'like', "%{$search}%")
-                ->orWhereHas('company', fn($u) => $u->where('company_name', 'like', "%{$search}%"))
-            );
+            // Gigrupo. Kung wala, ang OR moikyas sa sala sa bulan ug sa
+            // merkado, ug ang pagpangita magdala ug mga laray nga wala
+            // gayod sa report.
+            ->when($search, fn($q) => $q->where(function ($s) use ($search) {
+                $s->where('title', 'like', "%{$search}%")
+                  ->orWhereHas('company', fn($u) => $u->where('company_name', 'like', "%{$search}%"));
+            }));
     }
 
     /** Ang mga kolum sa Job Vacancies nga report, sa samang han-ay sa lamesa. */
@@ -5510,9 +5529,11 @@ $nsrp = $registration->nsrp;
                     [$y, $m] = explode('-', $vacancyMonth);
                     $q->whereYear('updated_at', $y)->whereMonth('updated_at', $m);
                 })
-                ->when($search, fn($q) => $q->where('title', 'like', "%{$search}%")
-                    ->orWhereHas('company', fn($u) => $u->where('company_name', 'like', "%{$search}%"))
-                );
+                // Gigrupo, sa parehas nga rason sa ibabaw.
+                ->when($search, fn($q) => $q->where(function ($s) use ($search) {
+                    $s->where('title', 'like', "%{$search}%")
+                      ->orWhereHas('company', fn($u) => $u->where('company_name', 'like', "%{$search}%"));
+                }));
 
             $totalVacanciesSolicited = (clone $vacancyQuery)->count();
             $solicitedJobs = $tab === 'vacancies' ? $vacancyQuery->latest()->paginate(5)->withQueryString() : collect();
