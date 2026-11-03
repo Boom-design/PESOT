@@ -143,6 +143,9 @@
         Route::get('/company/jobs/{id}/applicants',          [CompanyWebController::class, 'applicants'])->name('company.applicants');
         Route::get('/company/jobs/{id}/details',             [CompanyWebController::class, 'jobDetails'])->name('company.jobs.details');
         Route::post('/company/applicants/{id}/status',       [CompanyWebController::class, 'updateApplicantStatus'])->name('company.applicants.status');
+        // ── Ang applicant nga gihukman sa employer, uban ang gi-score sa
+        // ── match. Tan-awa ang applicantDetails para sa gilapdon niini. ──
+        Route::get('/company/applicants/{id}/details',       [CompanyWebController::class, 'applicantDetails'])->name('company.applicants.details');
         Route::get('/company/profile',                       [CompanyWebController::class, 'showProfile'])->name('company.profile');
         Route::post('/company/profile',                      [CompanyWebController::class, 'updateProfile'])->name('company.profile.update');
         Route::post('/company/profile/password',             [CompanyWebController::class, 'changePassword'])->name('company.profile.password');

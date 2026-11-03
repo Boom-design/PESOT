@@ -206,7 +206,7 @@
                                     <div>{{ $app->jobseeker->contact_number ?? 'None' }}</div>
                                     <div style="font-size:11px;">{{ $app->jobseeker->reg_email ?? 'None' }}</div>
                                 </td>
-                                <td style="text-align:center;font-weight:700;color:var(--warn);">{{ $app->match_percentage }}%</td>
+                                <td style="text-align:center;"><button type="button" class="btn btn-sm fw-bold js-applicant-details" data-id="{{ $app->job_matching_id }}" title="See the applicant and how the match was scored" style="font-size:14px;color:var(--warn);background:none;border:none;padding:0;text-decoration-line:underline;text-decoration-style:dotted;text-underline-offset:3px;">{{ $app->match_percentage }}%</button></td>
                                 <td style="text-align:center;color:var(--n-500);">{{ $app->created_at->format('M d, Y') }}</td>
                             </tr>
                             @empty
@@ -250,7 +250,7 @@
                                     <div>{{ $app->jobseeker->contact_number ?? 'None' }}</div>
                                     <div style="font-size:11px;">{{ $app->jobseeker->reg_email ?? 'None' }}</div>
                                 </td>
-                                <td style="text-align:center;font-weight:700;color:var(--g-700);">{{ $app->match_percentage }}%</td>
+                                <td style="text-align:center;"><button type="button" class="btn btn-sm fw-bold js-applicant-details" data-id="{{ $app->job_matching_id }}" title="See the applicant and how the match was scored" style="font-size:14px;color:var(--g-700);background:none;border:none;padding:0;text-decoration-line:underline;text-decoration-style:dotted;text-underline-offset:3px;">{{ $app->match_percentage }}%</button></td>
                                 <td style="text-align:center;color:var(--n-500);">{{ $app->created_at->format('M d, Y') }}</td>
                             </tr>
                             @empty
@@ -283,4 +283,7 @@
         });
     });
 </script>
+
+@include("company.partials.applicant-details")
+
 @endsection

@@ -170,10 +170,14 @@
                             </td>
                             <td style="padding:12px 16px;text-align:center;">
                                 @php $match = $app->match_percentage ?? 0; @endphp
-                                <span class="fw-semibold"
-                                    style="color:{{ $match >= 75 ? 'var(--g-700)' : ($match >= 50 ? 'var(--warn)' : 'var(--danger)') }}">
+                                <button type="button" class="btn btn-sm fw-semibold js-applicant-details"
+                                    data-id="{{ $app->job_matching_id }}"
+                                    title="See the applicant and how the match was scored"
+                                    style="background:none;border:none;padding:0;text-decoration-line:underline;
+                                           text-decoration-style:dotted;text-underline-offset:3px;
+                                           color:{{ $match >= 75 ? 'var(--g-700)' : ($match >= 50 ? 'var(--warn)' : 'var(--danger)') }}">
                                     {{ $match }}%
-                                </span>
+                                </button>
                             </td>
                             <td style="padding:12px 16px;text-align:center;">
                                 @php

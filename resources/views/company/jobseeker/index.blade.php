@@ -314,4 +314,7 @@
         });
     }
 </script>
+
+@include("company.partials.applicant-details")
+
 @endsection

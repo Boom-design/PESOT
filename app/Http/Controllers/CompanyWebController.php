@@ -1023,6 +1023,138 @@ class CompanyWebController extends Controller
     // ───────────────────────────────
     // APPLICANTS — per job
     // ───────────────────────────────
+    /**
+     * What the employer is actually deciding on.
+     *
+     * PESO CDO, 2026-11-03: the row gave a name, a number to ring, and a
+     * percentage. The employer pressed Hired or Rejected on the strength of
+     * one figure with nothing behind it — and the figure is the system's
+     * whole claim, so a decision made against it is a decision made blind.
+     *
+     * This answers with the applicant as the MATCH sees them: the fields the
+     * score is built from, and the score's own working — every criterion, what
+     * it was worth, and whether it was met.
+     *
+     * Deliberately not the whole NSRP. The employer is deciding whether to
+     * interview somebody, not reading their household: civil status,
+     * dependents, 4Ps, disability and OFW history stay with PESO. RA 10173
+     * asks for the least that answers the question, and the criteria are the
+     * question.
+     */
+    public function applicantDetails($id)
+    {
+        $company = $this->authCompany();
+        if (!$company) {
+            return response()->json(['error' => 'Not signed in.'], 401);
+        }
+
+        $application = Application::with(['jobseeker.nsrp.workExperiences', 'job'])
+            ->where('job_matching_id', $id)
+            ->first();
+
+        // The posting has to be this employer's own. Without this, any
+        // employer could read any applicant by guessing a number.
+        $ownId = $company->activeCompany()->employer_nsrp_registrations_id ?? null;
+        if (!$application || !$application->job || $application->job->company_id !== $ownId) {
+            return response()->json(['error' => 'That applicant is not on one of your postings.'], 404);
+        }
+
+        $seeker = $application->jobseeker;
+        $nsrp   = $seeker?->nsrp;
+
+        if (!$seeker) {
+            return response()->json(['error' => 'This applicant has no registration on file.'], 404);
+        }
+
+        // Recomputed, not stored: only the percentage is kept on the row, and
+        // a breakdown written months ago would describe a posting that has
+        // since been edited.
+        $breakdown = (new ApplicationController())->computeMatchBreakdownByRegistrationId(
+            $seeker->jobseeker_registrations_id,
+            $application->job
+        );
+
+        $list = function ($value): array {
+            if (is_array($value)) {
+                $flat = $value;
+            } else {
+                $flat = json_decode((string) $value, true) ?: [];
+            }
+
+            return array_values(array_filter(
+                array_map(fn ($v) => is_string($v) ? trim($v) : $v, $flat),
+                fn ($v) => is_string($v) && $v !== ''
+            ));
+        };
+
+        return response()->json([
+            'name'      => trim(($seeker->first_name ?? '') . ' ' . ($seeker->surname ?? '')),
+            'sex'       => $seeker->sex ?: null,
+            'age'       => $seeker->age ?: null,
+            'contact'   => $seeker->contact_number ?: null,
+            'email'     => $seeker->reg_email ?: null,
+            'applied'   => optional($application->created_at)->format('M d, Y'),
+            'status'    => \App\Support\ApplicationStatus::label($application->status),
+
+            'percentage' => (int) ($breakdown['percentage'] ?? 0),
+            'criteria'   => array_map(fn ($c) => [
+                'label'   => $c['label']   ?? '',
+                'matched' => $c['matched'] ?? false,
+                'note'    => $c['note']    ?? null,
+            ], $breakdown['criteria'] ?? []),
+
+            // The scored side of the form, and nothing else.
+            'preferred_occupations' => $nsrp ? $list($nsrp->preferred_occupations) : [],
+            'languages'             => $nsrp ? array_keys(
+                is_array($nsrp->language_proficiency)
+                    ? $nsrp->language_proficiency
+                    : (json_decode((string) $nsrp->language_proficiency, true) ?: [])
+            ) : [],
+            'skills'                => $nsrp ? $list($nsrp->other_skills) : [],
+            'eligibilities'         => $nsrp ? $list($nsrp->eligibilities) : [],
+            'training'              => $nsrp ? $list($nsrp->training_certificates) : [],
+            'education'             => $nsrp ? $this->educationSummary($nsrp->education) : [],
+            'work'                  => $nsrp
+                ? $nsrp->workExperiences->map(fn ($w) => [
+                    'position' => $w->position,
+                    'company'  => $w->company_name,
+                    'from'     => $w->date_from,
+                    'to'       => $w->is_current ? 'Present' : $w->date_to,
+                ])->values()->all()
+                : [],
+        ]);
+    }
+
+    /** The education JSON, flattened to the levels that were actually filled. */
+    private function educationSummary($education): array
+    {
+        $levels = is_array($education) ? $education : (json_decode((string) $education, true) ?: []);
+        $out = [];
+
+        foreach ($levels as $level => $detail) {
+            if (!is_array($detail)) {
+                continue;
+            }
+            $school = trim((string) ($detail['school_name'] ?? ''));
+            $course = trim((string) ($detail['course'] ?? ''));
+            $year   = trim((string) ($detail['year_graduated'] ?? ''));
+
+            if ($school === '' && $course === '' && $year === '') {
+                continue;
+            }
+
+            $out[] = [
+                'level'  => $level,
+                'school' => $school ?: null,
+                // "N/A" is what the form stores for a level that has no course.
+                'course' => ($course === '' || strtoupper($course) === 'N/A') ? null : $course,
+                'year'   => $year ?: null,
+            ];
+        }
+
+        return $out;
+    }
+
     public function applicants($jobId)
     {
         $company = $this->authCompany();
