@@ -227,14 +227,13 @@
                                 </td>
                                 <td>
                                     <div style="font-size:12px;color:var(--n-700);"><i class="ph ph-phone me-1" style="color:var(--g-600);"></i>{{ $app->jobseeker->contact_number ?? 'None' }}</div>
-                                    <div style="font-size:12px;color:var(--n-500);"><i class="ph ph-envelope-simple me-1" style="color:var(--g-600);"></i>{{ $app->jobseeker->reg_email ?? 'None' }}</div>
                                 </td>
                                 <td style="text-align:center;"><button type="button" class="btn btn-sm fw-bold js-applicant-details" data-id="{{ $app->job_matching_id }}" title="See the applicant and how the match was scored" style="font-size:15px;color:var(--g-700);background:none;border:none;padding:0;text-decoration-line:underline;text-decoration-style:dotted;text-underline-offset:3px;">{{ $app->match_percentage }}%</button></td>
                                 <td style="text-align:center;"><span class="badge-{{ $app->status }}">{{ \App\Support\ApplicationStatus::label($app->status) }}</span></td>
                                 {{-- nowrap so the column takes the width the
                                      three decision buttons need, instead of
                                      squeezing them onto two lines. --}}
-                                <td style="text-align:center;white-space:nowrap;">
+                                <td style="text-align:center;">
                                     @include('company.jobs.partials.applicant-actions', ['app' => $app])
                                 </td>
                             </tr>
@@ -286,14 +285,13 @@
                                 </td>
                                 <td>
                                     <div style="font-size:12px;color:var(--n-700);"><i class="ph ph-phone me-1" style="color:var(--g-600);"></i>{{ $app->jobseeker->contact_number ?? 'None' }}</div>
-                                    <div style="font-size:12px;color:var(--n-500);"><i class="ph ph-envelope-simple me-1" style="color:var(--g-600);"></i>{{ $app->jobseeker->reg_email ?? 'None' }}</div>
                                 </td>
                                 <td style="text-align:center;"><button type="button" class="btn btn-sm fw-bold js-applicant-details" data-id="{{ $app->job_matching_id }}" title="See the applicant and how the match was scored" style="font-size:15px;color:var(--warn);background:none;border:none;padding:0;text-decoration-line:underline;text-decoration-style:dotted;text-underline-offset:3px;">{{ $app->match_percentage }}%</button></td>
                                 <td style="text-align:center;"><span class="badge-{{ $app->status }}">{{ \App\Support\ApplicationStatus::label($app->status) }}</span></td>
                                 {{-- nowrap so the column takes the width the
                                      three decision buttons need, instead of
                                      squeezing them onto two lines. --}}
-                                <td style="text-align:center;white-space:nowrap;">
+                                <td style="text-align:center;">
                                     @include('company.jobs.partials.applicant-actions', ['app' => $app])
                                 </td>
                             </tr>
@@ -345,14 +343,13 @@
                                 </td>
                                 <td>
                                     <div style="font-size:12px;color:var(--n-700);"><i class="ph ph-phone me-1" style="color:var(--g-600);"></i>{{ $app->jobseeker->contact_number ?? 'None' }}</div>
-                                    <div style="font-size:12px;color:var(--n-500);"><i class="ph ph-envelope-simple me-1" style="color:var(--g-600);"></i>{{ $app->jobseeker->reg_email ?? 'None' }}</div>
                                 </td>
                                 <td style="text-align:center;"><button type="button" class="btn btn-sm fw-bold js-applicant-details" data-id="{{ $app->job_matching_id }}" title="See the applicant and how the match was scored" style="font-size:15px;color:var(--danger);background:none;border:none;padding:0;text-decoration-line:underline;text-decoration-style:dotted;text-underline-offset:3px;">{{ $app->match_percentage }}%</button></td>
                                 <td style="text-align:center;"><span class="badge-{{ $app->status }}">{{ \App\Support\ApplicationStatus::label($app->status) }}</span></td>
                                 {{-- nowrap so the column takes the width the
                                      three decision buttons need, instead of
                                      squeezing them onto two lines. --}}
-                                <td style="text-align:center;white-space:nowrap;">
+                                <td style="text-align:center;">
                                     @include('company.jobs.partials.applicant-actions', ['app' => $app])
                                 </td>
                             </tr>

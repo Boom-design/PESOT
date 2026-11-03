@@ -84,5 +84,16 @@
        filled in solid. */
     .applicant-actions > form { flex: 1 1 0; min-width: 0; }
     .applicant-actions { min-width: 268px; }
+
+    /* ── ANG HORIZONTAL SCROLL ──
+       Ang 268px nga min-width nagduso sa lamesa nga mas lapad kay sa
+       screen, ug ang .table-responsive mihatag ug scrollbar sa ilawom —
+       ang desisyon mahimong tago hangtod mo-scroll ka sa kilid.
+       Sa gamay nga screen, pasagdi silang mo-wrap. Tulo ka buton nga
+       nagtapad sa duha ka laray mas maayo kay sa tulo nga dili makita. */
+    @media (max-width: 991.98px) {
+        .applicant-actions { min-width: 0; flex-wrap: wrap; }
+        .applicant-actions > form { flex: 1 1 auto; }
+    }
 </style>
 @endonce
