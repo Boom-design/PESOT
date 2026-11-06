@@ -46,6 +46,18 @@ class ExcelExport
 
         $line = 1;
 
+        // ── PREPARED BY — kinsa ang nagkuha niini nga kopya.
+        // ──
+        // ── PESO CDO, 2026-11-06: ang gi-print nga report permahan sa staff
+        // ── nga nagpasa niini, mao nga ang iyang ngalan kinahanglan naa sa
+        // ── papel. Sa wala pa kini, ang kopya gikan sa LRA ug ang kopya
+        // ── gikan sa SRA managsama gyud — walay bisan unsa sa file nga
+        // ── nagsulti kinsa ang mibarog para niini.
+        // ──
+        // ── Dinhi siya, dili sa pito ka export nga method: ang gidugang
+        // ── ugma makakuha niini nga walay mahinumdom.
+        $preamble = array_merge($preamble, self::preparedBy($preamble));
+
         // ── PREAMBLE — kinsa, unsa, ug kanus-a. Naa siya sa taas sa ulohan
         // ── aron ang gi-print nga kopya makatubag sa iyang kaugalingon. ──
         foreach ($preamble as $entry) {
@@ -122,6 +134,74 @@ class ExcelExport
      * gisulat siya nga string, mao nga wala nay kinahanglan nga kudlit sa
      * atubangan sama sa CSV.
      */
+
+    /**
+     * Ang tulo ka laray nga nagsulti kinsa ang nagkuha niini nga kopya.
+     *
+     * Ang ngalan gikan sa staff record, dili sa users table: didto ang
+     * pangalan nga gigamit sa opisina, ug mao pud nay giprint sa ubang
+     * report ("by Juan Dela Cruz" sa In-house nga lista).
+     *
+     * Ang desk giapil kay ang parehas nga report nga gikan sa LRA ug sa SRA
+     * managlahi ug sakup, ug ang nagbasa sa papel kinahanglan masayod asa
+     * kini gikan.
+     */
+    private static function preparedBy(array $existing): array
+    {
+        $user = \Illuminate\Support\Facades\Auth::user();
+
+        if (!$user) {
+            return [];
+        }
+
+        // A name with no middle name comes back with two spaces in it,
+        // because full_name joins three parts whatever is there.
+        $tidy = fn ($s) => trim(preg_replace('/\s+/', ' ', (string) $s));
+
+        $name = $tidy($user->name) ?: $user->email;
+        $desk = null;
+
+        if ($user->role === 'staff') {
+            $staff = \App\Models\Staff::where('user_id', $user->users_id)->first();
+            if ($staff) {
+                $name = $tidy($staff->full_name) ?: $name;
+                $desk = [
+                    'lra'         => 'LRA Staff',
+                    'sra'         => 'SRA Staff',
+                    'job_fair'    => 'Job Fair Staff',
+                    'job_vacancy' => 'Job Vacancy Staff',
+                ][$staff->staff_role] ?? 'PESO Staff';
+            }
+        } elseif ($user->role === 'admin') {
+            $desk = 'Administrator';
+        } elseif ($user->role === 'company') {
+            $desk = 'Employer';
+        }
+
+        $rows = [['Prepared by:', $name]];
+
+        if ($desk) {
+            $rows[] = ['', $desk];
+        }
+
+        // Some reports already stamp the moment as "Generated". Two
+        // timestamps a line apart, worded differently, read as a mistake.
+        $stamped = false;
+        foreach ($existing as $entry) {
+            $first = is_array($entry) ? (string) (array_values($entry)[0] ?? '') : (string) $entry;
+            if (stripos($first, 'generated') === 0) {
+                $stamped = true;
+                break;
+            }
+        }
+
+        if (!$stamped) {
+            $rows[] = ['Downloaded:', now()->format('F d, Y g:i A')];
+        }
+
+        return $rows;
+    }
+
     private static function put($sheet, int $column, int $row, $value): void
     {
         if ($value instanceof \DateTimeInterface) {
